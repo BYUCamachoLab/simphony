@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<klayout-macro>
+ <description>SiEPIC initialization</description>
+ <version/>
+ <category>pymacros</category>
+ <prolog/>
+ <epilog/>
+ <doc/>
+ <autorun>true</autorun>
+ <autorun-early>false</autorun-early>
+ <shortcut/>
+ <show-in-menu>true</show-in-menu>
+ <group-name/>
+ <menu-path>siepic_menu.beginning</menu-path>
+ <interpreter>python</interpreter>
+ <dsl-interpreter-name/>
+ <text>
+
+try:
+  import SiEPIC
+  print("SiEPIC found.")
+except:
+  print("SiEPIC must be installed in order for Simphony integration to work.")
+
+import simphony
+def registerMenuItems():
+    import os
+    #from . import scripts, examples, lumerical, install
+
+    global ACTIONS
+    count = 0
+    menu = pya.Application.instance().main_window().menu()
+
+    import sys
+
+    s1 = "simphony_menu"
+    if not(menu.is_menu(s1)):
+        menu.insert_menu("help_menu", s1, "Simphony %s" % simphony.__version__)
+
+    #s2 = "simulations"
+    #if not(menu.is_menu(s1 + "." + s2)):
+    #    menu.insert_menu(s1 + ".end", s2, "Waveguides")
+
+    if not(menu.is_menu("@toolbar.cir_sim_ann")):
+        ACTIONS.append(pya.Action())
+        menu.insert_item("@toolbar.end", "cir_sim_ann", ACTIONS[count])
+    ACTIONS[count].title = "ANN\nSimulation"
+    ACTIONS[count].on_triggered(SiEPIC.ann.circuit_simulation.circuit_analysis)
+    ACTIONS[count].icon = path
+    count += 1
+    
+registerMenuItems()</text>
+</klayout-macro>
