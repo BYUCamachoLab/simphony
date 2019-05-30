@@ -5,6 +5,9 @@ simulation engine as an alternative to Lumerical's INTERCONNECT. It is speedy
 and easily extensible.
 """
 
+from simphony._version import __version__
+__author__ = 'Sequoia Ploeg, Hyrum Gunther'
+
 __all__ = [
     'netlist',
     'circuit_simulation',
@@ -13,8 +16,6 @@ __all__ = [
     'models',
     'settings_gui',
 ]
-__version__ = '0.1'
-__author__ = 'Sequoia Ploeg, Hyrum Gunther'
 
 from . import *
 
