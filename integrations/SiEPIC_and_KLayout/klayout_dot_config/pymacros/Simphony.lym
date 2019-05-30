@@ -46,7 +46,7 @@ def registerMenuItems():
         menu.insert_item("@toolbar.end", "cir_sim_ann", ACTIONS[count])
     ACTIONS[count].title = "ANN\nSimulation"
     ACTIONS[count].on_triggered(SiEPIC.ann.circuit_simulation.circuit_analysis)
-    ACTIONS[count].icon = path
+    #ACTIONS[count].icon = path
     count += 1
     
 registerMenuItems()</text>

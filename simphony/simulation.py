@@ -48,8 +48,8 @@ class MathPrefixes:
 
 
 class Simulation:
-    def __init__(self, netlist):
-        self.s_matrix, self.frequency, self.ports, self.external_components = netlist.get_sparameters(netlist) 
+    def __init__(self, netlist_):
+        self.s_matrix, self.frequency, self.ports, self.external_components = netlist.get_sparameters(netlist_) 
         self.external_port_list = [-int(x) for x in self.ports]
         self.external_port_list.sort()
         self._rearrangeSMatrix()
@@ -124,7 +124,7 @@ DEF_SAVEDATA = True
 DEF_DISPTIME = True
 DEF_FILENAME = "monte_carlo.mat"
 
-def monte_carlo_sim(netlist,
+def monte_carlo_sim(netlist_,
                     num_sims=DEF_NUM_SIMS, 
                     mu_width=DEF_MU_WIDTH, 
                     sigma_width=DEF_SIGMA_WIDTH, 
@@ -153,14 +153,14 @@ def monte_carlo_sim(netlist,
     random_deltaLength = np.random.normal(mu_length, sigma_length, num_sims)
 
     # run simulation with mean width and thickness
-    mean_s, frequency, _, _ = netlist.get_sparameters(netlist) 
+    mean_s, frequency, _, _ = netlist.get_sparameters(netlist_) 
     # mean_s, frequency = gs.getSparams(mu_width, mu_thickness, 0)
     results_shape = np.append(np.asarray([num_sims]), mean_s.shape)
     results = np.zeros([dim for dim in results_shape], dtype='complex128')
 
     # run simulations with varied width and thickness
     for sim in range(num_sims):
-        modified_netlist = copy.deepcopy(netlist)
+        modified_netlist = copy.deepcopy(netlist_)
         for component in modified_netlist.component_list:
             if component.__class__.__name__ == "ebeam_wg_integral_1550":
                 component.width = random_width[sim]

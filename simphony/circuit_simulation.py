@@ -22,7 +22,6 @@ import tkinter as tk
 from tkinter import filedialog
 
 from .graph import Graph, DataSet, MenuItem
-# import SiEPIC._globals as glob
 from .simulation import Simulation
 
 import scipy.io as sio

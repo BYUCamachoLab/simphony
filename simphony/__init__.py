@@ -10,9 +10,9 @@ __author__ = 'Sequoia Ploeg, Hyrum Gunther'
 
 __all__ = [
     'netlist',
-    'circuit_simulation',
+    'circuit_simulation', # May be removed soon
     'simulation',
-    'monte_carlo_simulation',
+    'monte_carlo_simulation', # May be removed soon
     'models',
     'settings_gui',
 ]
@@ -25,7 +25,7 @@ from importlib import import_module
 import os
 
 def on_open():
-    print('ANN Python Integration (CamachoLab)')
+    print('Simphony Python Integration (CamachoLab)')
     try:
         config = configparser.ConfigParser()
         config.read(os.path.join(os.path.dirname(os.path.realpath(__file__)), "settings.ini"))
@@ -49,7 +49,7 @@ def on_close():
         selections[class_.__name__] = class_._selected_model
     with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "settings.ini"), 'w') as configfile:
         config.write(configfile)
-    print("ANN Integration Closed")
+    print("Simphony Integration Closed")
 
 on_open()
 
