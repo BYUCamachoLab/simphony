@@ -135,6 +135,7 @@ class MonteCarloGUI(tk.Tk):
         if filename:
             self.savefilename.insert(0, filename)
 
+    # TODO: Select input/output ports AFTER simulation is run, and plotting them.
     def run_simulation(self):
         sims = int(self.num_sims.get())
         s_width = float(self.sigma_width.get())

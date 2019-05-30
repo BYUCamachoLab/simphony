@@ -3,6 +3,7 @@ from tkinter import ttk
 from .models.components import Component
 from importlib import import_module
 
+# TODO: Make it an on-change to save, rather than a on-close
 class SettingsGUI(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
