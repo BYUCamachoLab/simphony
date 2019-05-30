@@ -41,7 +41,7 @@ from importlib import import_module
 LOADED_MODELS = {}
 
 for component in INSTALLED_COMPONENTS:
-    mod = import_module('.' + component, 'ANN.models')
+    mod = import_module('.' + component, __name__.split('.')[0] + '.models')
     LOADED_MODELS[component] = mod.Model
 
 from abc import ABC, abstractmethod

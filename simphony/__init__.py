@@ -30,7 +30,7 @@ def on_open():
         config.read(os.path.join(os.path.dirname(os.path.realpath(__file__)), "settings.ini"))
         selections = config['MODEL_SELECT']
 
-        mod = import_module('.models', 'ANN')
+        mod = import_module('.models', __name__)
         Comp = mod.components.Component
         for class_ in Comp.__subclasses__():
             class_.set_model(selections[class_.__name__])
@@ -42,7 +42,7 @@ def on_close():
     config['MODEL_SELECT'] = {}
     selections = config['MODEL_SELECT']
 
-    mod = import_module('.models', 'ANN')
+    mod = import_module('.models', __name__)
     Comp = mod.components.Component
     for class_ in Comp.__subclasses__():
         selections[class_.__name__] = class_._selected_model
