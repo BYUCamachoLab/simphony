@@ -62,7 +62,7 @@ setuptools.setup(
         'scikit-rf==0.14.9',
         'h5py==2.9.0',
         'matplotlib==3.0.3',
-        'TensorFlow==1.12.0',
+        'TensorFlow>=1.12.0',
         'Keras>=2.2.4',
         'jsons==0.8.9',
         'numpy'
