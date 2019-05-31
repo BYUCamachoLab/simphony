@@ -1,8 +1,7 @@
 """Simphony Photonic Simulator
 
 This module implements a free and open source photonic integrated circuit (PIC)
-simulation engine as an alternative to Lumerical's INTERCONNECT. It is speedy 
-and easily extensible.
+simulation engine. It is speedy and easily extensible.
 """
 
 name = "simphony"
@@ -11,9 +10,7 @@ __author__ = 'Sequoia Ploeg, Hyrum Gunther'
 
 __all__ = [
     'netlist',
-    'circuit_simulation', # May be removed soon
     'simulation',
-    'monte_carlo_simulation', # May be removed soon
     'models',
     'settings_gui',
 ]
