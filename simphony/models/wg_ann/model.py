@@ -2,7 +2,7 @@ import os
 import numpy as np
 from . import waveguideNN as wn
 
-import pickle
+from itertools import combinations_with_replacement as comb_w_r
 
 path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "NN_SiO2_neff.h5")
 model = wn.loadWaveguideNN(path)
@@ -16,11 +16,7 @@ def cartesian_product(arrays):
     return arr.reshape(-1, la)
 
 def straightWaveguide(wavelength, width, thickness, angle):
-    #load regression
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'R_straight_update.pkl'), 'rb') as handle:
-            LR_straight = pickle.Unpickler(handle).load()
-
-    # Santize the input
+    # Sanitize the input
     if type(wavelength) is np.ndarray:
         wavelength = np.squeeze(wavelength)
     else:
@@ -38,12 +34,29 @@ def straightWaveguide(wavelength, width, thickness, angle):
     else:
         angle = np.array([angle])
 
-    # Run through regression
-    INPUT  = cartesian_product([wavelength,width,thickness,angle])
+    INPUT  = cartesian_product([wavelength,width,thickness,angle]) 
 
-    OUTPUT = LR_straight.predict(INPUT)
+    #Get all possible combinations to use
+    degree = 4
+    features = 4
+    combos = []
+    for i in range(5):
+        combos += [k for k in comb_w_r(range(degree),i)]
     
-    return OUTPUT
+    #make matrix of all combinations
+    n = len(INPUT)
+    polyCombos = np.ones((n,len(combos)))
+    for j,c in enumerate(combos):
+        if c == ():
+            polyCombos[:,j] = 1
+        else:
+            for k in c:
+                polyCombos[:,j] *= INPUT[:,k]
+
+    #get coefficients and return 
+    coeffs = np.load('straightCoeffs.npy')
+    return polyCombos@coeffs 
+
 
 class Model:
     def __init__(self):
@@ -74,7 +87,7 @@ class Model:
 
         # effective index is calculated by the ANN
         neff = wn.getWaveguideIndex(model,np.transpose(wl),width,thickness,mode)
-        # n2 = straightWaveguide(1.550, width, thickness, 90)
+        n2 = straightWaveguide(1.550, width, thickness, 90)
 
         #K is calculated from the effective index and wavelength
         K = (2*np.pi*np.true_divide(neff,wl))

@@ -25,6 +25,7 @@ data_files_ext = [
     '.dat',
     '.txt',
     '.h5',
+    '.npy',
 ]
 
 def package_data_files(directory):
