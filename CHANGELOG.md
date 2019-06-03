@@ -11,10 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Waveguide parameters now calculated based off new regression model provided by Easton Potokar.
 
 ### Changed
-- Dependencies are slightly more flexible now, not pinned to a specific version of software
+- Dependencies are slightly more flexible now, not pinned to a specific version of software.
 
 ### Removed
 - Dependencies on TensorFlow, Keras, and h5py have been removed since the waveguide model has been replaced.
+- Removed the "settings" gui, as it's been migrated over to SiEPIC-Simphony.
 
 ## [Released]
 

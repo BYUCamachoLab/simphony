@@ -6,32 +6,24 @@ Authors:
     Hyrum Gunther
 
 Dependencies:
-- pya
-    Python connection to KLayout, allows access to cells and other layout 
-    objects. The custom netlist generator requires this.
-- numpy
-    Required for cascading s-matrices together.
-- SiEPIC.extend, SiEPIC.core
-    Required by the custom netlist generator.
-- SiEPIC.ann.models
-    The ObjectModelNetlist requires this module in order to build Component 
-    models.
-- jsons
-    Similar to GSON in Java, serializes and deserializes custom models.
-    Required to convert the ObjectModelNetlist to a file that can be saved and 
-    read later.
-    API: https://jsons.readthedocs.io/en/latest/index.html
-- copy
-    Some objects are deep copied during circuit matrix cascading.
-- skrf
-    Required for cascading s-parameter matrices.
+    - numpy
+        Required for cascading s-matrices together.
+    - simphony.models
+        The ObjectModelNetlist requires this module in order to build Component 
+        models.
+    - jsons
+        Similar to GSON in Java, serializes and deserializes custom models.
+        Required to convert the ObjectModelNetlist to a file that can be saved 
+        and read later.
+        API: https://jsons.readthedocs.io/en/latest/index.html
+    - copy
+        Some objects are deep copied during circuit matrix cascading.
+    - skrf
+        Required for cascading s-parameter matrices.
 
 This file contains everything related to netlist generation and modeling.
 """
 
-# import pya
-# import SiEPIC.extend as se
-# import SiEPIC.core as cor
 from .models.components import Component, create_component_by_name
 import jsons
 import copy
@@ -49,7 +41,7 @@ class ObjectModelNetlist:
     derived model. These s_params are the s-matrices of the component, which 
     are then used to simulate the circuit's transmission behavior.
 
-    Attributes
+    Parameters
     ----------
     component_list : list
         A list of objects derived from 'models.components.Component' 
@@ -57,35 +49,19 @@ class ObjectModelNetlist:
     net_count : int
         A counter keeping track of the total number of nets in the circuit 
         (0-indexed).
-    json : string
-        A JSON representation of the model. This is a property and cannot
-        be set.
-
-    Methods
-    -------
-    parse_file(filepath)
-        Parses through the netlist to identify components and organize them 
-        into objects. Objects are connected with their data models, allowing 
-        them to retrieve any available parameters.
-    _parse_line(line_elements)
-        Reads the elements on a line of the netlist (already delimited before 
-        passed to _parse_line) and creates the appropriate object. Appends the 
-        newly created object to the Parser's component_list.
     """
 
-    def __init__(self):
-        """
-        Initializes a Parser and creates a structure to hold a list of 
-        components and count the number of nets in the circuit (0-indexed).
-        """
-        self.component_list = []
-        self.net_count = 0
+    def __init__(self, component_list: list=[], net_count: int=0):
+        self.component_list = component_list
+        self.net_count = net_count
 
 
     def parse_file(self, filepath: str) -> list:
-        """
-        Parses a netlist (given a filename) and converts it to an object model 
-        f the circuit.
+        """Converts a netlist to an object model of the circuit.
+
+        Parses through the netlist (given a filename) to identify components 
+        and organize them into objects. Objects are connected with their data 
+        models, allowing them to retrieve any available parameters.
 
         Parameters
         ----------
@@ -132,9 +108,12 @@ class ObjectModelNetlist:
         return self.component_list
 
     def _parse_line(self, line_elements: list):
-        """
-        Parses a line from the netlist, already split into individual elements,
-        and converts it into a new Component object.
+        """ Parses a line from the netlist, already split into individual 
+        elements, and converts it into a new Component object.
+
+        Reads the elements on a line of the netlist (already delimited before 
+        passed to _parse_line) and creates the appropriate object. Appends the 
+        newly created object to the Parser's component_list.
         
         Parameters
         ----------
@@ -184,8 +163,7 @@ class ObjectModelNetlist:
     def get_external_components(self):
         return [component for component in self.component_list if (any(int(x) < 0 for x in component.nets))]
 
-    @property
-    def json(self) -> str:
+    def toJSON(self) -> str:
         return jsons.dump(self.component_list, verbose=True, strip_privates=True)
         # And, in case we ever want to build in a netlist export function,
         # here's the necessary code:
@@ -194,86 +172,7 @@ class ObjectModelNetlist:
         # with open('data.json') as jsonfile:
         #     data = json.load(jsonfile)
         # inputstr = jsons.load(data)
-
-
-# def spice_netlist_export(self) -> (str, str):
-#     """
-#     This function gathers information from the current top cell in Klayout into
-#     a netlist for a photonic circuit. This netlist is used in simulations.
-
-#     Code for this function is taken and adapted from a function in 
-#     'SiEPIC-Tools/klayout_dot_config/python/SiEPIC/extend.py' 
-#     which does the same thing, but to create a netlist for 
-#     Lumerical INTERCONNECT. This function has parts of that one removed 
-#     since they are not needed for this toolbox.
-#     """
-
-#     import SiEPIC
-#     from SiEPIC import _globals
-#     from time import strftime
-#     from SiEPIC.utils import eng_str
-
-#     from SiEPIC.utils import get_technology
-#     TECHNOLOGY = get_technology()
-#     if not TECHNOLOGY['technology_name']:
-#         v = pya.MessageBox.warning("Errors", "SiEPIC-Tools requires a technology to be chosen.  \n\nThe active technology is displayed on the bottom-left of the KLayout window, next to the T. \n\nChange the technology using KLayout File | Layout Properties, then choose Technology and find the correct one (e.g., EBeam, GSiP).", pya.MessageBox.Ok)
-#         return 'x', 'x', 0, [0]
-#     # get the netlist from the entire layout
-#     nets, components = self.identify_nets()
-
-#     if not components:
-#         v = pya.MessageBox.warning("Errors", "No components found.", pya.MessageBox.Ok)
-#         return 'no', 'components', 0, ['found']
-
-#     text_subckt = '* Spice output from KLayout SiEPIC-Tools v%s, %s.\n\n' % (
-#         SiEPIC.__version__, strftime("%Y-%m-%d %H:%M:%S"))
         
-#     circuit_name = self.name.replace('.', '')  # remove "."
-#     if '_' in circuit_name[0]:
-#         circuit_name = ''.join(circuit_name.split('_', 1))  # remove leading _
-
-#     ioports = -1
-#     for c in components:
-#         # optical nets: must be ordered electrical, optical IO, then optical
-#         nets_str = ''
-#         for p in c.pins:
-#             if p.type == _globals.PIN_TYPES.ELECTRICAL:
-#                 nets_str += " " + c.component + '_' + str(c.idx) + '_' + p.pin_name
-#         for p in c.pins:
-#             if p.type == _globals.PIN_TYPES.OPTICALIO:
-#                 nets_str += " N$" + str(ioports)
-#                 ioports -= 1
-#         #pinIOtype = any([p for p in c.pins if p.type == _globals.PIN_TYPES.OPTICALIO])
-#         for p in c.pins:
-#             if p.type == _globals.PIN_TYPES.OPTICAL:
-#                 if p.net.idx != None:
-#                     nets_str += " N$" + str(p.net.idx)
-#                 #if p.net.idx != None:
-#                 #    nets_str += " N$" + str(p.net.idx)
-#                 else:
-#                     nets_str += " N$" + str(ioports)
-#                     ioports -= 1
-
-#         # Check to see if this component is an Optical IO type.
-#         pinIOtype = any([p for p in c.pins if p.type == _globals.PIN_TYPES.OPTICALIO])
-
-#         component1 = c.component
-#         params1 = c.params
-
-#         text_subckt += ' %s %s %s ' % (component1.replace(' ', '_') +
-#                                        "_" + str(c.idx), nets_str, component1.replace(' ', '_'))
-#         x, y = c.Dcenter.x, c.Dcenter.y
-#         text_subckt += '%s lay_x=%s lay_y=%s\n' % \
-#             (params1, eng_str(x * 1e-6), eng_str(y * 1e-6))
-
-#     om = ObjectModelNetlist()
-#     components = om.parse_text(text_subckt)
-#     output = jsons.dump(components, verbose=True, strip_privates=True)
-
-#     return text_subckt, output, om
-
-# pya.Cell.spice_netlist_export_ann = spice_netlist_export
-
 
 def _match_ports(net_id: str, component_list: list) -> list:
     """
@@ -433,7 +332,7 @@ def get_sparameters(netlist: ObjectModelNetlist):
 
     Returns
     -------
-    np.array, np.array, list(str)
+    s, f, externals, edge_components: np.array, np.array, list(str)
         A tuple in the following order: 
         ([s-matrix], [frequency array], [external port list])
         - s-matrix: The s-parameter matrix of the combined component.

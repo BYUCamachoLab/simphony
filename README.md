@@ -5,8 +5,19 @@ This package is still under development. It began as an extension to SiEPIC-Tool
 
 Simphony can be installed via pip:
 
+```
 pip install simphony
+```
 
+## Documentation
+
+Documentation is built on Sphinx. They can be built using the default files by navigation to the docs directory and running:
+
+```
+make html
+```
+
+The docs are written in reST. There is a nice syntax guide with guidelines that we follow in the documentation [here](https://thomas-cokelaer.info/tutorials/sphinx/rest_syntax.html).
 
 ## Developers
 
