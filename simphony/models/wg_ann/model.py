@@ -1,11 +1,7 @@
 import os
 import numpy as np
-from . import waveguideNN as wn
 
 from itertools import combinations_with_replacement as comb_w_r
-
-path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "NN_SiO2_neff.h5")
-model = wn.loadWaveguideNN(path)
 
 def cartesian_product(arrays):
     la = len(arrays)
@@ -54,7 +50,7 @@ def straightWaveguide(wavelength, width, thickness, angle):
                 polyCombos[:,j] *= INPUT[:,k]
 
     #get coefficients and return 
-    coeffs = np.load('straightCoeffs.npy')
+    coeffs = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'straightCoeffs.npy'))
     return polyCombos@coeffs 
 
 
@@ -86,8 +82,7 @@ class Model:
         wl = np.true_divide(c0,frequency)
 
         # effective index is calculated by the ANN
-        neff = wn.getWaveguideIndex(model,np.transpose(wl),width,thickness,mode)
-        n2 = straightWaveguide(1.550, width, thickness, 90)
+        neff = straightWaveguide(np.transpose(wl), width, thickness, 90)
 
         #K is calculated from the effective index and wavelength
         K = (2*np.pi*np.true_divide(neff,wl))

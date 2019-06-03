@@ -6,7 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.3] - 2019-05-31
+## [0.1.5] - 2019-06-2 (Scheduled)
+### Added
+- Waveguide parameters now calculated based off new regression model provided by Easton Potokar.
+
+### Changed
+- Dependencies are slightly more flexible now, not pinned to a specific version of software
+
+### Removed
+- Dependencies on TensorFlow, Keras, and h5py have been removed since the waveguide model has been replaced.
+
+## [Released]
+
+## [0.1.4] - 2019-05-31
 ### Added
 - N/A
 
@@ -16,8 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - circuit_simulation.py, a GUI primarily from when package was part of SiEPIC-Tools
 - monte_carlo_simulation.py, a GUI primarily from when package was part of SiEPIC-Tools
-
-## [Released]
 
 ## [0.1.2] - 2019-05-30
 ### Added
