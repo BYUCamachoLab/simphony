@@ -12,7 +12,6 @@ __all__ = [
     'netlist',
     'simulation',
     'models',
-    'settings_gui',
 ]
 
 from . import *
