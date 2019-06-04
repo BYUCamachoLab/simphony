@@ -1,7 +1,11 @@
 # Simphony
-Simulator for Photonic circuits
+Description: A Simulator for Photonic circuits
 
-This package is still under development. It began as an extension to SiEPIC-Tools, but became large enough to become its own stand-alone project. The first minor version is considered what was under develop during its time with SiEPIC-Tools.
+Authors: [Sequoia Ploeg](https://github.com/sequoiap), [Hyrum Gunther](https://github.com/rumbonium/)
+
+Developed by [CamachoLab](https://camacholab.byu.edu/) at [Brigham Young University](https://www.byu.edu/).
+
+This package is still under development. It initially began as an extension to [SiEPIC-Tools](https://github.com/lukasc-ubc/SiEPIC-Tools), but was ported here once it became large enough to be considered its own stand-alone project. There is a repository, [SiEPIC-Simphony](https://github.com/sequoiap/SiEPIC-Simphony), that integrates Simphony with SiEPIC-Tools and KLayout in order to perform photonic circuit simulations using a layout-driven design methodology.
 
 Simphony can be installed via pip:
 
