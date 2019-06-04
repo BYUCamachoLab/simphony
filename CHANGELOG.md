@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - Dependencies on TensorFlow, Keras, and h5py have been removed since the waveguide model has been replaced.
 - Removed the "settings" gui, as it's been migrated over to SiEPIC-Simphony.
+- Persistent settings that should only really be in the SiEPIC-Simphony integration package were removed from here and implemented there instead.
 
 ## [Released]
 
