@@ -1,28 +1,22 @@
-"""
-netlist.py
-
-Authors: 
-    Sequoia Ploeg
-    Hyrum Gunther
-
-Dependencies:
-    - numpy
-        Required for cascading s-matrices together.
-    - simphony.models
-        The ObjectModelNetlist requires this module in order to build Component 
-        models.
-    - jsons
-        Similar to GSON in Java, serializes and deserializes custom models.
-        Required to convert the ObjectModelNetlist to a file that can be saved 
-        and read later.
-        API: https://jsons.readthedocs.io/en/latest/index.html
-    - copy
-        Some objects are deep copied during circuit matrix cascading.
-    - skrf
-        Required for cascading s-parameter matrices.
-
-This file contains everything related to netlist generation and modeling.
-"""
+# netlist.py
+#
+# Dependencies:
+#     - numpy
+#         Required for cascading s-matrices together.
+#     - simphony.models
+#         The ObjectModelNetlist requires this module in order to build Component 
+#         models.
+#     - jsons
+#         Similar to GSON in Java, serializes and deserializes custom models.
+#         Required to convert the ObjectModelNetlist to a file that can be saved 
+#         and read later.
+#         API: https://jsons.readthedocs.io/en/latest/index.html
+#     - copy
+#         Some objects are deep copied during circuit matrix cascading.
+#     - skrf
+#         Required for cascading s-parameter matrices.
+#
+# This file contains everything related to netlist generation and modeling.
 
 from .models.components import Component, create_component_by_name
 import jsons
