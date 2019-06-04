@@ -1,5 +1,5 @@
 # Simphony
-Description: A Simulator for Photonic circuits
+A Simulator for Photonic circuits
 
 Authors: [Sequoia Ploeg](https://github.com/sequoiap), 
 [Hyrum Gunther](https://github.com/rumbonium/)
