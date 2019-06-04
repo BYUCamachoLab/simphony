@@ -1,17 +1,12 @@
-"""
-graph.py : Tkinter Graph Wrapper
-
-Author: 
-    Sequoia Ploeg
-
-Dependencies:
-- tkinter
-- matplotlib
-- numpy
-
-This module allows tkinter graphs to be easily created from a parent tkinter 
-object in their own separate windows.
-"""
+# graph.py : Tkinter Graph Wrapper
+#
+# Dependencies:
+# - tkinter
+# - matplotlib
+# - numpy
+#
+# This module allows tkinter graphs to be easily created from a parent tkinter 
+# object in their own separate windows.
 
 import tkinter as tk
 from tkinter import filedialog

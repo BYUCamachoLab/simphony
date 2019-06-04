@@ -35,7 +35,7 @@ class ObjectModelNetlist:
     derived model. These s_params are the s-matrices of the component, which 
     are then used to simulate the circuit's transmission behavior.
 
-    Parameters
+    Attributes
     ----------
     component_list : list
         A list of objects derived from 'models.components.Component' 
@@ -45,10 +45,9 @@ class ObjectModelNetlist:
         (0-indexed).
     """
 
-    def __init__(self, component_list: list=[], net_count: int=0):
-        self.component_list = component_list
-        self.net_count = net_count
-
+    def __init__(self):
+        self.component_list = []
+        self.net_count = 0
 
     def parse_file(self, filepath: str) -> list:
         """Converts a netlist to an object model of the circuit.
