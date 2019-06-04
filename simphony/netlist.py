@@ -20,6 +20,7 @@
 
 from .models.components import Component, create_component_by_name
 import jsons
+import json
 import copy
 import numpy as np
 import skrf as rf
@@ -157,14 +158,28 @@ class ObjectModelNetlist:
         return [component for component in self.component_list if (any(int(x) < 0 for x in component.nets))]
 
     def toJSON(self) -> str:
-        return jsons.dump(self.component_list, verbose=True, strip_privates=True)
-        # And, in case we ever want to build in a netlist export function,
-        # here's the necessary code:
-        # with open('data.json', 'w') as outfile:
-        #     json.dump(output, outfile, indent=2)
-        # with open('data.json') as jsonfile:
-        #     data = json.load(jsonfile)
-        # inputstr = jsons.load(data)
+        return jsons.dump(self, verbose=True, strip_privates=True)
+
+    @staticmethod
+    def save(filename, netlist):
+        with open(filename, 'w') as outfile:
+            json.dump(netlist.toJSON(), outfile, indent=2)
+
+    @staticmethod
+    def load(filename):
+        obj = None
+        with open(filename) as jsonfile:
+            try:
+                data = json.load(jsonfile)
+                obj = jsons.load(data)
+                obj.component_list = jsons.load(obj.component_list)
+                if obj is not None:
+                    return obj
+                else:
+                    raise RuntimeError("Netlist could not load successfully.")
+            except:
+                raise RuntimeError("Netlist could not load successfully.")
+            
         
 
 def _match_ports(net_id: str, component_list: list) -> list:
