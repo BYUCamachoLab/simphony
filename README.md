@@ -38,6 +38,17 @@ we follow in the documentation
 majority of the documentation is generated from python docstrings written using
 NumPy documentation format.
 
+## Tests
+
+Simphony uses the [pytest](https://docs.pytest.org/en/latest/) testing 
+framework. To run all tests, simply execute
+
+```
+pytest
+```
+
+from the toplevel directory.
+
 ## Developers
 
 This package is available on PyPI and updates are regularly pushed as "minor" 
