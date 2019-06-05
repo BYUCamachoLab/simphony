@@ -254,7 +254,7 @@ class ComponentSimulation:
             self.f, self.s = component.get_s_params()
 
 
-def connect_circuit(netlist: ObjectModelNetlist) -> ComponentSimulation:
+def connect_circuit(netlist: ObjectModelNetlist) -> (ComponentSimulation, list):
     """
     Connects the s-matrices of a photonic circuit given its ObjectModelNetlist
     and returns a single 'ComponentSimulation' object containing the frequency
@@ -267,6 +267,8 @@ def connect_circuit(netlist: ObjectModelNetlist) -> ComponentSimulation:
         After the circuit has been fully connected, the result is a single 
         ComponentSimulation with fields f (frequency), s (s-matrix), and nets 
         (external ports: negative numbers, as strings).
+    list
+        A list of Component objects that contain an external port.
     """
     if netlist.net_count == 0:
         return
@@ -342,13 +344,15 @@ def get_sparameters(netlist: ObjectModelNetlist):
     -------
     s, f, externals, edge_components: np.array, np.array, list(str)
         A tuple in the following order: 
-        ([s-matrix], [frequency array], [external port list])
+        ([s-matrix], [frequency array], [external port list], [edge components])
         - s-matrix: The s-parameter matrix of the combined component.
         - frequency array: The corresponding frequency array, indexed the same
             as the s-matrix.
         - external port list: Strings of negative numbers representing the 
             ports of the combined component. They are indexed in the same order
             as the columns/rows of the s-matrix.
+        - edge components: list of Component objects, which are the external
+            components.
     """
     combined, edge_components = connect_circuit(netlist)
     f = combined.f
