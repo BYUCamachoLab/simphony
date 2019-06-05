@@ -38,6 +38,9 @@ we follow in the documentation
 majority of the documentation is generated from python docstrings written using
 NumPy documentation format.
 
+The changelogs can be found in docs/changelog/. There is a changelog file for 
+each released version of the software.
+
 ## Tests
 
 Simphony uses the [pytest](https://docs.pytest.org/en/latest/) testing 
@@ -63,8 +66,28 @@ repeatedly until no installations remain) and running the following commands
 python3 setup.py sdist bdist_wheel
 pip install dist/simphony-[VERSION].tar.gz
 ```
+## Contributing
+
+All contributions and new features or bug fixes should be worked on in forks
+or branches of the repository. Issues should be opened, and pull requests
+should reference and [close those issues](https://help.github.com/en/articles/closing-issues-using-keywords).
+This is good versioning and documentation practice.
 
 ## Maintainers
+
+Remember that all changes are to be integrated through pull requests. Development
+work should be done in branches or forks of the repository. Once implemented 
+(and tested on their own), these pull requests should be merged into the 
+"master" branch for full testing with the whole program. Each time the package
+is released on PyPI, the package should have a pull request opened to its 
+corresponding release branch (release-MAJOR.MINOR.x). The hierarchy is then
+as follows:
+
+- release.* (stable branch)
+- master (integration and final testing)
+- feature-name (feature development and bug fixes)
+
+Even if you are the lone developer, we follow the methodology [here](https://softwareengineering.stackexchange.com/a/294048).
 
 Be sure to update the version number manually before pushing each new version 
 to PyPI. Also be sure to amend the changelog. Versions can be pushed to PyPI 
