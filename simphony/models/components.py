@@ -158,8 +158,8 @@ class Component(ABC):
         if self.cachable:
             if not hasattr(self, '_cached_s_params'):
                 freq, sparams = self._model_ref.get_s_params(self.port_count)
-                self._cached_s_params = freq, sparams
-        return simset.interpolate(*self._cached_s_params)
+                self._cached_s_params = simset.interpolate(freq, sparams)
+        return self._cached_s_params
 
     def __str__(self):
         return 'Object::' + str(self.__dict__)
