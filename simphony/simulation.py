@@ -241,3 +241,17 @@ class MultiInputSimulation(Simulation):
         freq = np.divide(self.frequency, MathPrefixes.TERA)
         mag = np.power(np.absolute(self.simulated_matrix[:, output_port]), 2)
         return freq, mag
+
+    def get_magnitude_by_wavelength_nm(self, output_port):
+        wl = self.frequencyToWavelength(self.frequency) / MathPrefixes.NANO
+        mag = np.power(np.absolute(self.simulated_matrix[:, output_port]), 2)
+        return wl, mag
+
+    def export_s_matrix(self):
+        """Returns the matrix result of the multi-input simulation.
+
+        Returns
+        -------
+        frequency, matrix: np.array, np.ndarray
+        """
+        return self.frequency, self.simulated_matrix
