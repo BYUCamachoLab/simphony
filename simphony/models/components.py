@@ -75,6 +75,15 @@ class Component(ABC):
         A reference to the Model class of the currently selected model for this
         component type. Provides a hook for calling functions like 
         'get_s_params'.
+    cachable : bool
+        Whether or not s-parameters for this component are cachable. If true,
+        it's expected that they do not depend on any variables and thus would
+        not change from device to device (unlike waveguides).
+    _cached_s_params : array
+        If the class is cachable, and 'get_s_params' has been called at least
+        once, this variable will exist, holding the s-parameters of the
+        Component. This reduces the overhead of opening and closing files
+        and interpolating repeatedly.
 
     Attributes
     ----------
@@ -105,6 +114,7 @@ class Component(ABC):
     nets: list = []
     lay_x: float = 0
     lay_y: float = 0
+    cachable: bool
     _simulation_models: dict = {}
     _selected_model: str
 
@@ -145,8 +155,11 @@ class Component(ABC):
 
     @abstractmethod
     def get_s_params(self):
-        freq, sparams = self._model_ref.get_s_params(self.port_count)
-        return simset.interpolate(freq, sparams)
+        if self.cachable:
+            if not hasattr(self, '_cached_s_params'):
+                freq, sparams = self._model_ref.get_s_params(self.port_count)
+                self._cached_s_params = freq, sparams
+        return simset.interpolate(*self._cached_s_params)
 
     def __str__(self):
         return 'Object::' + str(self.__dict__)
@@ -175,6 +188,7 @@ class ebeam_wg_integral_1550(Component):
     height: float = 0.22
     radius: float = 0
     points: list = []
+    cachable = False
 
     _simulation_models = {
         'ANN Waveguide': 'wg_ann',
@@ -246,6 +260,8 @@ class ebeam_bdc_te1550(Component):
     ----------
     Inherited
     """
+    cachable = True
+
     _simulation_models = {
         'EBeam BDC': 'ebeam_bdc_te1550',
     }
@@ -277,6 +293,8 @@ class ebeam_gc_te1550(Component):
     ----------
     Inherited
     """
+    cachable = True
+    
     _simulation_models = {
         'EBeam Grating Coupler': 'ebeam_gc_te1550',
     }
@@ -308,6 +326,8 @@ class ebeam_y_1550(Component):
     ----------
     Inherited
     """
+    cachable = True
+    
     _simulation_models = {
         'EBeam Y-Branch': 'ebeam_y_1550',
     }
@@ -338,6 +358,8 @@ class ebeam_terminator_te1550(Component):
     ----------
     Inherited
     """
+    cachable = True
+    
     _simulation_models = {
         'EBeam Nanotaper Terminator': 'ebeam_terminator_te1550',
     }
@@ -369,6 +391,8 @@ class ebeam_dc_halfring_te1550(Component):
     ----------
     Inherited
     """
+    cachable = True
+    
     _simulation_models = {
         'EBeam DC Halfring': 'ebeam_dc_halfring_te1550',
     }
