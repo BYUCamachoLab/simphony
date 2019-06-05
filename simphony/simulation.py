@@ -22,6 +22,7 @@ of photonic circuits and formatting their data in useful ways.
 import numpy as np
 import copy
 from scipy.interpolate import interp1d
+import time
 
 from . import models
 from . import netlist as nl
@@ -49,10 +50,13 @@ class MathPrefixes:
 
 class Simulation:
     def __init__(self, netlist):
+        start = time.time()
         self.s_matrix, self.frequency, self.ports, self.external_components = nl.get_sparameters(netlist) 
         self.external_port_list = [-int(x) for x in self.ports]
         self.external_port_list.sort()
         self._rearrangeSMatrix()
+        stop = time.time()
+        print("Simulation time:", stop-start, "seconds.")
         return
 
     def _rearrangeSMatrix(self):
@@ -105,7 +109,6 @@ class Simulation:
 
 import matplotlib.pyplot as plt
 from scipy.io import savemat
-import time
 
 class MonteCarloSimulation:
     DEF_NUM_SIMS = 10
@@ -214,10 +217,15 @@ class MultiInputSimulation(Simulation):
         super().__init__(netlist)
 
     def multi_input_simulation(self, inputs: list=[]):
+        """
+        Parameters
+        ----------
+        inputs : list
+            A 0-indexed list of the ports to be used as inputs.
+        """
         active = [0] * len(self.ports)
         for val in inputs:
-            # Inputs is 1-indexed, while active is 0-indexed
-            active[val - 1] = 1
+            active[val] = 1
         self.simulated_matrix = self._measure_s_matrix(active)
 
     def _measure_s_matrix(self, inputs):
@@ -238,11 +246,23 @@ class MultiInputSimulation(Simulation):
         plt.show()
 
     def get_magnitude_by_frequency_thz(self, output_port):
+        """
+        Parameters
+        ----------
+        output_port : int
+            Gets the values at that output port (0-indexed).
+        """
         freq = np.divide(self.frequency, MathPrefixes.TERA)
         mag = np.power(np.absolute(self.simulated_matrix[:, output_port]), 2)
         return freq, mag
 
     def get_magnitude_by_wavelength_nm(self, output_port):
+        """
+        Parameters
+        ----------
+        output_port : int
+            Gets the values at that output port (0-indexed).
+        """
         wl = self.frequencyToWavelength(self.frequency) / MathPrefixes.NANO
         mag = np.power(np.absolute(self.simulated_matrix[:, output_port]), 2)
         return wl, mag
