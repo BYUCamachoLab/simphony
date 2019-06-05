@@ -207,3 +207,29 @@ class MonteCarloSimulation:
         plt.ylabel('Gain (dB)')
         plt.draw()
         plt.show()
+
+    
+class MultiInputSimulation(Simulation):
+    def __init__(self, netlist):
+        super().__init__(netlist)
+
+    def multi_input_simulation(self, inputs: list=[]):
+        inputs = [1 if (-1 * int(val)) in inputs else 0 for val in self.ports]
+        self.simulated_matrix = self._measure_s_matrix(inputs)
+
+    def _measure_s_matrix(self, inputs):
+        num_ports = len(inputs)
+        inputs = np.array(inputs)
+        out = np.zeros([len(self.frequency), num_ports], dtype='complex128')
+        for i in range(len(self.frequency)):
+            out[i, :] = np.dot(np.reshape(self.s_matrix[i, :, :], [num_ports, num_ports]), inputs.T)
+        return out
+
+    def plot(self, output_port):
+        plt.figure()
+        plt.plot(self.frequency*1e-12, np.power(np.abs(self.simulated_matrix[:, output_port]), 2))
+        plt.title('Multi-Input Simulation')
+        plt.xlabel('Frequency (THz)')
+        plt.ylabel('Gain (dB)')
+        plt.draw()
+        plt.show()
