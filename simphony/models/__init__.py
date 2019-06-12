@@ -1,1 +1,1 @@
-from . import components
+from .components import *

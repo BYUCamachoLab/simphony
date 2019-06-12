@@ -12,7 +12,7 @@ Welcome to Simphony's documentation!
 
    reference
    components
-
+   architecture
 
 Indices and tables
 ==================

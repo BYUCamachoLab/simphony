@@ -22,7 +22,7 @@ get s-parameters. In addition to listing the modules here, make sure to list
 the relevant modules within each component class below, too, under 
 _simulation_model.
 """
-INSTALLED_COMPONENTS = [
+DEFAULT_COMPONENTS = [
     'wg_ann',
     'wg1550_lumerical',
     'ebeam_bdc_te1550',
@@ -50,7 +50,7 @@ from ..simulation import SimulationSetup as simset
 END DO NOT ALTER
 """
 
-class BaseComponent(ABC):
+class Component(ABC):
     """This class represents an arbitrary component in the netlist. All 
     attributes can be initialized as keyword arguments in the __init__ 
     function.
@@ -150,6 +150,30 @@ class BaseComponent(ABC):
 
     def __str__(self):
         return 'Object::' + str(self.__dict__)
+
+
+
+
+class SimulationModel:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def get_s_params(numports: int):
+        """Returns the s-parameters across some frequency range for the ebeam_dc_halfring_te1550 model
+        in the form [frequency, s-parameters].
+
+        Parameters
+        ----------
+        numports : int
+            The number of ports the photonic component has.
+        """
+        pass
+
+    @staticmethod
+    def about():
+        message = "About ebeam_dc_halfring_te1550:"
+        print(message)
 
 
 
