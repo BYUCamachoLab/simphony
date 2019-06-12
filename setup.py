@@ -17,7 +17,7 @@ else:
     if mo:
         verstr = mo.group(1)
     else:
-        raise RuntimeError("unable to find version in yourpackage/_version.py")
+        raise RuntimeError("unable to find version in simphony/_version.py")
 
 extra_files = []
 data_files_ext = [
