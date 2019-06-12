@@ -11,6 +11,7 @@ Welcome to Simphony's documentation!
    :caption: Contents:
 
    reference
+   components
 
 
 Indices and tables
