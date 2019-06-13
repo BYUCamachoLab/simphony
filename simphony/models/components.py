@@ -50,7 +50,7 @@ from ..simulation import SimulationSetup as simset
 END DO NOT ALTER
 """
 
-class BaseComponent(ABC):
+class Component(ABC):
     """This class represents an arbitrary component in the netlist. All 
     attributes can be initialized as keyword arguments in the __init__ 
     function.
@@ -114,7 +114,7 @@ class BaseComponent(ABC):
         obj._model_ref = LOADED_MODELS[obj._simulation_models[obj._selected_model]] if obj._selected_model else None
 
     def __init__(self, *args, **kwargs):
-        """Initializes a BaseComponent dataclass.
+        """Initializes a Component dataclass.
 
         Parameters
         ----------
@@ -154,12 +154,12 @@ class BaseComponent(ABC):
 
 
 
-class ebeam_wg_integral_1550(BaseComponent):
+class ebeam_wg_integral_1550(Component):
     """This class represents a waveguide component in the netlist. All 
     attributes can be initialized as keyword arguments in the __init__ 
     function.
 
-    This class inherits from BaseComponent and inherits all of its data members.
+    This class inherits from Component and inherits all of its data members.
 
     Attributes
     ----------
@@ -183,7 +183,7 @@ class ebeam_wg_integral_1550(BaseComponent):
 
     def __init__(self, *args, **kwargs):
         """Initializes a ebeam_wg_integral_1550 dataclass, which inherits from
-        BaseComponent.
+        Component.
 
         Parameters
         ----------
@@ -235,12 +235,12 @@ class ebeam_wg_integral_1550(BaseComponent):
 
 
 
-class ebeam_bdc_te1550(BaseComponent):
+class ebeam_bdc_te1550(Component):
     """This class represents a bidirectional coupler component in the netlist.
     All attributes can be initialized as keyword arguments in the __init__ 
     function.
 
-    This class inherits from BaseComponent and inherits all of its data members.
+    This class inherits from Component and inherits all of its data members.
 
     Attributes
     ----------
@@ -252,7 +252,7 @@ class ebeam_bdc_te1550(BaseComponent):
     
     def __init__(self, *args, **kwargs):
         """Initializes a ebeam_bdc_te1550 dataclass, which inherits from 
-        BaseComponent.
+        Component.
 
         Parameters
         ----------
@@ -266,12 +266,12 @@ class ebeam_bdc_te1550(BaseComponent):
 
 
 
-class ebeam_gc_te1550(BaseComponent):
+class ebeam_gc_te1550(Component):
     """This class represents a grating coupler component in the netlist. All 
     attributes can be initialized as keyword arguments in the __init__ 
     function.
 
-    This class inherits from BaseComponent and inherits all of its data members.
+    This class inherits from Component and inherits all of its data members.
 
     Attributes
     ----------
@@ -283,7 +283,7 @@ class ebeam_gc_te1550(BaseComponent):
     
     def __init__(self, *args, **kwargs):
         """Initializes a ebeam_gc_te1550 dataclass, which inherits from 
-        BaseComponent.
+        Component.
 
         Parameters
         ----------
@@ -297,12 +297,12 @@ class ebeam_gc_te1550(BaseComponent):
 
 
 
-class ebeam_y_1550(BaseComponent):
+class ebeam_y_1550(Component):
     """This class represents a Y-branch component in the netlist. All 
     attributes can be initialized as keyword arguments in the __init__ 
     function.
 
-    This class inherits from BaseComponent and inherits all of its data members.
+    This class inherits from Component and inherits all of its data members.
 
     Attributes
     ----------
@@ -313,7 +313,7 @@ class ebeam_y_1550(BaseComponent):
     }
     
     def __init__(self, *args, **kwargs):
-        """Initializes a ebeam_y_1550 dataclass, which inherits from BaseComponent.
+        """Initializes a ebeam_y_1550 dataclass, which inherits from Component.
 
         Parameters
         ----------
@@ -327,12 +327,12 @@ class ebeam_y_1550(BaseComponent):
 
 
 
-class ebeam_terminator_te1550(BaseComponent):
+class ebeam_terminator_te1550(Component):
     """This class represents a terminator component in the netlist. All 
     attributes can be initialized as keyword arguments in the __init__ 
     function.
 
-    This class inherits from BaseComponent and inherits all of its data members.
+    This class inherits from Component and inherits all of its data members.
 
     Attributes
     ----------
@@ -344,7 +344,7 @@ class ebeam_terminator_te1550(BaseComponent):
     
     def __init__(self, *args, **kwargs):
         """Initializes a ebeam_terminator_te1550 dataclass, which inherits from
-        BaseComponent.
+        Component.
 
         Parameters
         ----------
@@ -358,12 +358,12 @@ class ebeam_terminator_te1550(BaseComponent):
 
 
 
-class ebeam_dc_halfring_te1550(BaseComponent):
+class ebeam_dc_halfring_te1550(Component):
     """This class represents a half-ring component in the netlist. All 
     attributes can be initialized as keyword arguments in the __init__ 
     function.
 
-    This class inherits from BaseComponent and inherits all of its data members.
+    This class inherits from Component and inherits all of its data members.
 
     Attributes
     ----------
@@ -375,7 +375,7 @@ class ebeam_dc_halfring_te1550(BaseComponent):
     
     def __init__(self, *args, **kwargs):
         """Initializes a ebeam_dc_halfring_te1550 dataclass, which inherits 
-        from BaseComponent.
+        from Component.
 
         Parameters
         ----------
@@ -393,7 +393,7 @@ class ebeam_dc_halfring_te1550(BaseComponent):
 BEGIN DO NOT ALTER
 """
 # Finish setting all class variables for component subclasses
-comp_subclasses = [class_ for class_ in BaseComponent.__subclasses__()]
+comp_subclasses = [class_ for class_ in Component.__subclasses__()]
 for class_ in comp_subclasses:
     class_.setup(class_)
 

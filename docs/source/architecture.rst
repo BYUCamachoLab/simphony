@@ -44,6 +44,12 @@ Now that we understand what Components and Models are, "elements" are Simphony's
 default implementation of some commonly used components. These models are taken
 from SiEPIC's `EBeam PDK <https://github.com/lukasc-ubc/SiEPIC_EBeam_PDK>`_.
 
+New elements can be created and loaded programatically into Simphony. These settings, 
+however, are not persistent, and should be loaded each time Simphony is imported.
+Since element names are required to be unique, you might consider creating a library
+of elements with a prefix to the component name (e.g. in 'ebeam_bdc_te1550', 'ebeam'
+prefixes what the component actually is).
+
 Design Pattern
 ==============
 

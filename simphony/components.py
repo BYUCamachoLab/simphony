@@ -16,41 +16,10 @@ can be formatted as JSON).
 """
 
 
-"""
-This is where you should list all installed components from which you plan to 
-get s-parameters. In addition to listing the modules here, make sure to list 
-the relevant modules within each component class below, too, under 
-_simulation_model.
-"""
-DEFAULT_COMPONENTS = [
-    'wg_ann',
-    'wg1550_lumerical',
-    'ebeam_bdc_te1550',
-    'ebeam_y_1550',
-    'ebeam_dc_halfring_te1550',
-    'ebeam_terminator_te1550',
-    'ebeam_gc_te1550',
-]
-
-"""
-BEGIN DO NOT ALTER
-"""
-import sys
-from importlib import import_module
-
-LOADED_MODELS = {}
-
-for component in INSTALLED_COMPONENTS:
-    mod = import_module('.' + component, __name__.split('.')[0] + '.models')
-    LOADED_MODELS[component] = mod.Model
-
 from abc import ABC, abstractmethod
-from ..simulation import SimulationSetup as simset
-"""
-END DO NOT ALTER
-"""
+from .simulation import SimulationSetup as simset
 
-class Component(ABC):
+class BaseComponent(ABC):
     """This class represents an arbitrary component in the netlist. All 
     attributes can be initialized as keyword arguments in the __init__ 
     function.
@@ -413,6 +382,36 @@ class ebeam_dc_halfring_te1550(BaseComponent):
 
 
 
+"""
+This is where you should list all installed components from which you plan to 
+get s-parameters. In addition to listing the modules here, make sure to list 
+the relevant modules within each component class below, too, under 
+_simulation_model.
+"""
+DEFAULT_COMPONENTS = [
+    'wg_ann',
+    'wg1550_lumerical',
+    'ebeam_bdc_te1550',
+    'ebeam_y_1550',
+    'ebeam_dc_halfring_te1550',
+    'ebeam_terminator_te1550',
+    'ebeam_gc_te1550',
+]
+
+"""
+BEGIN DO NOT ALTER
+"""
+import sys
+from importlib import import_module
+
+LOADED_MODELS = {}
+
+for component in DEFAULT_COMPONENTS:
+    mod = import_module('.' + component, __name__.split('.')[0] + '.models')
+    LOADED_MODELS[component] = mod.Model
+"""
+END DO NOT ALTER
+"""
 """
 BEGIN DO NOT ALTER
 """
