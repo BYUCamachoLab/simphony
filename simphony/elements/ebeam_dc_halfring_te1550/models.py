@@ -20,7 +20,8 @@ class DCHalfRing_Model(components.SimulationModel):
         F = []
         S = []
         with open(filename, "r") as fid:
-            line = fid.readline()
+            for i in range(5):
+                line = fid.readline()
             line = fid.readline()
             numrows = int(tuple(line[1:-2].split(','))[0])
             S = np.zeros((numrows, numports, numports), dtype='complex128')

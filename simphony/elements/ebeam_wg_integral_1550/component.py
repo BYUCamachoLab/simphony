@@ -57,7 +57,7 @@ class ebeam_wg_integral_1550(components.BaseComponent):
         self.radius = radius
         self.points = points
 
-    def get_s_parameters(self):
+    def get_s_parameters(self, length=None, width=None, height=None, delta_length=0):
         """
         Gets the s-parameter matrix for this component.
 
@@ -79,8 +79,11 @@ class ebeam_wg_integral_1550(components.BaseComponent):
             A tuple; the first value is the frequency range, the second value 
             is its corresponding s-parameter matrix.
         """
-        print(self.get_model())
-        #return self.get_model().get_s_parameters(simset.FREQUENCY_RANGE, length, width, height, delta_length)
+        from simphony.simulation import SimulationSetup as simset
+        length = self.length if length is None else length
+        width = self.width if width is None else width
+        height = self.height if height is None else height
+        return self.get_model().get_s_parameters(simset.FREQUENCY_RANGE, length, width, height, delta_length)
 
 
     class Metadata:

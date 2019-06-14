@@ -2,6 +2,9 @@ from simphony import components
 
 # Create your simulation models here.
 
+import os
+import numpy as np
+
 class YBranch_Model(components.SimulationModel):
     @staticmethod
     def get_s_parameters(numports: int=3):

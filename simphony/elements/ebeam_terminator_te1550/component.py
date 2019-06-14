@@ -29,9 +29,9 @@ class ebeam_terminator_te1550(components.BaseComponent):
         super().__init__(nets=nets, lay_x=lay_x, lay_y=lay_y)
 
     def get_s_parameters(self):
-        print(self.get_model())
-        # freq, sparams = self._model_ref.get_s_params(self.port_count)
-        # return simset.interpolate(freq, sparams)
+        from simphony.simulation import SimulationSetup as simset
+        freq, sparams = self.get_model().get_s_parameters()
+        return simset.interpolate(freq, sparams)
 
     class Metadata:
         simulation_models = [
