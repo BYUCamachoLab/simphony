@@ -35,6 +35,6 @@ class ebeam_terminator_te1550(components.BaseComponent):
 
     class Metadata:
         simulation_models = [
-            ('simphony.elements.ebeam_terminator_te1550.models', 'Terminator_Model'),
+            ('simphony.elements.ebeam_terminator_te1550.models', 'Terminator_Model', 'EBeam Terminator (TE1550)'),
         ]
         ports = 1

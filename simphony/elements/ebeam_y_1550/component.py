@@ -35,6 +35,6 @@ class ebeam_y_1550(components.BaseComponent):
 
     class Metadata:
         simulation_models = [
-            ('simphony.elements.ebeam_y_1550.models', 'YBranch_Model'),
+            ('simphony.elements.ebeam_y_1550.models', 'YBranch_Model', 'EBeam Y-Branch'),
         ]
         ports = 3

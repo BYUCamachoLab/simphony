@@ -35,6 +35,6 @@ class ebeam_bdc_te1550(components.BaseComponent):
 
     class Metadata:
         simulation_models = [
-            ('simphony.elements.ebeam_bdc_te1550.models', 'BDC_Model'),
+            ('simphony.elements.ebeam_bdc_te1550.models', 'BDC_Model', 'EBeam BDC (TE1550)'),
         ]
         ports = 4

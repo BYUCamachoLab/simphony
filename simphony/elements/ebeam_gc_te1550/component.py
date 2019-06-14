@@ -35,6 +35,6 @@ class ebeam_gc_te1550(components.BaseComponent):
 
     class Metadata:
         simulation_models = [
-            ('simphony.elements.ebeam_gc_te1550.models', 'GC_Model'),
+            ('simphony.elements.ebeam_gc_te1550.models', 'GC_Model', 'EBeam Grating Coupler (TE1550)'),
         ]
         ports = 2

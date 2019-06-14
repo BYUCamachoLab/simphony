@@ -88,7 +88,7 @@ class ebeam_wg_integral_1550(components.BaseComponent):
 
     class Metadata:
         simulation_models = [
-            ('simphony.elements.ebeam_wg_integral_1550.models', 'ANN_WG'),
-            ('simphony.elements.ebeam_wg_integral_1550.models', 'Lumerical_1550'),
+            ('simphony.elements.ebeam_wg_integral_1550.models', 'ANN_WG', 'Artificial Neural Net'),
+            ('simphony.elements.ebeam_wg_integral_1550.models', 'Lumerical_1550', 'Lumerical'),
         ]
         ports = 2

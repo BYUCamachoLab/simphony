@@ -35,6 +35,6 @@ class ebeam_dc_halfring_te1550(components.BaseComponent):
 
     class Metadata:
         simulation_models = [
-            ('simphony.elements.ebeam_dc_halfring_te1550.models', 'DCHalfRing_Model'),
+            ('simphony.elements.ebeam_dc_halfring_te1550.models', 'DCHalfRing_Model', 'EBeam Half Ring (TE1550)'),
         ]
         ports = 4

@@ -36,6 +36,20 @@ the same component in different ways, leading to different results. Perhaps
 there exists a model with data points interpolated from test devices and another
 model based on a neural net. To Simphony, it doesn't matter.
 
+Simulation Models ought to have a nested class called Metadata. It should, at
+a minimum, contain the following fields:
+- simulation_models
+- ports
+
+It has the following format:
+
+class Metadata:
+    simulation_models = [
+        ('containing_module', 'simulation_class_name', 'human_readable_name'),
+        ...
+    ]
+    ports = [INT]
+
 ********
 Elements
 ********
