@@ -12,7 +12,7 @@ It also provides object models for netlist capabilities (all components
 can be formatted as JSON).
 """
 
-
+from importlib import import_module
 from abc import ABC, abstractmethod
 
 class BaseComponent(ABC):
@@ -87,10 +87,18 @@ class BaseComponent(ABC):
         pass
 
     def get_model(self):
-        from importlib import import_module
         selected_module = self.Metadata.simulation_models[self.selected_model]
         mod = import_module(selected_module[0])
         return getattr(mod, selected_module[1])
+
+    @classmethod
+    def get_all_models(cls):
+        models = {}
+        for model in cls.Metadata.simulation_models:
+            module_name, class_name, human_readable_name = model
+            mod = import_module(module_name)
+            models[human_readable_name] = getattr(mod, class_name)
+        return models
 
 
 
@@ -139,7 +147,7 @@ def load_elements():
     # Courtesy of https://stackoverflow.com/a/15833780/11530613
     mods = inspect.getmembers(simphony.elements, inspect.ismodule)
     for mod in mods:
-        print(mod)
+        # print(mod)
         import_submodules(mod[1])
 
 load_elements()
@@ -148,15 +156,11 @@ LOADED_COMPONENTS = {}
 for c in BaseComponent.__subclasses__():
     LOADED_COMPONENTS[c.__name__] = c
 
-def print_all_components():
-    print("BaseComponent subclasses")
-    for c in BaseComponent.__subclasses__():
-        print(c)
+def get_all_components():
+    return BaseComponent.__subclasses__()
 
-def print_all_models():
-    print("SimulationModel subclasses")
-    for c in SimulationModel.__subclasses__():
-        print(c)
+def get_all_models():
+    return SimulationModel.__subclasses__()
 
 def component_verifier(component):
     if len(component.Metadata.simulation_models) == 0:
