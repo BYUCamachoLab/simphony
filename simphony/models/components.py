@@ -23,13 +23,7 @@ the relevant modules within each component class below, too, under
 _simulation_model.
 """
 INSTALLED_COMPONENTS = [
-    'wg_ann',
-    'wg1550_lumerical',
-    'ebeam_bdc_te1550',
-    'ebeam_y_1550',
-    'ebeam_dc_halfring_te1550',
-    'ebeam_terminator_te1550',
-    'ebeam_gc_te1550',
+    
 ]
 
 """
@@ -393,9 +387,9 @@ class ebeam_dc_halfring_te1550(Component):
 BEGIN DO NOT ALTER
 """
 # Finish setting all class variables for component subclasses
-comp_subclasses = [class_ for class_ in Component.__subclasses__()]
-for class_ in comp_subclasses:
-    class_.setup(class_)
+# comp_subclasses = [class_ for class_ in Component.__subclasses__()]
+# for class_ in comp_subclasses:
+#     class_.setup(class_)
 
 def create_component_by_name(component_name: str):
     return getattr(sys.modules[__name__], component_name)()
