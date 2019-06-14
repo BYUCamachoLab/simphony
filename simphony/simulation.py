@@ -9,7 +9,7 @@ Dependencies:
 - numpy
 - copy
 - pya
-- SiEPIC.ann.models, SiEPIC.ann.netlist
+- SiEPIC.ann.netlist
 - scipy
 - matplotlib
 - time
@@ -24,7 +24,6 @@ import copy
 from scipy.interpolate import interp1d
 import time
 
-from . import models
 from . import netlist as nl
 
 class SimulationSetup:

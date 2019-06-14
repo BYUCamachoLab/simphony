@@ -8,10 +8,15 @@ name = "simphony"
 from simphony._version import __version__
 __author__ = 'Sequoia Ploeg, Hyrum Gunther'
 
+"""
+components.py handles the importing of default elements and external component
+libraries.
+"""
+
 __all__ = [
     'netlist',
     'simulation',
-    'models',
+    'components',
 ]
 
 from . import *

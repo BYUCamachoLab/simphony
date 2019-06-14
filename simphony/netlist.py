@@ -18,7 +18,7 @@
 #
 # This file contains everything related to netlist generation and modeling.
 
-from .models.components import Component, create_component_by_name
+from simphony.components import BaseComponent, create_component_by_name
 import jsons
 import json
 import copy
@@ -240,7 +240,7 @@ class ComponentSimulation:
     f: np.array
     s: np.array
 
-    def __init__(self, component: Component=None):
+    def __init__(self, component: BaseComponent=None):
         """
         Instantiates an object from a Component if provided; empty, if not.
 
@@ -251,7 +251,7 @@ class ComponentSimulation:
         """
         if component:
             self.nets = copy.deepcopy(component.nets)
-            self.f, self.s = component.get_s_params()
+            self.f, self.s = component.get_s_parameters()
 
 
 def connect_circuit(netlist: ObjectModelNetlist) -> (ComponentSimulation, list):
