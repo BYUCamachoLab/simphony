@@ -2,20 +2,24 @@ from simphony import components
 
 # Create your component models here.
 
-#####
-
-from .models import *
-
 class ebeam_wg_integral_1550(components.BaseComponent):
     """This class represents a waveguide component in the netlist. All 
     attributes can be initialized as keyword arguments in the __init__ 
     function.
 
     This class inherits from BaseComponent and inherits all of its data members.
+
+    Attributes
+    ----------
+    length : float
+        Total waveguide length.
+    width : float
+        Designed waveguide width in microns (um).
+    height : float
+        Designed waveguide height in microns (um).
     """
 
     def __init__(self, 
-            # component_type: str=self.name
             nets: list=[],
             lay_x: float=0,
             lay_y: float=0,
@@ -29,6 +33,12 @@ class ebeam_wg_integral_1550(components.BaseComponent):
 
         Parameters
         ----------
+        nets : list of ints
+            List of connected nets, ordered by port ordering.
+        lay_x : float
+            The x-position of the component in a layout.
+        lay_y : float
+            The y-position of the component in a layout.
         length : float
             Total waveguide length.
         width : float
@@ -40,20 +50,42 @@ class ebeam_wg_integral_1550(components.BaseComponent):
         points : list of tuples
             A collection of all poitns which define the waveguides' path.
         """
-        super().__init__.(*args, **kwargs)
+        super().__init__(nets=nets, lay_x=lay_x, lay_y=lay_y)
         self.length = length
         self.width = width
         self.height = height
         self.radius = radius
         self.points = points
 
-    def s_parameters(self):
-        pass
+    def get_s_parameters(self):
+        """
+        Gets the s-parameter matrix for this component.
+
+        Parameters
+        ----------
+        length : float, optional
+            Length of the waveguide.
+        width : float, optional
+            Width of the waveguide in microns (um).
+        height : float, optional
+            Height of the waveguide in microns (um).
+        delta_length :  : float, optional
+            Percentage difference in the length of the waveguide as a float 
+            (e.g. '0.1' -> 10%).
+
+        Returns
+        -------
+        (np.array, np.array)
+            A tuple; the first value is the frequency range, the second value 
+            is its corresponding s-parameter matrix.
+        """
+        print(self.get_model())
+        #return self.get_model().get_s_parameters(simset.FREQUENCY_RANGE, length, width, height, delta_length)
 
 
     class Metadata:
         simulation_models = [
-            ('simphony.elements.ebeam_y_1550.models', 'SimModel1'),
-            ('simphony.elements.ebeam_y_1550.models', 'SimModel2'),
+            ('simphony.elements.ebeam_wg_integral_1550.models', 'ANN_WG'),
+            ('simphony.elements.ebeam_wg_integral_1550.models', 'Lumerical_1550'),
         ]
-        selected_model = 0
+        ports = 2
