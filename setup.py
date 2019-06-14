@@ -59,7 +59,6 @@ setuptools.setup(
     ],
     install_requires=[
         'scipy>=1.2.1',
-        'scikit-rf==0.14.9',
         'matplotlib==3.0.3',
         'jsons==0.8.9',
         'numpy'

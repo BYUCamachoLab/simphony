@@ -13,8 +13,6 @@
 #         API: https://jsons.readthedocs.io/en/latest/index.html
 #     - copy
 #         Some objects are deep copied during circuit matrix cascading.
-#     - skrf
-#         Required for cascading s-parameter matrices.
 #
 # This file contains everything related to netlist generation and modeling.
 
@@ -23,7 +21,7 @@ import jsons
 import json
 import copy
 import numpy as np
-import skrf as rf
+import simphony.connect as rf
 
 class ObjectModelNetlist:
     """
