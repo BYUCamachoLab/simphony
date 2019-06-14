@@ -36,7 +36,7 @@ def package_data_files(directory):
                 paths.append(os.path.join('..', path, filename))
     return paths
 
-extra_files += package_data_files('simphony/models')
+extra_files += package_data_files('simphony/elements')
 extra_files += ['*.ini']
 
 setuptools.setup(
