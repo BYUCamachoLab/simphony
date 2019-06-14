@@ -4,9 +4,6 @@ components.py
 Author: Sequoia Ploeg
 
 Dependencies:
-- sys
-    Required for building classes from various modules using their string
-    classnames.
 - importlib
     Dynamically imports the installed component models.
 
@@ -17,7 +14,6 @@ can be formatted as JSON).
 
 
 from abc import ABC, abstractmethod
-from .simulation import SimulationSetup as simset
 
 class BaseComponent(ABC):
     """This class represents an arbitrary component in the netlist. All 
@@ -82,8 +78,7 @@ class BaseComponent(ABC):
 
     @abstractmethod
     def get_s_parameters(self):
-        freq, sparams = self._model_ref.get_s_params(self.port_count)
-        return simset.interpolate(freq, sparams)
+        raise NotImplementedError
 
     def __str__(self):
         return 'Object::' + str(self.__dict__)
@@ -117,26 +112,55 @@ class SimulationModel(ABC):
         pass
 
 
+from importlib import import_module
+import pkgutil, inspect
+import simphony.elements
+
+def import_submodules(package, recursive=True):
+    """ Import all submodules of a module, recursively, including subpackages.
+
+    Courtesy of https://stackoverflow.com/a/25562415/11530613
+
+    :param package: package (name or actual module)
+    :type package: str | module
+    :rtype: dict[str, types.ModuleType]
+    """
+    if isinstance(package, str):
+        package = import_module(package)
+    results = {}
+    for loader, name, is_pkg in pkgutil.walk_packages(package.__path__):
+        full_name = package.__name__ + '.' + name
+        results[full_name] = import_module(full_name)
+        if recursive and is_pkg:
+            results.update(import_submodules(full_name))
+    return results
+
+def load_elements():
+    # Courtesy of https://stackoverflow.com/a/15833780/11530613
+    mods = inspect.getmembers(simphony.elements, inspect.ismodule)
+    for mod in mods:
+        print(mod)
+        import_submodules(mod[1])
+
+load_elements()
+
+LOADED_COMPONENTS = {}
+for c in BaseComponent.__subclasses__():
+    LOADED_COMPONENTS[c.__name__] = c
+
+def print_all_components():
+    print("BaseComponent subclasses")
+    for c in BaseComponent.__subclasses__():
+        print(c)
+
+def print_all_models():
+    print("SimulationModel subclasses")
+    for c in SimulationModel.__subclasses__():
+        print(c)
 
 def component_verifier(component):
     if len(component.Metadata.simulation_models) == 0:
         raise ImportError(type(component).__name__ + " has no simulation models defined.")
 
-
-"""
-BEGIN DO NOT ALTER
-"""
-import sys
-from importlib import import_module
-
-LOADED_MODELS = {}
-
-for component in DEFAULT_COMPONENTS:
-    mod = import_module('.' + component, __name__.split('.')[0] + '.models')
-    LOADED_MODELS[component] = mod.Model
-
 def create_component_by_name(component_name: str):
-    return getattr(sys.modules[__name__], component_name)()
-"""
-END DO NOT ALTER
-"""
+    return LOADED_COMPONENTS[component_name]()
