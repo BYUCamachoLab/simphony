@@ -40,14 +40,21 @@ class Component:
         Abstract method that each class implements. Each classes passes in the
         necessary parameters to its model and returns the frequency and 
         s-parameter matrices.
+
+    Notes
+    -----
+    get_s_params can be overridden. Simply write a function that returns or
+    calculates what you want, and then reassign the reference of the class
+    to your function.
     """
 
-    def __init__(self, component_type, s_parameters):
+    def __init__(self, component_type, s_parameters, cachable=False):
         """Initializes a Component dataclass.
 
         """
         self.component_type = component_type
         self.s_parameters = s_parameters
+        self.cachable = cachable
 
     def get_s_parameters(self, extras={}):
         return self.s_parameters
@@ -55,6 +62,12 @@ class Component:
     def __str__(self):
         return 'Object::' + str(self.__dict__)
 
+    def __hash__(self):
+        return hash((self.component_type, self.cachable))
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)): return NotImplemented
+        return self.component_type == other.component_type
 
 
 class ComponentInstance():

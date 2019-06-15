@@ -16,12 +16,58 @@
 #
 # This file contains everything related to netlist generation and modeling.
 
-from simphony.components import BaseComponent, create_component_by_name
+# from simphony.components import BaseComponent, create_component_by_name
+from simphony.core.base import Component, ComponentInstance
 import jsons
 import json
 import copy
 import numpy as np
-import simphony.connect as rf
+import simphony.core.connect as rf
+
+class Netlist:
+    """Represents a netlist.
+
+    Has component_set, a set, and instance_list, a list.
+    """
+
+    def __init__(self, component_set: set=None, instance_list: list=None, net_count: int=0):
+
+        self.component_set = set() if component_set is None else component_set
+        self.instance_list = [] if instance_list is None else instance_list
+        self.net_count = net_count
+
+    def add_instance(self, component_instance):
+        self.component_set.add(component_instance.component)
+        self.instance_list.append(component_instance)
+
+    def get_external_components(self):
+        return [component for component in self.component_set if (any(int(x) < 0 for x in component.nets))]
+
+    def toJSON(self) -> str:
+        return jsons.dump(self, verbose=True, strip_privates=True)
+
+    @staticmethod
+    def save(filename, netlist):
+        with open(filename, 'w') as outfile:
+            json.dump(netlist.toJSON(), outfile, indent=2)
+
+    @staticmethod
+    def load(filename):
+        obj = None
+        with open(filename) as jsonfile:
+            try:
+                data = json.load(jsonfile)
+                obj = jsons.load(data)
+                obj.component_set = jsons.load(obj.component_set)
+                if obj is not None:
+                    return obj
+                else:
+                    raise RuntimeError("Netlist could not load successfully.")
+            except:
+                raise RuntimeError("Netlist could not load successfully.")
+
+def create_component_by_name(comp):
+    return None
 
 class ObjectModelNetlist:
     """
@@ -46,6 +92,7 @@ class ObjectModelNetlist:
 
     def __init__(self):
         self.component_list = []
+        self.instance_list = []
         self.net_count = 0
 
     def parse_file(self, filepath: str) -> list:
@@ -152,6 +199,9 @@ class ObjectModelNetlist:
         component.nets = nets
         self.component_list.append(component)
 
+    def add_component(self, component):
+        self.component_list.append(component)
+
     def get_external_components(self):
         return [component for component in self.component_list if (any(int(x) < 0 for x in component.nets))]
 
@@ -238,7 +288,7 @@ class ComponentSimulation:
     f: np.array
     s: np.array
 
-    def __init__(self, component: BaseComponent=None):
+    def __init__(self, component=None):
         """
         Instantiates an object from a Component if provided; empty, if not.
 
