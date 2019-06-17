@@ -1,7 +1,6 @@
 
 
-from simphony.core import base
-from simphony.simulation import SimulationSetup as simset
+import simphony.core as core
 
 import os
 import numpy as np
@@ -9,12 +8,10 @@ import cmath as cm
 import copy
 from itertools import combinations_with_replacement as comb_w_r
 
-# return simset.interpolate(freq, sparams)
-
-class ebeam_bdc_te1550(base.Component):
+class ebeam_bdc_te1550(core.ComponentModel):
 
     def __init__(self):
-        super().__init__(component_type=type(self).__name__, s_parameters=self._read_s_parameters())
+        super().__init__(component_type=type(self).__name__, s_parameters=self._read_s_parameters(), cachable=True)
 
     @staticmethod
     def _read_s_parameters():
@@ -48,14 +45,14 @@ class ebeam_bdc_te1550(base.Component):
                         n += 1
                         if(n == numports):
                             break
-        return [F, S]
+        return (F, S)
 
 
 
-class ebeam_dc_halfring_te1550(base.Component):
+class ebeam_dc_halfring_te1550(core.ComponentModel):
 
     def __init__(self):
-        super().__init__(component_type=type(self).__name__, s_parameters=self._read_s_parameters())
+        super().__init__(component_type=type(self).__name__, s_parameters=self._read_s_parameters(), cachable=True)
         
     @staticmethod
     def _read_s_parameters():
@@ -95,14 +92,14 @@ class ebeam_dc_halfring_te1550(base.Component):
                         n += 1
                         if(n == numports):
                             break
-        return [F, S]
+        return (F, S)
 
 
 
-class ebeam_gc_te1550(base.Component):
+class ebeam_gc_te1550(core.ComponentModel):
 
     def __init__(self):
-        super().__init__(component_type=type(self).__name__, s_parameters=self._read_s_parameters())
+        super().__init__(component_type=type(self).__name__, s_parameters=self._read_s_parameters(), cachable=True)
         
     @staticmethod
     def _read_s_parameters():
@@ -132,13 +129,13 @@ class ebeam_gc_te1550(base.Component):
                 S[i,1,1] = cm.rect(float(words[7]), float(words[8]))
             F = F[::-1]
             S = S[::-1,:,:]
-        return [F, S]
+        return (F, S)
 
 
-class ebeam_terminator_te1550(base.Component):
+class ebeam_terminator_te1550(core.ComponentModel):
 
     def __init__(self):
-        super().__init__(component_type=type(self).__name__, s_parameters=self._read_s_parameters())
+        super().__init__(component_type=type(self).__name__, s_parameters=self._read_s_parameters(), cachable=True)
         
     @staticmethod
     def _read_s_parameters():
@@ -177,11 +174,11 @@ class ebeam_terminator_te1550(base.Component):
                         n += 1
                         if(n == numports):
                             break
-        return [F, S]
+        return (F, S)
 
 
 
-class ebeam_wg_integral_1550(base.Component):
+class ebeam_wg_integral_1550(core.ComponentModel):
     """Component model for an ebeam_wg_integral_1550"""
 
     MODELS = {
@@ -191,7 +188,7 @@ class ebeam_wg_integral_1550(base.Component):
 
     OPTIONS = {
         'model': "Artificial Neural Network",
-        'frequency': simset.FREQUENCY_RANGE,
+        'frequency': np.linspace(1.88e+14, 1.99e+14, num=2000),
         'length': 0,
         'width': 0.5,
         'thickness': 0.22,
@@ -201,7 +198,7 @@ class ebeam_wg_integral_1550(base.Component):
     }
 
     def __init__(self):
-        super().__init__(component_type=type(self).__name__, s_parameters=None)
+        super().__init__(component_type=type(self).__name__, s_parameters=None, cachable=False)
     
     @classmethod
     def get_s_parameters(cls, extras: dict={}):
@@ -282,6 +279,7 @@ class ebeam_wg_integral_1550(base.Component):
         coeffs = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_wg_integral_1550', 'straightCoeffs.npy'))
         return polyCombos@coeffs 
 
+    @staticmethod
     def ann_s_params(frequency, length, width, thickness, delta_length, **kwargs):
         '''
         Function that calculates the s-parameters for a waveguide using the ANN model
@@ -315,8 +313,9 @@ class ebeam_wg_integral_1550(base.Component):
             mat[x,0,1] = mat[x,1,0] = np.exp(-alpha*waveguideLength + (K[x]*waveguideLength*1j))
         s = mat
         
-        return frequency, s
+        return (frequency, s)
 
+    @staticmethod
     def lumerical_s_params(frequency, length, width, thickness, delta_length, **kwargs):
         '''
         Calculates waveguide s-parameters based on the SiEPIC compact model for waveguides
@@ -358,13 +357,13 @@ class ebeam_wg_integral_1550(base.Component):
             mat[x,0,1] = mat[x,1,0] = np.exp(-alpha*length + (K[x]*length*1j))
         
         s = mat
-        return frequency, s
+        return (frequency, s)
 
 
-class ebeam_y_1550(base.Component):
+class ebeam_y_1550(core.ComponentModel):
 
     def __init__(self):
-        super().__init__(component_type=type(self).__name__, s_parameters=self._read_s_parameters())
+        super().__init__(component_type=type(self).__name__, s_parameters=self._read_s_parameters(), cachable=True)
         
     @staticmethod
     def _read_s_parameters():
@@ -403,4 +402,4 @@ class ebeam_y_1550(base.Component):
                         n += 1
                         if(n == numports):
                             break
-        return [F, S]
+        return (F, S)
