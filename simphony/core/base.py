@@ -11,7 +11,12 @@ def clear_models():
 
 class UniqueModelName(object):
     """Ensures that :obj:`ComponentModel <simphony.core.ComponentModel>` names 
-    (strings) are unique."""
+    (strings) are unique.
+    
+    References
+    ----------
+    https://stackoverflow.com/questions/34818622/ensure-uniqueness-of-instance-attribute-in-python
+    """
     _names = set()
 
     def __init__(self, name=None):
@@ -164,7 +169,7 @@ class ComponentInstance():
     points : list of tuples
         A collection of all points which define the waveguides' path.
     """
-    def __init__(self, component: ComponentModel=None, nets: List=None, lay_x: float=0, lay_y: float=0, extras: Dict=None):
+    def __init__(self, model: ComponentModel=None, nets: List=None, lay_x: float=0, lay_y: float=0, extras: Dict=None):
         """Creates an instance of some ComponentModel.
 
         Parameters
@@ -176,7 +181,7 @@ class ComponentInstance():
         lay_y : float
             The y-position of the component in the overall layout.
         """
-        self.component = component
+        self.model = model
         self.nets = nets if nets is not None else []
         self.lay_x = lay_x
         self.lay_y = lay_y
@@ -184,4 +189,4 @@ class ComponentInstance():
 
     def get_s_parameters(self):
         """Get the s-parameters from the linked ComponentModel."""
-        return self.component.get_s_parameters(**self.extras)
+        return self.model.get_s_parameters(**self.extras)

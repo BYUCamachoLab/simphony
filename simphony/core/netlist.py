@@ -21,7 +21,7 @@ import copy
 import numpy as np
 from typing import List
 
-from simphony.core.base import ComponentModel, ComponentInstance
+from simphony.core import ComponentModel, ComponentInstance
 from simphony.core import connect as rf
 
 class Netlist:
@@ -35,7 +35,7 @@ class Netlist:
         self.components = [] if components is None else components
         self.net_count = net_count
 
-    def add_component(self, component):
+    def add_component(self, component: ComponentInstance):
         self.components.append(component)
 
     def get_external_components(self):
@@ -56,7 +56,7 @@ class Netlist:
             try:
                 data = json.load(jsonfile)
                 obj = jsons.load(data)
-                obj.component_set = jsons.load(obj.component_set)
+                obj.components = jsons.load(obj.components)
                 if obj is not None:
                     return obj
                 else:
