@@ -1,17 +1,20 @@
 
+import copy
+
 import numpy as np
 from scipy.interpolate import interp1d
 
-from simphony.core.netlist import Netlist
+from simphony.core import Netlist
+
 
 def interpolate(output_freq, input_freq, s_parameters):
     func = interp1d(input_freq, s_parameters, kind='cubic', axis=0)
     return [output_freq, func(output_freq)]
 
-class CachedComponent:
-    def __init__(self, component_type, s_parameters):
-        self.component_type = component_type
-        self.s_parameters = s_parameters
+# class CachedComponent:
+#     def __init__(self, component_type, s_parameters):
+#         self.component_type = component_type
+#         self.s_parameters = s_parameters
 
 class ComponentSimulation:
     """
@@ -56,6 +59,13 @@ class Simulation:
     @property
     def freq_array(self):
         return np.linspace(self.start_freq, self.stop_freq, self.points)
+
+    def cache_models(self):
+        self.cached = {}
+        for component in self.netlist.components:
+            if component.model.component_type not in self.cached and component.model.cachable:
+                freq, s_parameters = interpolate(self.freq_array, *component.get_s_parameters())
+                self.cached[component.model.component_type] = (freq, s_parameters)
 
     # def _match_ports(self, net_id: str, component_list: list) -> list:
     #     """
@@ -167,12 +177,7 @@ class Simulation:
             - edge components: list of Component objects, which are the external
                 components.
         """
-        self.cached = {}
-        for component in self.netlist.components:
-            if component.cachable:
-                freq, s_parameters = interpolate(self.freq_array, **component.get_s_parameters())
-                self.cached[component.component_type] = (freq, s_parameters)
-
+        pass
         # combined, edge_components = self.connect_circuit()
         # f = combined.f
         # s = combined.s
