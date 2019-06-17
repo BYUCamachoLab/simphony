@@ -7,6 +7,7 @@ import copy
 import numpy as np
 import simphony.core as core
 import simphony.errors as errors
+import simphony.DeviceLibrary.devices as dev
 
 class TestClass:
     @classmethod

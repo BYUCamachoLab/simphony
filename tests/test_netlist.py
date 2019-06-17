@@ -1,80 +1,43 @@
-# import simphony.netlist as netlist
-# import simphony.models.components as components
-# import pytest
+import simphony.core as core
+import simphony.errors as errors
+import simphony.DeviceLibrary.devices as dev
+import pytest
 
-# class TestComponentsInNetlist(object):
-#     def test_abstract_component(self):
-#         nets = [-1, 3, 4, 8]
-#         xpos = 0.0554
-#         ypos = -14.2425
-#         with pytest.raises(TypeError):
-#             comp1 = components.Component(nets=nets, lay_x=xpos, lay_y=ypos)
-#         obj1 = netlist.ObjectModelNetlist()
-#         assert obj1.component_list == []
-#         assert obj1.net_count == 0
+class Test_Netlist:
+    @classmethod
+    def setup(cls):
+        core.clear_models()
 
-#     def test_ebeam_wg_integral_1550(self):
-#         nets = [-1, 3, 4, 8]
-#         xpos = 0.0554
-#         ypos = -14.2425
-#         comp1 = components.ebeam_wg_integral_1550(nets=nets, lay_x=xpos, lay_y=ypos, length=40, width=0.5, height=0.22)
-#         obj1 = netlist.ObjectModelNetlist()
-#         assert obj1.component_list == []
-#         assert obj1.net_count == 0
-#         obj1.component_list.append(comp1)
-#         assert len(obj1.component_list) == 1
+        cls.bdc = dev.ebeam_bdc_te1550()
+        cls.dc = dev.ebeam_dc_halfring_te1550()
+        cls.gc = dev.ebeam_gc_te1550()
+        cls.term = dev.ebeam_terminator_te1550()
+        cls.wg = dev.ebeam_wg_integral_1550()
+        cls.y = dev.ebeam_y_1550()
 
-#     def test_ebeam_bdc_te1550(self):
-#         pass
+        bdc1 = core.ComponentInstance(cls.bdc, [0, 1, 2, 3])
+        term1 = core.ComponentInstance(cls.term, [2])
+        y1 = core.ComponentInstance(cls.y, [-1, 0, 1])
+        dc1 = core.ComponentInstance(cls.dc, [3, -2])
+        cls.components = [bdc1, term1, y1, dc1]
 
-#     def test_ebeam_gc_te1550(self):
-#         pass
+    def test_Netlist_parameterized_initialization(self):
+        self.nl = core.Netlist(components=self.components, net_count=3)
+        assert len(self.nl.components) == len(self.components)
 
-#     def test_ebeam_y_1550(self):
-#         pass
+    def test_Netlist_unparameterized_initialization(self):
+        self.nl = core.Netlist()
+        for i in range(len(self.components)):
+            self.nl.add_component(self.components[i])
+        assert len(self.nl.components) == len(self.components)
 
-#     def test_ebeam_terminator_te1550(self):
-#         pass
-
-#     def test_ebeam_dc_halfring_te1550(self):
-#         pass
-
-# class TestObjectModelNetlist(object):
-#     def test_single_instantiation(self):
-#         obj1 = netlist.ObjectModelNetlist()
-#         assert obj1.component_list == []
-#         assert obj1.net_count == 0
-
-#     def test_double_instantiation(self):
-#         obj1 = netlist.ObjectModelNetlist()
-#         assert obj1.component_list == []
-#         assert obj1.net_count == 0
-
-#         obj1.component_list.append(components.ebeam_bdc_te1550())
-#         obj1.component_list.append(components.ebeam_gc_te1550())
-#         assert len(obj1.component_list) == 2
-
-#         obj2 = netlist.ObjectModelNetlist()
-#         assert obj2.component_list == []
-#         assert obj2.net_count == 0
-
-# class TestComponentSimulation(object):
-#     def test_clean_instantiation(self):
-#         obj1 = netlist.ComponentSimulation()
-#         assert not hasattr(obj1, 'nets')
-#         assert not hasattr(obj1, 'f')
-#         assert not hasattr(obj1, 's')
-
-#     def test_component_instantiation(self):
-#         nets = [-1, 3, 4, 8]
-#         xpos = 0.0554
-#         ypos = -14.2425
-#         comp1 = components.ebeam_bdc_te1550(nets=nets, lay_x=xpos, lay_y=ypos)
-#         obj1 = netlist.ComponentSimulation(comp1)
-#         assert obj1.nets == nets
-#         assert obj1.nets is not nets
-#         assert hasattr(obj1, 'f')
-#         assert hasattr(obj1, 's')
+    def test_Netlist_externals(self):
+        self.nl = core.Netlist(components=self.components, net_count=3)
+        expected = [comp for comp in self.components if any(x < 0 for x in comp.nets)]
+        actual = self.nl.get_external_components()
+        assert len(expected) == len(actual)
+        for item in expected:
+            assert item in actual
 
 # class TestStrToSci(object):
 #     def test_milli(self):
