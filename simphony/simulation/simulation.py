@@ -1,12 +1,13 @@
 
 import copy
+import time
+from typing import List
 
 import numpy as np
 from scipy.interpolate import interp1d
-from typing import List
-
-from simphony.core import Netlist, ComponentModel, ComponentInstance
+from simphony.core import ComponentInstance, ComponentModel, Netlist
 from simphony.core.connect import connect_s, innerconnect_s
+
 
 def interpolate(output_freq, input_freq, s_parameters):
     func = interp1d(input_freq, s_parameters, kind='cubic', axis=0)
@@ -46,15 +47,16 @@ class SimulatedComponent:
         self.s = s_parameters
 
 class Simulation:
-    def __init__(self, netlist: Netlist=None, start_freq: float=1.88e+14, stop_freq: float=1.99e+14, points: int=2000):
+    def __init__(self, netlist: Netlist, start_freq: float=1.88e+14, stop_freq: float=1.99e+14, num: int=2000):
         self.netlist = netlist
         self.start_freq = start_freq
         self.stop_freq = stop_freq
-        self.points = points
+        self.num = num
+        self._cascade()
 
     @property
     def freq_array(self):
-        return np.linspace(self.start_freq, self.stop_freq, self.points)
+        return np.linspace(self.start_freq, self.stop_freq, self.num)
 
     def cache_models(self):
         self._cached = {}
@@ -67,14 +69,16 @@ class Simulation:
         if component.model.component_type in self._cached:
             return SimulatedComponent(component.nets, *self._cached[component.model.component_type])
         else:
-            return SimulatedComponent(component.nets, *component.model.get_s_parameters())
+            component.extras['start_freq'] = self.start_freq
+            component.extras['stop_freq'] = self.stop_freq
+            component.extras['num'] = self.num
+            return SimulatedComponent(component.nets, *component.get_s_parameters())
         pass
 
-    def cascade(self):
+    def _cascade(self):
         self.cache_models()
         component_list = [self._component_converter(component) for component in self.netlist.components]
-        self.combined = connect_circuit(component_list, self.netlist.net_count)
-        self._rearrange(self.combined)
+        self.combined = self._rearrange(connect_circuit(component_list, self.netlist.net_count))
 
     @staticmethod
     def _rearrange_order(ports: list):
@@ -83,52 +87,30 @@ class Simulation:
         return [ports.index(i) for i in reordered]
 
     @classmethod
-    def _rearrange(cls, component: SimulatedComponent):
+    def _rearrange(cls, component: SimulatedComponent) -> SimulatedComponent:
+        """Rearranges the s-matrix of the simulated component according to its port ordering.
+
+        Returns
+        -------
+        SimulatedComponent
+            A single component (representing the entire circuit) with its 
+            reordered s-matrix and port list.
+        """
         concatenate_order = cls._rearrange_order(component.nets)
-
-        s_matrix1 = cls._rearrange_row_then_column(component, concatenate_order)
-        # s_matrix2 = cls._rearrange_in_place(component, concatenate_order)
-
-        import matplotlib.pyplot as plt
-        plt.plot(component.f, s_matrix1[:, 1, 2])
-        # plt.plot(component.f, s_matrix2[:, 1, 2])
-        plt.show()
-
-        # assert np.array_equal(s_matrix1, s_matrix2)
+        reordered_nets = [(-x - 1) for x in component.nets]
+        reordered_nets.sort()
+        return SimulatedComponent(nets=reordered_nets, freq=component.f, s_parameters=cls._rearrange_matrix(component.s, concatenate_order))
 
     @staticmethod
-    def _rearrange_row_then_column(component, concatenate_order):
-
-        print("Ports:", len(concatenate_order), "Shape:", component.s.shape)
-        new_s = copy.deepcopy(component.s)
-        reordered_s = np.zeros(component.s.shape, dtype=complex)
-
-        i = 0
-        for idx in concatenate_order:
-            reordered_s[:,i,:] = new_s[:,idx,:]
-            i += 1
-        new_s = copy.deepcopy(reordered_s)
-        i = 0
-        for idx in concatenate_order:
-            reordered_s[:,:,i] = new_s[:,:,idx]
-            i += 1
-        
-        return copy.deepcopy(reordered_s)
-
-    @staticmethod
-    def _rearrange_in_place(component: SimulatedComponent, concatenate_order):
-        port_count = len(component.nets)
-        new_s = copy.deepcopy(component.s)
-        reordered_s = np.zeros(component.s.shape, dtype=complex)
-        print("Ports:", port_count, "Shape:", component.s.shape)
+    def _rearrange_matrix(s_matrix, concatenate_order):
+        port_count = len(concatenate_order)
+        reordered_s = np.zeros(s_matrix.shape, dtype=complex)
         for i in range(port_count):
             for j in range(port_count):
                 x = concatenate_order[i]
                 y = concatenate_order[j]
-                print("row/col:", i, j, "replaced by", x, y)
-                reordered_s[:, i, j] = new_s[:, x, y]
-                assert np.array_equal(reordered_s[:, i, j], new_s[:, x, y])
-        return copy.deepcopy(reordered_s)
+                reordered_s[:, i, j] = s_matrix[:, x, y]
+        return reordered_s
 
     def s_parameters(self):
         pass
@@ -250,8 +232,211 @@ def connect_circuit(components: List[SimulatedComponent], net_count: int) -> Sim
                 del component_list[cb]
             component_list.append(combination)
 
-    for comp in component_list:
-        print(comp, comp.nets, comp.s.shape)
-    assert 0
-
     return component_list[0]
+
+
+
+# class MathPrefixes:
+#     TERA = 1e12
+#     NANO = 1e-9
+#     c = 299792458
+
+
+
+
+#     def frequencyToWavelength(self, frequency):
+#         return MathPrefixes.c / frequency
+
+#     def getMagnitudeByFrequencyTHz(self, fromPort, toPort):
+#         print("From", fromPort, "to", toPort)
+#         freq = np.divide(self.frequency, MathPrefixes.TERA)
+#         mag = abs(self.s_matrix[:,fromPort,toPort])**2
+#         return freq, mag
+    
+#     def getMagnitudeByWavelengthNm(self, fromPort, toPort):
+#         wl = self.frequencyToWavelength(self.frequency) / MathPrefixes.NANO
+#         mag = abs(self.s_matrix[:,fromPort,toPort])**2
+#         return wl, mag
+
+#     def getPhaseByFrequencyTHz(self, fromPort, toPort):
+#         freq = np.divide(self.frequency, MathPrefixes.TERA)
+#         phase = np.rad2deg(np.unwrap(np.angle(self.s_matrix[:,fromPort,toPort])))
+#         return freq, phase
+
+#     def getPhaseByWavelengthNm(self, fromPort, toPort):
+#         wl = self.frequencyToWavelength(self.frequency) / MathPrefixes.NANO
+#         phase = np.rad2deg(np.unwrap(np.angle(self.s_matrix[:,fromPort,toPort])))
+#         print(wl, phase)
+#         return wl, phase
+
+#     def exportSMatrix(self):
+#         return self.s_matrix, self.frequency
+
+# import matplotlib.pyplot as plt
+# from scipy.io import savemat
+
+# class MonteCarloSimulation:
+#     DEF_NUM_SIMS = 10
+#     DEF_MU_WIDTH = 0.5
+#     DEF_SIGMA_WIDTH = 0.005
+#     DEF_MU_THICKNESS = 0.22
+#     DEF_SIGMA_THICKNESS = 0.002
+#     DEF_MU_LENGTH = 0
+#     DEF_SIGMA_LENGTH = 0
+#     DEF_DPIN = 1
+#     DEF_DPOUT = 0
+#     DEF_SAVEDATA = True
+#     DEF_DISPTIME = True
+#     DEF_FILENAME = "monte_carlo.mat"
+
+#     def __init__(self, netlist):
+#         self.netlist = netlist
+#         # Run simulation with mean width and thickness
+#         self.mean_s, self.frequency, self.ports, _ = nl.get_sparameters(self.netlist) 
+
+#     def monte_carlo_sim(self, 
+#                         num_sims=DEF_NUM_SIMS, 
+#                         mu_width=DEF_MU_WIDTH, 
+#                         sigma_width=DEF_SIGMA_WIDTH, 
+#                         mu_thickness=DEF_MU_THICKNESS,
+#                         sigma_thickness=DEF_SIGMA_THICKNESS, 
+#                         mu_length=DEF_MU_LENGTH, 
+#                         sigma_length=DEF_SIGMA_LENGTH, 
+#                         saveData=False, 
+#                         filename=None, 
+#                         dispTime=False, 
+#                         printer=None):
+#         # Timer
+#         start = time.time()
+
+#         # Random distributions
+#         random_width = np.random.normal(mu_width, sigma_width, num_sims)
+#         random_thickness = np.random.normal(mu_thickness, sigma_thickness, num_sims)
+#         random_deltaLength = np.random.normal(mu_length, sigma_length, num_sims)
+
+#         results_shape = np.append(np.asarray([num_sims]), self.mean_s.shape)
+#         results = np.zeros([dim for dim in results_shape], dtype='complex128')
+
+#         # Run simulations with varied width and thickness
+#         for sim in range(num_sims):
+#             modified_netlist = copy.deepcopy(self.netlist)
+#             for component in modified_netlist.component_list:
+#                 if component.__class__.__name__ == "ebeam_wg_integral_1550":
+#                     component.width = random_width[sim]
+#                     component.height = random_thickness[sim]
+#                     # TODO: Implement length monte carlo using random_deltaLength[sim]
+#             results[sim, :, :, :] = nl.get_sparameters(modified_netlist)[0]
+#             if ((sim % 10) == 0) and dispTime:
+#                 print(sim)
+
+#         # rearrange matrix so matrix indices line up with proper port numbers
+#         self.ports = [int(i) for i in self.ports]
+#         rp = copy.deepcopy(self.ports)
+#         rp.sort(reverse=True)
+#         concatenate_order = [self.ports.index(i) for i in rp]
+#         temp_res = copy.deepcopy(results)
+#         temp_mean = copy.deepcopy(self.mean_s)
+#         re_res = np.zeros(results_shape, dtype=complex)
+#         re_mean = np.zeros(self.mean_s.shape, dtype=complex)
+#         i=0
+#         for idx in concatenate_order:
+#             re_res[:,:,i,:]  = temp_res[:,:,idx,:]
+#             re_mean[:,i,:] = temp_mean[:,idx,:]
+#             i += 1
+#         temp_res = copy.deepcopy(re_res)
+#         temp_mean = copy.deepcopy(re_mean)
+#         i=0
+#         for idx in concatenate_order:
+#             re_res[:,:,:,i] = temp_res[:,:,:,idx]
+#             re_mean[:,:,i] = temp_mean[:,:,idx]
+#             i+= 1    
+#         self.results = copy.deepcopy(re_res)
+#         self.mean_s = copy.deepcopy(re_mean)
+
+#         # print elapsed time if dispTime is True
+#         stop = time.time()
+#         if dispTime and printer:
+#             printer('Total simulation time: ' + str(stop-start) + ' seconds')
+
+#         # save MC simulation results to matlab file
+#         if saveData == True:
+#             savemat(filename, {'freq':self.frequency, 'results':self.results, 'mean':self.mean_s})
+
+#         printer("Simulation complete.")
+
+#     def plot(self, num_sims, dpin, dpout):
+#         plt.figure(1)
+#         for i in range(num_sims):
+#             plt.plot(self.frequency, 10*np.log10(abs(self.results[i, :, dpin, dpout])**2), 'b', alpha=0.1)
+#         plt.plot(self.frequency,  10*np.log10(abs(self.mean_s[:, dpin, dpout])**2), 'k', linewidth=0.5)
+#         title = 'Monte Carlo Simulation (' + str(num_sims) + ' Runs)'
+#         plt.title(title)
+#         plt.xlabel('Frequency (Hz)')
+#         plt.ylabel('Gain (dB)')
+#         plt.draw()
+#         plt.show()
+
+    
+# class MultiInputSimulation(Simulation):
+#     def __init__(self, netlist):
+#         super().__init__(netlist)
+
+#     def multi_input_simulation(self, inputs: list=[]):
+#         """
+#         Parameters
+#         ----------
+#         inputs : list
+#             A 0-indexed list of the ports to be used as inputs.
+#         """
+#         active = [0] * len(self.ports)
+#         for val in inputs:
+#             active[val] = 1
+#         self.simulated_matrix = self._measure_s_matrix(active)
+
+#     def _measure_s_matrix(self, inputs):
+#         num_ports = len(inputs)
+#         inputs = np.array(inputs)
+#         out = np.zeros([len(self.frequency), num_ports], dtype='complex128')
+#         for i in range(len(self.frequency)):
+#             out[i, :] = np.dot(np.reshape(self.s_matrix[i, :, :], [num_ports, num_ports]), inputs.T)
+#         return out
+
+#     def plot(self, output_port):
+#         plt.figure()
+#         plt.plot(*self.get_magnitude_by_frequency_thz(output_port))
+#         plt.title('Multi-Input Simulation')
+#         plt.xlabel('Frequency (THz)')
+#         plt.ylabel('Gain (dB)')
+#         plt.draw()
+#         plt.show()
+
+#     def get_magnitude_by_frequency_thz(self, output_port):
+#         """
+#         Parameters
+#         ----------
+#         output_port : int
+#             Gets the values at that output port (0-indexed).
+#         """
+#         freq = np.divide(self.frequency, MathPrefixes.TERA)
+#         mag = np.power(np.absolute(self.simulated_matrix[:, output_port]), 2)
+#         return freq, mag
+
+#     def get_magnitude_by_wavelength_nm(self, output_port):
+#         """
+#         Parameters
+#         ----------
+#         output_port : int
+#             Gets the values at that output port (0-indexed).
+#         """
+#         wl = self.frequencyToWavelength(self.frequency) / MathPrefixes.NANO
+#         mag = np.power(np.absolute(self.simulated_matrix[:, output_port]), 2)
+#         return wl, mag
+
+#     def export_s_matrix(self):
+#         """Returns the matrix result of the multi-input simulation.
+
+#         Returns
+#         -------
+#         frequency, matrix: np.array, np.ndarray
+#         """
+#         return self.frequency, self.simulated_matrix
