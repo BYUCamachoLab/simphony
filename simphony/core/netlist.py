@@ -30,10 +30,9 @@ class Netlist:
     Has component_set, a set, and instance_list, a list.
     """
 
-    def __init__(self, components: List[ComponentInstance]=None, net_count: int=0):
+    def __init__(self, components: List[ComponentInstance]=None):
 
         self.components = [] if components is None else components
-        self.net_count = net_count
 
     def add_component(self, component: ComponentInstance):
         self.components.append(component)
@@ -43,6 +42,23 @@ class Netlist:
 
     def toJSON(self) -> str:
         return jsons.dump(self, verbose=True, strip_privates=True)
+
+    @property
+    def net_count(self):
+        """Returns the number of internal nets in the Netlist.
+
+        Finds the number of internal nets by iterating through the components
+        and finding the max net number. Since internal net id's are assigned 
+        beginning from '0', the total number of nets is always max(nets) + 1.
+
+        Returns
+        -------
+        int
+            The total count of internal nets.
+        """
+        # https://stackoverflow.com/a/29244327/11530613
+        nets = [net for sublist in [comp.nets for comp in self.components] for net in sublist]
+        return max(nets) + 1
 
     @staticmethod
     def save(filename, netlist):
