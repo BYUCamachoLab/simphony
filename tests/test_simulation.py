@@ -22,24 +22,22 @@ class Test:
         bdc1 = core.ComponentInstance(cls.bdc, [0, 1, 2, 3])
         term1 = core.ComponentInstance(cls.term, [2])
         y1 = core.ComponentInstance(cls.y, [4, 0, 1])
-        dc1 = core.ComponentInstance(cls.dc, [3, -2])
+        gc1 = core.ComponentInstance(cls.gc, [3, -2])
         wg1 = core.ComponentInstance(cls.wg, [4,-1], extras={'length':40})
-        cls.components = [bdc1, term1, y1, dc1, wg1]
+        cls.components = [bdc1, term1, y1, gc1, wg1]
         cls.nl = core.Netlist(components=cls.components)
         
     def test_Simulation_initialization(self):
-        length = 10
-        s = sim.Simulation(None, points=length)
+        length = 1000
+        s = sim.Simulation(self.nl, num=length)
         assert len(s.freq_array == length)
 
     def test_Simulation_no_initialization(self):
         pass
     
     def test_caching(self):
-        simu = sim.Simulation()
+        simu = sim.Simulation(self.nl)
         assert np.array_equal(simu.freq_array, np.linspace(1.88e+14, 1.99e+14, 2000))
-        simu.netlist = self.nl
-        simu.cache_models()
         assert len(simu._cached) == len([item for item in self.components if item.model.cachable])
 
     def test_Simulation_MatchPorts(self):
@@ -55,8 +53,8 @@ class Test:
         bdc1 = core.ComponentInstance(bdc, [0, 1, 2, 3])
         term1 = core.ComponentInstance(term, [2])
         y1 = core.ComponentInstance(y, [-1, 0, 1])
-        dc1 = core.ComponentInstance(dc, [3, -2])
-        components = [bdc1, term1, y1, dc1]
+        gc1 = core.ComponentInstance(gc, [3, -2])
+        components = [bdc1, term1, y1, gc1]
 
         nl = core.Netlist(components=components)
         c1, n1, c2, n2 = sim.match_ports(3, nl.components)
@@ -67,8 +65,8 @@ class Test:
 
     def test_Simulation_cascade(self):
         simu = sim.Simulation(self.nl)
-        simu.cascade()
-        assert simu.combined.nets == [-1, -2]
+        simu._cascade()
+        assert simu.combined.nets == [0, 1]
         assert len(simu.combined.f) == 2000
         assert len(simu.combined.s) == 2000
         assert len(simu.combined.nets) == 2
@@ -82,7 +80,7 @@ class Test:
 
     def test_Simulation_rearrange(self):
         simu = sim.Simulation(self.nl)
-        simu.cascade()
+        simu._cascade()
 
 def test_scripting():
     core.clear_models()
@@ -99,8 +97,8 @@ def test_scripting():
     bdc1 = core.ComponentInstance(bdc, [0, 1, 2, 3])
     term1 = core.ComponentInstance(term, [2])
     y1 = core.ComponentInstance(y, [-1, 0, 1])
-    dc1 = core.ComponentInstance(dc, [3, -2])
-    components = [bdc1, term1, y1, dc1]
+    gc1 = core.ComponentInstance(gc, [3, -2])
+    components = [bdc1, term1, y1, gc1]
 
     nl = core.Netlist(components=components)
     assert nl.net_count == 4
@@ -108,7 +106,7 @@ def test_scripting():
     simu.cache_models()
     assert len(simu._cached) == 4
 
-    good = core.ComponentModel("arbitrary_component", [0, 0, 0], cachable=True)
+    good = core.ComponentModel("arbitrary_component", 3, [0, 0, 0], cachable=True)
     assert good.get_s_parameters() == [0, 0, 0]
     with pytest.raises(errors.DuplicateModelError):
-        error = core.ComponentModel("arbitrary_component", [0, 1, 2])
+        error = core.ComponentModel("arbitrary_component", 3, [0, 1, 2])
