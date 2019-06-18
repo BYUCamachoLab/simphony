@@ -35,7 +35,7 @@ class ComponentModel:
     def clear_models(cls):
         cls.models = {}
 
-    def __init__(self, component_type, s_parameters=None, cachable=False):
+    def __init__(self, component_type: str, ports: int, s_parameters=None, cachable=False):
         """Initializes a ComponentModel dataclass.
 
         A ComponentModel represents a type of component or device within a 
@@ -48,6 +48,8 @@ class ComponentModel:
         ----------
         component_type : str
             A unique name specifying the type of this component.
+        ports : int
+            The number of ports on this device.
         s_parameters : numpy.array
             A tuple, '(f,s)', where 'f' is the frequency array corresponding to
             's', a matrix containing the s-parameters of the device.
@@ -69,7 +71,7 @@ class ComponentModel:
         else:
             self._component_type = component_type
             # self._component_types.add(component_type)
-
+        self.ports = ports
         if cachable:
             if s_parameters is None:
                 raise ValueError("\'s_parameters\' cannot be None if cachable=True.")
@@ -158,7 +160,7 @@ class ComponentInstance():
             The y-position of the component in the overall layout.
         """
         self.model = model
-        self.nets = nets if nets is not None else []
+        self.nets = nets if nets is not None else [None] * model.ports
         self.lay_x = lay_x
         self.lay_y = lay_y
         self.extras = extras if extras is not None else {}

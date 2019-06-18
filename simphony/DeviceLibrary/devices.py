@@ -11,7 +11,7 @@ from itertools import combinations_with_replacement as comb_w_r
 class ebeam_bdc_te1550(core.ComponentModel):
 
     def __init__(self):
-        super().__init__(component_type=type(self).__name__, s_parameters=self._read_s_parameters(), cachable=True)
+        super().__init__(component_type=type(self).__name__, ports=4, s_parameters=self._read_s_parameters(), cachable=True)
 
     @staticmethod
     def _read_s_parameters():
@@ -52,7 +52,7 @@ class ebeam_bdc_te1550(core.ComponentModel):
 class ebeam_dc_halfring_te1550(core.ComponentModel):
 
     def __init__(self):
-        super().__init__(component_type=type(self).__name__, s_parameters=self._read_s_parameters(), cachable=True)
+        super().__init__(component_type=type(self).__name__, ports=4, s_parameters=self._read_s_parameters(), cachable=True)
         
     @staticmethod
     def _read_s_parameters():
@@ -99,7 +99,7 @@ class ebeam_dc_halfring_te1550(core.ComponentModel):
 class ebeam_gc_te1550(core.ComponentModel):
 
     def __init__(self):
-        super().__init__(component_type=type(self).__name__, s_parameters=self._read_s_parameters(), cachable=True)
+        super().__init__(component_type=type(self).__name__, ports=2, s_parameters=self._read_s_parameters(), cachable=True)
         
     @staticmethod
     def _read_s_parameters():
@@ -135,7 +135,7 @@ class ebeam_gc_te1550(core.ComponentModel):
 class ebeam_terminator_te1550(core.ComponentModel):
 
     def __init__(self):
-        super().__init__(component_type=type(self).__name__, s_parameters=self._read_s_parameters(), cachable=True)
+        super().__init__(component_type=type(self).__name__, ports=1, s_parameters=self._read_s_parameters(), cachable=True)
         
     @staticmethod
     def _read_s_parameters():
@@ -186,45 +186,57 @@ class ebeam_wg_integral_1550(core.ComponentModel):
         "Lumerical": 'lumerical_s_params',
     }
 
-    OPTIONS = {
-        'model': "Artificial Neural Network",
-        'frequency': np.linspace(1.88e+14, 1.99e+14, num=2000),
-        'length': 0,
-        'width': 0.5,
-        'thickness': 0.22,
-        'radius': 0,
-        'points': [],
-        'delta_length': 0,
-    }
-
     def __init__(self):
-        super().__init__(component_type=type(self).__name__, s_parameters=None, cachable=False)
+        """Creates an ebeam_wg_integral_1550 ComponentModel.
+
+        Notes
+        -----
+        Upon instance creation (ComponentInstance), be sure to pass parameters
+        required by 'get_s_parameters' as a dictionary to the 'extras' 
+        parameter.
+        """
+        super().__init__(component_type=type(self).__name__, ports=2, s_parameters=None, cachable=False)
     
-    @classmethod
-    def get_s_parameters(cls, extras: dict={}):
+    # @classmethod
+    def get_s_parameters(self, 
+                        length=0, 
+                        width=0.5, 
+                        thickness=0.22, 
+                        radius=5, 
+                        delta_length=0, 
+                        points = [],
+                        start_freq=1.88e+14,
+                        stop_freq=1.99e+14,
+                        num=2000,
+                        model='Artificial Neural Network'):
         """Get the s-parameters of a waveguide.
 
         Parameters
         ----------
-        extras : dict
-            Takes a dictionary containing the following (optional) values:
-            model: string   Representation of the model.
-                options: "Artificial Neural Network" (default) | "Lumerical"
-            length: float   Length of the waveguide.
-                default: 0.0
-            width: float    Width of the waveguide in microns. 
-                default: 0.5
-            thickness: float   Thickness of the waveguide in microns.
-                default: 0.22
-            radius: float   Bend radius of bends in the waveguide.
-                default: 0
-            delta_length: float     Only used in monte carlo simulations.
-                default: 0
+        length: float   
+            Length of the waveguide.
+        width: float    
+            Width of the waveguide in microns. 
+        thickness: float   
+            Thickness of the waveguide in microns.
+        radius: float   
+            Bend radius of bends in the waveguide.
+        delta_length: float     
+            Only used in monte carlo simulations.
+        model: string, optional
+            Representation of the model. ("Artificial Neural Network" | "Lumerical")
         """
-        options = copy.deepcopy(cls.OPTIONS)
-        for key, val in extras.items():
-            options[key] = val
-        model = getattr(cls, cls.MODELS[options['model']])
+        model = getattr(self, self.MODELS[model])
+        
+        options = {}
+        options['length'] = length
+        options['width'] = width
+        options['thickness'] = thickness
+        options['radius'] = radius
+        options['delta_length'] = delta_length
+        options['points'] = points
+        options['frequency'] = np.linspace(start_freq, stop_freq, num)
+
         return model(**options)
 
     @staticmethod
@@ -363,7 +375,7 @@ class ebeam_wg_integral_1550(core.ComponentModel):
 class ebeam_y_1550(core.ComponentModel):
 
     def __init__(self):
-        super().__init__(component_type=type(self).__name__, s_parameters=self._read_s_parameters(), cachable=True)
+        super().__init__(component_type=type(self).__name__, ports=3, s_parameters=self._read_s_parameters(), cachable=True)
         
     @staticmethod
     def _read_s_parameters():
