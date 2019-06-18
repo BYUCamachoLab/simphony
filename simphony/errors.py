@@ -10,4 +10,4 @@ class DuplicateModelError(AttributeError):
         errors : *
             Any errors corresponding to this error.
         """
-        super().__init__("Component with name \'" + component_type + "\' already exists.")
+        super().__init__("Component with name \'" + component_type + "\' already exists. Can you rename the component?")
