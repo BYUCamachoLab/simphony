@@ -29,7 +29,6 @@ class TestClass:
         rr2 = core.ComponentModel("ring_resonator_2", fake_s_params, cachable=True)
         assert fake_s_params == rr1.get_s_parameters()
         assert fake_s_params == rr1.get_s_parameters(fake_keyword=3, faker_keyword="long")
-        assert rr1 == rr2
         with pytest.raises(ValueError):
             rr3 = core.ComponentModel("ring_resonator_3", cachable=True)
 
@@ -40,7 +39,6 @@ class TestClass:
             rr1.get_s_parameters()
         rr2 = core.ComponentModel("ring_resonator_2", fake_s_params, cachable=False)
         rr3 = core.ComponentModel("ring_resonator_3", cachable=False)
-        assert rr2 == rr3
 
     def test_ComponentInstance_cachableModel(self):
         fake_s_params = ([1500, 1550, 1600], [0,0,0])

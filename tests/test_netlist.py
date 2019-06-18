@@ -22,7 +22,8 @@ class Test_Netlist:
         cls.components = [bdc1, term1, y1, dc1]
 
     def test_Netlist_parameterized_initialization(self):
-        self.nl = core.Netlist(components=self.components, net_count=3)
+        self.nl = core.Netlist(components=self.components)
+        assert self.nl.net_count == 4
         assert len(self.nl.components) == len(self.components)
 
     def test_Netlist_unparameterized_initialization(self):
@@ -32,7 +33,7 @@ class Test_Netlist:
         assert len(self.nl.components) == len(self.components)
 
     def test_Netlist_externals(self):
-        self.nl = core.Netlist(components=self.components, net_count=3)
+        self.nl = core.Netlist(components=self.components)
         expected = [comp for comp in self.components if any(x < 0 for x in comp.nets)]
         actual = self.nl.get_external_components()
         assert len(expected) == len(actual)
