@@ -19,26 +19,91 @@ import jsons
 import json
 import copy
 import numpy as np
-from typing import List
+from typing import List#, Tuple
 
 from simphony.core import ComponentModel, ComponentInstance
 from simphony.core import connect as rf
+
+# LLNetlist = List[Tuple[ComponentInstance, int, ComponentInstance, int]]
 
 class Netlist:
     """Represents a netlist.
 
     Has component_set, a set, and instance_list, a list.
     """
+    _internal_net = -1
+    _external_net = 0
 
     def __init__(self, components: List[ComponentInstance]=None):
 
         self.components = [] if components is None else components
 
-    def add_component(self, component: ComponentInstance):
-        self.components.append(component)
+    # def get_external_components(self):
+    #     return [component for component in self.components if (any(int(x) < 0 for x in component.nets))]
 
-    def get_external_components(self):
-        return [component for component in self.components if (any(int(x) < 0 for x in component.nets))]
+    @classmethod
+    def next_internal(cls):
+        cls._internal_net = cls._internal_net + 1
+        return cls._internal_net
+
+    @classmethod
+    def next_external(cls):
+        cls._external_net = cls._external_net - 1
+        return cls._external_net
+
+    def load(self, data, formatter='ll'):
+        """Loads formatted component data into a netlist.
+
+        Parameters
+        ----------
+        data
+            The data to be loaded into the netlist.
+        format : str
+            Specification for the way the data is formatted.
+
+        'format' can be any one of the following:
+        
+        =====   =====
+        string  description
+        -----   -----
+        'll'    (list of lists)
+        =====   =====
+        """
+        loader = None
+        if formatter == 'll':
+            loader = self._ll_loader
+        loader(data)
+
+    def _ll_loader(self, connection_list):
+        """Loads the netlist with data formatted as a list of lists.
+
+        Format for the data is a list of lists, as follows:
+        [[instance_1, port_m, instance_2, port_n],
+         [instance_3, port_m, instance_4, port_n],
+         [...                                   ]]
+
+        Ports are 0-indexed.
+        """
+        components = set()
+
+        if type(connection_list) == zip.__class__:
+            connection_list = list(connection_list)
+
+        for connection in connection_list:
+            c1, p1, c2, p2 = connection
+            net_id = self.next_internal()
+            c1.nets[p1] = net_id
+            c2.nets[p2] = net_id
+            components.add(c1)
+            components.add(c2)
+        
+        for component in components:
+            component.nets = [net if net is not None else self.next_external() for net in component.nets]
+
+        self.components = list(components)
+        for comp in self.components:
+            print(comp.model.component_type, comp.nets)
+
 
     def toJSON(self) -> str:
         return jsons.dump(self, verbose=True, strip_privates=True)
@@ -60,206 +125,7 @@ class Netlist:
         nets = [net for sublist in [comp.nets for comp in self.components] for net in sublist]
         return max(nets) + 1
 
-    @staticmethod
-    def save(filename, netlist):
-        with open(filename, 'w') as outfile:
-            json.dump(netlist.toJSON(), outfile, indent=2)
 
-    @staticmethod
-    def load(filename):
-        obj = None
-        with open(filename) as jsonfile:
-            try:
-                data = json.load(jsonfile)
-                obj = jsons.load(data)
-                obj.components = jsons.load(obj.components)
-                if obj is not None:
-                    return obj
-                else:
-                    raise RuntimeError("Netlist could not load successfully.")
-            except:
-                raise RuntimeError("Netlist could not load successfully.")
-
-
-class CircuitConnector:
-    def __init__(self, netlist=None):
-        self.netlist = netlist
-
-    # def _match_ports(net_id: str, component_list: list) -> list:
-    #     """
-    #     Finds the components connected together by the specified net_id (string) in
-    #     a list of components provided by the caller (even if the component is 
-    #     connected to itself).
-
-    #     Parameters
-    #     ----------
-    #     net_id : str
-    #         The net id or name to which the components being searched for are 
-    #         connected.
-    #     component_list : list
-    #         The complete list of components to be searched.
-
-    #     Returns
-    #     -------
-    #     [comp1, netidx1, comp2, netidx2]
-    #         A list (length 4) of integers with the following meanings:
-    #         - comp1: Index of the first component in the list with a matching 
-    #             net id.
-    #         - netidx1: Index of the net in the ordered net list of 'comp1' 
-    #             (corresponds to its column or row in the s-parameter matrix).
-    #         - comp2: Index of the second component in the list with a matching 
-    #             net id.
-    #         - netidx1: Index of the net in the ordered net list of 'comp2' 
-    #             (corresponds to its column or row in the s-parameter matrix).
-    #     """
-    #     filtered_comps = [component for component in component_list if net_id in component.nets]
-    #     comp_idx = [component_list.index(component) for component in filtered_comps]
-    #     net_idx = []
-    #     for comp in filtered_comps:
-    #         net_idx += [i for i, x in enumerate(comp.nets) if x == net_id]
-    #     if len(comp_idx) == 1:
-    #         comp_idx += comp_idx
-        
-    #     return [comp_idx[0], net_idx[0], comp_idx[1], net_idx[1]]
-
-    # def connect_circuit(self) -> (ComponentSimulation, list):
-    #     """
-    #     Connects the s-matrices of a photonic circuit given its ObjectModelNetlist
-    #     and returns a single 'ComponentSimulation' object containing the frequency
-    #     array, the assembled s-matrix, and a list of the external nets (strings of
-    #     negative numbers).
-
-    #     Returns
-    #     -------
-    #     ComponentSimulation
-    #         After the circuit has been fully connected, the result is a single 
-    #         ComponentSimulation with fields f (frequency), s (s-matrix), and nets 
-    #         (external ports: negative numbers, as strings).
-    #     list
-    #         A list of ComponentModel objects that contain an external port.
-    #     """
-    #     if netlist.net_count == 0:
-    #         return
-
-    #     component_list = [ComponentSimulation(component) for component in netlist.component_list]
-    #     for n in range(0, netlist.net_count + 1):
-    #         ca, ia, cb, ib = _match_ports(str(n), component_list)
-
-    #         #if pin occurances are in the same Cell
-    #         if ca == cb:
-    #             component_list[ca].s = rf.innerconnect_s(component_list[ca].s, ia, ib)
-    #             del component_list[ca].nets[ia]
-    #             if ia < ib:
-    #                 del component_list[ca].nets[ib-1]
-    #             else:
-    #                 del component_list[ca].nets[ib]
-
-    #         #if pin occurances are in different Cells
-    #         else:
-    #             combination = ComponentSimulation()
-    #             combination.f = component_list[0].f
-    #             combination.s = rf.connect_s(component_list[ca].s, ia, component_list[cb].s, ib)
-    #             del component_list[ca].nets[ia]
-    #             del component_list[cb].nets[ib]
-    #             combination.nets = component_list[ca].nets + component_list[cb].nets
-    #             del component_list[ca]
-    #             if ca < cb:
-    #                 del component_list[cb-1]
-    #             else:
-    #                 del component_list[cb]
-    #             component_list.append(combination)
-
-    #     return component_list[0], netlist.get_external_components()
-
-
-    # def strToSci(number) -> float:
-    #     """
-    #     Converts string representations of numbers written with abbreviated 
-    #     prefixes into a float with the proper exponent (e.g. '3u' -> 3e-6).
-
-    #     Parameters
-    #     ----------
-    #     number : str
-    #         The number to be converted, represented as a string.
-        
-    #     Returns
-    #     -------
-    #     float
-    #         The string converted to a float.
-    #     """
-    #     ex = number[-1]
-    #     base = float(number[:-1])
-    #     if(ex == 'm'):
-    #         return base * 1e-3
-    #     elif(ex == 'u'):
-    #         return base * 1e-6
-    #     elif(ex == 'n'):
-    #         return base * 1e-9
-    #     else:
-    #         return float(number(base) + ex)
-
-    # def get_sparameters(netlist: ObjectModelNetlist):
-    #     """
-    #     Gets the s-parameters matrix from a passed in ObjectModelNetlist by 
-    #     connecting all components.
-
-    #     Parameters
-    #     ----------
-    #     netlist: ObjectModelNetlist
-    #         The netlist to be connected and have parameters extracted from.
-
-    #     Returns
-    #     -------
-    #     s, f, externals, edge_components: np.array, np.array, list(str)
-    #         A tuple in the following order: 
-    #         ([s-matrix], [frequency array], [external port list], [edge components])
-    #         - s-matrix: The s-parameter matrix of the combined component.
-    #         - frequency array: The corresponding frequency array, indexed the same
-    #             as the s-matrix.
-    #         - external port list: Strings of negative numbers representing the 
-    #             ports of the combined component. They are indexed in the same order
-    #             as the columns/rows of the s-matrix.
-    #         - edge components: list of ComponentModel objects, which are the external
-    #             components.
-    #     """
-    #     combined, edge_components = connect_circuit(netlist)
-    #     f = combined.f
-    #     s = combined.s
-    #     externals = combined.nets
-    #     return (s, f, externals, edge_components)
-
-    class ComponentSimulation:
-        """
-        This class is a simplified version of a ComponentModel in that it only contains
-        an ordered list of nets, the frequency array, and the s-parameter matrix. 
-        It can be initialized with or without a ComponentModel model, allowing its 
-        attributes to be set after object creation.
-
-        Attributes
-        ----------
-        nets : list(str)
-            An ordered list of the nets connected to the ComponentModel
-        f : np.array
-            A numpy array of the frequency values in its simulation.
-        s : np.array
-            A numpy array of the s-parameter matrix for the given frequency range.
-        """
-        nets: list
-        f: np.array
-        s: np.array
-
-        def __init__(self, component=None):
-            """
-            Instantiates an object from a ComponentModel if provided; empty, if not.
-
-            Parameters
-            ----------
-            component : ComponentModel, optional
-                A component to initialize the data members of the object.
-            """
-            if component:
-                self.nets = copy.deepcopy(component.nets)
-                self.f, self.s = component.get_s_parameters()
 
 
 def create_component_by_name(comp):
