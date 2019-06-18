@@ -3,38 +3,9 @@ from typing import List, Dict
 import numpy
 from simphony.errors import DuplicateModelError
 
-models = {}
 def clear_models():
     """Clears all models loaded in program memory."""
-    models = {}
-    UniqueModelName._names = set()
-
-class UniqueModelName(object):
-    """Ensures that :obj:`ComponentModel <simphony.core.ComponentModel>` names 
-    (strings) are unique.
-    
-    References
-    ----------
-    https://stackoverflow.com/questions/34818622/ensure-uniqueness-of-instance-attribute-in-python
-    """
-    _names = set()
-
-    def __init__(self, name=None):
-        self.name = name
-
-    def __get__(self, obj, cls=None):
-        return self.name
-
-    def __set__(self, obj, value):
-        if value in self._names:
-            raise DuplicateModelError(value)
-
-        self._add_name(value)
-        self.name = value
-
-    @classmethod
-    def _add_name(cls, name):
-        cls._names.add(name)
+    ComponentModel.clear_models()
 
 class ComponentModel:
     """The base class for all component models.
@@ -58,7 +29,11 @@ class ComponentModel:
     ...     # return some calculation based on parameters
     >>> wg.get_s_parameters = new_s_parameters
     """
-    component_type = UniqueModelName()
+    models = {}
+
+    @classmethod
+    def clear_models(cls):
+        cls.models = {}
 
     def __init__(self, component_type, s_parameters=None, cachable=False):
         """Initializes a ComponentModel dataclass.
@@ -89,13 +64,28 @@ class ComponentModel:
         --------
         ComponentInstance : Component instances that reference ComponentModel.
         """
-        self.component_type = component_type
+        if component_type in self.models.keys(): #self._component_types:
+            raise DuplicateModelError(component_type)
+        else:
+            self._component_type = component_type
+            # self._component_types.add(component_type)
+
         if cachable:
             if s_parameters is None:
                 raise ValueError("\'s_parameters\' cannot be None if cachable=True.")
             self.s_parameters = s_parameters
         self.cachable = cachable
-        models[component_type] = self
+        self.models[component_type] = self
+
+    @property
+    def component_type(self):
+        return self._component_type
+
+    @component_type.setter
+    def component_type(self, value):
+        if(value in self.models.keys()):#self._component_types):
+            raise DuplicateModelError(value)
+        self._component_type = value
 
     def get_s_parameters(self, **kwargs) -> (numpy.array, numpy.array):
         """Returns the s-parameters of the device.
@@ -123,21 +113,7 @@ class ComponentModel:
         if self.cachable:
             return self.s_parameters
         else:
-            raise NotImplementedError
-
-    def __str__(self):
-        return 'Object::' + str(self.__dict__)
-
-    def __hash__(self):
-        return hash((self.component_type, self.component_type))
-
-    def __eq__(self, other):
-        # TODO: This method is really quite useless. If duplicate names
-        # can't be instantiated, we'll never be checking for equality.
-        """Checks two models for equality based on name and cachability."""
-        if not isinstance(other, type(self)): return NotImplemented
-        return self.component_type == other.component_type and \
-            self.cachable == other.cachable
+            raise NotImplementedError("Component s-parameters are not cachable and 'get_s_parameters()' is not defined.")
 
     def __copy__(self):
         raise DuplicateModelError(self.component_type)
@@ -174,7 +150,7 @@ class ComponentInstance():
 
         Parameters
         ----------
-        nets : list of ints
+        nets : list(int)
             A list of all port connections (required to be integers).
         lay_x : float
             The x-position of the component in the overall layout.
