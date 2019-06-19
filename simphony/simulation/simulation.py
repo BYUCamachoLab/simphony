@@ -248,10 +248,10 @@ def connect_circuit(components: List[SimulatedComponent], net_count: int) -> Sim
 
 
 
-# class MathPrefixes:
-#     TERA = 1e12
-#     NANO = 1e-9
-#     c = 299792458
+class MathPrefixes:
+    TERA = 1e12
+    NANO = 1e-9
+    c = 299792458
 
 
 
