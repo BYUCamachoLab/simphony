@@ -73,3 +73,18 @@ class TestClass:
     #     nl.add_component(c1)
     #     nl.add_component(c2)
     #     assert len(nl.components) == 2
+
+class TestCircuit:
+    def test_4Port_Circuit(self):
+        y = dev.ebeam_y_1550()
+        gc = dev.ebeam_gc_te1550()
+        wg = dev.ebeam_wg_integral_1550()
+        bdc = dev.ebeam_bdc_te1550()
+        term = dev.ebeam_terminator_te1550()
+
+        # gc1 = 
+
+        c1 = []
+        p1 = []
+        c2 = []
+        p2 = []
