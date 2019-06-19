@@ -36,7 +36,7 @@ def package_data_files(directory):
                 paths.append(os.path.join('..', path, filename))
     return paths
 
-extra_files += package_data_files('simphony/elements')
+extra_files += package_data_files('simphony/DeviceLibrary/sparams')
 extra_files += ['*.ini']
 
 setuptools.setup(
@@ -59,8 +59,8 @@ setuptools.setup(
     ],
     install_requires=[
         'scipy>=1.2.1',
-        'matplotlib==3.0.3',
-        'jsons==0.8.9',
+        # 'matplotlib==3.0.3',
+        # 'jsons==0.8.9',
         'numpy'
     ]
 )
