@@ -113,7 +113,19 @@ class Simulation:
         return reordered_s
 
     def s_parameters(self):
-        pass
+        return self.combined.s
+
+    def external_ports(self):
+        return self.combined.nets
+
+    def external_components(self):
+        # return [component for component in self.netlist.components if (any(int(x) < 0 for x in component.nets))]
+        externals = []
+        for component in self.netlist.components:
+            if (any(int(x) < 0 for x in component.nets)):
+                externals.append(component)
+        return externals
+
 
 def match_ports(net_id: int, component_list: List[SimulatedComponent]) -> list:
     """
