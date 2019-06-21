@@ -76,13 +76,26 @@ class TestClass:
 
 class TestCircuit:
     def test_4Port_Circuit(self):
+        # Device is modeled after fabRun1/A4
         y = dev.ebeam_y_1550()
         gc = dev.ebeam_gc_te1550()
         wg = dev.ebeam_wg_integral_1550()
         bdc = dev.ebeam_bdc_te1550()
         term = dev.ebeam_terminator_te1550()
 
-        # gc1 = 
+        gc1 = core.ComponentInstance(gc)
+        gc2 = core.ComponentInstance(gc)
+        gc3 = core.ComponentInstance(gc)
+        gc4 = core.ComponentInstance(gc)
+
+        y1 = core.ComponentInstance(y)
+        y2 = core.ComponentInstance(y)
+        y3 = core.ComponentInstance(y)
+
+        bdc1 = core.ComponentInstance(bdc)
+        bdc2 = core.ComponentInstance(bdc)
+
+        term = core.ComponentInstance(term)
 
         c1 = []
         p1 = []
