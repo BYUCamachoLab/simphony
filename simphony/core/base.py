@@ -4,7 +4,13 @@ import numpy
 from simphony.errors import DuplicateModelError
 
 def clear_models():
-    """Clears all models loaded in program memory."""
+    """Clears all models loaded in program memory.
+    
+    The ComponentModel class maintains a dictionary of all instantiated models.
+    Model names are required to be unique. Call this function in order to 
+    "reset" a workspace and force ComponentModel to forget all formerly 
+    instantiated objects.
+    """
     ComponentModel.clear_models()
 
 class ComponentModel:
@@ -25,7 +31,7 @@ class ComponentModel:
     Creation of a non-cachable component model:
 
     >>> wg = simphony.core.ComponentModel("waveguide", s_params, cachable=False)
-    >>> def new_s_parameters(length, width, thickness):
+    >>> def new_s_parameters(self, length, width, thickness):
     ...     # return some calculation based on parameters
     >>> wg.get_s_parameters = new_s_parameters
     """
@@ -64,13 +70,12 @@ class ComponentModel:
 
         See Also
         --------
-        ComponentInstance : Component instances that reference ComponentModel.
+        ComponentInstance : Component instances reference ComponentModel.
         """
-        if component_type in self.models.keys(): #self._component_types:
+        if component_type in self.models.keys():
             raise DuplicateModelError(component_type)
         else:
             self._component_type = component_type
-            # self._component_types.add(component_type)
         self.ports = ports
         if cachable:
             if s_parameters is None:
@@ -81,11 +86,41 @@ class ComponentModel:
 
     @property
     def component_type(self):
+        """Returns the component type, which is a unique key for a model."""
         return self._component_type
 
     @component_type.setter
     def component_type(self, value):
-        if(value in self.models.keys()):#self._component_types):
+        """Sets the component_type of the model.
+
+        Component types are unique to models within the program. No two models
+        can share the same name, nor can the name of one be assigned to
+        the other.
+
+        Parameters
+        ----------
+        value : str
+            A unique name specifying the type of this component.
+        
+        Raises
+        ------
+        DuplicateModelError
+            If another model with the same name already exists.
+
+        Notes
+        -----
+        If you are writing your own permanent component library (as opposed
+        to the brief testing of simulated components), the convention is to
+        name the class of each model in accordance with what the component
+        is and to use the class name as the component_type. For example, a good
+        class name would be 'my_bidirectional_coupler' and to implement the 
+        class like so:
+
+        >>> class my_bidirectional_coupler(simphony.core.ComponentModel):
+        ...
+
+        """
+        if(value in self.models.keys()):
             raise DuplicateModelError(value)
         self._component_type = value
 
@@ -110,7 +145,8 @@ class ComponentModel:
         Raises
         ------
         NotImplementedError
-            If the ComponentModel is not cachable.
+            If the ComponentModel is not cachable and 'get_s_parameters' has
+            not been overridden.
         """
         if self.cachable:
             return self.s_parameters
@@ -118,10 +154,16 @@ class ComponentModel:
             raise NotImplementedError("Component s-parameters are not cachable and 'get_s_parameters()' is not defined.")
 
     def __copy__(self):
-        raise DuplicateModelError(self.component_type)
+        """Shallow copy of an existing component model returns the existing 
+        component model, similar to a Singleton (although a ComponentModel is
+        not a true singleton)."""
+        return self
 
     def __deepcopy__(self, memo):
-        raise DuplicateModelError(self.component_type)
+        """Deep copy of an existing component model returns the existing 
+        component model, similar to a Singleton (although a ComponentModel is
+        not a true singleton)."""
+        return self
 
 
 class ComponentInstance():
@@ -140,31 +182,33 @@ class ComponentInstance():
         Total waveguide length.
     width : float
         Designed waveguide width in microns (um).
-    height : float
-        Designed waveguide height in microns (um).
+    thickness : float
+        Designed waveguide thickness in microns (um).
     radius : float
         The bend radius of waveguide bends.
-    points : list of tuples
-        A collection of all points which define the waveguides' path.
     """
-    def __init__(self, model: ComponentModel=None, nets: List=None, lay_x: float=0, lay_y: float=0, extras: Dict=None):
+    def __init__(self, model: ComponentModel=None, nets: List=None, extras: Dict=None):
         """Creates an instance of some ComponentModel.
 
         Parameters
         ----------
-        nets : list(int)
-            A list of all port connections (required to be integers).
-        lay_x : float
-            The x-position of the component in the overall layout.
-        lay_y : float
-            The y-position of the component in the overall layout.
+        model: ComponentModel
+            The model to be used for this instance.
+        nets : list(int), optional
+            A list of all port connections (required to be integers). If not
+            specified, Netlist will assign them automatically.
+        extras : dict, optional
+            A dictionary of optional arguments that the model may require for
+            calculating s-parameters. For example, length is unique to each
+            waveguide and would therefore be considered an 'extra.'
         """
         self.model = model
         self.nets = nets if nets is not None else [None] * model.ports
-        self.lay_x = lay_x
-        self.lay_y = lay_y
         self.extras = extras if extras is not None else {}
 
     def get_s_parameters(self):
-        """Get the s-parameters from the linked ComponentModel."""
+        """Get the s-parameters from the linked ComponentModel.
+        
+        This function simply calls the linked model's 'get_s_parameters()'
+        with 'extras' as the keyword arguments."""
         return self.model.get_s_parameters(**self.extras)

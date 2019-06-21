@@ -1,24 +1,9 @@
 # netlist.py
-#
-# Dependencies:
-#     - numpy
-#         Required for cascading s-matrices together.
-#     - jsons
-#         Similar to GSON in Java, serializes and deserializes custom models.
-#         Required to convert the ObjectModelNetlist to a file that can be saved 
-#         and read later.
-#         API: https://jsons.readthedocs.io/en/latest/index.html
-#     - copy
-#         Some objects are deep copied during circuit matrix cascading.
-#
+
 # This file contains everything related to netlist generation and modeling.
 
 # from simphony.components import BaseComponent, create_component_by_name
 
-import jsons
-import json
-import copy
-import numpy as np
 from typing import List#, Tuple
 
 from simphony.core import ComponentModel, ComponentInstance
@@ -29,27 +14,63 @@ from simphony.core import connect as rf
 class Netlist:
     """Represents a netlist.
 
-    Has component_set, a set, and instance_list, a list.
+    Maintains a list of connected components as well as a net counter for 
+    automatically assigning id's to connections as they are made.
+
+    Notes
+    -----
+    The convention for net id numbering follows these rules:
+    * All non-negative integers are considered internal nets connecting 
+      components to each other within the netlist.
+    * All negative integers are external nets that will be considered the
+      inputs or outputs when a simulation is run on the netlist. Other
+      components or netlists can be connected to these external ports.
+    * Numbers are never skipped; if a number is missing, the netlist is
+      corrupted and will not work properly.
     """
-    _internal_net = -1
-    _external_net = 0
 
     def __init__(self, components: List[ComponentInstance]=None):
+        """Creates a Netlist object for storing components.
 
+        Netlist can be instantiated with an already complete list of 
+        components. The netlist, however, performs no error checking on this
+        list and assumes that the ComponentInstances contained within it
+        already have nets assigned correctly and following the appropriate 
+        numbering convention.
+
+        Parameters
+        ----------
+        components : List[ComponentInstance]
+            A list of pre-initialized components.
+        """
+        self._internal_net = -1
+        self._external_net = 0
         self.components = [] if components is None else components
 
     # def get_external_components(self):
     #     return [component for component in self.components if (any(int(x) < 0 for x in component.nets))]
 
-    @classmethod
-    def next_internal(cls):
-        cls._internal_net = cls._internal_net + 1
-        return cls._internal_net
+    def _next_internal(self):
+        """Returns the next available internal net ID number.
 
-    @classmethod
-    def next_external(cls):
-        cls._external_net = cls._external_net - 1
-        return cls._external_net
+        Returns
+        -------
+        int
+            The next available internal net ID number.
+        """
+        self._internal_net += 1
+        return self._internal_net
+
+    def _next_external(self):
+        """Returns the next available external net ID number.
+
+        Returns
+        -------
+        int
+            The next available external net ID number.
+        """
+        self._external_net -= 1
+        return self._external_net
 
     def load(self, data, formatter='ll'):
         """Loads formatted component data into a netlist.
@@ -83,30 +104,37 @@ class Netlist:
          [...                                   ]]
 
         Ports are 0-indexed.
-        """
-        components = set()
 
+        Parameters
+        ----------
+        connection_list : List[List]
+            A list of lists containing the connections for the netlist.
+        """
+        # Maintaining a list is required to make the ordering deterministic.
+        components = []
+
+        # If the data was zipped together, unzip it.
         if type(connection_list) == zip.__class__:
             connection_list = list(connection_list)
 
+        # For each connection, assign net numbers to the appropriate 
+        # components and save references to the components in a list.
         for connection in connection_list:
             c1, p1, c2, p2 = connection
-            net_id = self.next_internal()
+            net_id = self._next_internal()
             c1.nets[p1] = net_id
             c2.nets[p2] = net_id
-            components.add(c1)
-            components.add(c2)
+            components.append(c1)
+            components.append(c2)
         
+        # Any unassigned nets after all connections have been listed are 
+        # external ports.
         for component in components:
-            component.nets = [net if net is not None else self.next_external() for net in component.nets]
+            component.nets = [net if net is not None else self._next_external() for net in component.nets]
 
-        self.components = list(components)
-        for comp in self.components:
-            print(comp.model.component_type, comp.nets)
-
-
-    def toJSON(self) -> str:
-        return jsons.dump(self, verbose=True, strip_privates=True)
+        # We do however, want to remove duplicate components and only track
+        # one reference per component.
+        self.components = list(set(components))
 
     @property
     def net_count(self):
@@ -124,171 +152,3 @@ class Netlist:
         # https://stackoverflow.com/a/29244327/11530613
         nets = [net for sublist in [comp.nets for comp in self.components] for net in sublist]
         return max(nets) + 1
-
-
-
-
-def create_component_by_name(comp):
-    return None
-
-class ObjectModelNetlist:
-    """
-    The Parser class reads a netlist generated by the SiEPIC toolbox and uses 
-    various classes which inherit from 'models.components.ComponentModel' to create 
-    an object based model of a photonic circuit. 
-    
-    Each derived class is connected to a component model in 'models' that 
-    exposes a 'get_s_params' method with its appropriate arguments to the 
-    derived model. These s_params are the s-matrices of the component, which 
-    are then used to simulate the circuit's transmission behavior.
-
-    Attributes
-    ----------
-    component_list : list
-        A list of objects derived from 'models.components.ComponentModel' 
-        representing the photonic circuit.
-    net_count : int
-        A counter keeping track of the total number of nets in the circuit 
-        (0-indexed).
-    """
-
-    def __init__(self):
-        self.component_list = []
-        self.instance_list = []
-        self.net_count = 0
-
-    def parse_file(self, filepath: str) -> list:
-        """Converts a netlist to an object model of the circuit.
-
-        Parses through the netlist (given a filename) to identify components 
-        and organize them into objects. Objects are connected with their data 
-        models, allowing them to retrieve any available parameters.
-
-        Parameters
-        ----------
-        filepath : str
-            The name of the file to be parsed.
-
-        Returns
-        -------
-        component_list : list
-            A list of all components found in the netlist, with their 
-            accompanying properties and values.
-        """
-        with open(filepath) as fid:
-            text = fid.read()
-            return self.parse_text(text)
-
-    def parse_text(self, text: str) -> list:
-        """
-        Parses the string format of the netlist. Instead of requiring a file, 
-        string representations of netlists can also be converted into an object
-        model.
-
-        Parameters
-        ----------
-        text : str
-            The text of the netlist.
-        
-        Returns
-        -------
-        component_list : list
-            A list of all components found in the netlist, with their 
-            accompanying properties and values.
-        """
-        lines = text.splitlines()
-        for line in lines:
-                elements = line.split()
-                if len(elements) > 0:
-                    if (".ends" in elements[0]):
-                        break
-                    elif ("." in elements[0]) or ("*" in elements[0]):
-                        continue
-                    else:
-                        self._parse_line(elements)
-        return self.component_list
-
-    def _parse_line(self, line_elements: list):
-        """ Parses a line from the netlist, already split into individual 
-        elements, and converts it into a new ComponentModel object.
-
-        Reads the elements on a line of the netlist (already delimited before 
-        passed to _parse_line) and creates the appropriate object. Appends the 
-        newly created object to the Parser's component_list.
-        
-        Parameters
-        ----------
-        line_elements : list
-            A list of all the elements on a line (already split by some 
-            delimiter).
-        """
-
-        # TODO: Consider having each component parse its own line, rather than
-        # needing to add more case statements if new parameters show up.
-        component = None
-        nets = []
-        for item in line_elements[1:]:
-            if "N$" in item:
-                net = str(item).replace("N$", '')
-                nets.append(net)
-                if int(net) > self.net_count:
-                    self.net_count = int(net)
-                continue
-            elif component is None:
-                component = create_component_by_name(item)
-            elif "lay_x=" in item:
-                component.lay_x = float(str(item).replace("lay_x=", ''))
-            elif "lay_y=" in item:
-                component.lay_y = float(str(item).replace("lay_y=", ''))
-            elif "radius=" in item:
-                component.radius = float(str(item).replace("radius=", ''))
-            elif "wg_length=" in item:
-                lenth = str(item).replace("wg_length=", '')
-                component.length = strToSci(lenth)
-            elif "wg_width=" in item:
-                width = str(item).replace("wg_width=", '')
-                # Width needs to be stored in microns (um)
-                component.width = strToSci(width)*1e6
-            elif "points=" in item:
-                # The regex, in case you ever need it: /(\[[\d]+[\,][\d]+\])/g
-                points = str(item).replace("points=", '')
-                points = points.replace("\"[[", '')
-                points = points.replace("]]\"", '')
-                point_list = points.split('],[')
-                for point in point_list:
-                    out = point.split(',')
-                    component.points.append((float(out[0]), float(out[1])))
-        component.nets = nets
-        self.component_list.append(component)
-
-    def add_component(self, component):
-        self.component_list.append(component)
-
-    def get_external_components(self):
-        return [component for component in self.component_list if (any(int(x) < 0 for x in component.nets))]
-
-    def toJSON(self) -> str:
-        return jsons.dump(self, verbose=True, strip_privates=True)
-
-    @staticmethod
-    def save(filename, netlist):
-        with open(filename, 'w') as outfile:
-            json.dump(netlist.toJSON(), outfile, indent=2)
-
-    @staticmethod
-    def load(filename):
-        obj = None
-        with open(filename) as jsonfile:
-            try:
-                data = json.load(jsonfile)
-                obj = jsons.load(data)
-                obj.component_list = jsons.load(obj.component_list)
-                if obj is not None:
-                    return obj
-                else:
-                    raise RuntimeError("Netlist could not load successfully.")
-            except:
-                raise RuntimeError("Netlist could not load successfully.")
-            
-        
-
