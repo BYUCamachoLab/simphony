@@ -1,6 +1,8 @@
 # Simphony
 A Simulator for Photonic circuits
 
+![Text](./docs/source/_static/images/simphony_logo.jpg)
+
 Authors: [Sequoia Ploeg](https://github.com/sequoiap), 
 [Hyrum Gunther](https://github.com/rumbonium/)
 
