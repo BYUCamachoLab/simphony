@@ -59,8 +59,6 @@ setuptools.setup(
     ],
     install_requires=[
         'scipy>=1.2.1',
-        # 'matplotlib==3.0.3',
-        # 'jsons==0.8.9',
         'numpy'
     ]
 )
