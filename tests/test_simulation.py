@@ -103,7 +103,7 @@ def test_scripting():
     nl = core.Netlist(components=components)
     assert nl.net_count == 4
     simu = sim.Simulation(nl)
-    simu.cache_models()
+    simu._cache_models()
     assert len(simu._cached) == 4
 
     good = core.ComponentModel("arbitrary_component", 3, [0, 0, 0], cachable=True)

@@ -35,16 +35,16 @@ class Test_Netlist:
         nl = core.Netlist()
         nl.load(data, formatter='ll')
 
-#     def test_Netlist_parameterized_initialization(self):
-#         self.nl = core.Netlist(components=self.components)
-#         assert self.nl.net_count == 4
-#         assert len(self.nl.components) == len(self.components)
+    def test_Netlist_parameterized_initialization(self):
+        self.nl = core.Netlist(components=self.components)
+        assert self.nl.net_count == 4
+        assert len(self.nl.components) == len(self.components)
 
-#     def test_Netlist_unparameterized_initialization(self):
-#         self.nl = core.Netlist()
-#         for i in range(len(self.components)):
-#             self.nl.add_component(self.components[i])
-#         assert len(self.nl.components) == len(self.components)
+    # def test_Netlist_unparameterized_initialization(self):
+    #     self.nl = core.Netlist()
+    #     for i in range(len(self.components)):
+    #         self.nl.add_component(self.components[i])
+    #     assert len(self.nl.components) == len(self.components)
 
 #     def test_Netlist_externals(self):
 #         self.nl = core.Netlist(components=self.components)
@@ -53,55 +53,3 @@ class Test_Netlist:
 #         assert len(expected) == len(actual)
 #         for item in expected:
 #             assert item in actual
-
-# # class TestStrToSci(object):
-# #     def test_milli(self):
-# #         str1 = '3m'
-# #         num1 = 3e-3
-# #         assert num1 == netlist.strToSci(str1)
-# #         str2 = '4.7m'
-# #         num2 = 4.7e-3
-# #         assert num2 == netlist.strToSci(str2)
-# #         str3 = '0.5m'
-# #         num3 = 0.5e-3
-# #         assert num3 == netlist.strToSci(str3)
-# #         str4 = '-0.37m'
-# #         num4 = -0.37e-3
-# #         assert num4 == netlist.strToSci(str4)
-# #         str5 = '-14.3m'
-# #         num5 = -14.3e-3
-# #         assert num5 == netlist.strToSci(str5)
-
-# #     def test_micro(self):
-# #         str1 = '3u'
-# #         num1 = 3e-6
-# #         assert num1 == netlist.strToSci(str1)
-# #         str2 = '4.7u'
-# #         num2 = 4.7e-6
-# #         assert num2 == netlist.strToSci(str2)
-# #         str3 = '0.5u'
-# #         num3 = 0.5e-6
-# #         assert num3 == netlist.strToSci(str3)
-# #         str4 = '-0.37u'
-# #         num4 = -0.37e-6
-# #         assert num4 == netlist.strToSci(str4)
-# #         str5 = '-14.3u'
-# #         num5 = -14.3e-6
-# #         assert num5 == netlist.strToSci(str5)
-    
-# #     def test_nano(self):
-# #         str1 = '3n'
-# #         num1 = 3e-9
-# #         assert num1 == pytest.approx(netlist.strToSci(str1))
-# #         str2 = '4.7n'
-# #         num2 = 4.7e-9
-# #         assert num2 == pytest.approx(netlist.strToSci(str2))
-# #         str3 = '0.5n'
-# #         num3 = 0.5e-9
-# #         assert num3 == pytest.approx(netlist.strToSci(str3))
-# #         str4 = '-0.37n'
-# #         num4 = -0.37e-9
-# #         assert num4 == pytest.approx(netlist.strToSci(str4))
-# #         str5 = '-14.3n'
-# #         num5 = -14.3e-9
-# #         assert num5 == pytest.approx(netlist.strToSci(str5))
