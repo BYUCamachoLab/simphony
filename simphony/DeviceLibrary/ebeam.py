@@ -1,8 +1,10 @@
 import simphony.core as core
+from simphony.DeviceLibrary import register_component_model
 
 import os
 import numpy as np
 
+@register_component_model
 class ebeam_bdc_te1550(core.ComponentModel):
     ports = 4
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_bdc_te1550.npz'))
