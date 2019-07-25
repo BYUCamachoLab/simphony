@@ -9,8 +9,6 @@ from typing import List#, Tuple
 from simphony.core import ComponentModel, ComponentInstance
 from simphony.core import connect as rf
 
-# LLNetlist = List[Tuple[ComponentInstance, int, ComponentInstance, int]]
-
 class Netlist:
     """Represents a netlist.
 
