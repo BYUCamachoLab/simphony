@@ -1,17 +1,18 @@
 from importlib import import_module
-from typing import List, Dict
+from typing import List, Dict, Union
 import numpy
 from simphony.errors import DuplicateModelError
 
-def clear_models():
-    """Clears all models loaded in program memory.
-    
-    The ComponentModel class maintains a dictionary of all instantiated models.
-    Model names are required to be unique. Call this function in order to 
-    "reset" a workspace and force ComponentModel to forget all formerly 
-    instantiated objects.
+class classproperty(object):
+    """Read-only @classproperty decorator.
+
+    Solution from https://stackoverflow.com/questions/128573/using-property-on-classmethods/13624858#13624858
     """
-    ComponentModel.clear_models()
+    def __init__(self, fget):
+        self.fget = fget
+
+    def __get__(self, owner_self, owner_cls):
+        return self.fget(owner_cls)
 
 class ComponentModel:
     """The base class for all component models.
@@ -26,105 +27,30 @@ class ComponentModel:
     
     Creation of a cachable component model:
 
-    >>> rr = simphony.core.ComponentModel("ring_resonator", s_params, cachable=True)
+    >>> class RingResonator:
+    ...     ports = 4
+    ...     s_parameters = s_params
+    ...     cachable = True
 
     Creation of a non-cachable component model:
 
-    >>> wg = simphony.core.ComponentModel("waveguide", s_params, cachable=False)
     >>> def new_s_parameters(self, length, width, thickness):
     ...     # return some calculation based on parameters
-    >>> wg.get_s_parameters = new_s_parameters
+    >>> class Waveguide:
+    ...     s_parameters = new_s_parameters
+    ...     cachable = False
     """
-    models = {}
+
+    @classproperty
+    def component_type(cls):
+        return cls.__name__
+        
+    ports: int = 0
+    s_parameters: Union[list, callable] = None
+    cachable: bool = False
 
     @classmethod
-    def clear_models(cls):
-        cls.models = {}
-
-    def __init__(self, component_type: str, ports: int, s_parameters=None, cachable=False):
-        """Initializes a ComponentModel dataclass.
-
-        A ComponentModel represents a type of component or device within a 
-        circuit. It is not an instance of that device, however; for example,
-        an electrical circuit can be constructed from resistors, transistors,
-        diodes, etc. But specific resistors, transistors, and diodes, and 
-        their locations or connections are specified as a ComponentInstance.
-
-        Parameters
-        ----------
-        component_type : str
-            A unique name specifying the type of this component.
-        ports : int
-            The number of ports on this device.
-        s_parameters : numpy.array
-            A tuple, '(f,s)', where 'f' is the frequency array corresponding to
-            's', a matrix containing the s-parameters of the device.
-        cachable : bool
-            True if the s-parameters are static; false if they depend on other
-            variables.
-
-        Raises
-        ------
-        ValueError
-            If cachable=True and s_parameters are not specified.
-
-        See Also
-        --------
-        ComponentInstance : Component instances reference ComponentModel.
-        """
-        if component_type in self.models.keys():
-            raise DuplicateModelError(component_type)
-        else:
-            self._component_type = component_type
-        self.ports = ports
-        if cachable:
-            if s_parameters is None:
-                raise ValueError("\'s_parameters\' cannot be None if cachable=True.")
-            self.s_parameters = s_parameters
-        self.cachable = cachable
-        self.models[component_type] = self
-
-    @property
-    def component_type(self):
-        """Returns the component type, which is a unique key for a model."""
-        return self._component_type
-
-    @component_type.setter
-    def component_type(self, value):
-        """Sets the component_type of the model.
-
-        Component types are unique to models within the program. No two models
-        can share the same name, nor can the name of one be assigned to
-        the other.
-
-        Parameters
-        ----------
-        value : str
-            A unique name specifying the type of this component.
-        
-        Raises
-        ------
-        DuplicateModelError
-            If another model with the same name already exists.
-
-        Notes
-        -----
-        If you are writing your own permanent component library (as opposed
-        to the brief testing of simulated components), the convention is to
-        name the class of each model in accordance with what the component
-        is and to use the class name as the component_type. For example, a good
-        class name would be 'my_bidirectional_coupler' and to implement the 
-        class like so:
-
-        >>> class my_bidirectional_coupler(simphony.core.ComponentModel):
-        ...
-
-        """
-        if(value in self.models.keys()):
-            raise DuplicateModelError(value)
-        self._component_type = value
-
-    def get_s_parameters(self, **kwargs) -> (numpy.array, numpy.array):
+    def get_s_parameters(cls, **kwargs) -> (numpy.array, numpy.array):
         """Returns the s-parameters of the device.
 
         By default, each ComponentModel takes s_parameters as a keyword 
@@ -148,22 +74,13 @@ class ComponentModel:
             If the ComponentModel is not cachable and 'get_s_parameters' has
             not been overridden.
         """
-        if self.cachable:
-            return self.s_parameters
+        if cls.cachable:
+            return cls.s_parameters
         else:
-            raise NotImplementedError("Component s-parameters are not cachable and 'get_s_parameters()' is not defined.")
-
-    def __copy__(self):
-        """Shallow copy of an existing component model returns the existing 
-        component model, similar to a Singleton (although a ComponentModel is
-        not a true singleton)."""
-        return self
-
-    def __deepcopy__(self, memo):
-        """Deep copy of an existing component model returns the existing 
-        component model, similar to a Singleton (although a ComponentModel is
-        not a true singleton)."""
-        return self
+            try:
+                return cls.s_parameters(**kwargs)
+            except:
+                print("Class is not cachable and s_parameters is not a function.")
 
 
 class ComponentInstance():

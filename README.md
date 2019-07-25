@@ -9,6 +9,15 @@ Authors: [Sequoia Ploeg](https://github.com/sequoiap),
 Developed by [CamachoLab](https://camacholab.byu.edu/) at 
 [Brigham Young University](https://www.byu.edu/).
 
+# About this branch
+
+Previous development branches required the component models (from which instances
+are created) to be instantiated first. This attempt tries to keep them as simple
+classes, removing the requirement to instantiate. It also tries to keep the
+s-parameters with the classes, without so many file i/o and parsing algorithms.
+
+# Description
+
 This package is still under development. It initially began as an extension to
 [SiEPIC-Tools](https://github.com/lukasc-ubc/SiEPIC-Tools), but was ported here
 once it became large enough to be considered its own stand-alone project. There
