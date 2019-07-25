@@ -96,6 +96,7 @@ class Simulation:
         self.start_freq = start_freq
         self.stop_freq = stop_freq
         self.num = num
+        self._cache_models()
         self._cascade()
 
     @property
@@ -113,6 +114,7 @@ class Simulation:
             if component.model.component_type not in self._cached and component.model.cachable:
                 freq, s_parameters = interpolate(self.freq_array, *component.get_s_parameters())
                 self._cached[component.model.component_type] = (freq, s_parameters)
+        print(self._cached.keys())
 
     def _component_converter(self, component: ComponentInstance) -> SimulatedComponent:
         """Converts a component into the simplified SimulatedComponent model.
@@ -143,7 +145,6 @@ class Simulation:
         This is essentially the function that performs the full simulation.
         """
         logging.debug("Entering _cascade()")
-        self._cache_models()
         component_list = [self._component_converter(component) for component in self.netlist.components]
         self.combined = self._rearrange(connect_circuit(component_list, self.netlist.net_count))
 
