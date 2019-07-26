@@ -46,6 +46,20 @@ class Netlist:
     # def get_external_components(self):
     #     return [component for component in self.components if (any(int(x) < 0 for x in component.nets))]
 
+    def add_component(self, component: ComponentInstance):
+        """Allows for components (instances) to be added manually to the netlist.
+
+        Note that this function performs no error checking; hence, it is the
+        responsibility of the user to ensure that net numbering is accurate
+        and not duplicating net id's already used in the netlist.
+        
+        Parameters
+        ----------
+        component : ComponentInstance
+            A pre-initialized component instance.
+        """
+        self.components.append(component)
+
     def _next_internal(self):
         """Returns the next available internal net ID number.
 
