@@ -2,9 +2,7 @@
 
 # This file contains everything related to netlist generation and modeling.
 
-# from simphony.components import BaseComponent, create_component_by_name
-
-from typing import List#, Tuple
+from typing import List
 
 from simphony.core import ComponentModel, ComponentInstance
 from simphony.core import connect as rf

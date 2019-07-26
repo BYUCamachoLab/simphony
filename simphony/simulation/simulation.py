@@ -10,6 +10,10 @@ from simphony.core import ComponentInstance, ComponentModel, Netlist
 from simphony.core.connect import connect_s, innerconnect_s
 
 
+
+
+
+
 def interpolate(output_freq, input_freq, s_parameters):
     """Returns the result of a cubic interpolation for a given frequency range.
 
@@ -32,6 +36,11 @@ def interpolate(output_freq, input_freq, s_parameters):
     """
     func = interp1d(input_freq, s_parameters, kind='cubic', axis=0)
     return [output_freq, func(output_freq)]
+
+
+
+
+
 
 class SimulatedComponent:
     """
@@ -69,6 +78,11 @@ class SimulatedComponent:
         self.nets = nets
         self.f = freq
         self.s = s_parameters
+
+
+
+
+
 
 class Simulation:
     """The main simulation class providing methods for running simulations,
@@ -114,7 +128,6 @@ class Simulation:
             if component.model.component_type not in self._cached and component.model.cachable:
                 freq, s_parameters = interpolate(self.freq_array, *component.get_s_parameters())
                 self._cached[component.model.component_type] = (freq, s_parameters)
-        print(self._cached.keys())
 
     def _component_converter(self, component: ComponentInstance) -> SimulatedComponent:
         """Converts a component into the simplified SimulatedComponent model.
@@ -244,24 +257,28 @@ class Simulation:
         """
         return self.combined.s
 
-    def external_ports(self):
-        """Returns a list of the external port numbers.
+    # def external_ports(self):
+    #     """Returns a list of the external port numbers.
 
-        Returns
-        -------
-        List[int]
-            The external nets of the simulated netlist. These are positive
-            integers, corresponding to rows/columns of the netlist.
-        """
-        return self.combined.nets
+    #     Returns
+    #     -------
+    #     List[int]
+    #         The external nets of the simulated netlist. These are positive
+    #         integers, corresponding to rows/columns of the netlist.
+    #     """
+    #     return self.combined.nets
 
-    def external_components(self):
-        # return [component for component in self.netlist.components if (any(int(x) < 0 for x in component.nets))]
-        externals = []
-        for component in self.netlist.components:
-            if (any(int(x) < 0 for x in component.nets)):
-                externals.append(component)
-        return externals
+    # def external_components(self):
+    #     # return [component for component in self.netlist.components if (any(int(x) < 0 for x in component.nets))]
+    #     externals = []
+    #     for component in self.netlist.components:
+    #         if (any(int(x) < 0 for x in component.nets)):
+    #             externals.append(component)
+    #     return externals
+
+
+
+
 
 
 def match_ports(net_id: int, component_list: List[SimulatedComponent]) -> list:
@@ -301,6 +318,11 @@ def match_ports(net_id: int, component_list: List[SimulatedComponent]) -> list:
         comp_idx += comp_idx
     
     return [comp_idx[0], net_idx[0], comp_idx[1], net_idx[1]]
+
+
+
+
+
 
 def connect_circuit(components: List[SimulatedComponent], net_count: int) -> SimulatedComponent:
     """
@@ -355,10 +377,18 @@ def connect_circuit(components: List[SimulatedComponent], net_count: int) -> Sim
     return component_list[0]
 
 
+
+
+
+
 class MathPrefixes:
     TERA = 1e12
     NANO = 1e-9
     c = 299792458
+
+
+
+
 
 
 class MonteCarloSimulation(Simulation):

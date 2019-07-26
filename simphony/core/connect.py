@@ -140,3 +140,4 @@ def innerconnect_s(A, k, l):
     C = npy.delete(C, (k, l), 2)
 
     return C
+    
