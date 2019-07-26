@@ -1,9 +1,11 @@
 import simphony.core as core
+from simphony.core import register_component_model
 
 import os
 import numpy as np
 from itertools import combinations_with_replacement as comb_w_r
 
+@register_component_model
 class ann_wg_integral(core.ComponentModel):
     ports = 2
     cachable = False
