@@ -1,6 +1,9 @@
 import pytest
+
+import os
 import copy
 import numpy as np
+
 import simphony.core as core
 import simphony.errors as errors
 import simphony.DeviceLibrary.ebeam as dev
@@ -62,21 +65,34 @@ class TestNetlist:
         nl = core.Netlist()
         nl.load(connections, formatter='ll')
 
-        for item in nl.components:
-            print(item.model)
-
         simu = sim.Simulation(nl)
-        import matplotlib.pyplot as plt
-        plt.subplot(221)
-        plt.plot(simu.freq_array, abs(simu.s_parameters()[:, 2, 0])**2)
-        plt.subplot(222)
-        plt.plot(simu.freq_array, abs(simu.s_parameters()[:, 2, 1])**2)
-        plt.subplot(223)
-        plt.plot(simu.freq_array, abs(simu.s_parameters()[:, 2, 2])**2)
-        plt.subplot(224)
-        plt.plot(simu.freq_array, abs(simu.s_parameters()[:, 2, 3])**2)
-        plt.suptitle("A4")
-        plt.show()
+
+        freq = simu.freq_array
+        two2zero = abs(simu.s_parameters()[:, 2, 0])**2
+        two2one = abs(simu.s_parameters()[:, 2, 1])**2
+        two2two = abs(simu.s_parameters()[:, 2, 2])**2
+        two2three = abs(simu.s_parameters()[:, 2, 3])**2
+
+        # np.savez('test_simphony_test_4Port_Circuit', freq=freq, two2zero=two2zero, two2one=two2one, two2two=two2two, two2three=two2three)
+        expected = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'benchmarks', 'test_simphony_test_4Port_Circuit.npz'))
+        
+        assert np.all(freq == expected['freq'])
+        assert np.all(two2zero == expected['two2zero'])
+        assert np.all(two2one == expected['two2one'])
+        assert np.all(two2two == expected['two2two'])
+        assert np.all(two2three == expected['two2three'])
+
+        # import matplotlib.pyplot as plt
+        # plt.subplot(221)
+        # plt.plot(freq, two2zero)
+        # plt.subplot(222)
+        # plt.plot(freq, two2one)
+        # plt.subplot(223)
+        # plt.plot(freq, two2two)
+        # plt.subplot(224)
+        # plt.plot(freq, two2three)
+        # plt.suptitle("A4")
+        # plt.show()
 
     def test_mzi(self):
         y1 = core.ComponentInstance(dev.ebeam_y_1550)
@@ -94,7 +110,29 @@ class TestNetlist:
         nl.load(con, formatter='ll')
         simu = sim.Simulation(nl)
 
-        import matplotlib.pyplot as plt
-        plt.plot(simu.freq_array, abs(simu.s_parameters()[:, 0, 1])**2)
-        plt.title("MZI")
-        plt.show()
+        freq = simu.freq_array
+        zero2zero = abs(simu.s_parameters()[:, 0, 0])**2
+        zero2one = abs(simu.s_parameters()[:, 0, 1])**2
+        one2zero = abs(simu.s_parameters()[:, 1, 0])**2
+        one2one = abs(simu.s_parameters()[:, 1, 1])**2
+
+        # np.savez('test_simphony_test_mzi', freq=freq, zero2zero=zero2zero, zero2one=zero2one, one2zero=one2zero, one2one=one2one)
+        expected = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'benchmarks', 'test_simphony_test_mzi.npz'))
+        
+        assert np.all(freq == expected['freq'])
+        assert np.all(zero2zero == expected['zero2zero'])
+        assert np.all(zero2one == expected['zero2one'])
+        assert np.all(one2zero == expected['one2zero'])
+        assert np.all(one2one == expected['one2one'])
+
+        # import matplotlib.pyplot as plt
+        # plt.subplot(221)
+        # plt.plot(freq, zero2zero)
+        # plt.subplot(222)
+        # plt.plot(freq, zero2one)
+        # plt.subplot(223)
+        # plt.plot(freq, one2zero)
+        # plt.subplot(224)
+        # plt.plot(freq, one2one)
+        # plt.suptitle("MZI")
+        # plt.show()
