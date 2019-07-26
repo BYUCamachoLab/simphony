@@ -10,8 +10,19 @@ from simphony.core import ComponentInstance, ComponentModel, Netlist
 from simphony.core.connect import connect_s, innerconnect_s
 
 
+class MathPrefixes:
+    TERA = 1e12
+    NANO = 1e-9
+    c = 299792458
 
-
+#
+#
+# INTERPOLATION FUNCTION
+#
+# Takes a set of (x, y) values, fits a curve to them, and resamples the curve
+# for some given set of points
+#
+#
 
 
 def interpolate(output_freq, input_freq, s_parameters):
@@ -38,8 +49,14 @@ def interpolate(output_freq, input_freq, s_parameters):
     return [output_freq, func(output_freq)]
 
 
-
-
+#
+#
+# SIMULATED COMPONENTS
+#
+# Classes and functions for storing the results of each component that is 
+# simulated.
+#
+#
 
 
 class SimulatedComponent:
@@ -79,9 +96,39 @@ class SimulatedComponent:
         self.f = freq
         self.s = s_parameters
 
+def component2simulated(component: ComponentInstance, cache: dict, extras: dict) -> SimulatedComponent:
+        """Converts a component into the simplified SimulatedComponent model.
+
+        This disregards what model a component is or any attributes it has
+        in favor of tracking just its nets, frequency range, and s-parameters.
+        S-parameters should already be the final, interpolated, calculated 
+        values.
+
+        If the component is not cachable, extras should provide all the
+        parameters necessary for the given component to calculate its 
+        s-parameters.
+
+        Parameters
+        ----------
+        component : ComponentInstance, optional
+            The component to instantiate a SimulatedComponent from.
+        """
+        logging.debug("Entering _component_converter()")
+        if component.model.component_type in cache:
+            return SimulatedComponent(component.nets, *cache[component.model.component_type])
+        else:
+            component.extras.update(extras)
+            return SimulatedComponent(component.nets, *component.get_s_parameters())
 
 
-
+#
+#
+# BASE SIMULATION STRUCTURE
+#
+# The main class and functions pertaining to operations that any type of 
+# simulation will invariably need.
+#
+#
 
 
 class Simulation:
@@ -106,10 +153,12 @@ class Simulation:
         num : int
             The number of points to be used between start_freq and stop_freq.
         """
-        self.netlist = netlist
-        self.start_freq = start_freq
-        self.stop_freq = stop_freq
-        self.num = num
+        self.netlist: Netlist = netlist
+        self.start_freq: float = start_freq
+        self.stop_freq: float = stop_freq
+        self.num: int = num
+        self.cache: dict = {}
+
         self._cache_models()
         self._cascade()
 
@@ -123,34 +172,10 @@ class Simulation:
         """Caches all models marked as `cachable` to avoid constant I/O 
         operations and in accordance with the DRY principle."""
         logging.debug("Entering _cache_models()")
-        self._cached = {}
         for component in self.netlist.components:
-            if component.model.component_type not in self._cached and component.model.cachable:
+            if component.model.component_type not in self.cache and component.model.cachable:
                 freq, s_parameters = interpolate(self.freq_array, *component.get_s_parameters())
-                self._cached[component.model.component_type] = (freq, s_parameters)
-
-    def _component_converter(self, component: ComponentInstance) -> SimulatedComponent:
-        """Converts a component into the simplified SimulatedComponent model.
-
-        This disregards what model a component is or any attributes it has
-        in favor of tracking just its nets, frequency range, and s-parameters.
-        S-parameters should already be the final, interpolated, calculated 
-        values.
-
-        Parameters
-        ----------
-        component : ComponentInstance, optional
-            The component to instantiate a SimulatedComponent from.
-        """
-        logging.debug("Entering _component_converter()")
-        if component.model.component_type in self._cached:
-            return SimulatedComponent(component.nets, *self._cached[component.model.component_type])
-        else:
-            component.extras['start_freq'] = self.start_freq
-            component.extras['stop_freq'] = self.stop_freq
-            component.extras['num'] = self.num
-            return SimulatedComponent(component.nets, *component.get_s_parameters())
-        pass
+                self.cache[component.model.component_type] = (freq, s_parameters)
 
     def _cascade(self):
         """Cascades all components together into a single SimulatedComponent.
@@ -158,94 +183,12 @@ class Simulation:
         This is essentially the function that performs the full simulation.
         """
         logging.debug("Entering _cascade()")
-        component_list = [self._component_converter(component) for component in self.netlist.components]
-        self.combined = self._rearrange(connect_circuit(component_list, self.netlist.net_count))
-
-    @staticmethod
-    def _rearrange_order(ports: List[int]):
-        """Determines what order the ports should be placed in after simulation.
-        
-        Ports are usually passed in as a scrambled list of negative integers.
-        This function returns a list containing indices corresponding to the
-        order in which the input list should be reordered to be sorted.
-
-        Parameters
-        ----------
-        ports : List[int]
-            A list of ports to be sorted.
-
-        Returns
-        -------
-        List[int]
-            Indices corresponding to how ports should be reordered.
-
-        Examples
-        --------
-        >>> list_a = [-3 -5 -2 -1 -4]
-        >>> list_b = _rearrange_order(list_a)
-        >>> list_b
-        [3, 2, 0, 4, 1]
-        """
-        logging.debug("Entering _rearrange_order()")
-        reordered = copy.deepcopy(ports)
-        reordered.sort(reverse = True)
-        logging.debug("Order: " + str(reordered))
-        return [ports.index(i) for i in reordered]
-
-    @classmethod
-    def _rearrange(cls, component: SimulatedComponent) -> SimulatedComponent:
-        """Rearranges the s-matrix of the simulated component according to its 
-        port ordering.
-
-        Parameters
-        ----------
-        component : SimulatedComponent
-            A component that has external ports and a calculated s-parameter
-            matrix.
-
-        Returns
-        -------
-        SimulatedComponent
-            A single component with its reordered s-matrix and new port list.
-        """
-        logging.debug("Entering _rearrange()")
-        concatenate_order = cls._rearrange_order(component.nets)
-        logging.debug(component.s)
-        s_params = cls._rearrange_matrix(component.s, concatenate_order)
-        logging.debug(s_params)
-        reordered_nets = [(-x - 1) for x in component.nets]
-        reordered_nets.sort()
-        return SimulatedComponent(nets=reordered_nets, freq=component.f, s_parameters=s_params)
-
-    @staticmethod
-    def _rearrange_matrix(s_matrix, concatenate_order: List[int]) -> np.ndarray:
-        """Reorders a matrix given a list mapping indices to columns.
-
-        S-matrices are indexed in the following manner:
-        matrix[frequency, input, output].
-
-        Parameters
-        ----------
-        s_matrix : np.ndarray
-            The s-matrix to be rearranged.
-        concatenate_order : List[int]
-            The index-to-column mapping. See `_rearrange`.
-
-        Returns
-        -------
-        np.ndarray
-            The reordered s-matrix.
-        """
-        logging.debug("Entering _rearrange_matrix()")
-        port_count = len(concatenate_order)
-        reordered_s = np.zeros(s_matrix.shape, dtype=complex)
-        for i in range(port_count):
-            for j in range(port_count):
-                x = concatenate_order[i]
-                y = concatenate_order[j]
-                logging.debug("(" + str(i) + ", " + str(j) + ") takes on the value of (" + str(x) + ", " + str(y) + ")")
-                reordered_s[:, i, j] = s_matrix[:, x, y]
-        return reordered_s
+        extras = {}
+        extras['start_freq'] = self.start_freq
+        extras['stop_freq'] = self.stop_freq
+        extras['num'] = self.num
+        component_list = [component2simulated(component, self.cache, extras) for component in self.netlist.components]
+        self.combined = rearrange(connect_circuit(component_list, self.netlist.net_count))
 
     def s_parameters(self):
         """Returns the s-parameters of the cascaded, simulated netlist.
@@ -276,10 +219,83 @@ class Simulation:
     #             externals.append(component)
     #     return externals
 
+def rearrange_order(ports: List[int]):
+    """Determines what order the ports should be placed in after simulation.
+    
+    Ports are usually passed in as a scrambled list of negative integers.
+    This function returns a list containing indices corresponding to the
+    order in which the input list should be reordered to be sorted.
 
+    Parameters
+    ----------
+    ports : List[int]
+        A list of ports to be sorted.
 
+    Returns
+    -------
+    List[int]
+        Indices corresponding to how ports should be reordered.
 
+    Examples
+    --------
+    >>> list_a = [-3 -5 -2 -1 -4]
+    >>> list_b = rearrange_order(list_a)
+    >>> list_b
+    [3, 2, 0, 4, 1]
+    """
+    logging.debug("Entering rearrange_order()")
+    reordered = copy.deepcopy(ports)
+    reordered.sort(reverse = True)
+    logging.debug("Order: " + str(reordered))
+    return [ports.index(i) for i in reordered]
 
+def rearrange(component: SimulatedComponent) -> SimulatedComponent:
+    """Rearranges the s-matrix of the simulated component according to its 
+    port ordering.
+
+    Parameters
+    ----------
+    component : SimulatedComponent
+        A component that has external ports and a calculated s-parameter
+        matrix.
+
+    Returns
+    -------
+    SimulatedComponent
+        A single component with its reordered s-matrix and new port list.
+    """
+    concatenate_order = rearrange_order(component.nets)
+    s_params = rearrange_matrix(component.s, concatenate_order)
+    reordered_nets = [(-x - 1) for x in component.nets]
+    reordered_nets.sort()
+    return SimulatedComponent(nets=reordered_nets, freq=component.f, s_parameters=s_params)
+
+def rearrange_matrix(s_matrix, concatenate_order: List[int]) -> np.ndarray:
+    """Reorders a matrix given a list mapping indices to columns.
+
+    S-matrices are indexed in the following manner:
+    matrix[frequency, input, output].
+
+    Parameters
+    ----------
+    s_matrix : np.ndarray
+        The s-matrix to be rearranged.
+    concatenate_order : List[int]
+        The index-to-column mapping. See `rearrange`.
+
+    Returns
+    -------
+    np.ndarray
+        The reordered s-matrix.
+    """
+    port_count = len(concatenate_order)
+    reordered_s = np.zeros(s_matrix.shape, dtype=complex)
+    for i in range(port_count):
+        for j in range(port_count):
+            x = concatenate_order[i]
+            y = concatenate_order[j]
+            reordered_s[:, i, j] = s_matrix[:, x, y]
+    return reordered_s
 
 def match_ports(net_id: int, component_list: List[SimulatedComponent]) -> list:
     """
@@ -318,10 +334,6 @@ def match_ports(net_id: int, component_list: List[SimulatedComponent]) -> list:
         comp_idx += comp_idx
     
     return [comp_idx[0], net_idx[0], comp_idx[1], net_idx[1]]
-
-
-
-
 
 
 def connect_circuit(components: List[SimulatedComponent], net_count: int) -> SimulatedComponent:
@@ -377,18 +389,14 @@ def connect_circuit(components: List[SimulatedComponent], net_count: int) -> Sim
     return component_list[0]
 
 
-
-
-
-
-class MathPrefixes:
-    TERA = 1e12
-    NANO = 1e-9
-    c = 299792458
-
-
-
-
+#
+#
+# OTHER SIMULATORS
+#
+# Other simulators, as they are coded, can be found in this section. They 
+# mostly inherit from the default simulator.
+#
+#
 
 
 class MonteCarloSimulation(Simulation):
