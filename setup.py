@@ -25,6 +25,7 @@ data_files_ext = [
     '.dat',
     '.txt',
     '.npy',
+    '.npz',
 ]
 
 def package_data_files(directory):
@@ -36,7 +37,7 @@ def package_data_files(directory):
                 paths.append(os.path.join('..', path, filename))
     return paths
 
-extra_files += package_data_files('simphony/DeviceLibrary/sparams')
+extra_files += package_data_files('simphony/DeviceLibrary')
 extra_files += ['*.ini']
 
 setuptools.setup(
