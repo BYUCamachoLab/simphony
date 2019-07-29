@@ -200,16 +200,16 @@ class Simulation:
         """
         return self.combined.s
 
-    # def external_ports(self):
-    #     """Returns a list of the external port numbers.
+    def external_ports(self):
+        """Returns a list of the external port numbers.
 
-    #     Returns
-    #     -------
-    #     List[int]
-    #         The external nets of the simulated netlist. These are positive
-    #         integers, corresponding to rows/columns of the netlist.
-    #     """
-    #     return self.combined.nets
+        Returns
+        -------
+        List[int]
+            The external nets of the simulated netlist. These are positive
+            integers, corresponding to rows/columns of the netlist.
+        """
+        return self.combined.nets
 
     # def external_components(self):
     #     # return [component for component in self.netlist.components if (any(int(x) < 0 for x in component.nets))]
@@ -424,8 +424,7 @@ class MonteCarloSimulation(Simulation):
     def monte_carlo_sim(self, num_sims: int=10, 
         mu_width: float=0.5, sigma_width: float=0.005, 
         mu_thickness: float=0.22, sigma_thickness: float=0.002, 
-        mu_length: float=1.0, sigma_length: float=0, 
-        timed=False, printer=None):
+        mu_length: float=1.0, sigma_length: float=0):
         """Runs a Monte Carlo simulation on the netlist and stores the results
         in an attribute called `results`.
 
@@ -446,14 +445,8 @@ class MonteCarloSimulation(Simulation):
             length, i.e. 50% -> 0.5).
         sigma_length : float, optional
             The standard deviation to use for altering the waveguide length.
-        timed : bool, optional
-            True if the simulation should be timed; False otherwise.
-        printer : Callable, optional
-            A function for returning messages to a user or program, such
-            as the simulation time.
         """
-        if timed:
-            start = time.time()
+        start = time.time()
 
         # Randomly generate variation in the waveguides.
         random_width = np.random.normal(mu_width, sigma_width, num_sims)
@@ -468,18 +461,15 @@ class MonteCarloSimulation(Simulation):
         for sim in range(num_sims):
             modified_netlist = copy.deepcopy(self.netlist)
             for component in modified_netlist.components:
-                if component.model.component_type == "ebeam_wg_integral_1550":
+                if component.model.component_type == "ann_wg_integral":
                     component.extras['width'] = random_width[sim]
                     component.extras['thickness'] = random_thickness[sim]
                     # TODO: Implement length monte carlo using random_deltaLength[sim]
             self.results[sim, :, :, :] = Simulation(modified_netlist, self.start_freq, self.stop_freq, self.num).s_parameters()
             
-        if timed:
-            stop = time.time()
-            if printer:
-                printer('Total simulation time: ' + str(stop-start) + ' seconds')
-
-        printer("Simulation complete.")
+        stop = time.time()
+        return (stop - start)
+                
 
     
 # class MultiInputSimulation(Simulation):
