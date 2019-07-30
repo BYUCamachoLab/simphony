@@ -10,10 +10,10 @@ from simphony.core import ComponentInstance, ComponentModel, Netlist
 from simphony.core.connect import connect_s, innerconnect_s
 
 
-class MathPrefixes:
-    TERA = 1e12
-    NANO = 1e-9
-    c = 299792458
+# class MathPrefixes:
+#     TERA = 1e12
+#     NANO = 1e-9
+#     c = 299792458
 
 #
 #
@@ -169,8 +169,8 @@ class Simulation:
         return np.linspace(self.start_freq, self.stop_freq, self.num)
 
     def _cache_models(self):
-        """Caches all models marked as `cachable` to avoid constant I/O 
-        operations and in accordance with the DRY principle."""
+        """Caches all models marked as `cachable=True` to avoid constant I/O 
+        operations and redundant calculations"""
         logging.debug("Entering _cache_models()")
         for component in self.netlist.components:
             if component.model.component_type not in self.cache and component.model.cachable:
@@ -200,6 +200,7 @@ class Simulation:
         """
         return self.combined.s
 
+    @property
     def external_ports(self):
         """Returns a list of the external port numbers.
 
@@ -211,6 +212,7 @@ class Simulation:
         """
         return self.combined.nets
 
+    # @property
     # def external_components(self):
     #     # return [component for component in self.netlist.components if (any(int(x) < 0 for x in component.nets))]
     #     externals = []
@@ -361,7 +363,7 @@ def connect_circuit(components: List[SimulatedComponent], net_count: int) -> Sim
     for n in range(0, net_count):
         ca, ia, cb, ib = match_ports(n, component_list)
 
-        #if pin occurances are in the same Cell
+        # If pin occurances are in the same component:
         if ca == cb:
             component_list[ca].s = innerconnect_s(component_list[ca].s, ia, ib)
             del component_list[ca].nets[ia]
@@ -370,7 +372,7 @@ def connect_circuit(components: List[SimulatedComponent], net_count: int) -> Sim
             else:
                 del component_list[ca].nets[ib]
 
-        #if pin occurances are in different Cells
+        # If pin occurances are in different components:
         else:
             combination = SimulatedComponent()
             combination.f = component_list[0].f
@@ -445,6 +447,11 @@ class MonteCarloSimulation(Simulation):
             length, i.e. 50% -> 0.5).
         sigma_length : float, optional
             The standard deviation to use for altering the waveguide length.
+
+        Returns
+        -------
+        time : int
+            The amount of time it took, in seconds, to complete the simulation.
         """
         start = time.time()
 
@@ -472,66 +479,61 @@ class MonteCarloSimulation(Simulation):
                 
 
     
-# class MultiInputSimulation(Simulation):
-#     def __init__(self, netlist):
-#         super().__init__(netlist)
+class MultiInputSimulation(Simulation):
+    """A simulator that models sweeping multiple inputs simultaneously by 
+    performing algebraic operations on the simulated, cascaded s-parameter
+    matrix.
+    """
+    def __init__(self, netlist):
+        """Initializes the MultiInputSimulation with a Netlist and runs a 
+        single simulation for the "ideal," pre-modified model.
 
-#     def multi_input_simulation(self, inputs: list=[]):
-#         """
-#         Parameters
-#         ----------
-#         inputs : list
-#             A 0-indexed list of the ports to be used as inputs.
-#         """
-#         active = [0] * len(self.ports)
-#         for val in inputs:
-#             active[val] = 1
-#         self.simulated_matrix = self._measure_s_matrix(active)
+        Parameters
+        ----------
+        netlist : Netlist
+            The netlist to be simulated.
+        """
+        super().__init__(netlist)
 
-#     def _measure_s_matrix(self, inputs):
-#         num_ports = len(inputs)
-#         inputs = np.array(inputs)
-#         out = np.zeros([len(self.frequency), num_ports], dtype='complex128')
-#         for i in range(len(self.frequency)):
-#             out[i, :] = np.dot(np.reshape(self.s_matrix[i, :, :], [num_ports, num_ports]), inputs.T)
-#         return out
+    def multi_input_simulation(self, inputs: list=[]):
+        """Given a list of ports to use as inputs, calculates the response
+        of the circuit for all ports. Results are stored as an attribute and
+        can be accessed by retrieving `.simulated_matrix` from the simulation
+        object.
 
-#     def plot(self, output_port):
-#         plt.figure()
-#         plt.plot(*self.get_magnitude_by_frequency_thz(output_port))
-#         plt.title('Multi-Input Simulation')
-#         plt.xlabel('Frequency (THz)')
-#         plt.ylabel('Gain (dB)')
-#         plt.draw()
-#         plt.show()
+        Parameters
+        ----------
+        inputs : list
+            A 0-indexed list of the ports to be used as inputs.
+        """
+        active = [0] * len(self.external_ports)
+        for val in inputs:
+            active[val] = 1
+        self.simulated_matrix = self._measure_s_matrix(active)
 
-#     def get_magnitude_by_frequency_thz(self, output_port):
-#         """
-#         Parameters
-#         ----------
-#         output_port : int
-#             Gets the values at that output port (0-indexed).
-#         """
-#         freq = np.divide(self.frequency, MathPrefixes.TERA)
-#         mag = np.power(np.absolute(self.simulated_matrix[:, output_port]), 2)
-#         return freq, mag
+    def _measure_s_matrix(self, inputs):
+        """Performs the algebra for simulating multiple inputs.
 
-#     def get_magnitude_by_wavelength_nm(self, output_port):
-#         """
-#         Parameters
-#         ----------
-#         output_port : int
-#             Gets the values at that output port (0-indexed).
-#         """
-#         wl = self.frequencyToWavelength(self.frequency) / MathPrefixes.NANO
-#         mag = np.power(np.absolute(self.simulated_matrix[:, output_port]), 2)
-#         return wl, mag
+        Parameters
+        ----------
+        inputs : list
+            A list with length equal to the number of rows/columns of the 
+            s-parameter matrix (corresponds to the number of external ports). 
+            Port indices with a '0' are considered "off," where ports indices
+            that store a '1' correspond to an active laser input.
+        """
+        num_ports = len(inputs)
+        inputs = np.array(inputs)
+        out = np.zeros([len(self.freq_array), num_ports], dtype='complex128')
+        for i in range(len(self.freq_array)):
+            out[i, :] = np.dot(np.reshape(self.s_parameters()[i, :, :], [num_ports, num_ports]), inputs.T)
+        return out
 
-#     def export_s_matrix(self):
-#         """Returns the matrix result of the multi-input simulation.
+    def export_s_matrix(self):
+        """Returns the matrix result of the multi-input simulation.
 
-#         Returns
-#         -------
-#         frequency, matrix: np.array, np.ndarray
-#         """
-#         return self.frequency, self.simulated_matrix
+        Returns
+        -------
+        frequency, matrix: np.array, np.ndarray
+        """
+        return self.freq_array, self.simulated_matrix
