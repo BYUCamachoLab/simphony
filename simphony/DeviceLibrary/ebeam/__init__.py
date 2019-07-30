@@ -40,11 +40,11 @@ class ebeam_wg_integral_1550(core.ComponentModel):
     
     @classmethod
     def s_parameters(cls, 
-                    length=0, 
-                    points = [],
-                    start_freq=1.88e+14,
-                    stop_freq=1.99e+14,
-                    num=2000,
+                    length: float=0, 
+                    points: list = [],
+                    start_freq: float=1.88e+14,
+                    stop_freq: float=1.99e+14,
+                    num: int=2000,
                     **kwargs):
         """Get the s-parameters of a waveguide.
 
@@ -53,24 +53,42 @@ class ebeam_wg_integral_1550(core.ComponentModel):
         length: float   
             Length of the waveguide.
         points: list
+            The points that define the waveguide's path.
         start_freq: float
+            The starting frequency to obtain s-parameters for.
         stop_freq: float
+            The ending frequency to obtain s-parameters for.
         num: int
             The number of points to use between start_freq and stop_freq.
+        **kwargs : None
+            This is a redundancy in case other parameters are included which
+            are unnecessary for calculating the result.
+
+        Returns
+        -------
+        (frequency, s) : tuple
+            Returns a tuple containing the frequency array, `frequency`, 
+            corresponding to the calculated s-parameter matrix, `s`.
         """
         frequency = np.linspace(start_freq, stop_freq, num)
         return cls.lumerical_s_params(frequency, length)
 
     @staticmethod
-    def lumerical_s_params(frequency, length):
-        '''
-        Calculates waveguide s-parameters based on the SiEPIC compact model for waveguides
-        Args:
-            None
-            frequency (frequency array) and self.wglen (waveguide length) are used to calculate the s-parameters
-        Returns:
-            None
-            self.s becomes the s-matrix calculated by this function        
+    def lumerical_s_params(frequency, length: float):
+        '''Calculates waveguide s-parameters based on the SiEPIC compact model for waveguides
+
+        Parameters
+        ----------
+        frequency : np.array
+            The frequency array for which to calculate s-parameters.
+        length : float   
+            Length of the waveguide.
+
+        Returns
+        -------
+        (frequency, s) : tuple
+            Returns a tuple containing the frequency array, `frequency`, 
+            corresponding to the calculated s-parameter matrix, `s`.    
         '''
         # Using file that assumes width 500nm and height 220nm
         filename = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', "WaveGuideTETMStrip,w=500,h=220.txt")

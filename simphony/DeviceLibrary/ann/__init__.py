@@ -7,21 +7,25 @@ from itertools import combinations_with_replacement as comb_w_r
 
 @register_component_model
 class ann_wg_integral(core.ComponentModel):
+    """Neural-net trained model of a waveguide.
+    """
     ports = 2
     cachable = False
     
+    # TODO: Remove the delta_length part of this model; should be implemented
+    # only in the simphony.simulation.MonteCarloSimulation part of the program
     @classmethod
     def s_parameters(cls, 
-                    length=0, 
-                    width=0.5, 
-                    thickness=0.22, 
-                    radius=5, 
-                    delta_length=0, 
-                    points = [],
-                    start_freq=1.88e+14,
-                    stop_freq=1.99e+14,
-                    num=2000):
-        """Get the s-parameters of a waveguide.
+                    length: float=0, 
+                    width: float=0.5, 
+                    thickness: float=0.22, 
+                    radius: float=5, 
+                    delta_length: float=0, 
+                    points: list = [],
+                    start_freq: float=1.88e+14,
+                    stop_freq: float=1.99e+14,
+                    num: int=2000):
+        """Get the s-parameters of a parameterized waveguide.
 
         Parameters
         ----------
@@ -34,12 +38,21 @@ class ann_wg_integral(core.ComponentModel):
         radius: float   
             Bend radius of bends in the waveguide.
         delta_length: float     
-            Only used in monte carlo simulations.
+            Only used in monte carlo simulations to randomly vary length.
         points: list
+            The points denoting the path of the waveguide.
         start_freq: float
+            The starting frequency to obtain s-parameters for.
         stop_freq: float
+            The ending frequency to obtain s-parameters for.
         num: int
             The number of points to use between start_freq and stop_freq.
+
+        Returns
+        -------
+        (frequency, s) : tuple
+            Returns a tuple containing the frequency array, `frequency`, 
+            corresponding to the calculated s-parameter matrix, `s`.
         """
         frequency = np.linspace(start_freq, stop_freq, num)
         return cls.ann_s_params(frequency, length, width, thickness, delta_length)
@@ -97,15 +110,26 @@ class ann_wg_integral(core.ComponentModel):
         return polyCombos@coeffs 
 
     @staticmethod
-    def ann_s_params(frequency, length, width, thickness, delta_length, **kwargs):
+    def ann_s_params(frequency, length: float, width: float, thickness: float, delta_length: float, **kwargs):
         '''
         Function that calculates the s-parameters for a waveguide using the ANN model
-        Args:
-            None
-            frequency (frequency array) and length (waveguide length) are used to calculate the s-parameters
-        Returns:
-            None
-            self.s becomes the s-matrix calculated by this function
+
+        Parameters
+        ----------
+        frequency : np.array
+        length : float
+        width : float
+        thickness : float
+        delta_length : float
+        **kwargs : None
+            This is a redundancy in case other parameters are included which
+            are unnecessary for calculating the result.
+
+        Returns
+        -------
+        (frequency, s) : tuple
+            Returns a tuple containing the frequency array, `frequency`, 
+            corresponding to the calculated s-parameter matrix, `s`.
         '''
 
         mat = np.zeros((len(frequency),2,2), dtype=complex)        

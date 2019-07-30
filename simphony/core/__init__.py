@@ -1,7 +1,7 @@
 
-from .base import *
-from .netlist import *
-from . import connect
+from simphony.core.base import *
+from simphony.core.netlist import *
+from simphony.core import connect
 
 import numpy as np
 
@@ -10,6 +10,22 @@ from simphony.errors import *
 models = {}
 
 def register_component_model(cls):
+    """Registers a component model with simphony.core.
+    
+    This allows the program to track models and prevent duplicate names. 
+    This also allows all imported models to be accessible throughout the 
+    lifetime of the program simply by referencing their class name.
+    When classes are registered, simple error checking is performed to ensure
+    all required properties are present and that the model will not cause
+    problems later in the simulation.
+
+    This function is usually used as a decorator to a model class.
+
+    Parameters
+    ----------
+    cls : class
+        The component model class to be registered.
+    """
     # Check the definition of ports
     if not cls.ports > 0:
         raise PortError(cls.__name__)
@@ -37,4 +53,11 @@ def register_component_model(cls):
     return cls
         
 def deregister_component_model(name):
+    """Deregisters a component model from simphony.core.
+
+    This method is provided in case a model was created but needs to be
+    updated, overridden, or deleted. For example, if two models have
+    the same name, the one you don't want to use should be deregistered (since
+    registered model names must be unique).
+    """
     models.pop(name)

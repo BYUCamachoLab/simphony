@@ -1,7 +1,3 @@
-# netlist.py
-
-# This file contains everything related to netlist generation and modeling.
-
 from typing import List
 
 from simphony.core import ComponentModel, ComponentInstance
@@ -39,8 +35,8 @@ class Netlist:
         components : List[ComponentInstance]
             A list of pre-initialized components.
         """
-        self._internal_net = -1
-        self._external_net = 0
+        self._internal_net = 0
+        self._external_net = -1
         self.components = [] if components is None else components
 
     # def get_external_components(self):
@@ -68,8 +64,9 @@ class Netlist:
         int
             The next available internal net ID number.
         """
+        nextnet = self._internal_net
         self._internal_net += 1
-        return self._internal_net
+        return nextnet
 
     def _next_external(self):
         """Returns the next available external net ID number.
@@ -79,8 +76,9 @@ class Netlist:
         int
             The next available external net ID number.
         """
+        nextnet = self._external_net
         self._external_net -= 1
-        return self._external_net
+        return nextnet
 
     def load(self, data, formatter='ll'):
         """Loads formatted component data into a netlist.
