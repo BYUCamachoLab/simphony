@@ -1,7 +1,8 @@
 from typing import List
 
 from simphony.core import ComponentModel, ComponentInstance
-from simphony.core import connect as rf
+# TODO: Remove unnecessary import after testing
+# from simphony.core import connect as rf
 
 class Netlist:
     """Represents a netlist.

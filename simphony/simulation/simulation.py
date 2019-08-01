@@ -10,6 +10,7 @@ from simphony.core import ComponentInstance, ComponentModel, Netlist
 from simphony.core.connect import connect_s, innerconnect_s
 
 
+# TODO: Remove unnecessary class
 # class MathPrefixes:
 #     TERA = 1e12
 #     NANO = 1e-9
