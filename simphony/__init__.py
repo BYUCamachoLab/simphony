@@ -1,22 +1,18 @@
 """Simphony Photonic Simulator
 
-This module implements a free and open source photonic integrated circuit (PIC)
-simulation engine. It is speedy and easily extensible.
+This module implements a free (as in speech) and open source
+photonic integrated circuit (PIC) simulation engine. 
+It is speedy and easily extensible.
 """
 
 name = "simphony"
 from simphony._version import __version__
 __author__ = 'Sequoia Ploeg, Hyrum Gunther'
 
-"""
-components.py handles the importing of default elements and external component
-libraries.
-"""
-
 __all__ = [
     'core',
-    # 'DeviceLibrary',
     'simulation',
+    # 'DeviceLibrary',
 ]
 
 from . import *
