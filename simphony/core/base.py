@@ -1,7 +1,9 @@
 from importlib import import_module
-from typing import List, Dict, Union
+from typing import Dict, List, Union
+
 import numpy
 from simphony.errors import DuplicateModelError
+
 
 class classproperty(object):
     """Read-only @classproperty decorator. Allows using class names for models
@@ -49,23 +51,25 @@ class ComponentModel:
     Creation of a cachable component model:
 
     >>> @register_component_model
-    ... class RingResonator:
+    ... class RingResonator(ComponentModel):
     ...     ports = 4
     ...     s_parameters = s_params
     ...     cachable = True
 
     Creation of a non-cachable component model:
 
-    >>> def new_s_parameters(self, length, width, thickness):
+    >>> def new_s_parameters(self, length, width, thickness, **kwargs):
     ...     # return some calculation based on parameters
     >>> @register_component_model
-    ... class Waveguide:
+    ... class Waveguide(ComponentModel):
+    ...     ports = 2
     ...     s_parameters = new_s_parameters
     ...     cachable = False
 
     >>> @register_component_model
-    ... class Waveguide:
-    ...     def s_parameters(self, length, width, thickness):
+    ... class Waveguide(ComponentModel):
+    ...     ports = 2
+    ...     def s_parameters(self, length, width, thickness, **kwargs):
     ...         # return some calculation based on parameters
     ...     cachable = False
     """
@@ -115,7 +119,7 @@ class ComponentModel:
                 raise NotImplementedError("Class is not cachable and s_parameters is not a function.")
 
 
-class ComponentInstance():
+class ComponentInstance:
     """Create an instance in a circuit of an existing ComponentModel.
 
     An ComponentInstance is a representation of an unique instance of a device 
