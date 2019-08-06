@@ -18,10 +18,27 @@ def w2f(wavelength):
 
 plt.figure()
 
-lum = parse_lumerical_output('MZIseries1_LUMdata_mag')
-sim = load_simphony_output('MZIseries1_SIMdata_mag.npz')
-sim = sim['lines'].item()
-sim = np.vstack((sim['x_0_to_1'], sim['y_0_to_1'])).T
+for i in range(1, 5):
+    lum = parse_lumerical_output('MZIseries' + str(i) + '_LUMdata_mag')
+    sim = load_simphony_output('MZIseries' + str(i) + '_SIMdata_mag.npz')
+    sim = sim['lines'].item()
+    sim = np.vstack((sim['x_0_to_1'], sim['y_0_to_1'])).T
 
-sim[:,0] = f2w(sim[:,0])
-plt.plot()
+    sim[:,0] = f2w(sim[:,0]) / 1e3
+
+    plt.plot(lum[:,0], lum[:,1])
+    plt.plot(sim[:,0], sim[:,1])
+    plt.show()
+
+for i in range(1, 5):
+    lum = parse_lumerical_output('MZIseries' + str(i) + '_LUMdata_phase')
+    sim = load_simphony_output('MZIseries' + str(i) + '_SIMdata_phase.npz')
+    sim = sim['lines'].item()
+    sim = np.vstack((sim['x_0_to_1'], sim['y_0_to_1'])).T
+
+    sim[:,0] = f2w(sim[:,0]) / 1e3
+
+    plt.plot(lum[:,0], lum[:,1])
+    plt.plot(sim[:,0], sim[:,1])
+    plt.plot(lum[:,0], lum[:,1] - sim[:,1])
+    plt.show()
