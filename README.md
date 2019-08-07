@@ -21,7 +21,8 @@ s-parameters with the classes, without so many file i/o and parsing algorithms.
 This package is still under development. It initially began as an extension to
 [SiEPIC-Tools](https://github.com/lukasc-ubc/SiEPIC-Tools), but was ported here
 once it became large enough to be considered its own stand-alone project. There
-is a repository, [SiEPIC-Simphony](https://github.com/sequoiap/SiEPIC-Simphony),
+is a repository forked from lukasc-ubc/SiEPIC-Tools, 
+[SiEPIC-Tools](https://github.com/sequoiap/SiEPIC-Tools),
 that integrates Simphony with SiEPIC-Tools and KLayout in order to perform 
 photonic circuit simulations using a layout-driven design methodology.
 
@@ -37,7 +38,7 @@ Python 2 (January 1, 2020), no future compatability is planned.
 ## Documentation
 
 Documentation is built on Sphinx. They can be built using the default files by 
-navigation to the docs directory and running:
+navigating to the docs directory and running:
 
 ```
 make html
@@ -47,9 +48,9 @@ The docs are written in reST. There is a nice syntax guide with guidelines that
 we follow in the documentation 
 [here](https://thomas-cokelaer.info/tutorials/sphinx/rest_syntax.html). The 
 majority of the documentation is generated from python docstrings written using
-NumPy documentation format.
+the NumPy documentation format.
 
-The changelogs can be found in docs/changelog/. There is a changelog file for 
+Changelogs can be found in docs/changelog/. There is a changelog file for 
 each released version of the software.
 
 ## Tests
@@ -66,7 +67,7 @@ from the toplevel directory.
 ## Developers
 
 This package is available on PyPI and updates are regularly pushed as "minor" 
-or "micro" versions. Before submitting any pull requests, however, you should 
+or "micro" (patch) versions. Before submitting any pull requests, however, you should 
 ensure that a pip installation of your updated package installs and functions 
 properly. To test this, try installing your package locally by removing all 
 installed versions of Simphony (by running ```pip uninstall simphony``` 
@@ -94,7 +95,7 @@ is released on PyPI, the package should have a pull request opened to its
 corresponding release branch (release-MAJOR.MINOR.x). The hierarchy is then
 as follows:
 
-- release.* (stable branch)
+- release-*.*.x (stable branch)
 - master (integration and final testing)
 - feature-name (feature development and bug fixes)
 
@@ -102,8 +103,9 @@ Even if you are the lone developer, we follow the methodology [here](https://sof
 
 Be sure to update the version number manually before pushing each new version 
 to PyPI. Also be sure to amend the changelog. Versions can be pushed to PyPI 
-using the command:
+using the commands:
 
 ```
+python3 setup.py sdist bdist_wheel
 python3 -m twine upload dist/*
 ```
