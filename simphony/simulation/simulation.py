@@ -1,6 +1,7 @@
 
 import copy
 import time
+from datetime import timedelta
 from typing import List, Callable
 import logging
 
@@ -154,8 +155,13 @@ class Simulation:
         self.num: int = num
         self.cache: dict = {}
 
+        logging.info("Starting simulation...")
+        start = time.time()
         self._cache_models()
         self._cascade()
+        stop = time.time()
+        logging.info("Simulation complete.")
+        logging.info("Total simulation time: " + str(timedelta(seconds=(stop - start))))
 
     @property
     def freq_array(self):
