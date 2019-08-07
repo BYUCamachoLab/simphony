@@ -29,6 +29,7 @@ plt.figure()
 
 def compare_magnitudes():
     for i in range(1, 5):
+        plt.subplot(2, 2, i)
         lum = parse_lumerical_output('MZIseries' + str(i) + '_LUMdata_mag')
         sim = load_simphony_output('MZIseries' + str(i) + '_SIMdata_mag.npz')
         sim = sim['lines'].item()
@@ -38,10 +39,13 @@ def compare_magnitudes():
 
         plt.plot(lum[:,0], lum[:,1])
         plt.plot(sim[:,0], sim[:,1])
-        plt.show()
+        plt.title("MZIseries" + str(i))
+    plt.tight_layout()
+    plt.show()
 
 def compare_phases():
     for i in range(1, 5):
+        plt.subplot(2,2,i)
         lum = parse_lumerical_output('MZIseries' + str(i) + '_LUMdata_phase')
         sim = load_simphony_output('MZIseries' + str(i) + '_SIMdata_phase.npz')
         sim = sim['lines'].item()
@@ -52,14 +56,16 @@ def compare_phases():
         plt.plot(lum[:,0], lum[:,1])
         plt.plot(sim[:,0], sim[:,1])
 
-        lin = np.linspace(1520, 1580)
+        lin = np.linspace(1520, 1580, num=150)
         lum_idxs = find_nearest(lum[:,0], lin)
         sim_idxs = find_nearest(sim[:,0], lin)
         
         lum = lum[lum_idxs, :]
         sim = sim[sim_idxs, :]
         plt.plot(lum[:,0], lum[:,1] - sim[:,1])
-        plt.show()
+        plt.title("MZIseries" + str(i))
+    plt.tight_layout()
+    plt.show()
 
 compare_magnitudes()
 compare_phases()
