@@ -71,10 +71,10 @@ class ebeam_wg_integral_1550(core.ComponentModel):
             corresponding to the calculated s-parameter matrix, `s`.
         """
         frequency = np.linspace(start_freq, stop_freq, num)
-        return cls.lumerical_s_params(frequency, length)
+        return cls.lumerical_s_params(frequency, length, **kwargs)
 
     @staticmethod
-    def lumerical_s_params(frequency, length: float):
+    def lumerical_s_params(frequency, length: float, ne: float=None, ng: float=None, nd: float=None, **kwargs):
         '''Calculates waveguide s-parameters based on the SiEPIC compact model for waveguides
 
         Parameters
@@ -110,9 +110,9 @@ class ebeam_wg_integral_1550(core.ComponentModel):
         lam0 = float(coeffs[0]) #center wavelength
         w0 = (2*np.pi*c0) / lam0 #center frequency (angular)
         
-        ne = float(coeffs[1]) #effective index
-        ng = float(coeffs[3]) #group index
-        nd = float(coeffs[5]) #group dispersion
+        ne = float(coeffs[1]) if ne is None else ne #effective index
+        ng = float(coeffs[3]) if ng is None else ng #group index
+        nd = float(coeffs[5]) if nd is None else nd #group dispersion
         
         #calculation of K
         K = 2*np.pi*ne/lam0 + (ng/c0)*(w - w0) - (nd*lam0**2/(4*np.pi*c0))*((w - w0)**2)
