@@ -74,7 +74,7 @@ class ebeam_wg_integral_1550(core.ComponentModel):
         return cls.lumerical_s_params(frequency, length, **kwargs)
 
     @staticmethod
-    def lumerical_s_params(frequency, length: float, ne: float=None, ng: float=None, nd: float=None, **kwargs):
+    def lumerical_s_params(frequency, length: float, lam0: float=None, ne: float=None, ng: float=None, nd: float=None, **kwargs):
         '''Calculates waveguide s-parameters based on the SiEPIC compact model for waveguides
 
         Parameters
@@ -107,7 +107,7 @@ class ebeam_wg_integral_1550(core.ComponentModel):
         alpha = TE_loss/(20*np.log10(np.exp(1)))  
 
         w = np.asarray(frequency) * 2 * np.pi #get angular frequency from frequency
-        lam0 = float(coeffs[0]) #center wavelength
+        lam0 = float(coeffs[0]) if lam0 is None else lam0 #center wavelength
         w0 = (2*np.pi*c0) / lam0 #center frequency (angular)
         
         ne = float(coeffs[1]) if ne is None else ne #effective index
