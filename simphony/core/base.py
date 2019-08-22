@@ -145,12 +145,12 @@ class ComponentInstance:
 
         Parameters
         ----------
-        model: ComponentModel
+        model
             The model this instance is based on.
-        nets : list(int), optional
+        nets
             A list of all port connections (required to be integers). If not
             specified, Netlist will assign them automatically.
-        extras : dict, optional
+        extras
             A dictionary of optional arguments (and their values) that the 
             model may require for calculating s-parameters. For example, 
             length is unique to each waveguide and would therefore be 
