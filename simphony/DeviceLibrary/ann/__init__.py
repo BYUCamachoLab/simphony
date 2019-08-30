@@ -5,6 +5,7 @@ import SiPANN.dc as dc
 import os
 import numpy as np
 from itertools import combinations_with_replacement as comb_w_r
+from SiPANN import dc
 
 @register_component_model
 class ann_wg_integral(core.ComponentModel):
@@ -201,7 +202,6 @@ class sipann_dc_straight(core.ComponentModel):
         start_wl = c * 10**9 / stop_freq
         stop_wl  = c * 10**9 / start_freq
         wl       = np.linspace(start_wl, stop_wl, num)
-        
         item = dc.Straight(width, thickness, gap, length)
         return item.sparams(wl)
     
