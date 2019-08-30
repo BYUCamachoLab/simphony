@@ -1,6 +1,7 @@
 import simphony.core as core
 from simphony.core import register_component_model
 
+import SiPANN.dc as dc
 import os
 import numpy as np
 from itertools import combinations_with_replacement as comb_w_r
@@ -169,7 +170,7 @@ class sipann_dc_straight(core.ComponentModel):
                     width: float=0.5, 
                     thickness: float=0.22,
                     gap: float=0.1,
-                    sw_angle: float=90
+                    sw_angle: float=90,
                     start_freq: float=1.88e+14,
                     stop_freq: float=1.99e+14,
                     num: int=2000):
@@ -199,7 +200,7 @@ class sipann_dc_straight(core.ComponentModel):
         c = 299792458
         start_wl = c * 10**9 / stop_freq
         stop_wl  = c * 10**9 / start_freq
-        wl       = np.linspace(start_wl, stop_wl)
+        wl       = np.linspace(start_wl, stop_wl, num)
         
         item = dc.Straight(width, thickness, gap, length)
         return item.sparams(wl)
@@ -217,8 +218,8 @@ class sipann_dc_halfracetrack(core.ComponentModel):
                     width: float=0.5, 
                     thickness: float=0.22,
                     gap: float=0.1,
-                    radius: float=10
-                    sw_angle: float=90
+                    radius: float=10,
+                    sw_angle: float=90,
                     start_freq: float=1.88e+14,
                     stop_freq: float=1.99e+14,
                     num: int=2000):
@@ -250,7 +251,7 @@ class sipann_dc_halfracetrack(core.ComponentModel):
         c = 299792458
         start_wl = c * 10**9 / stop_freq
         stop_wl  = c * 10**9 / start_freq
-        wl       = np.linspace(start_wl, stop_wl)
+        wl       = np.linspace(start_wl, stop_wl, num)
         
         item = dc.Racetrack(width, thickness, radius, gap, length)
         return item.sparams(wl)
@@ -267,8 +268,8 @@ class sipann_dc_halfring(core.ComponentModel):
                     width: float=0.5, 
                     thickness: float=0.22,
                     gap: float=0.1,
-                    radius: float=10
-                    sw_angle: float=90
+                    radius: float=10,
+                    sw_angle: float=90,
                     start_freq: float=1.88e+14,
                     stop_freq: float=1.99e+14,
                     num: int=2000):
@@ -298,7 +299,7 @@ class sipann_dc_halfring(core.ComponentModel):
         c = 299792458
         start_wl = c * 10**9 / stop_freq
         stop_wl  = c * 10**9 / start_freq
-        wl       = np.linspace(start_wl, stop_wl)
+        wl       = np.linspace(start_wl, stop_wl, num)
         
         item = dc.RR(width, thickness, radius, gap)
         return item.sparams(wl)
