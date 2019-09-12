@@ -108,6 +108,11 @@ def component2simulated(component: ComponentInstance, cache: dict, extras: dict)
         ----------
         component : ComponentInstance, optional
             The component to instantiate a SimulatedComponent from.
+        cache : dict
+            The dictionary containing the cache of components to s-parameters.
+        extras : dict
+            The dictionary containing parameters required for the calculation
+            of a given non-cachable component's s-parameters.
         """
         logging.debug("Entering _component_converter()")
         if component.model.component_type in cache:
