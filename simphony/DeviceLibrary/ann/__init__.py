@@ -488,7 +488,7 @@ class sipann_dc_arbitrarysym(core.ComponentModel):
         gap:        function  Gap between the two waveguides as a function of z (in nm for now)
         dgap:       function  Derivative of above gap function (in nm for now)
         zmin:       float  Beginning of dc in gap function (also in nm)
-        zmax:       foat   End of dc in gap function (also in nm)
+        zmax:       float  End of dc in gap function (also in nm)
         sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90)
         start_freq: float  The starting frequency to obtain s-parameters for.
         stop_freq:  float  The ending frequency to obtain s-parameters for.
@@ -509,4 +509,55 @@ class sipann_dc_arbitrarysym(core.ComponentModel):
         wl       = np.linspace(start_wl, stop_wl, num)
         
         item = dc.GapFuncSymmetric(width, thickness, gap, dgap, zmin, zmax)
+        return item.sparams(wl)
+    
+class sipann_dc_arbitraryantisym(core.ComponentModel):
+    """Regression Based form of any directional coupler provided gap function
+    """
+    ports = 4
+    cachable = False
+
+    @classmethod
+    def s_parameters(cls,
+                    gap: callable,
+                    zmin: float,
+                    zmax: float,
+                    arc_l: float,
+                    arc_u: float,
+                    width: float=0.5, 
+                    thickness: float=0.22,
+                    sw_angle: float=90,
+                    start_freq: float=1.88e+14,
+                    stop_freq: float=1.99e+14,
+                    num: int=2000):
+        """Get the s-parameters of a parameterized waveguide.
+        Parameters
+        ----------
+        width:      float  Width of the waveguide in microns. 
+        thickness:  float  Thickness of the waveguide in microns.
+        gap:        function  Gap between the two waveguides as a function of z (in nm for now)
+        zmin:       float  Beginning of dc in gap function (also in nm)
+        zmax:       float  End of dc in gap function (also in nm)
+        arc_l:      float  Arc length of lower waveguide
+        arc_u:      float  Arc length of upper waveguide
+        sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90)
+        start_freq: float  The starting frequency to obtain s-parameters for.
+        stop_freq:  float  The ending frequency to obtain s-parameters for.
+        num:        int    The number of points to use between start_freq and stop_freq.
+        Returns
+        -------
+        (frequency, s) : tuple
+            Returns a tuple containing the frequency array, `frequency`, 
+            corresponding to the calculated s-parameter matrix, `s`."""
+        #resize everything to nms
+        width     = width*1000
+        thickness = thickness*1000
+                
+        #switch to wavelength
+        c = 299792458
+        start_wl = c * 10**9 / stop_freq
+        stop_wl  = c * 10**9 / start_freq
+        wl       = np.linspace(start_wl, stop_wl, num)
+        
+        item = dc.GapFuncAntiSymmetric(width, thickness, gap, zmin, zmax, arc_l, arc_u)
         return item.sparams(wl)
