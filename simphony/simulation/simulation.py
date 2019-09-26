@@ -367,6 +367,7 @@ def connect_circuit(components: List[SimulatedComponent], net_count: int) -> Sim
     """
     component_list = copy.deepcopy(components)
     for n in range(0, net_count):
+        logging.debug("Entering pass {} of {}".format(n, net_count))
         ca, ia, cb, ib = match_ports(n, component_list)
 
         # If pin occurances are in the same component:
