@@ -22,7 +22,7 @@ photonic circuit simulations using a layout-driven design methodology.
 Simphony can be installed via pip using Python 3:
 
 ```
-pip install simphony
+python3 -m pip install simphony
 ```
 
 Please note that Python 2 is not supported. With the looming deprecation of
@@ -63,13 +63,13 @@ This package is available on PyPI and updates are regularly pushed as "minor"
 or "micro" (patch) versions. Before submitting any pull requests, however, you should 
 ensure that a pip installation of your updated package installs and functions 
 properly. To test this, try installing your package locally by removing all 
-installed versions of Simphony (by running ```pip uninstall simphony``` 
+installed versions of Simphony (by running ```pip3 uninstall simphony``` 
 repeatedly until no installations remain) and running the following commands 
 (from Simphony's toplevel directory):
 
 ```
 python3 setup.py sdist bdist_wheel
-pip install dist/simphony-[VERSION].tar.gz
+pip3 install dist/simphony-[VERSION].tar.gz
 ```
 ## Contributing
 
