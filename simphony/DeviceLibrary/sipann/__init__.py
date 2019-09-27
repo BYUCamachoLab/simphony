@@ -7,6 +7,10 @@ from itertools import combinations_with_replacement as comb_w_r
 from scipy import special
 from SiPANN import dc
 
+from numba import njit
+import ctypes
+from numba.extending import get_cython_function_address
+
 @register_component_model
 class sipann_wg_integral(core.ComponentModel):
     """Neural-net trained model of a waveguide.
@@ -585,18 +589,31 @@ class sipann_dc_crossover1550(core.ComponentModel):
         (frequency, s) : tuple
             Returns a tuple containing the frequency array, `frequency`, 
             corresponding to the calculated s-parameter matrix, `s`."""
-        def bezier(x,b):
-            def bernstein(n, j, t):
-                return special.binom(n, j) * t ** j * (1 - t) ** (n - j)
-            n = len(x)-1
-            return {'g': x,
-                    'w': b,
-                    'f': lambda t: np.sum(np.array([(x[j])*bernstein(n,j,t/b) for j in range(len(x))]),axis=0),
-                    'df': lambda t: np.sum(np.array([n*(x[j])*(bernstein(n-1,j-1,t/b)-bernstein(n-1,j,t/b)) for j in range(len(x))]),axis=0)/b}
-            
         #load and make gap function
         loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_crossover1550.npz'))
-        bez = bezier(loaded['GAP'], loaded['LENGTH'])
+        x = loaded['GAP']
+        b = loaded['LENGTH']
+        
+        #load scipy.special.binom as a C-compiled function
+        addr = get_cython_function_address("scipy.special.cython_special", "binom")
+        functype = ctypes.CFUNCTYPE(ctypes.c_double, ctypes.c_double, ctypes.c_double)
+        binom_fn = functype(addr)
+
+        #load all seperate functions that we'll need
+        n = len(x) - 1
+        @njit
+        def binom_in_njit(x, y):
+            return binom_fn(x, y)
+        @njit
+        def bernstein(n,j,t):
+            return binom_in_njit(n, j) * t ** j * (1 - t) ** (n - j)
+        @njit
+        def bez(t):
+            n = len(x) - 1
+            return np.sum(np.array([(x[j])*bernstein(n,j,t/b) for j in range(len(x))]),axis=0)
+        @njit
+        def dbez(t):
+            return np.sum(np.array([n*(x[j])*(bernstein(n-1,j-1,t/b)-bernstein(n-1,j,t/b)) for j in range(len(x))]),axis=0)/b
 
         #resize everything to nms
         width     = 500
@@ -608,5 +625,5 @@ class sipann_dc_crossover1550(core.ComponentModel):
         stop_wl  = c * 10**9 / start_freq
         wl       = np.linspace(start_wl, stop_wl, num)
         
-        item = dc.GapFuncSymmetric(width, thickness, bez['f'], bez['df'], 0, bez['w'])
+        item = dc.GapFuncSymmetric(width, thickness, bez, dbez, 0, b)
         return item.sparams(wl)
