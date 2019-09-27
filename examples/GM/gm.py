@@ -30,7 +30,7 @@ connections.append([wg1[3], 1, dc1[1], 0])
 connections.append([wg_outer[0], 0, dc1[0], 3])
 connections.append([wg_outer[1], 0, dc1[1], 2])
 connections.append([wg_inner1[0], 0, dc1[0], 2])
-connections.append([wg_inner1[0], 0, dc1[1], 3])
+connections.append([wg_inner1[1], 0, dc1[1], 3])
 
 connections.append([wg_inner1[0], 1, crossover, 1])
 connections.append([wg_inner1[1], 1, crossover, 0])
