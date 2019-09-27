@@ -60,6 +60,7 @@ setuptools.setup(
     ],
     install_requires=[
         'scipy>=1.2.1',
-        'numpy'
+        'numpy',
+        'numba'
     ]
 )
