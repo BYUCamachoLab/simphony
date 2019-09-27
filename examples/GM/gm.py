@@ -2,7 +2,6 @@ import numpy as np
 
 import simphony.core as core
 from simphony.core import ComponentInstance as inst
-# import simphony.errors as errors
 import simphony.DeviceLibrary.ebeam as dev
 import simphony.DeviceLibrary.sipann as lib
 import simphony.simulation as sim
@@ -53,24 +52,30 @@ for i in range(4):
 
 nl = core.Netlist()
 nl.load(connections, formatter='ll')
-simu = sim.Simulation(nl, num=1)
+simu = sim.Simulation(nl, num=500)
 
 
 freq = simu.freq_array
-zero2zero = np.log10(abs(simu.s_parameters()[:, 0, 0])**2)
-zero2one = np.log10(abs(simu.s_parameters()[:, 0, 1])**2)
-one2zero = abs(simu.s_parameters()[:, 1, 0])**2
-one2one = abs(simu.s_parameters()[:, 1, 1])**2
+g10 = np.log10(abs(simu.s_parameters()[:, 1, 0])**2)
+g11 = np.log10(abs(simu.s_parameters()[:, 1, 1])**2)
+g12 = np.log10(abs(simu.s_parameters()[:, 1, 2])**2)
+g13 = np.log10(abs(simu.s_parameters()[:, 1, 3])**2)
+g14 = np.log10(abs(simu.s_parameters()[:, 1, 4])**2)
+g15 = np.log10(abs(simu.s_parameters()[:, 1, 5])**2)
+g16 = np.log10(abs(simu.s_parameters()[:, 1, 6])**2)
+g17 = np.log10(abs(simu.s_parameters()[:, 1, 7])**2)
 
 import matplotlib.pyplot as plt
-plt.subplot(221)
-plt.plot(freq, zero2zero)
-plt.subplot(222)
-plt.plot(freq, zero2one)
-plt.subplot(223)
-plt.plot(freq, one2zero)
-plt.subplot(224)
-plt.plot(freq, one2one)
-plt.suptitle("MZI")
-plt.tight_layout()
+plt.plot(freq, g10, label="1-0")
+plt.plot(freq, g11, label="1-1")
+plt.plot(freq, g12, label="1-2")
+plt.plot(freq, g13, label="1-3")
+plt.plot(freq, g14, label="1-4")
+plt.plot(freq, g15, label="1-5")
+plt.plot(freq, g16, label="1-6")
+plt.plot(freq, g17, label="1-7")
+plt.legend()
+plt.xlabel("Frequency")
+plt.ylabel("Intensity")
+plt.title("Green Machine Simulation")
 plt.show()
