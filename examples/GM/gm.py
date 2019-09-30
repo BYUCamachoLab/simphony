@@ -56,14 +56,25 @@ simu = sim.Simulation(nl, num=500)
 
 
 freq = simu.freq_array
-g10 = np.log10(abs(simu.s_parameters()[:, 1, 0])**2)
-g11 = np.log10(abs(simu.s_parameters()[:, 1, 1])**2)
-g12 = np.log10(abs(simu.s_parameters()[:, 1, 2])**2)
-g13 = np.log10(abs(simu.s_parameters()[:, 1, 3])**2)
-g14 = np.log10(abs(simu.s_parameters()[:, 1, 4])**2)
-g15 = np.log10(abs(simu.s_parameters()[:, 1, 5])**2)
-g16 = np.log10(abs(simu.s_parameters()[:, 1, 6])**2)
-g17 = np.log10(abs(simu.s_parameters()[:, 1, 7])**2)
+g10 = np.log10(abs(simu.s_parameters()[:, 1, 0])**2)*10
+g11 = np.log10(abs(simu.s_parameters()[:, 1, 1])**2)*10
+g12 = np.log10(abs(simu.s_parameters()[:, 1, 2])**2)*10
+g13 = np.log10(abs(simu.s_parameters()[:, 1, 3])**2)*10
+g14 = np.log10(abs(simu.s_parameters()[:, 1, 4])**2)*10
+g15 = np.log10(abs(simu.s_parameters()[:, 1, 5])**2)*10
+g16 = np.log10(abs(simu.s_parameters()[:, 1, 6])**2)*10
+g17 = np.log10(abs(simu.s_parameters()[:, 1, 7])**2)*10
+# g10 = (abs(simu.s_parameters()[:, 1, 0])**2)
+# g11 = (abs(simu.s_parameters()[:, 1, 1])**2)
+# g12 = (abs(simu.s_parameters()[:, 1, 2])**2)
+# g13 = (abs(simu.s_parameters()[:, 1, 3])**2)
+# g14 = (abs(simu.s_parameters()[:, 1, 4])**2)
+# g15 = (abs(simu.s_parameters()[:, 1, 5])**2)
+# g16 = (abs(simu.s_parameters()[:, 1, 6])**2)
+# g17 = (abs(simu.s_parameters()[:, 1, 7])**2)
+
+powers = np.array([g10, g11, g12, g13, g14, g15, g16, g17])
+out = np.sum(powers, axis=1)
 
 import matplotlib.pyplot as plt
 plt.plot(freq, g10, label="1-0")
@@ -76,6 +87,6 @@ plt.plot(freq, g16, label="1-6")
 plt.plot(freq, g17, label="1-7")
 plt.legend()
 plt.xlabel("Frequency")
-plt.ylabel("Intensity")
+plt.ylabel("Power")
 plt.title("Green Machine Simulation")
 plt.show()
