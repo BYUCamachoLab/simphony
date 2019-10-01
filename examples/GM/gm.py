@@ -6,7 +6,7 @@ import simphony.DeviceLibrary.ebeam as dev
 import simphony.DeviceLibrary.sipann as lib
 import simphony.simulation as sim
 
-inputs = [inst(dev.ebeam_gc_te1550) for _ in range(4)]
+# inputs = [inst(dev.ebeam_gc_te1550) for _ in range(4)]
 wg1 = [inst(dev.ebeam_wg_integral_1550, extras={'length':100e-6}) for _ in range(4)]
 dc1 = [inst(dev.ebeam_bdc_te1550) for _ in range(2)]
 wg_inner1 = [inst(dev.ebeam_wg_integral_1550, extras={'length':100e-6}) for _ in range(2)]
@@ -15,11 +15,11 @@ wg_inner2 = [inst(dev.ebeam_wg_integral_1550, extras={'length':100e-6}) for _ in
 wg_outer = [inst(dev.ebeam_wg_integral_1550, extras={'length':300e-6}) for _ in range(2)]
 dc2 = [inst(dev.ebeam_bdc_te1550) for _ in range(2)]
 wg3 = [inst(dev.ebeam_wg_integral_1550, extras={'length':100e-6}) for _ in range(4)]
-outputs = [inst(dev.ebeam_gc_te1550) for _ in range(4)]
+# outputs = [inst(dev.ebeam_gc_te1550) for _ in range(4)]
 
 connections = []
-for i in range(4):
-    connections.append([inputs[i], 0, wg1[i], 0])
+# for i in range(4):
+#     connections.append([inputs[i], 0, wg1[i], 0])
 
 connections.append([wg1[0], 1, dc1[0], 1])
 connections.append([wg1[1], 1, dc1[0], 0])
@@ -46,8 +46,8 @@ connections.append([dc2[0], 2, wg3[1], 0])
 connections.append([dc2[1], 3, wg3[2], 0])
 connections.append([dc2[1], 2, wg3[3], 0])
 
-for i in range(4):
-    connections.append([outputs[i], 0, wg3[i], 1])
+# for i in range(4):
+#     connections.append([outputs[i], 0, wg3[i], 1])
 
 
 nl = core.Netlist()
@@ -56,22 +56,22 @@ simu = sim.Simulation(nl, num=500)
 
 
 freq = simu.freq_array
-g10 = np.log10(abs(simu.s_parameters()[:, 1, 0])**2)*10
-g11 = np.log10(abs(simu.s_parameters()[:, 1, 1])**2)*10
-g12 = np.log10(abs(simu.s_parameters()[:, 1, 2])**2)*10
-g13 = np.log10(abs(simu.s_parameters()[:, 1, 3])**2)*10
-g14 = np.log10(abs(simu.s_parameters()[:, 1, 4])**2)*10
-g15 = np.log10(abs(simu.s_parameters()[:, 1, 5])**2)*10
-g16 = np.log10(abs(simu.s_parameters()[:, 1, 6])**2)*10
-g17 = np.log10(abs(simu.s_parameters()[:, 1, 7])**2)*10
-# g10 = (abs(simu.s_parameters()[:, 1, 0])**2)
-# g11 = (abs(simu.s_parameters()[:, 1, 1])**2)
-# g12 = (abs(simu.s_parameters()[:, 1, 2])**2)
-# g13 = (abs(simu.s_parameters()[:, 1, 3])**2)
-# g14 = (abs(simu.s_parameters()[:, 1, 4])**2)
-# g15 = (abs(simu.s_parameters()[:, 1, 5])**2)
-# g16 = (abs(simu.s_parameters()[:, 1, 6])**2)
-# g17 = (abs(simu.s_parameters()[:, 1, 7])**2)
+# g10 = np.log10(abs(simu.s_parameters()[:, 1, 0])**2)*10
+# g11 = np.log10(abs(simu.s_parameters()[:, 1, 1])**2)*10
+# g12 = np.log10(abs(simu.s_parameters()[:, 1, 2])**2)*10
+# g13 = np.log10(abs(simu.s_parameters()[:, 1, 3])**2)*10
+# g14 = np.log10(abs(simu.s_parameters()[:, 1, 4])**2)*10
+# g15 = np.log10(abs(simu.s_parameters()[:, 1, 5])**2)*10
+# g16 = np.log10(abs(simu.s_parameters()[:, 1, 6])**2)*10
+# g17 = np.log10(abs(simu.s_parameters()[:, 1, 7])**2)*10
+g10 = (abs(simu.s_parameters()[:, 1, 0])**2)
+g11 = (abs(simu.s_parameters()[:, 1, 1])**2)
+g12 = (abs(simu.s_parameters()[:, 1, 2])**2)
+g13 = (abs(simu.s_parameters()[:, 1, 3])**2)
+g14 = (abs(simu.s_parameters()[:, 1, 4])**2)
+g15 = (abs(simu.s_parameters()[:, 1, 5])**2)
+g16 = (abs(simu.s_parameters()[:, 1, 6])**2)
+g17 = (abs(simu.s_parameters()[:, 1, 7])**2)
 
 powers = np.array([g10, g11, g12, g13, g14, g15, g16, g17])
 out = np.sum(powers, axis=1)
