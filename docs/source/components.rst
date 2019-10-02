@@ -66,3 +66,123 @@ ebeam_y_1550
     :alt: ebeam_bdc_te1550.png
 
 The y-branch efficiently splits the input between the two outputs.
+
+----
+
+----
+
+=======
+SiP-ANN
+=======
+
+******************
+sipann_wg_integral
+******************
+|
+.. comment image:: _static/images/components/ebeam_bdc_te1550.png
+    :alt: ebeam_bdc_te1550.png
+
+A waveguide easily connects other components within the circuit.
+The SiP-ANN waveguide is different from the EBeam package since its
+values are calculated based on a regression fit to simulation data.
+
+----
+
+******************
+sipann_dc_straight
+******************
+|
+.. comment image:: _static/images/components/ebeam_bdc_te1550.png
+    :alt: ebeam_bdc_te1550.png
+
+Regression Based Closed Form solution of a straight directional coupler
+
+----
+
+***********************
+sipann_dc_halfracetrack
+***********************
+|
+.. comment image:: _static/images/components/ebeam_bdc_te1550.png
+    :alt: ebeam_bdc_te1550.png
+
+Regression Based Closed Form solution of half a racetrack resonator
+
+----
+
+***********************
+sipann_dc_halfring
+***********************
+|
+.. comment image:: _static/images/components/ebeam_bdc_te1550.png
+    :alt: ebeam_bdc_te1550.png
+
+Regression Based Closed Form solution of half of a ring resonator
+
+----
+
+***********************
+sipann_dc_standard
+***********************
+|
+.. comment image:: _static/images/components/ebeam_bdc_te1550.png
+    :alt: ebeam_bdc_te1550.png
+
+Regression Based Closed Form solution of a standard shaped directional coupler
+
+----
+
+***********************
+sipann_dc_doublehalfring
+***********************
+|
+.. comment image:: _static/images/components/ebeam_bdc_te1550.png
+    :alt: ebeam_bdc_te1550.png
+
+Regression Based Closed Form solution of double half ring resonator
+
+----
+
+***********************
+sipann_dc_angledhalfring
+***********************
+|
+.. comment image:: _static/images/components/ebeam_bdc_te1550.png
+    :alt: ebeam_bdc_te1550.png
+
+Regression Based Closed Form solution of an angled ring resonator
+
+----
+
+***********************
+sipann_dc_arbitrarysym
+***********************
+|
+.. comment image:: _static/images/components/ebeam_bdc_te1550.png
+    :alt: ebeam_bdc_te1550.png
+
+Regression Based form of any directional coupler provided gap function
+
+----
+
+***********************
+sipann_dc_arbitraryantisym
+***********************
+|
+.. comment image:: _static/images/components/ebeam_bdc_te1550.png
+    :alt: ebeam_bdc_te1550.png
+
+Regression Based form of any directional coupler provided gap function
+
+----
+
+***********************
+sipann_dc_crossover1550
+***********************
+|
+.. image:: _static/images/components/crossover.png
+    :alt: ebeam_bdc_te1550.png
+
+Regression based form of a 100/0 directional coupler.
+
+----
