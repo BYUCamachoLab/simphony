@@ -17,16 +17,16 @@ class sipann_wg_integral(core.ComponentModel):
     """
     ports = 2
     cachable = False
-    
+
     # TODO: Remove the delta_length part of this model; should be implemented
     # only in the simphony.simulation.MonteCarloSimulation part of the program
     @classmethod
-    def s_parameters(cls, 
-                    length: float=0, 
-                    width: float=0.5, 
-                    thickness: float=0.22, 
-                    radius: float=5, 
-                    delta_length: float=0, 
+    def s_parameters(cls,
+                    length: float=0,
+                    width: float=0.5,
+                    thickness: float=0.22,
+                    radius: float=5,
+                    delta_length: float=0,
                     points: list = [],
                     start_freq: float=1.88e+14,
                     stop_freq: float=1.99e+14,
@@ -35,15 +35,15 @@ class sipann_wg_integral(core.ComponentModel):
 
         Parameters
         ----------
-        length: float   
+        length: float
             Length of the waveguide.
-        width: float    
-            Width of the waveguide in microns. 
-        thickness: float   
+        width: float
+            Width of the waveguide in microns.
+        thickness: float
             Thickness of the waveguide in microns.
-        radius: float   
+        radius: float
             Bend radius of bends in the waveguide.
-        delta_length: float     
+        delta_length: float
             Only used in monte carlo simulations to randomly vary length.
         points: list
             The points denoting the path of the waveguide.
@@ -57,7 +57,7 @@ class sipann_wg_integral(core.ComponentModel):
         Returns
         -------
         (frequency, s) : tuple
-            Returns a tuple containing the frequency array, `frequency`, 
+            Returns a tuple containing the frequency array, `frequency`,
             corresponding to the calculated s-parameter matrix, `s`.
         """
         frequency = np.linspace(start_freq, stop_freq, num)
@@ -92,7 +92,7 @@ class sipann_wg_integral(core.ComponentModel):
         else:
             angle = np.array([angle])
 
-        INPUT  = ann_wg_integral.cartesian_product([wavelength,width,thickness,angle]) 
+        INPUT  = ann_wg_integral.cartesian_product([wavelength,width,thickness,angle])
 
         #Get all possible combinations to use
         degree = 4
@@ -100,7 +100,7 @@ class sipann_wg_integral(core.ComponentModel):
         combos = []
         for i in range(5):
             combos += [k for k in comb_w_r(range(degree),i)]
-        
+
         #make matrix of all combinations
         n = len(INPUT)
         polyCombos = np.ones((n,len(combos)))
@@ -111,9 +111,9 @@ class sipann_wg_integral(core.ComponentModel):
                 for k in c:
                     polyCombos[:,j] *= INPUT[:,k]
 
-        #get coefficients and return 
+        #get coefficients and return
         coeffs = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_wg_integral_1550', 'straightCoeffs.npy'))
-        return polyCombos@coeffs 
+        return polyCombos@coeffs
 
     @staticmethod
     def ann_s_params(frequency, length: float, width: float, thickness: float, delta_length: float, **kwargs):
@@ -134,18 +134,18 @@ class sipann_wg_integral(core.ComponentModel):
         Returns
         -------
         (frequency, s) : tuple
-            Returns a tuple containing the frequency array, `frequency`, 
+            Returns a tuple containing the frequency array, `frequency`,
             corresponding to the calculated s-parameter matrix, `s`.
         '''
 
-        mat = np.zeros((len(frequency),2,2), dtype=complex)        
-        
+        mat = np.zeros((len(frequency),2,2), dtype=complex)
+
         c0 = 299792458 #m/s
         mode = 0 #TE
         TE_loss = 700 #dB/m for width 500nm
         alpha = TE_loss/(20*np.log10(np.exp(1))) #assuming lossless waveguide
         waveguideLength = length + (length * delta_length)
-        
+
         #calculate wavelength
         wl = np.true_divide(c0,frequency)
 
@@ -156,10 +156,10 @@ class sipann_wg_integral(core.ComponentModel):
         K = (2*np.pi*np.true_divide(neff,wl))
 
         #the s-matrix is built from alpha, K, and the waveguide length
-        for x in range(0, len(neff)): 
+        for x in range(0, len(neff)):
             mat[x,0,1] = mat[x,1,0] = np.exp(-alpha*waveguideLength + (K[x]*waveguideLength*1j))
         s = mat
-        
+
         return (frequency, s)
 
 @register_component_model
@@ -170,9 +170,9 @@ class sipann_dc_straight(core.ComponentModel):
     cachable = False
 
     @classmethod
-    def s_parameters(cls, 
-                    length: float=0, 
-                    width: float=0.5, 
+    def s_parameters(cls,
+                    length: float=0,
+                    width: float=0.5,
                     thickness: float=0.22,
                     gap: float=0.1,
                     sw_angle: float=90,
@@ -183,7 +183,7 @@ class sipann_dc_straight(core.ComponentModel):
         Parameters
         ----------
         length:     float  Length of the waveguide.
-        width:      float  Width of the waveguide in microns. 
+        width:      float  Width of the waveguide in microns.
         thickness:  float  Thickness of the waveguide in microns.
         gap:        float  Gap between the two waveguides
         sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90)
@@ -193,14 +193,14 @@ class sipann_dc_straight(core.ComponentModel):
         Returns
         -------
         (frequency, s) : tuple
-            Returns a tuple containing the frequency array, `frequency`, 
+            Returns a tuple containing the frequency array, `frequency`,
             corresponding to the calculated s-parameter matrix, `s`."""
         #resize everything to nms
         length    = length*1000
         width     = width*1000
         thickness = thickness*1000
         gap       = gap*1000
-                
+
         #switch to wavelength
         c = 299792458
         start_wl = c * 10**9 / stop_freq
@@ -208,7 +208,7 @@ class sipann_dc_straight(core.ComponentModel):
         wl       = np.linspace(start_wl, stop_wl, num)
         item = dc.Straight(width, thickness, gap, length)
         return item.sparams(wl)
-    
+
 @register_component_model
 class sipann_dc_halfracetrack(core.ComponentModel):
     """Regression Based Closed Form solution of half a racetrack resonator
@@ -217,9 +217,9 @@ class sipann_dc_halfracetrack(core.ComponentModel):
     cachable = False
 
     @classmethod
-    def s_parameters(cls, 
-                    length: float=0, 
-                    width: float=0.5, 
+    def s_parameters(cls,
+                    length: float=0,
+                    width: float=0.5,
                     thickness: float=0.22,
                     gap: float=0.1,
                     radius: float=10,
@@ -231,7 +231,7 @@ class sipann_dc_halfracetrack(core.ComponentModel):
         Parameters
         ----------
         length:     float  Length of the waveguide.
-        width:      float  Width of the waveguide in microns. 
+        width:      float  Width of the waveguide in microns.
         thickness:  float  Thickness of the waveguide in microns.
         gap:        float  Gap between the two waveguides
         radius:     float  Radius of bent portions of waveguide
@@ -242,7 +242,7 @@ class sipann_dc_halfracetrack(core.ComponentModel):
         Returns
         -------
         (frequency, s) : tuple
-            Returns a tuple containing the frequency array, `frequency`, 
+            Returns a tuple containing the frequency array, `frequency`,
             corresponding to the calculated s-parameter matrix, `s`."""
         #resize everything to nms
         length    = length*1000
@@ -250,16 +250,16 @@ class sipann_dc_halfracetrack(core.ComponentModel):
         thickness = thickness*1000
         gap       = gap*1000
         radius    = radius*1000
-                
+
         #switch to wavelength
         c = 299792458
         start_wl = c * 10**9 / stop_freq
         stop_wl  = c * 10**9 / start_freq
         wl       = np.linspace(start_wl, stop_wl, num)
-        
+
         item = dc.Racetrack(width, thickness, radius, gap, length)
         return item.sparams(wl)
-    
+
 @register_component_model
 class sipann_dc_halfring(core.ComponentModel):
     """Regression Based Closed Form solution of half of a ring resonator
@@ -268,8 +268,8 @@ class sipann_dc_halfring(core.ComponentModel):
     cachable = False
 
     @classmethod
-    def s_parameters(cls, 
-                    width: float=0.5, 
+    def s_parameters(cls,
+                    width: float=0.5,
                     thickness: float=0.22,
                     gap: float=0.1,
                     radius: float=10,
@@ -280,7 +280,7 @@ class sipann_dc_halfring(core.ComponentModel):
         """Get the s-parameters of a parameterized waveguide.
         Parameters
         ----------
-        width:      float  Width of the waveguide in microns. 
+        width:      float  Width of the waveguide in microns.
         thickness:  float  Thickness of the waveguide in microns.
         gap:        float  Gap between the two waveguides
         radius:     float  Radius of bent portions of waveguide
@@ -291,24 +291,24 @@ class sipann_dc_halfring(core.ComponentModel):
         Returns
         -------
         (frequency, s) : tuple
-            Returns a tuple containing the frequency array, `frequency`, 
+            Returns a tuple containing the frequency array, `frequency`,
             corresponding to the calculated s-parameter matrix, `s`."""
         #resize everything to nms
         width     = width*1000
         thickness = thickness*1000
         gap       = gap*1000
         radius    = radius*1000
-                
+
         #switch to wavelength
         c = 299792458
         start_wl = c * 10**9 / stop_freq
         stop_wl  = c * 10**9 / start_freq
         wl       = np.linspace(start_wl, stop_wl, num)
-        
+
         item = dc.RR(width, thickness, radius, gap)
         return item.sparams(wl)
 
-    
+
 @register_component_model
 class sipann_dc_standard(core.ComponentModel):
     """Regression Based Closed Form solution of a standard shaped directional coupler
@@ -317,8 +317,8 @@ class sipann_dc_standard(core.ComponentModel):
     cachable = False
 
     @classmethod
-    def s_parameters(cls, 
-                    width: float=0.5, 
+    def s_parameters(cls,
+                    width: float=0.5,
                     thickness: float=0.22,
                     gap: float=0.1,
                     length: float=10,
@@ -331,7 +331,7 @@ class sipann_dc_standard(core.ComponentModel):
         """Get the s-parameters of a parameterized waveguide.
         Parameters
         ----------
-        width:      float  Width of the waveguide in microns. 
+        width:      float  Width of the waveguide in microns.
         thickness:  float  Thickness of the waveguide in microns.
         gap:        float  Gap between the two waveguides
         length:     float  Length of coupling region
@@ -344,7 +344,7 @@ class sipann_dc_standard(core.ComponentModel):
         Returns
         -------
         (frequency, s) : tuple
-            Returns a tuple containing the frequency array, `frequency`, 
+            Returns a tuple containing the frequency array, `frequency`,
             corresponding to the calculated s-parameter matrix, `s`."""
         #resize everything to nms
         width     = width*1000
@@ -354,16 +354,16 @@ class sipann_dc_standard(core.ComponentModel):
         H         = H*1000
         V         = V*1000
 
-                
+
         #switch to wavelength
         c = 299792458
         start_wl = c * 10**9 / stop_freq
         stop_wl  = c * 10**9 / start_freq
         wl       = np.linspace(start_wl, stop_wl, num)
-        
+
         item = dc.Standard(width, thickness, gap, length, H, V)
         return item.sparams(wl)
-    
+
 
 @register_component_model
 class sipann_dc_doublehalfring(core.ComponentModel):
@@ -373,8 +373,8 @@ class sipann_dc_doublehalfring(core.ComponentModel):
     cachable = False
 
     @classmethod
-    def s_parameters(cls, 
-                    width: float=0.5, 
+    def s_parameters(cls,
+                    width: float=0.5,
                     thickness: float=0.22,
                     gap: float=0.1,
                     radius: float=10,
@@ -385,7 +385,7 @@ class sipann_dc_doublehalfring(core.ComponentModel):
         """Get the s-parameters of a parameterized waveguide.
         Parameters
         ----------
-        width:      float  Width of the waveguide in microns. 
+        width:      float  Width of the waveguide in microns.
         thickness:  float  Thickness of the waveguide in microns.
         gap:        float  Minimum gap between the two waveguides
         radius:     float  Radius of halfrings (on both sides)
@@ -396,24 +396,24 @@ class sipann_dc_doublehalfring(core.ComponentModel):
         Returns
         -------
         (frequency, s) : tuple
-            Returns a tuple containing the frequency array, `frequency`, 
+            Returns a tuple containing the frequency array, `frequency`,
             corresponding to the calculated s-parameter matrix, `s`."""
         #resize everything to nms
         width     = width*1000
         thickness = thickness*1000
         gap       = gap*1000
         radius    = radius*1000
-                
+
         #switch to wavelength
         c = 299792458
         start_wl = c * 10**9 / stop_freq
         stop_wl  = c * 10**9 / start_freq
         wl       = np.linspace(start_wl, stop_wl, num)
-        
+
         item = dc.DoubleRR(width, thickness, radius, gap)
         return item.sparams(wl)
-    
-    
+
+
 @register_component_model
 class sipann_dc_angledhalfring(core.ComponentModel):
     """Regression Based Closed Form solution of an angled ring resonator
@@ -422,8 +422,8 @@ class sipann_dc_angledhalfring(core.ComponentModel):
     cachable = False
 
     @classmethod
-    def s_parameters(cls, 
-                    width: float=0.5, 
+    def s_parameters(cls,
+                    width: float=0.5,
                     thickness: float=0.22,
                     gap: float=0.1,
                     radius: float=10,
@@ -435,7 +435,7 @@ class sipann_dc_angledhalfring(core.ComponentModel):
         """Get the s-parameters of a parameterized waveguide.
         Parameters
         ----------
-        width:      float  Width of the waveguide in microns. 
+        width:      float  Width of the waveguide in microns.
         thickness:  float  Thickness of the waveguide in microns.
         gap:        float  Gap between the two waveguides
         radius:     float  Radius of bent portions of waveguide
@@ -447,7 +447,7 @@ class sipann_dc_angledhalfring(core.ComponentModel):
         Returns
         -------
         (frequency, s) : tuple
-            Returns a tuple containing the frequency array, `frequency`, 
+            Returns a tuple containing the frequency array, `frequency`,
             corresponding to the calculated s-parameter matrix, `s`."""
         #resize everything to nms
         width     = width*1000
@@ -455,16 +455,16 @@ class sipann_dc_angledhalfring(core.ComponentModel):
         gap       = gap*1000
         radius    = radius*1000
         theta     = theta*1000
-                
+
         #switch to wavelength
         c = 299792458
         start_wl = c * 10**9 / stop_freq
         stop_wl  = c * 10**9 / start_freq
         wl       = np.linspace(start_wl, stop_wl, num)
-        
+
         item = dc.AngledRR(width, thickness, radius, gap, theta)
         return item.sparams(wl)
-    
+
 @register_component_model
 class sipann_dc_arbitrarysym(core.ComponentModel):
     """Regression Based form of any directional coupler provided gap function
@@ -478,7 +478,7 @@ class sipann_dc_arbitrarysym(core.ComponentModel):
                     dgap: callable,
                     zmin: float,
                     zmax: float,
-                    width: float=0.5, 
+                    width: float=0.5,
                     thickness: float=0.22,
                     sw_angle: float=90,
                     start_freq: float=1.88e+14,
@@ -487,7 +487,7 @@ class sipann_dc_arbitrarysym(core.ComponentModel):
         """Get the s-parameters of a parameterized waveguide.
         Parameters
         ----------
-        width:      float  Width of the waveguide in microns. 
+        width:      float  Width of the waveguide in microns.
         thickness:  float  Thickness of the waveguide in microns.
         gap:        function  Gap between the two waveguides as a function of z (in nm for now)
         dgap:       function  Derivative of above gap function (in nm for now)
@@ -500,21 +500,21 @@ class sipann_dc_arbitrarysym(core.ComponentModel):
         Returns
         -------
         (frequency, s) : tuple
-            Returns a tuple containing the frequency array, `frequency`, 
+            Returns a tuple containing the frequency array, `frequency`,
             corresponding to the calculated s-parameter matrix, `s`."""
         #resize everything to nms
         width     = width*1000
         thickness = thickness*1000
-                
+
         #switch to wavelength
         c = 299792458
         start_wl = c * 10**9 / stop_freq
         stop_wl  = c * 10**9 / start_freq
         wl       = np.linspace(start_wl, stop_wl, num)
-        
+
         item = dc.GapFuncSymmetric(width, thickness, gap, dgap, zmin, zmax)
         return item.sparams(wl)
-    
+
 class sipann_dc_arbitraryantisym(core.ComponentModel):
     """Regression Based form of any directional coupler provided gap function
     """
@@ -528,7 +528,7 @@ class sipann_dc_arbitraryantisym(core.ComponentModel):
                     zmax: float,
                     arc_l: float,
                     arc_u: float,
-                    width: float=0.5, 
+                    width: float=0.5,
                     thickness: float=0.22,
                     sw_angle: float=90,
                     start_freq: float=1.88e+14,
@@ -537,7 +537,7 @@ class sipann_dc_arbitraryantisym(core.ComponentModel):
         """Get the s-parameters of a parameterized waveguide.
         Parameters
         ----------
-        width:      float  Width of the waveguide in microns. 
+        width:      float  Width of the waveguide in microns.
         thickness:  float  Thickness of the waveguide in microns.
         gap:        function  Gap between the two waveguides as a function of z (in nm for now)
         zmin:       float  Beginning of dc in gap function (also in nm)
@@ -551,21 +551,21 @@ class sipann_dc_arbitraryantisym(core.ComponentModel):
         Returns
         -------
         (frequency, s) : tuple
-            Returns a tuple containing the frequency array, `frequency`, 
+            Returns a tuple containing the frequency array, `frequency`,
             corresponding to the calculated s-parameter matrix, `s`."""
         #resize everything to nms
         width     = width*1000
         thickness = thickness*1000
-                
+
         #switch to wavelength
         c = 299792458
         start_wl = c * 10**9 / stop_freq
         stop_wl  = c * 10**9 / start_freq
         wl       = np.linspace(start_wl, stop_wl, num)
-        
+
         item = dc.GapFuncAntiSymmetric(width, thickness, gap, zmin, zmax, arc_l, arc_u)
         return item.sparams(wl)
-    
+
 @register_component_model
 class sipann_dc_crossover1550(core.ComponentModel):
     """Regression Based form of any directional coupler provided gap function
@@ -587,13 +587,13 @@ class sipann_dc_crossover1550(core.ComponentModel):
         Returns
         -------
         (frequency, s) : tuple
-            Returns a tuple containing the frequency array, `frequency`, 
+            Returns a tuple containing the frequency array, `frequency`,
             corresponding to the calculated s-parameter matrix, `s`."""
         #load and make gap function
         loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_crossover1550.npz'))
         x = loaded['GAP']
         b = loaded['LENGTH']
-        
+
         #load scipy.special.binom as a C-compiled function
         addr = get_cython_function_address("scipy.special.cython_special", "binom")
         functype = ctypes.CFUNCTYPE(ctypes.c_double, ctypes.c_double, ctypes.c_double)
@@ -617,13 +617,13 @@ class sipann_dc_crossover1550(core.ComponentModel):
 
         #resize everything to nms
         width     = 500
-        thickness = 200
-                
+        thickness = 220
+
         #switch to wavelength
         c = 299792458
         start_wl = c * 10**9 / stop_freq
         stop_wl  = c * 10**9 / start_freq
         wl       = np.linspace(start_wl, stop_wl, num)
-        
+
         item = dc.GapFuncSymmetric(width, thickness, bez, dbez, 0, b)
         return item.sparams(wl)
