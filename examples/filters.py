@@ -39,7 +39,7 @@ for i in range(3):
 
 nl = core.Netlist()
 nl.load(connections, formatter='ll')
-simu = sim.Simulation(nl, num=500)
+simu = sim.Simulation(nl)
 
 
 freq = simu.freq_array
