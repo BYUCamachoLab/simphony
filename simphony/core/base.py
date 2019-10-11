@@ -165,5 +165,12 @@ class ComponentInstance:
         """Get the s-parameters from the linked ComponentModel.
         
         This function simply calls the linked model's 'get_s_parameters()'
-        with 'extras' as the keyword arguments."""
+        with 'extras' as the keyword arguments.
+        
+        Returns
+        -------
+        freq, s_params
+            A tuple containing the frequency points as an array and the
+            s-parameters corresponding to each frequency point as a matrix.
+        """
         return self.model.get_s_parameters(**self.extras)
