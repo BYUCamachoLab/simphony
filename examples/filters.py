@@ -22,7 +22,7 @@ for i in range(3):
 outputs = [inst(dev.ebeam_wg_integral_1550, extras={'length':100e-6}) for _ in range(3)]
 # Terminators dissipate any light that might by some misfortune reach them, 
 # and including them helps remove "false" output ports from the simulation.
-terminators = [inst(dev.ebeam_terminator_te1550) for _ in range(3)]
+terminators = [inst(dev.ebeam_terminator_te1550) for _ in range(4)]
 
 connections = []
 
@@ -36,29 +36,20 @@ for i in range(3):
 for i in range(3):
     connections.append([outputs[i], 0, selectors[i][1], 0])
     connections.append([terminators[i], 0, selectors[i][1], 2])
+connections.append([selectors[2][0], 0, terminators[-1], 0])
 
 nl = core.Netlist()
 nl.load(connections, formatter='ll')
 simu = sim.Simulation(nl)
 
-
-freq = simu.freq_array
-# g10 = np.log10(abs(simu.s_parameters()[:, 1, 0])**2)*10
-# g11 = np.log10(abs(simu.s_parameters()[:, 1, 1])**2)*10
-# g12 = np.log10(abs(simu.s_parameters()[:, 1, 2])**2)*10
-# g13 = np.log10(abs(simu.s_parameters()[:, 1, 3])**2)*10
-g00 = (abs(simu.s_parameters()[:, 0, 0])**2)
-g02 = (abs(simu.s_parameters()[:, 2, 0])**2)
-g03 = (abs(simu.s_parameters()[:, 3, 0])**2)
-g04 = (abs(simu.s_parameters()[:, 4, 0])**2)
-
 import matplotlib.pyplot as plt
-plt.plot(freq, g00, label="0-0")
-plt.plot(freq, g02, label="0-2")
-plt.plot(freq, g03, label="0-3")
-plt.plot(freq, g04, label="0-4")
+freq, s = simu.freq_array/1e12, simu.s_parameters()
+for inport in range(1):
+    for outport in range(4):
+        plt.plot(freq, np.abs(s[:, outport, inport])**2, label="Port {} to {}".format(inport, outport))
+        # plt.plot(freq, 10*np.log10(np.abs(s[:, outport, inport])**2), label="Port {} to {}".format(inport, outport))
 plt.legend()
-plt.xlabel("Frequency")
-plt.ylabel("Power")
-plt.title("Add/Drop Filter Simulation")
+plt.xlabel("Frequency (THz)")
+plt.ylabel("Normalized Power")
+plt.title("Optical Filter Simulation")
 plt.show()
