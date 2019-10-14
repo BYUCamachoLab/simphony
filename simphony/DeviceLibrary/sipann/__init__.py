@@ -633,59 +633,62 @@ class sipann_dc_fifty(core.ComponentModel):
     """Regression Based form of any directional coupler provided gap function
     """
     ports = 4
-    cachable = False
+    # cachable = False
+    loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_dc_fifty_s.npz'))
+    s_parameters = (loaded['f'], loaded['s'])
+    cachable = True
 
-    @classmethod
-    def s_parameters(cls,
-                    start_freq: float=1.88e+14,
-                    stop_freq: float=1.99e+14,
-                    num: int=2000):
-        """Get the s-parameters of a parameterized waveguide.
-        Parameters
-        ----------
-        start_freq: float  The starting frequency to obtain s-parameters for.
-        stop_freq:  float  The ending frequency to obtain s-parameters for.
-        num:        int    The number of points to use between start_freq and stop_freq.
-        Returns
-        -------
-        (frequency, s) : tuple
-            Returns a tuple containing the frequency array, `frequency`,
-            corresponding to the calculated s-parameter matrix, `s`."""
-        #load and make gap function
-        loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_fifty.npz'))
-        x = loaded['GAP']
-        b = loaded['LENGTH']
+    # @classmethod
+    # def s_parameters(cls,
+    #                 start_freq: float=1.88e+14,
+    #                 stop_freq: float=1.99e+14,
+    #                 num: int=2000):
+    #     """Get the s-parameters of a parameterized waveguide.
+    #     Parameters
+    #     ----------
+    #     start_freq: float  The starting frequency to obtain s-parameters for.
+    #     stop_freq:  float  The ending frequency to obtain s-parameters for.
+    #     num:        int    The number of points to use between start_freq and stop_freq.
+    #     Returns
+    #     -------
+    #     (frequency, s) : tuple
+    #         Returns a tuple containing the frequency array, `frequency`,
+    #         corresponding to the calculated s-parameter matrix, `s`."""
+    #     #load and make gap function
+    #     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_fifty.npz'))
+    #     x = loaded['GAP']
+    #     b = loaded['LENGTH']
 
-        #load scipy.special.binom as a C-compiled function
-        addr = get_cython_function_address("scipy.special.cython_special", "binom")
-        functype = ctypes.CFUNCTYPE(ctypes.c_double, ctypes.c_double, ctypes.c_double)
-        binom_fn = functype(addr)
+    #     #load scipy.special.binom as a C-compiled function
+    #     addr = get_cython_function_address("scipy.special.cython_special", "binom")
+    #     functype = ctypes.CFUNCTYPE(ctypes.c_double, ctypes.c_double, ctypes.c_double)
+    #     binom_fn = functype(addr)
 
-        #load all seperate functions that we'll need
-        n = len(x) - 1
-        @njit
-        def binom_in_njit(x, y):
-            return binom_fn(x, y)
-        @njit
-        def bernstein(n,j,t):
-            return binom_in_njit(n, j) * t ** j * (1 - t) ** (n - j)
-        @njit
-        def bez(t):
-            n = len(x) - 1
-            return np.sum(np.array([(x[j])*bernstein(n,j,t/b) for j in range(len(x))]),axis=0)
-        @njit
-        def dbez(t):
-            return np.sum(np.array([n*(x[j])*(bernstein(n-1,j-1,t/b)-bernstein(n-1,j,t/b)) for j in range(len(x))]),axis=0)/b
+    #     #load all seperate functions that we'll need
+    #     n = len(x) - 1
+    #     @njit
+    #     def binom_in_njit(x, y):
+    #         return binom_fn(x, y)
+    #     @njit
+    #     def bernstein(n,j,t):
+    #         return binom_in_njit(n, j) * t ** j * (1 - t) ** (n - j)
+    #     @njit
+    #     def bez(t):
+    #         n = len(x) - 1
+    #         return np.sum(np.array([(x[j])*bernstein(n,j,t/b) for j in range(len(x))]),axis=0)
+    #     @njit
+    #     def dbez(t):
+    #         return np.sum(np.array([n*(x[j])*(bernstein(n-1,j-1,t/b)-bernstein(n-1,j,t/b)) for j in range(len(x))]),axis=0)/b
 
-        #resize everything to nms
-        width     = 500
-        thickness = 220
+    #     #resize everything to nms
+    #     width     = 500
+    #     thickness = 220
 
-        #switch to wavelength
-        c = 299792458
-        start_wl = c * 10**9 / stop_freq
-        stop_wl  = c * 10**9 / start_freq
-        wl       = np.linspace(start_wl, stop_wl, num)
+    #     #switch to wavelength
+    #     c = 299792458
+    #     start_wl = c * 10**9 / stop_freq
+    #     stop_wl  = c * 10**9 / start_freq
+    #     wl       = np.linspace(start_wl, stop_wl, num)
 
-        item = dc.GapFuncSymmetric(width, thickness, bez, dbez, 0, b)
-        return item.sparams(wl)
+    #     item = dc.GapFuncSymmetric(width, thickness, bez, dbez, 0, b)
+    #     return item.sparams(wl)
