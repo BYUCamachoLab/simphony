@@ -6,16 +6,38 @@ import simphony.DeviceLibrary.ebeam as dev
 import simphony.DeviceLibrary.sipann as lib
 import simphony.simulation as sim
 
+import matplotlib.pyplot as plt
+
+c = 299792458
+def freq2wl(f):
+    return c/f
+def wl2freq(l):
+    return c/l
+
 # inputs = [inst(dev.ebeam_gc_te1550) for _ in range(4)]
 wg1 = [inst(dev.ebeam_wg_integral_1550, extras={'length':100e-6}) for _ in range(4)]
-dc1 = [inst(dev.ebeam_bdc_te1550) for _ in range(2)]
+dc1 = [inst(lib.sipann_dc_fifty) for _ in range(2)]
 wg_inner1 = [inst(dev.ebeam_wg_integral_1550, extras={'length':100e-6}) for _ in range(2)]
 crossover = inst(lib.sipann_dc_crossover1550)
 wg_inner2 = [inst(dev.ebeam_wg_integral_1550, extras={'length':100e-6}) for _ in range(2)]
 wg_outer = [inst(dev.ebeam_wg_integral_1550, extras={'length':300e-6}) for _ in range(2)]
-dc2 = [inst(dev.ebeam_bdc_te1550) for _ in range(2)]
+dc2 = [inst(lib.sipann_dc_fifty) for _ in range(2)]
 wg3 = [inst(dev.ebeam_wg_integral_1550, extras={'length':100e-6}) for _ in range(4)]
 # outputs = [inst(dev.ebeam_gc_te1550) for _ in range(4)]
+
+# plt.figure()
+# device = inputs[0]
+# f,s = device.get_s_parameters()
+# outport, inport = 1, 0
+# # plt.plot(f, np.real(s[:,outport,inport]))
+# # plt.plot(f, np.imag(s[:,outport,inport]))
+# # plt.plot(f, np.abs(s[:,outport,inport])**2)
+# plt.plot(f, np.abs(s[:,inport,inport])**2)
+# plt.plot(f, np.abs(s[:,outport,outport])**2)
+# plt.title("Grating")
+# plt.legend()
+# plt.tight_layout()
+# plt.show()
 
 connections = []
 # for i in range(4):
@@ -52,49 +74,33 @@ connections.append([dc2[1], 2, wg3[3], 0])
 
 nl = core.Netlist()
 nl.load(connections, formatter='ll')
+# simu = sim.Simulation(nl, start_freq=1.925e+14, stop_freq=1.945e+14, num=500)
 simu = sim.Simulation(nl, num=500)
 
 
-freq = simu.freq_array
-# g10 = np.log10(abs(simu.s_parameters()[:, 1, 0])**2)*10
-# g11 = np.log10(abs(simu.s_parameters()[:, 1, 1])**2)*10
-# g12 = np.log10(abs(simu.s_parameters()[:, 1, 2])**2)*10
-# g13 = np.log10(abs(simu.s_parameters()[:, 1, 3])**2)*10
-# g14 = np.log10(abs(simu.s_parameters()[:, 1, 4])**2)*10
-# g15 = np.log10(abs(simu.s_parameters()[:, 1, 5])**2)*10
-# g16 = np.log10(abs(simu.s_parameters()[:, 1, 6])**2)*10
-# g17 = np.log10(abs(simu.s_parameters()[:, 1, 7])**2)*10
-# g10 = (abs(simu.s_parameters()[:, 1, 0])**2)
-# g11 = (abs(simu.s_parameters()[:, 1, 1])**2)
-# g12 = (abs(simu.s_parameters()[:, 1, 2])**2)
-# g13 = (abs(simu.s_parameters()[:, 1, 3])**2)
-# g14 = (abs(simu.s_parameters()[:, 1, 4])**2)
-# g15 = (abs(simu.s_parameters()[:, 1, 5])**2)
-# g16 = (abs(simu.s_parameters()[:, 1, 6])**2)
-# g17 = (abs(simu.s_parameters()[:, 1, 7])**2)
-g10 = (abs(simu.s_parameters()[:, 0, 1])**2)
-g11 = (abs(simu.s_parameters()[:, 1, 1])**2)
-g12 = (abs(simu.s_parameters()[:, 2, 1])**2)
-g13 = (abs(simu.s_parameters()[:, 3, 1])**2)
-g14 = (abs(simu.s_parameters()[:, 4, 1])**2)
-g15 = (abs(simu.s_parameters()[:, 5, 1])**2)
-g16 = (abs(simu.s_parameters()[:, 6, 1])**2)
-g17 = (abs(simu.s_parameters()[:, 7, 1])**2)
+freq, s = simu.freq_array, simu.s_parameters()
+set_wl = 1550e-9
+set_freq = wl2freq(set_wl)
+# set_freq = 1.93e+14
 
-powers = np.array([g10, g11, g12, g13, g14, g15, g16, g17])
-out = np.sum(powers, axis=1)
-
-import matplotlib.pyplot as plt
-plt.plot(freq, g10, label="1-0")
-plt.plot(freq, g11, label="1-1")
-plt.plot(freq, g12, label="1-2")
-plt.plot(freq, g13, label="1-3")
-plt.plot(freq, g14, label="1-4")
-plt.plot(freq, g15, label="1-5")
-plt.plot(freq, g16, label="1-6")
-plt.plot(freq, g17, label="1-7")
+plt.figure()
+for i in range(1, 2):
+    for j in range(8):
+        plt.plot(freq/1e12, np.abs(s[:,j,i])**2, label="Port {} to {}".format(i, j))
+        # plt.plot(freq, 10*np.log10(np.abs(simu.s_parameters()[:,j,i])**2), label="Port {} to {}".format(i, j))
+plt.axvline(set_freq/1e12)
 plt.legend()
-plt.xlabel("Frequency")
-plt.ylabel("Power")
-plt.title("Green Machine Simulation")
+plt.xlabel("Frequency (THz)")
+plt.ylabel("Normalized Power")
+
+plt.figure()
+for i in range(1, 2):
+    for j in range(8):
+        # plt.plot(freq/1e12, np.rad2deg(np.unwrap(np.angle(s[:,j,i]))), label="Port {} to {}".format(i, j))
+        plt.plot(freq/1e12, np.rad2deg(np.angle(s[:,j,i])), label="Port {} to {}".format(i, j))
+plt.axvline(set_freq/1e12)
+plt.legend()
+plt.xlabel("Frequency (THz)")
+plt.ylabel("Phase")
+
 plt.show()
