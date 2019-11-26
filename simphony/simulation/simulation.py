@@ -108,6 +108,11 @@ def component2simulated(component: ComponentInstance, cache: dict, extras: dict)
         ----------
         component : ComponentInstance, optional
             The component to instantiate a SimulatedComponent from.
+        cache : dict
+            The dictionary containing the cache of components to s-parameters.
+        extras : dict
+            The dictionary containing parameters required for the calculation
+            of a given non-cachable component's s-parameters.
         """
         logging.debug("Entering _component_converter()")
         if component.model.component_type in cache:
@@ -362,6 +367,7 @@ def connect_circuit(components: List[SimulatedComponent], net_count: int) -> Sim
     """
     component_list = copy.deepcopy(components)
     for n in range(0, net_count):
+        logging.debug("Entering pass {} of {}".format(n, net_count))
         ca, ia, cb, ib = match_ports(n, component_list)
 
         # If pin occurances are in the same component:

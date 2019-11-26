@@ -38,8 +38,8 @@ class Netlist:
         self._external_net = -1
         self.components = [] if components is None else components
 
-    # def get_external_components(self):
-    #     return [component for component in self.components if (any(int(x) < 0 for x in component.nets))]
+    def get_external_components(self):
+        return [component for component in self.components if (any(int(x) < 0 for x in component.nets))]
 
     def add_component(self, component: ComponentInstance):
         """Allows for components (instances) to be added manually to the netlist.
