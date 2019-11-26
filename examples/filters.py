@@ -6,6 +6,16 @@ import simphony.DeviceLibrary.ebeam as dev
 import simphony.DeviceLibrary.sipann as lib
 import simphony.simulation as sim
 
+# -----------------------------------------------------------------------------
+#
+# Some helper functions for converting between wavelength and frequency
+#
+c = 299792458
+def freq2wl(f):
+    return c/f
+def wl2freq(l):
+    return c/l
+
 # Have a main data line where frequency multiplexed data enters the circuit.
 data_line = [inst(dev.ebeam_wg_integral_1550, extras={'length':100e-6}) for _ in range(3)]
 # Have different radii rings for selecting out frequencies from the data line.
@@ -40,16 +50,40 @@ connections.append([selectors[2][0], 0, terminators[-1], 0])
 
 nl = core.Netlist()
 nl.load(connections, formatter='ll')
-simu = sim.Simulation(nl)
+simu = sim.Simulation(nl, start_freq=wl2freq(1551.15e-9), stop_freq=wl2freq(1524.5e-9))
 
 import matplotlib.pyplot as plt
-freq, s = simu.freq_array/1e12, simu.s_parameters()
+import matplotlib.gridspec as gridspec
+
+freq, s = simu.freq_array, simu.s_parameters()
+
+fig = plt.figure(tight_layout=True)
+gs = gridspec.GridSpec(1, 3)
+
+ax = fig.add_subplot(gs[0, :2])
 for inport in range(1):
-    for outport in range(4):
-        plt.plot(freq, np.abs(s[:, outport, inport])**2, label="Port {} to {}".format(inport, outport))
+    for outport in range(1,4):
+        ax.plot(freq2wl(freq)*1e9, np.abs(s[:, outport, inport])**2, label="Out {}".format(outport), lw="0.7")
         # plt.plot(freq, 10*np.log10(np.abs(s[:, outport, inport])**2), label="Port {} to {}".format(inport, outport))
-plt.legend()
-plt.xlabel("Frequency (THz)")
-plt.ylabel("Normalized Power")
-plt.title("Optical Filter Simulation")
+ax.set_ylabel("Fractional Optical Power")
+ax.set_xlabel("Wavelength (nm)")
+plt.legend(loc='upper right')
+
+ax = fig.add_subplot(gs[0, 2])
+for inport in range(1):
+    for outport in range(1,4):
+        ax.plot(freq2wl(freq)*1e9, np.abs(s[:, outport, inport])**2, label="Output {}".format(outport), lw="0.7")
+        # plt.plot(freq, 10*np.log10(np.abs(s[:, outport, inport])**2), label="Port {} to {}".format(inport, outport))
+ax.set_xlim(1543,1545)
+ax.set_ylabel("Fractional Optical Power")
+ax.set_xlabel("Wavelength (nm)")
+
+fig.align_labels()
+
 plt.show()
+
+# plt.legend(loc='upper right')
+# plt.xlabel("Wavelength (nm)")
+# plt.ylabel("Fractional Optical Power")
+# # plt.title("Optical Filter Simulation")
+# plt.show()
