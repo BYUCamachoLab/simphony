@@ -1,0 +1,827 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>simphony.DeviceLibrary.sipann package &mdash; Simphony 0.1.5 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="simphony.DeviceLibrary.ebeam package" href="simphony.DeviceLibrary.ebeam.html" />
+    <link rel="prev" title="simphony.DeviceLibrary package" href="simphony.DeviceLibrary.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Simphony
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="reference.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="components.html">Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Program Architecture</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">simphony</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="simphony.html">simphony package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="simphony.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="simphony.DeviceLibrary.html">simphony.DeviceLibrary package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simphony.core.html">simphony.core package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="simphony.simulation.html">simphony.simulation package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="simphony.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simphony.html#module-simphony.errors">simphony.errors module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="simphony.html#module-simphony">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Simphony</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="modules.html">simphony</a> &raquo;</li>
+        
+          <li><a href="simphony.html">simphony package</a> &raquo;</li>
+        
+          <li><a href="simphony.DeviceLibrary.html">simphony.DeviceLibrary package</a> &raquo;</li>
+        
+      <li>simphony.DeviceLibrary.sipann package</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/simphony.DeviceLibrary.ann.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="simphony-devicelibrary-sipann-package">
+<h1>simphony.DeviceLibrary.sipann package<a class="headerlink" href="#simphony-devicelibrary-sipann-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-simphony.DeviceLibrary.sipann">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-simphony.DeviceLibrary.sipann" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_angledhalfring">
+<em class="property">class </em><code class="sig-prename descclassname">simphony.DeviceLibrary.sipann.</code><code class="sig-name descname">sipann_dc_angledhalfring</code><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_angledhalfring"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_angledhalfring" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="simphony.core.html#simphony.core.base.ComponentModel" title="simphony.core.base.ComponentModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">simphony.core.base.ComponentModel</span></code></a></p>
+<p>Regression Based Closed Form solution of an angled ring resonator</p>
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_angledhalfring.cachable">
+<code class="sig-name descname">cachable</code><em class="property"> = False</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_angledhalfring.cachable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_angledhalfring.ports">
+<code class="sig-name descname">ports</code><em class="property"> = 4</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_angledhalfring.ports" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_angledhalfring.s_parameters">
+<em class="property">classmethod </em><code class="sig-name descname">s_parameters</code><span class="sig-paren">(</span><em class="sig-param">width=0.5</em>, <em class="sig-param">thickness=0.22</em>, <em class="sig-param">gap=0.1</em>, <em class="sig-param">radius=10</em>, <em class="sig-param">theta=0.7853981633974483</em>, <em class="sig-param">sw_angle=90</em>, <em class="sig-param">start_freq=188000000000000.0</em>, <em class="sig-param">stop_freq=199000000000000.0</em>, <em class="sig-param">num=2000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_angledhalfring.s_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_angledhalfring.s_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the s-parameters of a parameterized waveguide.
+:type width: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param width:
+:type width: float  Width of the waveguide in microns.
+:type thickness: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param thickness:
+:type thickness: float  Thickness of the waveguide in microns.
+:type gap: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param gap:
+:type gap: float  Gap between the two waveguides
+:type radius: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param radius:
+:type radius: float  Radius of bent portions of waveguide
+:type theta: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param theta:
+:type theta: float  Angled distance where through waveguide is parallel to ring
+:param sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90):
+:type start_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param start_freq:
+:type start_freq: float  The starting frequency to obtain s-parameters for.
+:type stop_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param stop_freq:
+:type stop_freq: float  The ending frequency to obtain s-parameters for.
+:type num: <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>
+:param num:
+:type num: int    The number of points to use between start_freq and stop_freq.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>(frequency, s)</strong> – Returns a tuple containing the frequency array, <cite>frequency</cite>,
+corresponding to the calculated s-parameter matrix, <cite>s</cite>.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_arbitraryantisym">
+<em class="property">class </em><code class="sig-prename descclassname">simphony.DeviceLibrary.sipann.</code><code class="sig-name descname">sipann_dc_arbitraryantisym</code><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_arbitraryantisym"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_arbitraryantisym" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="simphony.core.html#simphony.core.base.ComponentModel" title="simphony.core.base.ComponentModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">simphony.core.base.ComponentModel</span></code></a></p>
+<p>Regression Based form of any directional coupler provided gap function</p>
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_arbitraryantisym.cachable">
+<code class="sig-name descname">cachable</code><em class="property"> = False</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_arbitraryantisym.cachable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_arbitraryantisym.ports">
+<code class="sig-name descname">ports</code><em class="property"> = 4</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_arbitraryantisym.ports" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_arbitraryantisym.s_parameters">
+<em class="property">classmethod </em><code class="sig-name descname">s_parameters</code><span class="sig-paren">(</span><em class="sig-param">gap</em>, <em class="sig-param">zmin</em>, <em class="sig-param">zmax</em>, <em class="sig-param">arc_l</em>, <em class="sig-param">arc_u</em>, <em class="sig-param">width=0.5</em>, <em class="sig-param">thickness=0.22</em>, <em class="sig-param">sw_angle=90</em>, <em class="sig-param">start_freq=188000000000000.0</em>, <em class="sig-param">stop_freq=199000000000000.0</em>, <em class="sig-param">num=2000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_arbitraryantisym.s_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_arbitraryantisym.s_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the s-parameters of a parameterized waveguide.
+:type width: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param width:
+:type width: float  Width of the waveguide in microns.
+:type thickness: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param thickness:
+:type thickness: float  Thickness of the waveguide in microns.
+:type gap: &lt;built-in function callable&gt;
+:param gap:
+:type gap: function  Gap between the two waveguides as a function of z (in nm for now)
+:type zmin: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param zmin:
+:type zmin: float  Beginning of dc in gap function (also in nm)
+:type zmax: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param zmax:
+:type zmax: float  End of dc in gap function (also in nm)
+:type arc_l: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param arc_l:
+:type arc_l: float  Arc length of lower waveguide
+:type arc_u: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param arc_u:
+:type arc_u: float  Arc length of upper waveguide
+:param sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90):
+:type start_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param start_freq:
+:type start_freq: float  The starting frequency to obtain s-parameters for.
+:type stop_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param stop_freq:
+:type stop_freq: float  The ending frequency to obtain s-parameters for.
+:type num: <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>
+:param num:
+:type num: int    The number of points to use between start_freq and stop_freq.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>(frequency, s)</strong> – Returns a tuple containing the frequency array, <cite>frequency</cite>,
+corresponding to the calculated s-parameter matrix, <cite>s</cite>.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_arbitrarysym">
+<em class="property">class </em><code class="sig-prename descclassname">simphony.DeviceLibrary.sipann.</code><code class="sig-name descname">sipann_dc_arbitrarysym</code><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_arbitrarysym"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_arbitrarysym" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="simphony.core.html#simphony.core.base.ComponentModel" title="simphony.core.base.ComponentModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">simphony.core.base.ComponentModel</span></code></a></p>
+<p>Regression Based form of any directional coupler provided gap function</p>
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_arbitrarysym.cachable">
+<code class="sig-name descname">cachable</code><em class="property"> = False</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_arbitrarysym.cachable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_arbitrarysym.ports">
+<code class="sig-name descname">ports</code><em class="property"> = 4</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_arbitrarysym.ports" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_arbitrarysym.s_parameters">
+<em class="property">classmethod </em><code class="sig-name descname">s_parameters</code><span class="sig-paren">(</span><em class="sig-param">gap</em>, <em class="sig-param">dgap</em>, <em class="sig-param">zmin</em>, <em class="sig-param">zmax</em>, <em class="sig-param">width=0.5</em>, <em class="sig-param">thickness=0.22</em>, <em class="sig-param">sw_angle=90</em>, <em class="sig-param">start_freq=188000000000000.0</em>, <em class="sig-param">stop_freq=199000000000000.0</em>, <em class="sig-param">num=2000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_arbitrarysym.s_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_arbitrarysym.s_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the s-parameters of a parameterized waveguide.
+:type width: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param width:
+:type width: float  Width of the waveguide in microns.
+:type thickness: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param thickness:
+:type thickness: float  Thickness of the waveguide in microns.
+:type gap: &lt;built-in function callable&gt;
+:param gap:
+:type gap: function  Gap between the two waveguides as a function of z (in nm for now)
+:type dgap: &lt;built-in function callable&gt;
+:param dgap:
+:type dgap: function  Derivative of above gap function (in nm for now)
+:type zmin: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param zmin:
+:type zmin: float  Beginning of dc in gap function (also in nm)
+:type zmax: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param zmax:
+:type zmax: float  End of dc in gap function (also in nm)
+:param sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90):
+:type start_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param start_freq:
+:type start_freq: float  The starting frequency to obtain s-parameters for.
+:type stop_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param stop_freq:
+:type stop_freq: float  The ending frequency to obtain s-parameters for.
+:type num: <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>
+:param num:
+:type num: int    The number of points to use between start_freq and stop_freq.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>(frequency, s)</strong> – Returns a tuple containing the frequency array, <cite>frequency</cite>,
+corresponding to the calculated s-parameter matrix, <cite>s</cite>.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_crossover1550">
+<em class="property">class </em><code class="sig-prename descclassname">simphony.DeviceLibrary.sipann.</code><code class="sig-name descname">sipann_dc_crossover1550</code><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_crossover1550"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_crossover1550" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="simphony.core.html#simphony.core.base.ComponentModel" title="simphony.core.base.ComponentModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">simphony.core.base.ComponentModel</span></code></a></p>
+<p>Regression Based form of any directional coupler provided gap function</p>
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_crossover1550.cachable">
+<code class="sig-name descname">cachable</code><em class="property"> = True</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_crossover1550.cachable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_crossover1550.loaded">
+<code class="sig-name descname">loaded</code><em class="property"> = &lt;numpy.lib.npyio.NpzFile object&gt;</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_crossover1550.loaded" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_crossover1550.ports">
+<code class="sig-name descname">ports</code><em class="property"> = 4</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_crossover1550.ports" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_crossover1550.s_parameters">
+<code class="sig-name descname">s_parameters</code><em class="property"> = (array([1.88000000e+14, 1.88005199e+14, 1.88010398e+14, ...,        1.98988351e+14, 1.98994175e+14, 1.99000000e+14]), array([[[ 0.        +0.j        ,  0.        +0.j        ,           0.01946747+0.34396354j, -0.93728119+0.05304775j],         [ 0.        +0.j        ,  0.        +0.j        ,          -0.93728119+0.05304775j,  0.01946747+0.34396354j],         [ 0.01946747+0.34396354j, -0.93728119+0.05304775j,           0.        +0.j        ,  0.        +0.j        ],         [-0.93728119+0.05304775j,  0.01946747+0.34396354j,           0.        +0.j        ,  0.        +0.j        ]],         [[ 0.        +0.j        ,  0.        +0.j        ,           0.03406348+0.34246195j, -0.93430357+0.09293187j],         [ 0.        +0.j        ,  0.        +0.j        ,          -0.93430357+0.09293187j,  0.03406348+0.34246195j],         [ 0.03406348+0.34246195j, -0.93430357+0.09293187j,           0.        +0.j        ,  0.        +0.j        ],         [-0.93430357+0.09293187j,  0.03406348+0.34246195j,           0.        +0.j        ,  0.        +0.j        ]],         [[ 0.        +0.j        ,  0.        +0.j        ,           0.0485678 +0.34034183j, -0.9296288 +0.13266082j],         [ 0.        +0.j        ,  0.        +0.j        ,          -0.9296288 +0.13266082j,  0.0485678 +0.34034183j],         [ 0.0485678 +0.34034183j, -0.9296288 +0.13266082j,           0.        +0.j        ,  0.        +0.j        ],         [-0.9296288 +0.13266082j,  0.0485678 +0.34034183j,           0.        +0.j        ,  0.        +0.j        ]],         ...,         [[ 0.        +0.j        ,  0.        +0.j        ,          -0.21103843+0.16884676j,  0.60148136+0.75178037j],         [ 0.        +0.j        ,  0.        +0.j        ,           0.60148136+0.75178037j, -0.21103843+0.16884676j],         [-0.21103843+0.16884676j,  0.60148136+0.75178037j,           0.        +0.j        ,  0.        +0.j        ],         [ 0.60148136+0.75178037j, -0.21103843+0.16884676j,           0.        +0.j        ,  0.        +0.j        ]],         [[ 0.        +0.j        ,  0.        +0.j        ,          -0.20291108+0.17889959j,  0.63667434+0.72212728j],         [ 0.        +0.j        ,  0.        +0.j        ,           0.63667434+0.72212728j, -0.20291108+0.17889959j],         [-0.20291108+0.17889959j,  0.63667434+0.72212728j,           0.        +0.j        ,  0.        +0.j        ],         [ 0.63667434+0.72212728j, -0.20291108+0.17889959j,           0.        +0.j        ,  0.        +0.j        ]],         [[ 0.        +0.j        ,  0.        +0.j        ,          -0.19430416+0.18856159j,  0.67040956+0.69082664j],         [ 0.        +0.j        ,  0.        +0.j        ,           0.67040956+0.69082664j, -0.19430416+0.18856159j],         [-0.19430416+0.18856159j,  0.67040956+0.69082664j,           0.        +0.j        ,  0.        +0.j        ],         [ 0.67040956+0.69082664j, -0.19430416+0.18856159j,           0.        +0.j        ,  0.        +0.j        ]]]))</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_crossover1550.s_parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_doublehalfring">
+<em class="property">class </em><code class="sig-prename descclassname">simphony.DeviceLibrary.sipann.</code><code class="sig-name descname">sipann_dc_doublehalfring</code><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_doublehalfring"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_doublehalfring" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="simphony.core.html#simphony.core.base.ComponentModel" title="simphony.core.base.ComponentModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">simphony.core.base.ComponentModel</span></code></a></p>
+<p>Regression Based Closed Form solution of double half ring resonator</p>
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_doublehalfring.cachable">
+<code class="sig-name descname">cachable</code><em class="property"> = False</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_doublehalfring.cachable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_doublehalfring.ports">
+<code class="sig-name descname">ports</code><em class="property"> = 4</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_doublehalfring.ports" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_doublehalfring.s_parameters">
+<em class="property">classmethod </em><code class="sig-name descname">s_parameters</code><span class="sig-paren">(</span><em class="sig-param">width=0.5</em>, <em class="sig-param">thickness=0.22</em>, <em class="sig-param">gap=0.1</em>, <em class="sig-param">radius=10</em>, <em class="sig-param">sw_angle=90</em>, <em class="sig-param">start_freq=188000000000000.0</em>, <em class="sig-param">stop_freq=199000000000000.0</em>, <em class="sig-param">num=2000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_doublehalfring.s_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_doublehalfring.s_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the s-parameters of a parameterized waveguide.
+:type width: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param width:
+:type width: float  Width of the waveguide in microns.
+:type thickness: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param thickness:
+:type thickness: float  Thickness of the waveguide in microns.
+:type gap: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param gap:
+:type gap: float  Minimum gap between the two waveguides
+:type radius: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param radius:
+:type radius: float  Radius of halfrings (on both sides)
+:param sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90):
+:type start_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param start_freq:
+:type start_freq: float  The starting frequency to obtain s-parameters for.
+:type stop_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param stop_freq:
+:type stop_freq: float  The ending frequency to obtain s-parameters for.
+:type num: <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>
+:param num:
+:type num: int    The number of points to use between start_freq and stop_freq.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>(frequency, s)</strong> – Returns a tuple containing the frequency array, <cite>frequency</cite>,
+corresponding to the calculated s-parameter matrix, <cite>s</cite>.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_fifty">
+<em class="property">class </em><code class="sig-prename descclassname">simphony.DeviceLibrary.sipann.</code><code class="sig-name descname">sipann_dc_fifty</code><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_fifty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_fifty" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="simphony.core.html#simphony.core.base.ComponentModel" title="simphony.core.base.ComponentModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">simphony.core.base.ComponentModel</span></code></a></p>
+<p>Regression Based form of any directional coupler provided gap function</p>
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_fifty.cachable">
+<code class="sig-name descname">cachable</code><em class="property"> = True</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_fifty.cachable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_fifty.loaded">
+<code class="sig-name descname">loaded</code><em class="property"> = &lt;numpy.lib.npyio.NpzFile object&gt;</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_fifty.loaded" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_fifty.ports">
+<code class="sig-name descname">ports</code><em class="property"> = 4</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_fifty.ports" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_fifty.s_parameters">
+<code class="sig-name descname">s_parameters</code><em class="property"> = (array([1.88000000e+14, 1.88005199e+14, 1.88010398e+14, ...,        1.98988351e+14, 1.98994175e+14, 1.99000000e+14]), array([[[ 0.        +0.j        ,  0.        +0.j        ,           0.59313512+0.05575154j,  0.07516243-0.79964562j],         [ 0.        +0.j        ,  0.        +0.j        ,           0.07516243-0.79964562j,  0.59313512+0.05575154j],         [ 0.59313512+0.05575154j,  0.07516243-0.79964562j,           0.        +0.j        ,  0.        +0.j        ],         [ 0.07516243-0.79964562j,  0.59313512+0.05575154j,           0.        +0.j        ,  0.        +0.j        ]],         [[ 0.        +0.j        ,  0.        +0.j        ,           0.59365415+0.05131682j,  0.06916236-0.80009868j],         [ 0.        +0.j        ,  0.        +0.j        ,           0.06916236-0.80009868j,  0.59365415+0.05131682j],         [ 0.59365415+0.05131682j,  0.06916236-0.80009868j,           0.        +0.j        ,  0.        +0.j        ],         [ 0.06916236-0.80009868j,  0.59365415+0.05131682j,           0.        +0.j        ,  0.        +0.j        ]],         [[ 0.        +0.j        ,  0.        +0.j        ,           0.59414002+0.0468772j ,  0.06315938-0.80050675j],         [ 0.        +0.j        ,  0.        +0.j        ,           0.06315938-0.80050675j,  0.59414002+0.0468772j ],         [ 0.59414002+0.0468772j ,  0.06315938-0.80050675j,           0.        +0.j        ,  0.        +0.j        ],         [ 0.06315938-0.80050675j,  0.59414002+0.0468772j ,           0.        +0.j        ,  0.        +0.j        ]],         ...,         [[ 0.        +0.j        ,  0.        +0.j        ,          -0.77111969+0.05130752j,  0.04213213+0.63321943j],         [ 0.        +0.j        ,  0.        +0.j        ,           0.04213213+0.63321943j, -0.77111969+0.05130752j],         [-0.77111969+0.05130752j,  0.04213213+0.63321943j,           0.        +0.j        ,  0.        +0.j        ],         [ 0.04213213+0.63321943j, -0.77111969+0.05130752j,           0.        +0.j        ,  0.        +0.j        ]],         [[ 0.        +0.j        ,  0.        +0.j        ,          -0.77072461+0.05780437j,  0.0474573 +0.6327638j ],         [ 0.        +0.j        ,  0.        +0.j        ,           0.0474573 +0.6327638j , -0.77072461+0.05780437j],         [-0.77072461+0.05780437j,  0.0474573 +0.6327638j ,           0.        +0.j        ,  0.        +0.j        ],         [ 0.0474573 +0.6327638j , -0.77072461+0.05780437j,           0.        +0.j        ,  0.        +0.j        ]],         [[ 0.        +0.j        ,  0.        +0.j        ,          -0.77027475+0.06429858j,  0.0527781 +0.63226338j],         [ 0.        +0.j        ,  0.        +0.j        ,           0.0527781 +0.63226338j, -0.77027475+0.06429858j],         [-0.77027475+0.06429858j,  0.0527781 +0.63226338j,           0.        +0.j        ,  0.        +0.j        ],         [ 0.0527781 +0.63226338j, -0.77027475+0.06429858j,           0.        +0.j        ,  0.        +0.j        ]]]))</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_fifty.s_parameters" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_halfracetrack">
+<em class="property">class </em><code class="sig-prename descclassname">simphony.DeviceLibrary.sipann.</code><code class="sig-name descname">sipann_dc_halfracetrack</code><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_halfracetrack"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_halfracetrack" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="simphony.core.html#simphony.core.base.ComponentModel" title="simphony.core.base.ComponentModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">simphony.core.base.ComponentModel</span></code></a></p>
+<p>Regression Based Closed Form solution of half a racetrack resonator</p>
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_halfracetrack.cachable">
+<code class="sig-name descname">cachable</code><em class="property"> = False</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_halfracetrack.cachable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_halfracetrack.ports">
+<code class="sig-name descname">ports</code><em class="property"> = 4</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_halfracetrack.ports" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_halfracetrack.s_parameters">
+<em class="property">classmethod </em><code class="sig-name descname">s_parameters</code><span class="sig-paren">(</span><em class="sig-param">length=0</em>, <em class="sig-param">width=0.5</em>, <em class="sig-param">thickness=0.22</em>, <em class="sig-param">gap=0.1</em>, <em class="sig-param">radius=10</em>, <em class="sig-param">sw_angle=90</em>, <em class="sig-param">start_freq=188000000000000.0</em>, <em class="sig-param">stop_freq=199000000000000.0</em>, <em class="sig-param">num=2000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_halfracetrack.s_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_halfracetrack.s_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the s-parameters of a parameterized waveguide.
+:type length: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param length:
+:type length: float  Length of the waveguide.
+:type width: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param width:
+:type width: float  Width of the waveguide in microns.
+:type thickness: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param thickness:
+:type thickness: float  Thickness of the waveguide in microns.
+:type gap: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param gap:
+:type gap: float  Gap between the two waveguides
+:type radius: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param radius:
+:type radius: float  Radius of bent portions of waveguide
+:param sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90):
+:type start_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param start_freq:
+:type start_freq: float  The starting frequency to obtain s-parameters for.
+:type stop_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param stop_freq:
+:type stop_freq: float  The ending frequency to obtain s-parameters for.
+:type num: <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>
+:param num:
+:type num: int    The number of points to use between start_freq and stop_freq.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>(frequency, s)</strong> – Returns a tuple containing the frequency array, <cite>frequency</cite>,
+corresponding to the calculated s-parameter matrix, <cite>s</cite>.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_halfring">
+<em class="property">class </em><code class="sig-prename descclassname">simphony.DeviceLibrary.sipann.</code><code class="sig-name descname">sipann_dc_halfring</code><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_halfring"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_halfring" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="simphony.core.html#simphony.core.base.ComponentModel" title="simphony.core.base.ComponentModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">simphony.core.base.ComponentModel</span></code></a></p>
+<p>Regression Based Closed Form solution of half of a ring resonator</p>
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_halfring.cachable">
+<code class="sig-name descname">cachable</code><em class="property"> = False</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_halfring.cachable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_halfring.ports">
+<code class="sig-name descname">ports</code><em class="property"> = 4</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_halfring.ports" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_halfring.s_parameters">
+<em class="property">classmethod </em><code class="sig-name descname">s_parameters</code><span class="sig-paren">(</span><em class="sig-param">width=0.5</em>, <em class="sig-param">thickness=0.22</em>, <em class="sig-param">gap=0.1</em>, <em class="sig-param">radius=10</em>, <em class="sig-param">sw_angle=90</em>, <em class="sig-param">start_freq=188000000000000.0</em>, <em class="sig-param">stop_freq=199000000000000.0</em>, <em class="sig-param">num=2000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_halfring.s_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_halfring.s_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the s-parameters of a parameterized waveguide.
+:type width: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param width:
+:type width: float  Width of the waveguide in microns.
+:type thickness: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param thickness:
+:type thickness: float  Thickness of the waveguide in microns.
+:type gap: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param gap:
+:type gap: float  Gap between the two waveguides
+:type radius: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param radius:
+:type radius: float  Radius of bent portions of waveguide
+:param sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90):
+:type start_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param start_freq:
+:type start_freq: float  The starting frequency to obtain s-parameters for.
+:type stop_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param stop_freq:
+:type stop_freq: float  The ending frequency to obtain s-parameters for.
+:type num: <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>
+:param num:
+:type num: int    The number of points to use between start_freq and stop_freq.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>(frequency, s)</strong> – Returns a tuple containing the frequency array, <cite>frequency</cite>,
+corresponding to the calculated s-parameter matrix, <cite>s</cite>.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_standard">
+<em class="property">class </em><code class="sig-prename descclassname">simphony.DeviceLibrary.sipann.</code><code class="sig-name descname">sipann_dc_standard</code><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_standard"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_standard" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="simphony.core.html#simphony.core.base.ComponentModel" title="simphony.core.base.ComponentModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">simphony.core.base.ComponentModel</span></code></a></p>
+<p>Regression Based Closed Form solution of a standard shaped directional coupler</p>
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_standard.cachable">
+<code class="sig-name descname">cachable</code><em class="property"> = False</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_standard.cachable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_standard.ports">
+<code class="sig-name descname">ports</code><em class="property"> = 4</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_standard.ports" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_standard.s_parameters">
+<em class="property">classmethod </em><code class="sig-name descname">s_parameters</code><span class="sig-paren">(</span><em class="sig-param">width=0.5</em>, <em class="sig-param">thickness=0.22</em>, <em class="sig-param">gap=0.1</em>, <em class="sig-param">length=10</em>, <em class="sig-param">H=2</em>, <em class="sig-param">V=7</em>, <em class="sig-param">sw_angle=90</em>, <em class="sig-param">start_freq=188000000000000.0</em>, <em class="sig-param">stop_freq=199000000000000.0</em>, <em class="sig-param">num=2000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_standard.s_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_standard.s_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the s-parameters of a parameterized waveguide.
+:type width: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param width:
+:type width: float  Width of the waveguide in microns.
+:type thickness: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param thickness:
+:type thickness: float  Thickness of the waveguide in microns.
+:type gap: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param gap:
+:type gap: float  Gap between the two waveguides
+:type length: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param length:
+:type length: float  Length of coupling region
+:type H: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param H:
+:type H: float  Horizontal distance of s-bends on end
+:type V: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param V:
+:type V: float  Vertical distance of s-bends on end
+:param sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90):
+:type start_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param start_freq:
+:type start_freq: float  The starting frequency to obtain s-parameters for.
+:type stop_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param stop_freq:
+:type stop_freq: float  The ending frequency to obtain s-parameters for.
+:type num: <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>
+:param num:
+:type num: int    The number of points to use between start_freq and stop_freq.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>(frequency, s)</strong> – Returns a tuple containing the frequency array, <cite>frequency</cite>,
+corresponding to the calculated s-parameter matrix, <cite>s</cite>.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_straight">
+<em class="property">class </em><code class="sig-prename descclassname">simphony.DeviceLibrary.sipann.</code><code class="sig-name descname">sipann_dc_straight</code><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_straight"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_straight" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="simphony.core.html#simphony.core.base.ComponentModel" title="simphony.core.base.ComponentModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">simphony.core.base.ComponentModel</span></code></a></p>
+<p>Regression Based Closed Form solution of a straight directional coupler</p>
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_straight.cachable">
+<code class="sig-name descname">cachable</code><em class="property"> = False</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_straight.cachable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_straight.ports">
+<code class="sig-name descname">ports</code><em class="property"> = 4</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_straight.ports" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="simphony.DeviceLibrary.sipann.sipann_dc_straight.s_parameters">
+<em class="property">classmethod </em><code class="sig-name descname">s_parameters</code><span class="sig-paren">(</span><em class="sig-param">length=0</em>, <em class="sig-param">width=0.5</em>, <em class="sig-param">thickness=0.22</em>, <em class="sig-param">gap=0.1</em>, <em class="sig-param">sw_angle=90</em>, <em class="sig-param">start_freq=188000000000000.0</em>, <em class="sig-param">stop_freq=199000000000000.0</em>, <em class="sig-param">num=2000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_dc_straight.s_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_dc_straight.s_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the s-parameters of a parameterized waveguide.
+:type length: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param length:
+:type length: float  Length of the waveguide.
+:type width: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param width:
+:type width: float  Width of the waveguide in microns.
+:type thickness: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param thickness:
+:type thickness: float  Thickness of the waveguide in microns.
+:type gap: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param gap:
+:type gap: float  Gap between the two waveguides
+:param sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90):
+:type start_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param start_freq:
+:type start_freq: float  The starting frequency to obtain s-parameters for.
+:type stop_freq: <code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code>
+:param stop_freq:
+:type stop_freq: float  The ending frequency to obtain s-parameters for.
+:type num: <code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code>
+:param num:
+:type num: int    The number of points to use between start_freq and stop_freq.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>(frequency, s)</strong> – Returns a tuple containing the frequency array, <cite>frequency</cite>,
+corresponding to the calculated s-parameter matrix, <cite>s</cite>.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="simphony.DeviceLibrary.sipann.sipann_wg_integral">
+<em class="property">class </em><code class="sig-prename descclassname">simphony.DeviceLibrary.sipann.</code><code class="sig-name descname">sipann_wg_integral</code><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_wg_integral"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_wg_integral" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="simphony.core.html#simphony.core.base.ComponentModel" title="simphony.core.base.ComponentModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">simphony.core.base.ComponentModel</span></code></a></p>
+<p>Neural-net trained model of a waveguide.</p>
+<dl class="method">
+<dt id="simphony.DeviceLibrary.sipann.sipann_wg_integral.ann_s_params">
+<em class="property">static </em><code class="sig-name descname">ann_s_params</code><span class="sig-paren">(</span><em class="sig-param">frequency</em>, <em class="sig-param">length</em>, <em class="sig-param">width</em>, <em class="sig-param">thickness</em>, <em class="sig-param">delta_length</em>, <em class="sig-param">**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_wg_integral.ann_s_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_wg_integral.ann_s_params" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function that calculates the s-parameters for a waveguide using the ANN model</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>frequency</strong> (<em>np.array</em>) – </p></li>
+<li><p><strong>length</strong> (<em>float</em>) – </p></li>
+<li><p><strong>width</strong> (<em>float</em>) – </p></li>
+<li><p><strong>thickness</strong> (<em>float</em>) – </p></li>
+<li><p><strong>delta_length</strong> (<em>float</em>) – </p></li>
+<li><p><strong>**kwargs</strong> (<em>None</em>) – This is a redundancy in case other parameters are included which
+are unnecessary for calculating the result.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>(frequency, s)</strong> – Returns a tuple containing the frequency array, <cite>frequency</cite>,
+corresponding to the calculated s-parameter matrix, <cite>s</cite>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_wg_integral.cachable">
+<code class="sig-name descname">cachable</code><em class="property"> = False</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_wg_integral.cachable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="simphony.DeviceLibrary.sipann.sipann_wg_integral.cartesian_product">
+<em class="property">static </em><code class="sig-name descname">cartesian_product</code><span class="sig-paren">(</span><em class="sig-param">arrays</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_wg_integral.cartesian_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_wg_integral.cartesian_product" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.DeviceLibrary.sipann.sipann_wg_integral.ports">
+<code class="sig-name descname">ports</code><em class="property"> = 2</em><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_wg_integral.ports" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="simphony.DeviceLibrary.sipann.sipann_wg_integral.s_parameters">
+<em class="property">classmethod </em><code class="sig-name descname">s_parameters</code><span class="sig-paren">(</span><em class="sig-param">length=0</em>, <em class="sig-param">width=0.5</em>, <em class="sig-param">thickness=0.22</em>, <em class="sig-param">radius=5</em>, <em class="sig-param">delta_length=0</em>, <em class="sig-param">points=[]</em>, <em class="sig-param">start_freq=188000000000000.0</em>, <em class="sig-param">stop_freq=199000000000000.0</em>, <em class="sig-param">num=2000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_wg_integral.s_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_wg_integral.s_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the s-parameters of a parameterized waveguide.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>length</strong> (<em>float</em>) – Length of the waveguide.</p></li>
+<li><p><strong>width</strong> (<em>float</em>) – Width of the waveguide in microns.</p></li>
+<li><p><strong>thickness</strong> (<em>float</em>) – Thickness of the waveguide in microns.</p></li>
+<li><p><strong>radius</strong> (<em>float</em>) – Bend radius of bends in the waveguide.</p></li>
+<li><p><strong>delta_length</strong> (<em>float</em>) – Only used in monte carlo simulations to randomly vary length.</p></li>
+<li><p><strong>points</strong> (<em>list</em>) – The points denoting the path of the waveguide.</p></li>
+<li><p><strong>start_freq</strong> (<em>float</em>) – The starting frequency to obtain s-parameters for.</p></li>
+<li><p><strong>stop_freq</strong> (<em>float</em>) – The ending frequency to obtain s-parameters for.</p></li>
+<li><p><strong>num</strong> (<em>int</em>) – The number of points to use between start_freq and stop_freq.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>(frequency, s)</strong> – Returns a tuple containing the frequency array, <cite>frequency</cite>,
+corresponding to the calculated s-parameter matrix, <cite>s</cite>.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="simphony.DeviceLibrary.sipann.sipann_wg_integral.straightWaveguide">
+<em class="property">static </em><code class="sig-name descname">straightWaveguide</code><span class="sig-paren">(</span><em class="sig-param">wavelength</em>, <em class="sig-param">width</em>, <em class="sig-param">thickness</em>, <em class="sig-param">angle</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/DeviceLibrary/sipann.html#sipann_wg_integral.straightWaveguide"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.DeviceLibrary.sipann.sipann_wg_integral.straightWaveguide" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="simphony.DeviceLibrary.ebeam.html" class="btn btn-neutral float-right" title="simphony.DeviceLibrary.ebeam package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="simphony.DeviceLibrary.html" class="btn btn-neutral float-left" title="simphony.DeviceLibrary package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Sequoia Ploeg, Hyrum Gunther
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

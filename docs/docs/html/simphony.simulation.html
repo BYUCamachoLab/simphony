@@ -1,0 +1,559 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>simphony.simulation package &mdash; Simphony 0.1.5 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> Simphony
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="reference.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="components.html">Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Program Architecture</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Simphony</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>simphony.simulation package</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/simphony.simulation.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="simphony-simulation-package">
+<h1>simphony.simulation package<a class="headerlink" href="#simphony-simulation-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-simphony.simulation.simulation">
+<span id="simphony-simulation-simulation-module"></span><h2>simphony.simulation.simulation module<a class="headerlink" href="#module-simphony.simulation.simulation" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="simphony.simulation.simulation.MonteCarloSimulation">
+<em class="property">class </em><code class="sig-prename descclassname">simphony.simulation.simulation.</code><code class="sig-name descname">MonteCarloSimulation</code><span class="sig-paren">(</span><em class="sig-param">netlist</em>, <em class="sig-param">start_freq=188000000000000.0</em>, <em class="sig-param">stop_freq=199000000000000.0</em>, <em class="sig-param">num=2000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/simulation/simulation.html#MonteCarloSimulation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.simulation.simulation.MonteCarloSimulation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#simphony.simulation.simulation.Simulation" title="simphony.simulation.simulation.Simulation"><code class="xref py py-class docutils literal notranslate"><span class="pre">simphony.simulation.simulation.Simulation</span></code></a></p>
+<p>A simulator that models manufacturing variability by altering the
+width, thickness, and length of waveguides instantiated from a
+<cite>ebeam_wg_integral_1550</cite> from the default DeviceLibrary.</p>
+<dl class="method">
+<dt id="simphony.simulation.simulation.MonteCarloSimulation.monte_carlo_sim">
+<code class="sig-name descname">monte_carlo_sim</code><span class="sig-paren">(</span><em class="sig-param">num_sims=10</em>, <em class="sig-param">mu_width=0.5</em>, <em class="sig-param">sigma_width=0.005</em>, <em class="sig-param">mu_thickness=0.22</em>, <em class="sig-param">sigma_thickness=0.002</em>, <em class="sig-param">mu_length=1.0</em>, <em class="sig-param">sigma_length=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/simulation/simulation.html#MonteCarloSimulation.monte_carlo_sim"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.simulation.simulation.MonteCarloSimulation.monte_carlo_sim" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs a Monte Carlo simulation on the netlist and stores the results
+in an attribute called <cite>results</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_sims</strong> (<em>int</em><em>, </em><em>optional</em>) – The number of varied simulations to perform.</p></li>
+<li><p><strong>mu_width</strong> (<em>float</em><em>, </em><em>optional</em>) – The mean width to use for the waveguide.</p></li>
+<li><p><strong>sigma_width</strong> (<em>float</em><em>, </em><em>optional</em>) – The standard deviation to use for altering the waveguide width.</p></li>
+<li><p><strong>mu_thickness</strong> (<em>float</em><em>, </em><em>optional</em>) – The mean thickness to use for the waveguide.</p></li>
+<li><p><strong>sigma_thickness</strong> (<em>float</em><em>, </em><em>optional</em>) – The standard deviation to use for altering the waveguide thickness.</p></li>
+<li><p><strong>mu_length</strong> (<em>float</em><em>, </em><em>optional</em>) – The mean length of the waveguide (as a decimal of the actual
+length, i.e. 50% -&gt; 0.5).</p></li>
+<li><p><strong>sigma_length</strong> (<em>float</em><em>, </em><em>optional</em>) – The standard deviation to use for altering the waveguide length.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><strong>time</strong> – The amount of time it took, in seconds, to complete the simulation.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="simphony.simulation.simulation.MultiInputSimulation">
+<em class="property">class </em><code class="sig-prename descclassname">simphony.simulation.simulation.</code><code class="sig-name descname">MultiInputSimulation</code><span class="sig-paren">(</span><em class="sig-param">netlist</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/simulation/simulation.html#MultiInputSimulation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.simulation.simulation.MultiInputSimulation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#simphony.simulation.simulation.Simulation" title="simphony.simulation.simulation.Simulation"><code class="xref py py-class docutils literal notranslate"><span class="pre">simphony.simulation.simulation.Simulation</span></code></a></p>
+<p>A simulator that models sweeping multiple inputs simultaneously by
+performing algebraic operations on the simulated, cascaded s-parameter
+matrix.</p>
+<dl class="method">
+<dt id="simphony.simulation.simulation.MultiInputSimulation.export_s_matrix">
+<code class="sig-name descname">export_s_matrix</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/simulation/simulation.html#MultiInputSimulation.export_s_matrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.simulation.simulation.MultiInputSimulation.export_s_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the matrix result of the multi-input simulation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p><strong>frequency, matrix</strong></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>np.array, np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="simphony.simulation.simulation.MultiInputSimulation.multi_input_simulation">
+<code class="sig-name descname">multi_input_simulation</code><span class="sig-paren">(</span><em class="sig-param">inputs=[]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/simulation/simulation.html#MultiInputSimulation.multi_input_simulation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.simulation.simulation.MultiInputSimulation.multi_input_simulation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a list of ports to use as inputs, calculates the response
+of the circuit for all ports. Results are stored as an attribute and
+can be accessed by retrieving <cite>.simulated_matrix</cite> from the simulation
+object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>inputs</strong> (<em>list</em>) – A 0-indexed list of the ports to be used as inputs.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="simphony.simulation.simulation.SimulatedComponent">
+<em class="property">class </em><code class="sig-prename descclassname">simphony.simulation.simulation.</code><code class="sig-name descname">SimulatedComponent</code><span class="sig-paren">(</span><em class="sig-param">nets=[]</em>, <em class="sig-param">freq=None</em>, <em class="sig-param">s_parameters=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/simulation/simulation.html#SimulatedComponent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.simulation.simulation.SimulatedComponent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>This class is a simplified version of a Component in that it only contains
+an ordered list of nets, the frequency array, and the s-parameter matrix.
+It can be initialized with or without a Component model, allowing its
+attributes to be set after object creation.</p>
+<p>It is used by Simulation in order to store cached s-parameters of
+various objects and also to cascade all components into one final
+component representing the circuit as a whole.</p>
+<dl class="attribute">
+<dt id="simphony.simulation.simulation.SimulatedComponent.nets">
+<code class="sig-name descname">nets</code><a class="headerlink" href="#simphony.simulation.simulation.SimulatedComponent.nets" title="Permalink to this definition">¶</a></dt>
+<dd><p>An ordered list of the nets connected to the Component</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>List[int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.simulation.simulation.SimulatedComponent.f">
+<code class="sig-name descname">f</code><a class="headerlink" href="#simphony.simulation.simulation.SimulatedComponent.f" title="Permalink to this definition">¶</a></dt>
+<dd><p>A numpy array of the frequency values in its simulation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>np.array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="simphony.simulation.simulation.SimulatedComponent.s">
+<code class="sig-name descname">s</code><a class="headerlink" href="#simphony.simulation.simulation.SimulatedComponent.s" title="Permalink to this definition">¶</a></dt>
+<dd><p>A numpy array of the s-parameter matrix for the given frequency range.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type</dt>
+<dd class="field-odd"><p>np.array</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="simphony.simulation.simulation.Simulation">
+<em class="property">class </em><code class="sig-prename descclassname">simphony.simulation.simulation.</code><code class="sig-name descname">Simulation</code><span class="sig-paren">(</span><em class="sig-param">netlist</em>, <em class="sig-param">start_freq=188000000000000.0</em>, <em class="sig-param">stop_freq=199000000000000.0</em>, <em class="sig-param">num=2000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/simulation/simulation.html#Simulation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.simulation.simulation.Simulation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>The main simulation class providing methods for running simulations,
+tracking frequency ranges, and matrix rearranging (according to port
+numbering).</p>
+<p>All simulators can inherit from Simulation to get basic functionality that
+doesn’t need reimplementing.</p>
+<dl class="method">
+<dt id="simphony.simulation.simulation.Simulation.external_ports">
+<em class="property">property </em><code class="sig-name descname">external_ports</code><a class="headerlink" href="#simphony.simulation.simulation.Simulation.external_ports" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a list of the external port numbers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The external nets of the simulated netlist. These are positive
+integers, corresponding to rows/columns of the netlist.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>List[int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="simphony.simulation.simulation.Simulation.freq_array">
+<em class="property">property </em><code class="sig-name descname">freq_array</code><a class="headerlink" href="#simphony.simulation.simulation.Simulation.freq_array" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the linearly spaced frequency array from start_freq to stop_freq with num points.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="simphony.simulation.simulation.Simulation.s_parameters">
+<code class="sig-name descname">s_parameters</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/simulation/simulation.html#Simulation.s_parameters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.simulation.simulation.Simulation.s_parameters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the s-parameters of the cascaded, simulated netlist.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The simulated s-matrix.</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="simphony.simulation.simulation.component2simulated">
+<code class="sig-prename descclassname">simphony.simulation.simulation.</code><code class="sig-name descname">component2simulated</code><span class="sig-paren">(</span><em class="sig-param">component</em>, <em class="sig-param">cache</em>, <em class="sig-param">extras</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/simulation/simulation.html#component2simulated"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.simulation.simulation.component2simulated" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts a component into the simplified SimulatedComponent model.</p>
+<p>This disregards what model a component is or any attributes it has
+in favor of tracking just its nets, frequency range, and s-parameters.
+S-parameters should already be the final, interpolated, calculated
+values.</p>
+<p>If the component is not cachable, extras should provide all the
+parameters necessary for the given component to calculate its
+s-parameters.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>component</strong> (<a class="reference internal" href="simphony.core.html#simphony.core.base.ComponentInstance" title="simphony.core.base.ComponentInstance"><em>ComponentInstance</em></a><em>, </em><em>optional</em>) – The component to instantiate a SimulatedComponent from.</p></li>
+<li><p><strong>cache</strong> (<em>dict</em>) – The dictionary containing the cache of components to s-parameters.</p></li>
+<li><p><strong>extras</strong> (<em>dict</em>) – The dictionary containing parameters required for the calculation
+of a given non-cachable component’s s-parameters.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#simphony.simulation.simulation.SimulatedComponent" title="simphony.simulation.simulation.SimulatedComponent"><code class="xref py py-class docutils literal notranslate"><span class="pre">SimulatedComponent</span></code></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="simphony.simulation.simulation.connect_circuit">
+<code class="sig-prename descclassname">simphony.simulation.simulation.</code><code class="sig-name descname">connect_circuit</code><span class="sig-paren">(</span><em class="sig-param">components</em>, <em class="sig-param">net_count</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/simulation/simulation.html#connect_circuit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.simulation.simulation.connect_circuit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Connects the s-matrices of a photonic circuit given its Netlist
+and returns a single ‘SimulatedComponent’ object containing the frequency
+array, the assembled s-matrix, and a list of the external nets (negative
+integers).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>component_list</strong> (<em>List</em><em>[</em><a class="reference internal" href="#simphony.simulation.simulation.SimulatedComponent" title="simphony.simulation.simulation.SimulatedComponent"><em>SimulatedComponent</em></a><em>]</em>) – A list of the components to be connected.</p></li>
+<li><p><strong>net_count</strong> (<em>int</em>) – The total number of internal nets in the component list.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>After the circuit has been fully connected, the result is a single
+ComponentSimulation with fields f (frequency), s (s-matrix), and nets
+(external ports: negative numbers, as strings).</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#simphony.simulation.simulation.SimulatedComponent" title="simphony.simulation.simulation.SimulatedComponent">SimulatedComponent</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="simphony.simulation.simulation.interpolate">
+<code class="sig-prename descclassname">simphony.simulation.simulation.</code><code class="sig-name descname">interpolate</code><span class="sig-paren">(</span><em class="sig-param">output_freq</em>, <em class="sig-param">input_freq</em>, <em class="sig-param">s_parameters</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/simulation/simulation.html#interpolate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.simulation.simulation.interpolate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the result of a cubic interpolation for a given frequency range.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>output_freq</strong> (<em>np.array</em>) – The desired frequency range for a given input to be interpolated to.</p></li>
+<li><p><strong>input_freq</strong> (<em>np.array</em>) – A frequency array, indexed matching the given s_parameters.</p></li>
+<li><p><strong>s_parameters</strong> (<em>np.array</em>) – S-parameters for each frequency given in input_freq.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>output_freq</strong> (<em>np.array</em>) – The output frequency range that was passed in as a parameter.</p></li>
+<li><p><strong>result</strong> (<em>np.array</em>) – The values of the interpolated function (fitted to the input
+s-parameters) evaluated at the <cite>output_freq</cite> frequencies.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="simphony.simulation.simulation.match_ports">
+<code class="sig-prename descclassname">simphony.simulation.simulation.</code><code class="sig-name descname">match_ports</code><span class="sig-paren">(</span><em class="sig-param">net_id</em>, <em class="sig-param">component_list</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/simulation/simulation.html#match_ports"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.simulation.simulation.match_ports" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds the components connected together by the specified net_id (string) in
+a list of components provided by the caller (even if the component is
+connected to itself).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>net_id</strong> (<em>int</em>) – The net id or name to which the components being searched for are
+connected.</p></li>
+<li><p><strong>component_list</strong> (<em>list</em><em>[</em><a class="reference internal" href="#simphony.simulation.simulation.SimulatedComponent" title="simphony.simulation.simulation.SimulatedComponent"><em>SimulatedComponent</em></a><em>]</em>) – The complete list of components to be searched.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><p>A list (length 4) of integers with the following meanings:
+- comp1: Index of the first component in the list with a matching</p>
+<blockquote>
+<div><p>net id.</p>
+</div></blockquote>
+<ul class="simple">
+<li><dl class="simple">
+<dt>netidx1: Index of the net in the ordered net list of ‘comp1’</dt><dd><p>(corresponds to its column or row in the s-parameter matrix).</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>comp2: Index of the second component in the list with a matching</dt><dd><p>net id.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>netidx1: Index of the net in the ordered net list of ‘comp2’</dt><dd><p>(corresponds to its column or row in the s-parameter matrix).</p>
+</dd>
+</dl>
+</li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>[comp1, netidx1, comp2, netidx2]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="simphony.simulation.simulation.rearrange">
+<code class="sig-prename descclassname">simphony.simulation.simulation.</code><code class="sig-name descname">rearrange</code><span class="sig-paren">(</span><em class="sig-param">component</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/simulation/simulation.html#rearrange"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.simulation.simulation.rearrange" title="Permalink to this definition">¶</a></dt>
+<dd><p>Rearranges the s-matrix of the simulated component according to its
+port ordering.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>component</strong> (<a class="reference internal" href="#simphony.simulation.simulation.SimulatedComponent" title="simphony.simulation.simulation.SimulatedComponent"><em>SimulatedComponent</em></a>) – A component that has external ports and a calculated s-parameter
+matrix.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A single component with its reordered s-matrix and new port list.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#simphony.simulation.simulation.SimulatedComponent" title="simphony.simulation.simulation.SimulatedComponent">SimulatedComponent</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="simphony.simulation.simulation.rearrange_matrix">
+<code class="sig-prename descclassname">simphony.simulation.simulation.</code><code class="sig-name descname">rearrange_matrix</code><span class="sig-paren">(</span><em class="sig-param">s_matrix</em>, <em class="sig-param">concatenate_order</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/simulation/simulation.html#rearrange_matrix"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.simulation.simulation.rearrange_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reorders a matrix given a list mapping indices to columns.</p>
+<p>S-matrices are indexed in the following manner:
+matrix[frequency, input, output].</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s_matrix</strong> (<em>np.ndarray</em>) – The s-matrix to be rearranged.</p></li>
+<li><p><strong>concatenate_order</strong> (<em>List</em><em>[</em><em>int</em><em>]</em>) – The index-to-column mapping. See <cite>rearrange</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The reordered s-matrix.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>np.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="simphony.simulation.simulation.rearrange_order">
+<code class="sig-prename descclassname">simphony.simulation.simulation.</code><code class="sig-name descname">rearrange_order</code><span class="sig-paren">(</span><em class="sig-param">ports</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/simulation/simulation.html#rearrange_order"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.simulation.simulation.rearrange_order" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determines what order the ports should be placed in after simulation.</p>
+<p>Ports are usually passed in as a scrambled list of negative integers.
+This function returns a list containing indices corresponding to the
+order in which the input list should be reordered to be sorted.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>ports</strong> (<em>List</em><em>[</em><em>int</em><em>]</em>) – A list of ports to be sorted.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Indices corresponding to how ports should be reordered.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>List[int]</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">list_a</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">3</span> <span class="o">-</span><span class="mi">5</span> <span class="o">-</span><span class="mi">2</span> <span class="o">-</span><span class="mi">1</span> <span class="o">-</span><span class="mi">4</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">list_b</span> <span class="o">=</span> <span class="n">rearrange_order</span><span class="p">(</span><span class="n">list_a</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">list_b</span>
+<span class="go">[3, 2, 0, 4, 1]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="module-simphony.simulation">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-simphony.simulation" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Sequoia Ploeg, Hyrum Gunther
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

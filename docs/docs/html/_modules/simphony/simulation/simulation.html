@@ -1,0 +1,741 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>simphony.simulation.simulation &mdash; Simphony 0.1.5 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../../index.html" class="icon icon-home"> Simphony
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference.html">API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../components.html">Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture.html">Program Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">simphony</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Simphony</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../../index.html">Module code</a> &raquo;</li>
+        
+      <li>simphony.simulation.simulation</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for simphony.simulation.simulation</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">timedelta</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Callable</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">scipy.interpolate</span> <span class="k">import</span> <span class="n">interp1d</span>
+<span class="kn">from</span> <span class="nn">simphony.core</span> <span class="k">import</span> <span class="n">ComponentInstance</span><span class="p">,</span> <span class="n">ComponentModel</span><span class="p">,</span> <span class="n">Netlist</span>
+<span class="kn">from</span> <span class="nn">simphony.core.connect</span> <span class="k">import</span> <span class="n">connect_s</span><span class="p">,</span> <span class="n">innerconnect_s</span>
+
+
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># INTERPOLATION FUNCTION</span>
+<span class="c1">#</span>
+<span class="c1"># Takes a set of (x, y) values, fits a curve to them, and resamples the curve</span>
+<span class="c1"># for some given set of points</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+
+
+<div class="viewcode-block" id="interpolate"><a class="viewcode-back" href="../../../simphony.simulation.html#simphony.simulation.simulation.interpolate">[docs]</a><span class="k">def</span> <span class="nf">interpolate</span><span class="p">(</span><span class="n">output_freq</span><span class="p">,</span> <span class="n">input_freq</span><span class="p">,</span> <span class="n">s_parameters</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Returns the result of a cubic interpolation for a given frequency range.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    output_freq : np.array</span>
+<span class="sd">        The desired frequency range for a given input to be interpolated to.</span>
+<span class="sd">    input_freq : np.array</span>
+<span class="sd">        A frequency array, indexed matching the given s_parameters.</span>
+<span class="sd">    s_parameters : np.array</span>
+<span class="sd">        S-parameters for each frequency given in input_freq.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    output_freq : np.array</span>
+<span class="sd">        The output frequency range that was passed in as a parameter.</span>
+<span class="sd">    result : np.array</span>
+<span class="sd">        The values of the interpolated function (fitted to the input </span>
+<span class="sd">        s-parameters) evaluated at the `output_freq` frequencies.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">func</span> <span class="o">=</span> <span class="n">interp1d</span><span class="p">(</span><span class="n">input_freq</span><span class="p">,</span> <span class="n">s_parameters</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">&#39;cubic&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">output_freq</span><span class="p">,</span> <span class="n">func</span><span class="p">(</span><span class="n">output_freq</span><span class="p">)]</span></div>
+
+
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># SIMULATED COMPONENTS</span>
+<span class="c1">#</span>
+<span class="c1"># Classes and functions for storing the results of each component that is </span>
+<span class="c1"># simulated.</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+
+
+<div class="viewcode-block" id="SimulatedComponent"><a class="viewcode-back" href="../../../simphony.simulation.html#simphony.simulation.simulation.SimulatedComponent">[docs]</a><span class="k">class</span> <span class="nc">SimulatedComponent</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class is a simplified version of a Component in that it only contains</span>
+<span class="sd">    an ordered list of nets, the frequency array, and the s-parameter matrix. </span>
+<span class="sd">    It can be initialized with or without a Component model, allowing its </span>
+<span class="sd">    attributes to be set after object creation.</span>
+
+<span class="sd">    It is used by Simulation in order to store cached s-parameters of</span>
+<span class="sd">    various objects and also to cascade all components into one final </span>
+<span class="sd">    component representing the circuit as a whole.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    nets : List[int]</span>
+<span class="sd">        An ordered list of the nets connected to the Component</span>
+<span class="sd">    f : np.array</span>
+<span class="sd">        A numpy array of the frequency values in its simulation.</span>
+<span class="sd">    s : np.array</span>
+<span class="sd">        A numpy array of the s-parameter matrix for the given frequency range.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nets</span><span class="p">:</span> <span class="nb">list</span>
+    <span class="n">f</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span>
+    <span class="n">s</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nets</span><span class="o">=</span><span class="p">[],</span> <span class="n">freq</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">s_parameters</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Instantiates an object from a Component if provided; empty, if not.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        component : Component, optional</span>
+<span class="sd">            A component to initialize the data members of the object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nets</span> <span class="o">=</span> <span class="n">nets</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">f</span> <span class="o">=</span> <span class="n">freq</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">s</span> <span class="o">=</span> <span class="n">s_parameters</span></div>
+
+<div class="viewcode-block" id="component2simulated"><a class="viewcode-back" href="../../../simphony.simulation.html#simphony.simulation.simulation.component2simulated">[docs]</a><span class="k">def</span> <span class="nf">component2simulated</span><span class="p">(</span><span class="n">component</span><span class="p">:</span> <span class="n">ComponentInstance</span><span class="p">,</span> <span class="n">cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">extras</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SimulatedComponent</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Converts a component into the simplified SimulatedComponent model.</span>
+
+<span class="sd">        This disregards what model a component is or any attributes it has</span>
+<span class="sd">        in favor of tracking just its nets, frequency range, and s-parameters.</span>
+<span class="sd">        S-parameters should already be the final, interpolated, calculated </span>
+<span class="sd">        values.</span>
+
+<span class="sd">        If the component is not cachable, extras should provide all the</span>
+<span class="sd">        parameters necessary for the given component to calculate its </span>
+<span class="sd">        s-parameters.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        component : ComponentInstance, optional</span>
+<span class="sd">            The component to instantiate a SimulatedComponent from.</span>
+<span class="sd">        cache : dict</span>
+<span class="sd">            The dictionary containing the cache of components to s-parameters.</span>
+<span class="sd">        extras : dict</span>
+<span class="sd">            The dictionary containing parameters required for the calculation</span>
+<span class="sd">            of a given non-cachable component&#39;s s-parameters.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Entering _component_converter()&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">component_type</span> <span class="ow">in</span> <span class="n">cache</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">SimulatedComponent</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">nets</span><span class="p">,</span> <span class="o">*</span><span class="n">cache</span><span class="p">[</span><span class="n">component</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">component_type</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">component</span><span class="o">.</span><span class="n">extras</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">extras</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">SimulatedComponent</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">nets</span><span class="p">,</span> <span class="o">*</span><span class="n">component</span><span class="o">.</span><span class="n">get_s_parameters</span><span class="p">())</span></div>
+
+
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># BASE SIMULATION STRUCTURE</span>
+<span class="c1">#</span>
+<span class="c1"># The main class and functions pertaining to operations that any type of </span>
+<span class="c1"># simulation will invariably need.</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+
+
+<div class="viewcode-block" id="Simulation"><a class="viewcode-back" href="../../../simphony.simulation.html#simphony.simulation.simulation.Simulation">[docs]</a><span class="k">class</span> <span class="nc">Simulation</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;The main simulation class providing methods for running simulations,</span>
+<span class="sd">    tracking frequency ranges, and matrix rearranging (according to port</span>
+<span class="sd">    numbering).</span>
+
+<span class="sd">    All simulators can inherit from Simulation to get basic functionality that</span>
+<span class="sd">    doesn&#39;t need reimplementing.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">netlist</span><span class="p">:</span> <span class="n">Netlist</span><span class="p">,</span> <span class="n">start_freq</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">1.88e+14</span><span class="p">,</span> <span class="n">stop_freq</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">1.99e+14</span><span class="p">,</span> <span class="n">num</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">2000</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Creates and automatically runs a simulation by cascading the netlist.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        netlist : Netlist</span>
+<span class="sd">            The netlist to be simulated.</span>
+<span class="sd">        start_freq : float</span>
+<span class="sd">            The starting (lower) value for the frequency range to be analyzed.</span>
+<span class="sd">        stop_freq : float</span>
+<span class="sd">            The ending (upper) value for the frequency range to be analyzed.</span>
+<span class="sd">        num : int</span>
+<span class="sd">            The number of points to be used between start_freq and stop_freq.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">netlist</span><span class="p">:</span> <span class="n">Netlist</span> <span class="o">=</span> <span class="n">netlist</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start_freq</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">start_freq</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_freq</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">stop_freq</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">num</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting simulation...&quot;</span><span class="p">)</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache_models</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cascade</span><span class="p">()</span>
+        <span class="n">stop</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Simulation complete.&quot;</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Total simulation time: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="p">(</span><span class="n">stop</span> <span class="o">-</span> <span class="n">start</span><span class="p">))))</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">freq_array</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns the linearly spaced frequency array from start_freq to stop_freq with num points.&quot;&quot;&quot;</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Entering freq_array()&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">start_freq</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop_freq</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_cache_models</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Caches all models marked as `cachable=True` to avoid constant I/O </span>
+<span class="sd">        operations and redundant calculations&quot;&quot;&quot;</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Entering _cache_models()&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">netlist</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">component_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span> <span class="ow">and</span> <span class="n">component</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">cachable</span><span class="p">:</span>
+                <span class="n">freq</span><span class="p">,</span> <span class="n">s_parameters</span> <span class="o">=</span> <span class="n">interpolate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freq_array</span><span class="p">,</span> <span class="o">*</span><span class="n">component</span><span class="o">.</span><span class="n">get_s_parameters</span><span class="p">())</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">[</span><span class="n">component</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">component_type</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="n">s_parameters</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_cascade</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Cascades all components together into a single SimulatedComponent.</span>
+
+<span class="sd">        This is essentially the function that performs the full simulation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Entering _cascade()&quot;</span><span class="p">)</span>
+        <span class="n">extras</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">extras</span><span class="p">[</span><span class="s1">&#39;start_freq&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_freq</span>
+        <span class="n">extras</span><span class="p">[</span><span class="s1">&#39;stop_freq&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop_freq</span>
+        <span class="n">extras</span><span class="p">[</span><span class="s1">&#39;num&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">num</span>
+        <span class="n">component_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">component2simulated</span><span class="p">(</span><span class="n">component</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cache</span><span class="p">,</span> <span class="n">extras</span><span class="p">)</span> <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">netlist</span><span class="o">.</span><span class="n">components</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">combined</span> <span class="o">=</span> <span class="n">rearrange</span><span class="p">(</span><span class="n">connect_circuit</span><span class="p">(</span><span class="n">component_list</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">netlist</span><span class="o">.</span><span class="n">net_count</span><span class="p">))</span>
+
+<div class="viewcode-block" id="Simulation.s_parameters"><a class="viewcode-back" href="../../../simphony.simulation.html#simphony.simulation.simulation.Simulation.s_parameters">[docs]</a>    <span class="k">def</span> <span class="nf">s_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns the s-parameters of the cascaded, simulated netlist.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            The simulated s-matrix.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined</span><span class="o">.</span><span class="n">s</span></div>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">external_ports</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns a list of the external port numbers.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        List[int]</span>
+<span class="sd">            The external nets of the simulated netlist. These are positive</span>
+<span class="sd">            integers, corresponding to rows/columns of the netlist.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">combined</span><span class="o">.</span><span class="n">nets</span></div>
+
+    <span class="c1"># @property</span>
+    <span class="c1"># def external_components(self):</span>
+    <span class="c1">#     # return [component for component in self.netlist.components if (any(int(x) &lt; 0 for x in component.nets))]</span>
+    <span class="c1">#     externals = []</span>
+    <span class="c1">#     for component in self.netlist.components:</span>
+    <span class="c1">#         if (any(int(x) &lt; 0 for x in component.nets)):</span>
+    <span class="c1">#             externals.append(component)</span>
+    <span class="c1">#     return externals</span>
+
+<div class="viewcode-block" id="rearrange_order"><a class="viewcode-back" href="../../../simphony.simulation.html#simphony.simulation.simulation.rearrange_order">[docs]</a><span class="k">def</span> <span class="nf">rearrange_order</span><span class="p">(</span><span class="n">ports</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+    <span class="sd">&quot;&quot;&quot;Determines what order the ports should be placed in after simulation.</span>
+<span class="sd">    </span>
+<span class="sd">    Ports are usually passed in as a scrambled list of negative integers.</span>
+<span class="sd">    This function returns a list containing indices corresponding to the</span>
+<span class="sd">    order in which the input list should be reordered to be sorted.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ports : List[int]</span>
+<span class="sd">        A list of ports to be sorted.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    List[int]</span>
+<span class="sd">        Indices corresponding to how ports should be reordered.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    &gt;&gt;&gt; list_a = [-3 -5 -2 -1 -4]</span>
+<span class="sd">    &gt;&gt;&gt; list_b = rearrange_order(list_a)</span>
+<span class="sd">    &gt;&gt;&gt; list_b</span>
+<span class="sd">    [3, 2, 0, 4, 1]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Entering rearrange_order()&quot;</span><span class="p">)</span>
+    <span class="n">reordered</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">ports</span><span class="p">)</span>
+    <span class="n">reordered</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">reverse</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Order: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">reordered</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">ports</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">reordered</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="rearrange"><a class="viewcode-back" href="../../../simphony.simulation.html#simphony.simulation.simulation.rearrange">[docs]</a><span class="k">def</span> <span class="nf">rearrange</span><span class="p">(</span><span class="n">component</span><span class="p">:</span> <span class="n">SimulatedComponent</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SimulatedComponent</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Rearranges the s-matrix of the simulated component according to its </span>
+<span class="sd">    port ordering.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    component : SimulatedComponent</span>
+<span class="sd">        A component that has external ports and a calculated s-parameter</span>
+<span class="sd">        matrix.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    SimulatedComponent</span>
+<span class="sd">        A single component with its reordered s-matrix and new port list.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">concatenate_order</span> <span class="o">=</span> <span class="n">rearrange_order</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">nets</span><span class="p">)</span>
+    <span class="n">s_params</span> <span class="o">=</span> <span class="n">rearrange_matrix</span><span class="p">(</span><span class="n">component</span><span class="o">.</span><span class="n">s</span><span class="p">,</span> <span class="n">concatenate_order</span><span class="p">)</span>
+    <span class="n">reordered_nets</span> <span class="o">=</span> <span class="p">[(</span><span class="o">-</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">component</span><span class="o">.</span><span class="n">nets</span><span class="p">]</span>
+    <span class="n">reordered_nets</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">SimulatedComponent</span><span class="p">(</span><span class="n">nets</span><span class="o">=</span><span class="n">reordered_nets</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="n">component</span><span class="o">.</span><span class="n">f</span><span class="p">,</span> <span class="n">s_parameters</span><span class="o">=</span><span class="n">s_params</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="rearrange_matrix"><a class="viewcode-back" href="../../../simphony.simulation.html#simphony.simulation.simulation.rearrange_matrix">[docs]</a><span class="k">def</span> <span class="nf">rearrange_matrix</span><span class="p">(</span><span class="n">s_matrix</span><span class="p">,</span> <span class="n">concatenate_order</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Reorders a matrix given a list mapping indices to columns.</span>
+
+<span class="sd">    S-matrices are indexed in the following manner:</span>
+<span class="sd">    matrix[frequency, input, output].</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    s_matrix : np.ndarray</span>
+<span class="sd">        The s-matrix to be rearranged.</span>
+<span class="sd">    concatenate_order : List[int]</span>
+<span class="sd">        The index-to-column mapping. See `rearrange`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    np.ndarray</span>
+<span class="sd">        The reordered s-matrix.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">port_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">concatenate_order</span><span class="p">)</span>
+    <span class="n">reordered_s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">s_matrix</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">complex</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">port_count</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">port_count</span><span class="p">):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">concatenate_order</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">concatenate_order</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
+            <span class="n">reordered_s</span><span class="p">[:,</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">s_matrix</span><span class="p">[:,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">reordered_s</span></div>
+
+<div class="viewcode-block" id="match_ports"><a class="viewcode-back" href="../../../simphony.simulation.html#simphony.simulation.simulation.match_ports">[docs]</a><span class="k">def</span> <span class="nf">match_ports</span><span class="p">(</span><span class="n">net_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">component_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SimulatedComponent</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Finds the components connected together by the specified net_id (string) in</span>
+<span class="sd">    a list of components provided by the caller (even if the component is </span>
+<span class="sd">    connected to itself).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    net_id : int</span>
+<span class="sd">        The net id or name to which the components being searched for are </span>
+<span class="sd">        connected.</span>
+<span class="sd">    component_list : list[SimulatedComponent]</span>
+<span class="sd">        The complete list of components to be searched.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    [comp1, netidx1, comp2, netidx2]</span>
+<span class="sd">        A list (length 4) of integers with the following meanings:</span>
+<span class="sd">        - comp1: Index of the first component in the list with a matching </span>
+<span class="sd">            net id.</span>
+<span class="sd">        - netidx1: Index of the net in the ordered net list of &#39;comp1&#39; </span>
+<span class="sd">            (corresponds to its column or row in the s-parameter matrix).</span>
+<span class="sd">        - comp2: Index of the second component in the list with a matching </span>
+<span class="sd">            net id.</span>
+<span class="sd">        - netidx1: Index of the net in the ordered net list of &#39;comp2&#39; </span>
+<span class="sd">            (corresponds to its column or row in the s-parameter matrix).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Entering match_ports(), searching for net: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">net_id</span><span class="p">))</span>
+    <span class="n">filtered_comps</span> <span class="o">=</span> <span class="p">[</span><span class="n">component</span> <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="n">component_list</span> <span class="k">if</span> <span class="n">net_id</span> <span class="ow">in</span> <span class="n">component</span><span class="o">.</span><span class="n">nets</span><span class="p">]</span>
+    <span class="n">comp_idx</span> <span class="o">=</span> <span class="p">[</span><span class="n">component_list</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">component</span><span class="p">)</span> <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="n">filtered_comps</span><span class="p">]</span>
+    <span class="n">net_idx</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">comp</span> <span class="ow">in</span> <span class="n">filtered_comps</span><span class="p">:</span>
+        <span class="n">net_idx</span> <span class="o">+=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">comp</span><span class="o">.</span><span class="n">nets</span><span class="p">)</span> <span class="k">if</span> <span class="n">x</span> <span class="o">==</span> <span class="n">net_id</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">comp_idx</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">comp_idx</span> <span class="o">+=</span> <span class="n">comp_idx</span>
+    
+    <span class="k">return</span> <span class="p">[</span><span class="n">comp_idx</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">net_idx</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">comp_idx</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">net_idx</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span></div>
+
+
+<div class="viewcode-block" id="connect_circuit"><a class="viewcode-back" href="../../../simphony.simulation.html#simphony.simulation.simulation.connect_circuit">[docs]</a><span class="k">def</span> <span class="nf">connect_circuit</span><span class="p">(</span><span class="n">components</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">SimulatedComponent</span><span class="p">],</span> <span class="n">net_count</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SimulatedComponent</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Connects the s-matrices of a photonic circuit given its Netlist</span>
+<span class="sd">    and returns a single &#39;SimulatedComponent&#39; object containing the frequency</span>
+<span class="sd">    array, the assembled s-matrix, and a list of the external nets (negative </span>
+<span class="sd">    integers).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    component_list : List[SimulatedComponent]</span>
+<span class="sd">        A list of the components to be connected.</span>
+<span class="sd">    net_count : int</span>
+<span class="sd">        The total number of internal nets in the component list.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    SimulatedComponent</span>
+<span class="sd">        After the circuit has been fully connected, the result is a single </span>
+<span class="sd">        ComponentSimulation with fields f (frequency), s (s-matrix), and nets </span>
+<span class="sd">        (external ports: negative numbers, as strings).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">component_list</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">components</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">net_count</span><span class="p">):</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Entering pass </span><span class="si">{}</span><span class="s2"> of </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">net_count</span><span class="p">))</span>
+        <span class="n">ca</span><span class="p">,</span> <span class="n">ia</span><span class="p">,</span> <span class="n">cb</span><span class="p">,</span> <span class="n">ib</span> <span class="o">=</span> <span class="n">match_ports</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">component_list</span><span class="p">)</span>
+
+        <span class="c1"># If pin occurances are in the same component:</span>
+        <span class="k">if</span> <span class="n">ca</span> <span class="o">==</span> <span class="n">cb</span><span class="p">:</span>
+            <span class="n">component_list</span><span class="p">[</span><span class="n">ca</span><span class="p">]</span><span class="o">.</span><span class="n">s</span> <span class="o">=</span> <span class="n">innerconnect_s</span><span class="p">(</span><span class="n">component_list</span><span class="p">[</span><span class="n">ca</span><span class="p">]</span><span class="o">.</span><span class="n">s</span><span class="p">,</span> <span class="n">ia</span><span class="p">,</span> <span class="n">ib</span><span class="p">)</span>
+            <span class="k">del</span> <span class="n">component_list</span><span class="p">[</span><span class="n">ca</span><span class="p">]</span><span class="o">.</span><span class="n">nets</span><span class="p">[</span><span class="n">ia</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">ia</span> <span class="o">&lt;</span> <span class="n">ib</span><span class="p">:</span>
+                <span class="k">del</span> <span class="n">component_list</span><span class="p">[</span><span class="n">ca</span><span class="p">]</span><span class="o">.</span><span class="n">nets</span><span class="p">[</span><span class="n">ib</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">del</span> <span class="n">component_list</span><span class="p">[</span><span class="n">ca</span><span class="p">]</span><span class="o">.</span><span class="n">nets</span><span class="p">[</span><span class="n">ib</span><span class="p">]</span>
+
+        <span class="c1"># If pin occurances are in different components:</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">combination</span> <span class="o">=</span> <span class="n">SimulatedComponent</span><span class="p">()</span>
+            <span class="n">combination</span><span class="o">.</span><span class="n">f</span> <span class="o">=</span> <span class="n">component_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">f</span>
+            <span class="n">combination</span><span class="o">.</span><span class="n">s</span> <span class="o">=</span> <span class="n">connect_s</span><span class="p">(</span><span class="n">component_list</span><span class="p">[</span><span class="n">ca</span><span class="p">]</span><span class="o">.</span><span class="n">s</span><span class="p">,</span> <span class="n">ia</span><span class="p">,</span> <span class="n">component_list</span><span class="p">[</span><span class="n">cb</span><span class="p">]</span><span class="o">.</span><span class="n">s</span><span class="p">,</span> <span class="n">ib</span><span class="p">)</span>
+            <span class="k">del</span> <span class="n">component_list</span><span class="p">[</span><span class="n">ca</span><span class="p">]</span><span class="o">.</span><span class="n">nets</span><span class="p">[</span><span class="n">ia</span><span class="p">]</span>
+            <span class="k">del</span> <span class="n">component_list</span><span class="p">[</span><span class="n">cb</span><span class="p">]</span><span class="o">.</span><span class="n">nets</span><span class="p">[</span><span class="n">ib</span><span class="p">]</span>
+            <span class="n">combination</span><span class="o">.</span><span class="n">nets</span> <span class="o">=</span> <span class="n">component_list</span><span class="p">[</span><span class="n">ca</span><span class="p">]</span><span class="o">.</span><span class="n">nets</span> <span class="o">+</span> <span class="n">component_list</span><span class="p">[</span><span class="n">cb</span><span class="p">]</span><span class="o">.</span><span class="n">nets</span>
+            <span class="k">del</span> <span class="n">component_list</span><span class="p">[</span><span class="n">ca</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">ca</span> <span class="o">&lt;</span> <span class="n">cb</span><span class="p">:</span>
+                <span class="k">del</span> <span class="n">component_list</span><span class="p">[</span><span class="n">cb</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">del</span> <span class="n">component_list</span><span class="p">[</span><span class="n">cb</span><span class="p">]</span>
+            <span class="n">component_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">combination</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">component_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">component_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></div>
+
+
+<span class="c1">#</span>
+<span class="c1">#</span>
+<span class="c1"># OTHER SIMULATORS</span>
+<span class="c1">#</span>
+<span class="c1"># Other simulators, as they are coded, can be found in this section. They </span>
+<span class="c1"># mostly inherit from the default simulator.</span>
+<span class="c1">#</span>
+<span class="c1">#</span>
+
+
+<div class="viewcode-block" id="MonteCarloSimulation"><a class="viewcode-back" href="../../../simphony.simulation.html#simphony.simulation.simulation.MonteCarloSimulation">[docs]</a><span class="k">class</span> <span class="nc">MonteCarloSimulation</span><span class="p">(</span><span class="n">Simulation</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A simulator that models manufacturing variability by altering the</span>
+<span class="sd">    width, thickness, and length of waveguides instantiated from a </span>
+<span class="sd">    `ebeam_wg_integral_1550` from the default DeviceLibrary.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">netlist</span><span class="p">:</span> <span class="n">Netlist</span><span class="p">,</span> <span class="n">start_freq</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">1.88e+14</span><span class="p">,</span> <span class="n">stop_freq</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">1.99e+14</span><span class="p">,</span> <span class="n">num</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">2000</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initializes the MonteCarloSimulation with a Netlist and runs a </span>
+<span class="sd">        single simulation for the &quot;ideal,&quot; pre-modified model.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        netlist : Netlist</span>
+<span class="sd">            The netlist to be simulated.</span>
+<span class="sd">        start_freq : float</span>
+<span class="sd">            The starting (lower) value for the frequency range to be analyzed.</span>
+<span class="sd">        stop_freq : float</span>
+<span class="sd">            The ending (upper) value for the frequency range to be analyzed.</span>
+<span class="sd">        num : int</span>
+<span class="sd">            The number of points to be used between start_freq and stop_freq.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">netlist</span><span class="p">,</span> <span class="n">start_freq</span><span class="o">=</span><span class="n">start_freq</span><span class="p">,</span> <span class="n">stop_freq</span><span class="o">=</span><span class="n">stop_freq</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="n">num</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MonteCarloSimulation.monte_carlo_sim"><a class="viewcode-back" href="../../../simphony.simulation.html#simphony.simulation.simulation.MonteCarloSimulation.monte_carlo_sim">[docs]</a>    <span class="k">def</span> <span class="nf">monte_carlo_sim</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_sims</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> 
+        <span class="n">mu_width</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">sigma_width</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.005</span><span class="p">,</span> 
+        <span class="n">mu_thickness</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.22</span><span class="p">,</span> <span class="n">sigma_thickness</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">0.002</span><span class="p">,</span> 
+        <span class="n">mu_length</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma_length</span><span class="p">:</span> <span class="nb">float</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Runs a Monte Carlo simulation on the netlist and stores the results</span>
+<span class="sd">        in an attribute called `results`.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        num_sims : int, optional</span>
+<span class="sd">            The number of varied simulations to perform.</span>
+<span class="sd">        mu_width : float, optional</span>
+<span class="sd">            The mean width to use for the waveguide.</span>
+<span class="sd">        sigma_width : float, optional</span>
+<span class="sd">            The standard deviation to use for altering the waveguide width.</span>
+<span class="sd">        mu_thickness : float, optional</span>
+<span class="sd">            The mean thickness to use for the waveguide.</span>
+<span class="sd">        sigma_thickness : float, optional</span>
+<span class="sd">            The standard deviation to use for altering the waveguide thickness.</span>
+<span class="sd">        mu_length : float, optional</span>
+<span class="sd">            The mean length of the waveguide (as a decimal of the actual </span>
+<span class="sd">            length, i.e. 50% -&gt; 0.5).</span>
+<span class="sd">        sigma_length : float, optional</span>
+<span class="sd">            The standard deviation to use for altering the waveguide length.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        time : int</span>
+<span class="sd">            The amount of time it took, in seconds, to complete the simulation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="c1"># Randomly generate variation in the waveguides.</span>
+        <span class="n">random_width</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">mu_width</span><span class="p">,</span> <span class="n">sigma_width</span><span class="p">,</span> <span class="n">num_sims</span><span class="p">)</span>
+        <span class="n">random_thickness</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">mu_thickness</span><span class="p">,</span> <span class="n">sigma_thickness</span><span class="p">,</span> <span class="n">num_sims</span><span class="p">)</span>
+        <span class="n">random_deltaLength</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">mu_length</span><span class="p">,</span> <span class="n">sigma_length</span><span class="p">,</span> <span class="n">num_sims</span><span class="p">)</span>
+
+        <span class="c1"># Create an array for holding the results</span>
+        <span class="n">results_shape</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">([</span><span class="n">num_sims</span><span class="p">]),</span> <span class="bp">self</span><span class="o">.</span><span class="n">s_parameters</span><span class="p">()</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">dim</span> <span class="k">for</span> <span class="n">dim</span> <span class="ow">in</span> <span class="n">results_shape</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;complex128&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Run simulations with varied width and thickness</span>
+        <span class="k">for</span> <span class="n">sim</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_sims</span><span class="p">):</span>
+            <span class="n">modified_netlist</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">netlist</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">component</span> <span class="ow">in</span> <span class="n">modified_netlist</span><span class="o">.</span><span class="n">components</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">component</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">component_type</span> <span class="o">==</span> <span class="s2">&quot;ann_wg_integral&quot;</span><span class="p">:</span>
+                    <span class="n">component</span><span class="o">.</span><span class="n">extras</span><span class="p">[</span><span class="s1">&#39;width&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">random_width</span><span class="p">[</span><span class="n">sim</span><span class="p">]</span>
+                    <span class="n">component</span><span class="o">.</span><span class="n">extras</span><span class="p">[</span><span class="s1">&#39;thickness&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">random_thickness</span><span class="p">[</span><span class="n">sim</span><span class="p">]</span>
+                    <span class="c1"># TODO: Implement length monte carlo using random_deltaLength[sim]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">[</span><span class="n">sim</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">Simulation</span><span class="p">(</span><span class="n">modified_netlist</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_freq</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop_freq</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num</span><span class="p">)</span><span class="o">.</span><span class="n">s_parameters</span><span class="p">()</span>
+            
+        <span class="n">stop</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">stop</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span></div></div>
+                
+
+    
+<div class="viewcode-block" id="MultiInputSimulation"><a class="viewcode-back" href="../../../simphony.simulation.html#simphony.simulation.simulation.MultiInputSimulation">[docs]</a><span class="k">class</span> <span class="nc">MultiInputSimulation</span><span class="p">(</span><span class="n">Simulation</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A simulator that models sweeping multiple inputs simultaneously by </span>
+<span class="sd">    performing algebraic operations on the simulated, cascaded s-parameter</span>
+<span class="sd">    matrix.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">netlist</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Initializes the MultiInputSimulation with a Netlist and runs a </span>
+<span class="sd">        single simulation for the &quot;ideal,&quot; pre-modified model.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        netlist : Netlist</span>
+<span class="sd">            The netlist to be simulated.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">netlist</span><span class="p">)</span>
+
+<div class="viewcode-block" id="MultiInputSimulation.multi_input_simulation"><a class="viewcode-back" href="../../../simphony.simulation.html#simphony.simulation.simulation.MultiInputSimulation.multi_input_simulation">[docs]</a>    <span class="k">def</span> <span class="nf">multi_input_simulation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">:</span> <span class="nb">list</span><span class="o">=</span><span class="p">[]):</span>
+        <span class="sd">&quot;&quot;&quot;Given a list of ports to use as inputs, calculates the response</span>
+<span class="sd">        of the circuit for all ports. Results are stored as an attribute and</span>
+<span class="sd">        can be accessed by retrieving `.simulated_matrix` from the simulation</span>
+<span class="sd">        object.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        inputs : list</span>
+<span class="sd">            A 0-indexed list of the ports to be used as inputs.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">active</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">external_ports</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">inputs</span><span class="p">:</span>
+            <span class="n">active</span><span class="p">[</span><span class="n">val</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">simulated_matrix</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_measure_s_matrix</span><span class="p">(</span><span class="n">active</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_measure_s_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Performs the algebra for simulating multiple inputs.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        inputs : list</span>
+<span class="sd">            A list with length equal to the number of rows/columns of the </span>
+<span class="sd">            s-parameter matrix (corresponds to the number of external ports). </span>
+<span class="sd">            Port indices with a &#39;0&#39; are considered &quot;off,&quot; where ports indices</span>
+<span class="sd">            that store a &#39;1&#39; correspond to an active laser input.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">num_ports</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freq_array</span><span class="p">),</span> <span class="n">num_ports</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;complex128&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">freq_array</span><span class="p">)):</span>
+            <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">s_parameters</span><span class="p">()[</span><span class="n">i</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:],</span> <span class="p">[</span><span class="n">num_ports</span><span class="p">,</span> <span class="n">num_ports</span><span class="p">]),</span> <span class="n">inputs</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+<div class="viewcode-block" id="MultiInputSimulation.export_s_matrix"><a class="viewcode-back" href="../../../simphony.simulation.html#simphony.simulation.simulation.MultiInputSimulation.export_s_matrix">[docs]</a>    <span class="k">def</span> <span class="nf">export_s_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns the matrix result of the multi-input simulation.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        frequency, matrix: np.array, np.ndarray</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">freq_array</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulated_matrix</span></div></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Sequoia Ploeg, Hyrum Gunther
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
