@@ -1,0 +1,135 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>API &#8212; Simphony 0.1.5 documentation</title>
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Components" href="components.html" />
+    <link rel="prev" title="Welcome to Simphony’s documentation!" href="index.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="components.html" title="Components"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to Simphony’s documentation!"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Simphony 0.1.5 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Welcome to Simphony’s documentation!</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="components.html"
+                        title="next chapter">Components</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="api">
+<h1>API<a class="headerlink" href="#api" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="netlist">
+<h2>Netlist<a class="headerlink" href="#netlist" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-simphony">
+<span id="objectmodelnetlist"></span><h3>ObjectModelNetlist<a class="headerlink" href="#module-simphony" title="Permalink to this headline">¶</a></h3>
+<p>Simphony Photonic Simulator</p>
+<p>This module implements a free (as in speech) and open source
+photonic integrated circuit (PIC) simulation engine.
+It is speedy and easily extensible.</p>
+<span class="target" id="module-simphony.core"></span><dl class="function">
+<dt id="simphony.core.deregister_component_model">
+<code class="sig-prename descclassname">simphony.core.</code><code class="sig-name descname">deregister_component_model</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/core.html#deregister_component_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.core.deregister_component_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deregisters a component model from simphony.core.</p>
+<p>This method is provided in case a model was created but needs to be
+updated, overridden, or deleted. For example, if two models have
+the same name, the one you don’t want to use should be deregistered (since
+registered model names must be unique).</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="simphony.core.register_component_model">
+<code class="sig-prename descclassname">simphony.core.</code><code class="sig-name descname">register_component_model</code><span class="sig-paren">(</span><em class="sig-param">cls</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/simphony/core.html#register_component_model"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#simphony.core.register_component_model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Registers a component model with simphony.core.</p>
+<p>This allows the program to track models and prevent duplicate names.
+This also allows all imported models to be accessible throughout the
+lifetime of the program simply by referencing their class name.
+When classes are registered, simple error checking is performed to ensure
+all required properties are present and that the model will not cause
+problems later in the simulation.</p>
+<p>This function is usually used as a decorator to a model class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>cls</strong> (<em>class</em>) – The component model class to be registered.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<span class="target" id="module-simphony.simulation"></span></div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="components.html" title="Components"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to Simphony’s documentation!"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Simphony 0.1.5 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Sequoia Ploeg, Hyrum Gunther.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.2.0.
+    </div>
+  </body>
+</html>

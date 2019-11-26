@@ -1,0 +1,240 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Components &#8212; Simphony 0.1.5 documentation</title>
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Program Architecture" href="architecture.html" />
+    <link rel="prev" title="API" href="reference.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="architecture.html" title="Program Architecture"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="reference.html" title="API"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Simphony 0.1.5 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="reference.html"
+                        title="previous chapter">API</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="architecture.html"
+                        title="next chapter">Program Architecture</a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="components">
+<h1>Components<a class="headerlink" href="#components" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="ebeam">
+<h2>EBeam<a class="headerlink" href="#ebeam" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="ebeam-bdc-te1550">
+<h3>ebeam_bdc_te1550<a class="headerlink" href="#ebeam-bdc-te1550" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<img alt="ebeam_bdc_te1550.png" src="_images/ebeam_bdc_te1550.png" />
+<p>The bidirectional coupler has 4 ports, labeled as pictured. Its efficiently
+splits light that is input from one port into the two outputs on the opposite
+side (with a corresponding pi/2 phase shift). Additionally, it efficiently
+interferes lights from two adjacent inputs, efficiently splitting the
+interfered signal between the two ports on the opposing side.</p>
+</div>
+<hr class="docutils" />
+<div class="section" id="ebeam-gc-te1550">
+<h3>ebeam_gc_te1550<a class="headerlink" href="#ebeam-gc-te1550" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<img alt="ebeam_bdc_te1550.png" src="_images/ebeam_gc_te1550.png" />
+<p>The grating coupler efficiently couples light from a fiber array positioned
+above the chip into the circuit. For the TE mode, the angle is -25 degrees
+[needs citation].</p>
+</div>
+<hr class="docutils" />
+<div class="section" id="ebeam-terminator-te1550">
+<h3>ebeam_terminator_te1550<a class="headerlink" href="#ebeam-terminator-te1550" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<img alt="ebeam_bdc_te1550.png" src="_images/ebeam_terminator_te1550.png" />
+<p>The terminator dissipates excess light into free space. If you have a path
+where the light doesn’t need to be measured but you don’t want it reflecting
+back into the circuit, you can use a terminator to release it from the circuit.</p>
+</div>
+<hr class="docutils" />
+<div class="section" id="ebeam-wg-integral-1550">
+<h3>ebeam_wg_integral_1550<a class="headerlink" href="#ebeam-wg-integral-1550" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<img alt="ebeam_bdc_te1550.png" src="_images/ebeam_wg_integral_1550.png" />
+<p>A waveguide easily connects other components within the circuit.</p>
+</div>
+<hr class="docutils" />
+<div class="section" id="ebeam-y-1550">
+<h3>ebeam_y_1550<a class="headerlink" href="#ebeam-y-1550" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<img alt="ebeam_bdc_te1550.png" src="_images/ebeam_y_1550.png" />
+<p>The y-branch efficiently splits the input between the two outputs.</p>
+<hr class="docutils" />
+</div>
+</div>
+<hr class="docutils" />
+<div class="section" id="sip-ann">
+<h2>SiP-ANN<a class="headerlink" href="#sip-ann" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="sipann-wg-integral">
+<h3>sipann_wg_integral<a class="headerlink" href="#sipann-wg-integral" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>A waveguide easily connects other components within the circuit.
+The SiP-ANN waveguide is different from the EBeam package since its
+values are calculated based on a regression fit to simulation data.</p>
+</div>
+<hr class="docutils" />
+<div class="section" id="sipann-dc-straight">
+<h3>sipann_dc_straight<a class="headerlink" href="#sipann-dc-straight" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Regression Based Closed Form solution of a straight directional coupler</p>
+</div>
+<hr class="docutils" />
+<div class="section" id="sipann-dc-halfracetrack">
+<h3>sipann_dc_halfracetrack<a class="headerlink" href="#sipann-dc-halfracetrack" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Regression Based Closed Form solution of half a racetrack resonator</p>
+</div>
+<hr class="docutils" />
+<div class="section" id="sipann-dc-halfring">
+<h3>sipann_dc_halfring<a class="headerlink" href="#sipann-dc-halfring" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Regression Based Closed Form solution of half of a ring resonator</p>
+</div>
+<hr class="docutils" />
+<div class="section" id="sipann-dc-standard">
+<h3>sipann_dc_standard<a class="headerlink" href="#sipann-dc-standard" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Regression Based Closed Form solution of a standard shaped directional coupler</p>
+</div>
+<hr class="docutils" />
+<div class="section" id="sipann-dc-doublehalfring">
+<h3>sipann_dc_doublehalfring<a class="headerlink" href="#sipann-dc-doublehalfring" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Regression Based Closed Form solution of double half ring resonator</p>
+</div>
+<hr class="docutils" />
+<div class="section" id="sipann-dc-angledhalfring">
+<h3>sipann_dc_angledhalfring<a class="headerlink" href="#sipann-dc-angledhalfring" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Regression Based Closed Form solution of an angled ring resonator</p>
+</div>
+<hr class="docutils" />
+<div class="section" id="sipann-dc-arbitrarysym">
+<h3>sipann_dc_arbitrarysym<a class="headerlink" href="#sipann-dc-arbitrarysym" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Regression Based form of any directional coupler provided gap function</p>
+</div>
+<hr class="docutils" />
+<div class="section" id="sipann-dc-arbitraryantisym">
+<h3>sipann_dc_arbitraryantisym<a class="headerlink" href="#sipann-dc-arbitraryantisym" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Regression Based form of any directional coupler provided gap function</p>
+</div>
+<hr class="docutils" />
+<div class="section" id="sipann-dc-crossover1550">
+<h3>sipann_dc_crossover1550<a class="headerlink" href="#sipann-dc-crossover1550" title="Permalink to this headline">¶</a></h3>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<img alt="ebeam_bdc_te1550.png" src="_static/images/components/crossover.png" />
+<p>Regression based form of a 100/0 directional coupler.</p>
+<hr class="docutils" />
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="architecture.html" title="Program Architecture"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="reference.html" title="API"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">Simphony 0.1.5 documentation</a> &#187;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2019, Sequoia Ploeg, Hyrum Gunther.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 2.2.0.
+    </div>
+  </body>
+</html>
