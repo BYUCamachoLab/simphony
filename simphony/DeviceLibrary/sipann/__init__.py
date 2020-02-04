@@ -526,8 +526,10 @@ class sipann_dc_arbitraryantisym(core.ComponentModel):
                     gap: callable,
                     zmin: float,
                     zmax: float,
-                    arc_l: float,
-                    arc_u: float,
+                    arc1: float,
+                    arc2: float,
+                    arc3: float,
+                    arc4: float,
                     width: float=0.5,
                     thickness: float=0.22,
                     sw_angle: float=90,
@@ -563,7 +565,7 @@ class sipann_dc_arbitraryantisym(core.ComponentModel):
         stop_wl  = c * 10**9 / start_freq
         wl       = np.linspace(start_wl, stop_wl, num)
 
-        item = dc.GapFuncAntiSymmetric(width, thickness, gap, zmin, zmax, arc_l, arc_u)
+        item = dc.GapFuncAntiSymmetric(width, thickness, gap, zmin, zmax, arc1, arc2, arc3, arc4)
         return item.sparams(wl)
 
 @register_component_model
