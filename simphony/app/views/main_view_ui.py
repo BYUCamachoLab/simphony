@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'res/main_view.ui'
+# Form implementation generated from reading ui file 'simphony/app/resources/main_view.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -39,5 +39,5 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.label_even_odd.setText(_translate("MainWindow", "TextLabel"))
-        self.pushButton_reset.setText(_translate("MainWindow", "reset"))
+        self.pushButton_reset.setText(_translate("MainWindow", "PushButton"))
 
