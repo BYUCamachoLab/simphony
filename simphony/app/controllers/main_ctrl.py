@@ -1,4 +1,5 @@
-from PyQt5.QtCore import QObject, pyqtSlot
+# from PyQt5.QtCore import QObject, pyqtSlot
+from qtpy.QtCore import QObject, Slot
 
 
 class MainController(QObject):
@@ -7,7 +8,8 @@ class MainController(QObject):
 
         self._model = model
 
-    @pyqtSlot(int)
+    # @pyqtSlot(int)
+    @Slot(int)
     def change_amount(self, value):
         self._model.amount = value
 

@@ -1,10 +1,11 @@
-from PyQt5.QtCore import QObject, pyqtSignal
+# from PyQt5.QtCore import QObject, pyqtSignal
+from qtpy.QtCore import QObject, Signal
 
 
 class Model(QObject):
-    amount_changed = pyqtSignal(int)
-    even_odd_changed = pyqtSignal(str)
-    enable_reset_changed = pyqtSignal(bool)
+    amount_changed = Signal(int)
+    even_odd_changed = Signal(str)
+    enable_reset_changed = Signal(bool)
 
     @property
     def amount(self):
