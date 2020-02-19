@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright © Simphony Project Contributors
+# Licensed under the terms of the MIT License
+# (see simphony/__init__.py for details)
 
 from simphony.core.base import *
 from simphony.core.netlist import *

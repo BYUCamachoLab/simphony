@@ -2,7 +2,9 @@
 """
 MIT License
 
-Copyright (c) 2019 Sequoia Ploeg
+Copyright (c) 2019- Simphony Project Contributors and others (see AUTHORS.txt)
+
+The resources, libraries, and some source files under other terms (see NOTICE.txt).
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,9 +26,6 @@ SOFTWARE.
 """
 
 version_info = (0, 2, 1, 'dev0')
-
-# name = "simphony"
-# from simphony._version import __version__
 
 __version__ = '.'.join(map(str, version_info))
 __license__ = __doc__

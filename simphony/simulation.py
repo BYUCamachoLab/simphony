@@ -1,3 +1,15 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright © Simphony Project Contributors
+# Licensed under the terms of the MIT License
+# (see simphony/__init__.py for details)
+
+"""
+simphony.simulation
+===================
+
+This package contains the base classes for running simulations.
+"""
 
 import copy
 import time
