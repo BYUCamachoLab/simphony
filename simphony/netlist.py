@@ -4,7 +4,7 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-# from collections import OrderedDict
+from collections import OrderedDict
 # import keyword
 import copy
 import logging
@@ -21,6 +21,7 @@ class DeviceModel:
         ----------
         name : str
         model_type : str
+        parameters : dict
         """
         self._name = str(name)
         self._model_type = str(model_type)
@@ -164,8 +165,27 @@ class Node:
 class Netlist:
     """
     This implements a base class for a netlist.
+
+    In its simplest form, a netlist consists of a list of the electronic 
+    components in a circuit and a list of the nodes they are connected to.
+
+    Attributes
+    ----------
+    _nets?
     """
-    pass
+    def __init__(self):
+        self._nodes = {}
+        self._subcircuits = OrderedDict()
+        self._elements = OrderedDict()
+        self._models = {}
+
+    @property
+    def nodes(self):
+        return self._nodes.values()
+
+    @property
+    def node_names(self):
+        return self._nodes.keys()
 
 class Subcircuit:
     """
@@ -178,7 +198,9 @@ class Subcircuit:
     connections : netlist
     pins : the new pins to use as the pins of the subcircuit
     """
-    pass
+    
+    def to_spice():
+        pass
 
 class Circuit:
     """
@@ -198,4 +220,7 @@ class Circuit:
     subcircuits : list
     connections : netlist
     """
+    _logger = _module_logger.getChild('Circuit')
+
+    _logger.info('Circuit called.')
     pass

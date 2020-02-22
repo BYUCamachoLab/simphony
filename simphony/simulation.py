@@ -215,6 +215,11 @@ class Simulation:
         -------
         np.ndarray
             The simulated s-matrix.
+
+        # TODO: Implement slicing for the s_parameters matrix.
+        def __getitem__(self, name):
+            print(name, type(name), len(name))
+            # return self._parameters[name]
         """
         return self.combined.s
 
