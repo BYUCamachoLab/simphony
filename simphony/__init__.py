@@ -41,4 +41,16 @@ __all__ = [
     # 'DeviceLibrary',
 ]
 
+class classproperty:
+    """Read-only @classproperty decorator. Allows using class names for models
+    as a property.
+
+    Solution from https://stackoverflow.com/questions/128573/using-property-on-classmethods/13624858#13624858
+    """
+    def __init__(self, fget):
+        self.fget = fget
+
+    def __get__(self, owner_self, owner_cls):
+        return self.fget(owner_cls)
+
 from . import *
