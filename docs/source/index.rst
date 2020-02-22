@@ -8,6 +8,7 @@ Welcome to Simphony's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   manual
    reference
    components
    architecture
