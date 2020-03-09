@@ -25,6 +25,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
+import sys
+import platform
+if sys.version_info < (3,0,0):
+    raise Exception('Simphony requires Python 3 (version ' + platform.python_version() + ' detected).')
+
 version_info = (0, 2, 1, 'dev0')
 
 __version__ = '.'.join(map(str, version_info))
@@ -33,24 +38,3 @@ __project_url__ = 'https://github.com/BYUCamachoLab/simphony'
 __forum_url__   = 'https://github.com/BYUCamachoLab/simphony/issues'
 __trouble_url__ = __project_url__ + '/wiki/Troubleshooting-Guide'
 __website_url__ = 'https://camacholab.byu.edu/'
-
-
-__all__ = [
-    'core',
-    'simulation',
-    # 'DeviceLibrary',
-]
-
-class classproperty:
-    """Read-only @classproperty decorator. Allows using class names for models
-    as a property.
-
-    Solution from https://stackoverflow.com/questions/128573/using-property-on-classmethods/13624858#13624858
-    """
-    def __init__(self, fget):
-        self.fget = fget
-
-    def __get__(self, owner_self, owner_cls):
-        return self.fget(owner_cls)
-
-from . import *
