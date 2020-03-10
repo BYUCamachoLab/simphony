@@ -12,6 +12,9 @@ class ebeam_bdc_te1550(Element):
     s_params = (freq2wl(loaded['f']), loaded['s'])
     wl_bounds = (1.5e-6, 1.6e-6)
 
+    def __init__(self, name: str = None):
+        super().__init__(name=name)
+
     def s_parameters(self, start, stop, num):
         wl = np.linspace(start, stop, num)
         return wl, self.interpolate(wl, self.s_params[0], self.s_params[1])
@@ -22,6 +25,9 @@ class ebeam_dc_halfring_te1550(Element):
     s_params = (freq2wl(loaded['f']), loaded['s'])
     wl_bounds = (1.5e-6, 1.6e-6)
 
+    def __init__(self, name: str = None):
+        super().__init__(name=name)
+
     def s_parameters(self, start, stop, num):
         wl = np.linspace(start, stop, num)
         return wl, self.interpolate(wl, self.s_params[0], self.s_params[1])
@@ -31,6 +37,9 @@ class ebeam_gc_te1550(Element):
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_gc_te1550.npz'))
     s_params = (freq2wl(loaded['f']), loaded['s'])
     wl_bounds = (1.5e-6, 1.6e-6)
+
+    def __init__(self, name: str = None):
+        super().__init__(name=name)
     
     def s_parameters(self, start, stop, num):
         wl = np.linspace(start, stop, num)
@@ -42,6 +51,9 @@ class ebeam_terminator_te1550(Element):
     s_params = (freq2wl(loaded['f']), loaded['s'])
     wl_bounds = (1.5e-6, 1.6e-6)
 
+    def __init__(self, name: str = None):
+        super().__init__(name=name)
+
     def s_parameters(self, start, stop, num):
         wl = np.linspace(start, stop, num)
         return wl, self.interpolate(wl, self.s_params[0], self.s_params[1])
@@ -52,7 +64,8 @@ class ebeam_wg_integral_1550(Element):
     nodes = ('n1', 'n2',)
     wl_bounds = (1.5e-6, 1.6e-6)
 
-    def __init__(self, length, lam0=1.55e-06, ne=2.44553, ng=4.19088, nd=0.000354275):
+    def __init__(self, name, length, lam0=1.55e-06, ne=2.44553, ng=4.19088, nd=0.000354275):
+        super().__init__(name=name)
         self.length = length
         self.lam0 = lam0
         self.ne = ne
@@ -115,6 +128,9 @@ class ebeam_y_1550(Element):
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_y_1550.npz'))
     s_params = (freq2wl(loaded['f']), loaded['s'])
     wl_bounds = (1.5e-6, 1.6e-6)
+
+    def __init__(self, name: str = None):
+        super().__init__(name=name)
 
     def s_parameters(self, start, stop, num):
         wl = np.linspace(start, stop, num)
