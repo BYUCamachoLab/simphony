@@ -18,6 +18,9 @@ The Simphony User Manual
 
 .. _intro:
 
+Introduction
+============
+
 Silicon photonics is a rapidly growing industry that uses electronic
 integrated circuit fabrication technologies to produce industry-grade
 photonic integrated circuits (PICs) at low cost and high volume.
@@ -51,3 +54,24 @@ parameters, or S-parameters, for each component using sub-network growth
 algorithms, a common practice in microwave/radio-frequency (RF) engineering.
 Benchmark testing of Simphony against commercial software indicates a speedup
 of approximately 20x.
+
+.. _intro-circuit-data-model
+
+Circuit Data Model
+------------------
+
+The fundamental building blocks of a simulation in most SPICE-like programs,
+and therefore Simphony, are elements, nets, subcircuits, and circuits. A 
+circuit can be fully represented by what is known as a Netlist and stored as
+a single text file.
+
+* An `Element` is ...
+
+* A `Subcircuit` is ...
+
+* A `Circuit` is ... and is different from a `Subcircuit` because ...
+
+
+
+
+Elements can be added to circuits anonymously.
