@@ -73,6 +73,17 @@ class TestCache:
         # for key in combined_dict.keys():
         #     assert self.cache.contains(key)
     
+    def test_contains(self):
+        a = CustomObject('a')
+        b = CustomObject('b')
+        c = CustomObject('c')
+        self.cache[a] = 'a'
+        self.cache[b] = 'b'
+        self.cache[c] = 'c'
+
+        assert self.cache.contains(a) is True
+        assert self.cache.contains(CustomObject('a')) is True
+        assert self.cache.contains(CustomObject('d')) is False
 
 # class TestSimulation:
 #     @classmethod
