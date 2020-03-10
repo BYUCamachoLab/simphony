@@ -4,6 +4,8 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
+import uuid
+
 from scipy.interpolate import interp1d
 
 # FIXME: Is interpolating in frequency better than in wavelength?
@@ -26,8 +28,12 @@ class Element:
         A tuple of the valid wavelength bounds for the element in the order
         (lower, upper).
     """
+    name = None
     nodes = None
     wl_bounds = None
+
+    def __init__(self, name: str = None):
+        self._rename(name)
 
     def __eq__(self, other: 'Element'):
         # TODO: What if the two instances have different class variable values?
@@ -78,6 +84,13 @@ class Element:
         except ValueError:
             raise ValueError('name "{}" not in defined nodes.'.format(name))
 
+    def _rename(self, name: str = None) -> None:
+        if name:
+            self.name = name
+        else:
+            self.name = self.__class__.__name__ + "_" + str(uuid.uuid4())[:8]
+
+
     def _monte_carlo_(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -103,7 +116,7 @@ class Element:
         func = interp1d(sampled, s_parameters, kind='cubic', axis=0)
         return func(resampled)
 
-    def rename_nodes(self, nodes):
+    def rename_nodes(self, nodes) -> None:
         """
         Renames the nodes for the instance object. Order is preserved and only
         names are remapped.
@@ -121,7 +134,7 @@ class Element:
         else:
             raise ValueError('number of node names provided does not match (needs {})'.format(len(self.nodes)))
 
-    def s_parameters(self, start, end, num):
+    def s_parameters(self, start: float, end: float, num: int):
         """
         Returns scattering parameters for the element with its given 
         parameters.
@@ -148,16 +161,16 @@ class Element:
         raise NotImplementedError
 
 
-class PElement(Element):
-    """
-    Parameterized Elements have scattering parameters that are calculated on
-    the fly, usually based on instance attributes.
-    """
-    pass
+# class PElement(Element):
+#     """
+#     Parameterized Elements have scattering parameters that are calculated on
+#     the fly, usually based on instance attributes.
+#     """
+#     pass
 
-class SElement(Element):
-    """
-    Static Elements have pre-simulated scattering parameters, often loaded 
-    from a file and independent of instance attributes.
-    """
-    pass
+# class SElement(Element):
+#     """
+#     Static Elements have pre-simulated scattering parameters, often loaded 
+#     from a file and independent of instance attributes.
+#     """
+#     pass

@@ -75,7 +75,7 @@ class SimulatedBlock:
     s : np.array
         A numpy array of the s-parameter matrix for the given frequency range.
     """
-    def __init__(self, freq, s, nodes):
+    def __init__(self, freq=None, s=None, nodes=None):
         """
         Instantiates an object from a Component if provided; empty, if not.
 
@@ -107,7 +107,7 @@ class Cache:
         self._id_cache_mapping = {}
 
     def __setitem__(self, key, value):
-        self._logger.debug('Entering __setitem__.')
+        self._logger.debug('Entering __setitem__')
         # Check to see if an identical item is already in the cache
         for k, v in self._elements_id_mapping.items():
             # If it is, then set the new item's uid to the existing item's uid
@@ -123,15 +123,22 @@ class Cache:
         self._elements_id_mapping[key] = uid
 
     def __getitem__(self, key):
-        self._logger.debug('Entering __getitem__.')
+        self._logger.debug('Entering __getitem__')
         if key in self._elements_id_mapping.keys():
             return self._id_cache_mapping[self._elements_id_mapping[key]]
         else:
             raise KeyError
         # return self.__dict__[key]
 
-    def contains(self, element):
-        return element in self._elements_id_mapping.keys()
+    def contains(self, element) -> bool:
+        for key in self._elements_id_mapping.keys():
+            if element is key:
+                return True
+            elif element == key:
+                self._elements_id_mapping[element] = self._elements_id_mapping[key]
+                return True
+            else:
+                return False
 
     def keys(self):
         return self._elements_id_mapping.keys()
@@ -144,7 +151,7 @@ class Simulation:
     circuit : simphony.netlist.subcircuit
         A simulation is instantiated with a completed circuit.
     """
-    def __init__(self, circuit):
+    def __init__(self, circuit: Subcircuit):
         self.circuit = circuit
 
 
@@ -157,18 +164,17 @@ class SweepSimulation(Simulation):
     num : float
     cache : dict
     """
-    def __init__(self, circuit, start=1.5e-6, stop=1.6e-6, num=2000):
+    def __init__(self, circuit: Subcircuit, start: float=1.5e-6, stop: float=1.6e-6, num: int=2000):
         super().__init__(circuit)
         self.start = start
         self.stop = stop
         self.num = num
-        self._element_cache_mapping = {}
 
     def _cache_elements(self):
-        cache = {}
+        cache = Cache()
         self.cache = self._cache_elements_helper(self.circuit, cache)
         
-    def _cache_elements_helper(self, blocks, cache):
+    def _cache_elements_helper(self, blocks: Subcircuit, cache: Cache):
         """
         Recursively caches all blocks in the subcircuit.
 
@@ -200,12 +206,10 @@ class SweepSimulation(Simulation):
 
         return cache
 
-    def _cache_elements_element_helper(self, element, cache):
+    def _cache_elements_element_helper(self, element: Element, cache: Cache):
         # Caching items base case: if matching object in cache, return.
-        for k, v in cache.items():
-            if element == k:
-                self._element_cache_mapping[element] = k
-                return cache
+        if cache.contains(element):
+            return cache
         
         # Ensure that models have required attributes.
         try:
@@ -218,14 +222,132 @@ class SweepSimulation(Simulation):
             raise ValueError('Simulation frequencies ({}-{}) out of valid bounds for "{}"'.format(self.start, self.stop, type(element).__name__))
 
         # Cache the element's s-matrix using the simulation parameters
-        # uid = uuid.uuid4()
-        # cache[uid] = element.s_parameters(self.start, self.stop, self.num)
-        # self._element_cache_mapping[element] = uid
         cache[element] = element.s_parameters(self.start, self.stop, self.num)
         return cache
 
     def simulate(self):
         self._cache_elements()
+        self._simulate_helper(self.circuit)
+
+    def _simulate_helper(self, blocks: Subcircuit):
+        elements = []
+        # For every item in the circuit
+        for block in blocks:
+
+            # If it's an Element type, cache it.
+            if issubclass(type(block), Element):
+                f, s = self.cache[block]
+                sim = SimulatedBlock(f, s, block.nodes)
+                elements.append(sim)
+            
+            # If it's a subcircuit, recursively call this function.
+            elif type(block) is Subcircuit:
+                elements.append(self._simulate_helper(block))
+            
+            # If it's something else--
+            # well, ya got trouble, right here in River City.
+            else:
+                raise TypeError('Invalid object in circuit (type "{}")'.format(type(block)))
+
+        # Connect all the elements together and return a super element.
+        self.connect_circuit(elements, blocks.nets)
+        print(elements)
+
+    @staticmethod
+    def connect_circuit(components, nets) -> SimulatedBlock:
+        """
+        Connects the s-matrices of a photonic circuit given its Netlist
+        and returns a single 'SimulatedComponent' object containing the frequency
+        array, the assembled s-matrix, and a list of the external nets (negative 
+        integers).
+
+        Parameters
+        ----------
+        component_list : List[SimulatedComponent]
+            A list of the components to be connected.
+        net_count : int
+            The total number of internal nets in the component list.
+
+        Returns
+        -------
+        SimulatedComponent
+            After the circuit has been fully connected, the result is a single 
+            ComponentSimulation with fields f (frequency), s (s-matrix), and nets 
+            (external ports: negative numbers, as strings).
+        """
+        # component_list = copy.deepcopy(components)
+        for n in range(len(nets)):
+            logging.debug("Entering pass {} of {}".format(n, len(nets)))
+            # ca, ia, cb, ib = match_ports(n, component_list)
+            for net in nets.values():
+                e1, n1, e2, n2 = net
+                
+                print(net)
+
+        #         # If pin occurances are in the same component:
+        #         if e1 == e2:
+        #             component_list[ca].s = innerconnect_s(component_list[ca].s, ia, ib)
+        #             del component_list[ca].nets[ia]
+        #             if ia < ib:
+        #                 del component_list[ca].nets[ib-1]
+        #             else:
+        #                 del component_list[ca].nets[ib]
+
+        #         # If pin occurances are in different components:
+        #         else:
+        #             combination = SimulatedBlock()
+        #             combination.f = component_list[0].f
+        #             combination.s = connect_s(component_list[ca].s, ia, component_list[cb].s, ib)
+        #             del component_list[ca].nets[ia]
+        #             del component_list[cb].nets[ib]
+        #             combination.nets = component_list[ca].nets + component_list[cb].nets
+        #             del component_list[ca]
+        #             if ca < cb:
+        #                 del component_list[cb-1]
+        #             else:
+        #                 del component_list[cb]
+        #             component_list.append(combination)
+
+        # assert len(component_list) == 1
+        # return component_list[0]
+
+    # def match_ports(net_id, component_list) -> list:
+    #     """
+    #     Finds the components connected together by the specified net_id (string) in
+    #     a list of components provided by the caller (even if the component is 
+    #     connected to itself).
+
+    #     Parameters
+    #     ----------
+    #     net_id : int
+    #         The net id or name to which the components being searched for are 
+    #         connected.
+    #     component_list : list[SimulatedComponent]
+    #         The complete list of components to be searched.
+
+    #     Returns
+    #     -------
+    #     [comp1, netidx1, comp2, netidx2]
+    #         A list (length 4) of integers with the following meanings:
+    #         - comp1: Index of the first component in the list with a matching 
+    #             net id.
+    #         - netidx1: Index of the net in the ordered net list of 'comp1' 
+    #             (corresponds to its column or row in the s-parameter matrix).
+    #         - comp2: Index of the second component in the list with a matching 
+    #             net id.
+    #         - netidx1: Index of the net in the ordered net list of 'comp2' 
+    #             (corresponds to its column or row in the s-parameter matrix).
+    #     """
+    #     logging.debug("Entering match_ports(), searching for net: " + str(net_id))
+    #     filtered_comps = [component for component in component_list if net_id in component.nets]
+    #     comp_idx = [component_list.index(component) for component in filtered_comps]
+    #     net_idx = []
+    #     for comp in filtered_comps:
+    #         net_idx += [i for i, x in enumerate(comp.nets) if x == net_id]
+    #     if len(comp_idx) == 1:
+    #         comp_idx += comp_idx
+        
+    #     return [comp_idx[0], net_idx[0], comp_idx[1], net_idx[1]]
 
 
 class SinglePortSweepSimulation(SweepSimulation):
@@ -236,114 +358,10 @@ class SinglePortSweepSimulation(SweepSimulation):
 
 #
 #
-# INTERPOLATION FUNCTION
-#
-# Takes a set of (x, y) values, fits a curve to them, and resamples the curve
-# for some given set of points
-#
-#
-
-
-# def interpolate(output_freq, input_freq, s_parameters):
-#     """Returns the result of a cubic interpolation for a given frequency range.
-
-#     Parameters
-#     ----------
-#     output_freq : np.array
-#         The desired frequency range for a given input to be interpolated to.
-#     input_freq : np.array
-#         A frequency array, indexed matching the given s_parameters.
-#     s_parameters : np.array
-#         S-parameters for each frequency given in input_freq.
-
-#     Returns
-#     -------
-#     output_freq : np.array
-#         The output frequency range that was passed in as a parameter.
-#     result : np.array
-#         The values of the interpolated function (fitted to the input 
-#         s-parameters) evaluated at the `output_freq` frequencies.
-#     """
-#     func = interp1d(input_freq, s_parameters, kind='cubic', axis=0)
-#     return [output_freq, func(output_freq)]
-
-
-#
-#
 # SIMULATED COMPONENTS
 #
 # Classes and functions for storing the results of each component that is 
 # simulated.
-#
-#
-
-
-# class SimulatedComponent:
-#     """
-#     This class is a simplified version of a Component in that it only contains
-#     an ordered list of nets, the frequency array, and the s-parameter matrix. 
-#     It can be initialized with or without a Component model, allowing its 
-#     attributes to be set after object creation.
-
-#     It is used by Simulation in order to store cached s-parameters of
-#     various objects and also to cascade all components into one final 
-#     component representing the circuit as a whole.
-
-#     Attributes
-#     ----------
-#     nets : List[int]
-#         An ordered list of the nets connected to the Component
-#     f : np.array
-#         A numpy array of the frequency values in its simulation.
-#     s : np.array
-#         A numpy array of the s-parameter matrix for the given frequency range.
-#     """
-#     nets: list
-#     f: np.array
-#     s: np.array
-
-#     def __init__(self, nets=[], freq=None, s_parameters=None):
-#         """
-#         Instantiates an object from a Component if provided; empty, if not.
-
-#         Parameters
-#         ----------
-#         component : Component, optional
-#             A component to initialize the data members of the object.
-#         """
-#         self.nets = nets
-#         self.f = freq
-#         self.s = s_parameters
-
-# def component2simulated(component: ComponentInstance, cache: dict, extras: dict) -> SimulatedComponent:
-#         """Converts a component into the simplified SimulatedComponent model.
-
-#         This disregards what model a component is or any attributes it has
-#         in favor of tracking just its nets, frequency range, and s-parameters.
-#         S-parameters should already be the final, interpolated, calculated 
-#         values.
-
-#         If the component is not cachable, extras should provide all the
-#         parameters necessary for the given component to calculate its 
-#         s-parameters.
-
-#         Parameters
-#         ----------
-#         component : ComponentInstance, optional
-#             The component to instantiate a SimulatedComponent from.
-#         cache : dict
-#             The dictionary containing the cache of components to s-parameters.
-#         extras : dict
-#             The dictionary containing parameters required for the calculation
-#             of a given non-cachable component's s-parameters.
-#         """
-#         logging.debug("Entering _component_converter()")
-#         if component.model.component_type in cache:
-#             return SimulatedComponent(component.nets, *cache[component.model.component_type])
-#         else:
-#             component.extras.update(extras)
-#             return SimulatedComponent(component.nets, *component.get_s_parameters())
-
 
 # #
 # #
@@ -533,97 +551,10 @@ class SinglePortSweepSimulation(SweepSimulation):
 #             reordered_s[:, i, j] = s_matrix[:, x, y]
 #     return reordered_s
 
-# def match_ports(net_id: int, component_list: List[SimulatedComponent]) -> list:
-#     """
-#     Finds the components connected together by the specified net_id (string) in
-#     a list of components provided by the caller (even if the component is 
-#     connected to itself).
-
-#     Parameters
-#     ----------
-#     net_id : int
-#         The net id or name to which the components being searched for are 
-#         connected.
-#     component_list : list[SimulatedComponent]
-#         The complete list of components to be searched.
-
-#     Returns
-#     -------
-#     [comp1, netidx1, comp2, netidx2]
-#         A list (length 4) of integers with the following meanings:
-#         - comp1: Index of the first component in the list with a matching 
-#             net id.
-#         - netidx1: Index of the net in the ordered net list of 'comp1' 
-#             (corresponds to its column or row in the s-parameter matrix).
-#         - comp2: Index of the second component in the list with a matching 
-#             net id.
-#         - netidx1: Index of the net in the ordered net list of 'comp2' 
-#             (corresponds to its column or row in the s-parameter matrix).
-#     """
-#     logging.debug("Entering match_ports(), searching for net: " + str(net_id))
-#     filtered_comps = [component for component in component_list if net_id in component.nets]
-#     comp_idx = [component_list.index(component) for component in filtered_comps]
-#     net_idx = []
-#     for comp in filtered_comps:
-#         net_idx += [i for i, x in enumerate(comp.nets) if x == net_id]
-#     if len(comp_idx) == 1:
-#         comp_idx += comp_idx
-    
-#     return [comp_idx[0], net_idx[0], comp_idx[1], net_idx[1]]
 
 
-# def connect_circuit(components: List[SimulatedComponent], net_count: int) -> SimulatedComponent:
-#     """
-#     Connects the s-matrices of a photonic circuit given its Netlist
-#     and returns a single 'SimulatedComponent' object containing the frequency
-#     array, the assembled s-matrix, and a list of the external nets (negative 
-#     integers).
 
-#     Parameters
-#     ----------
-#     component_list : List[SimulatedComponent]
-#         A list of the components to be connected.
-#     net_count : int
-#         The total number of internal nets in the component list.
 
-#     Returns
-#     -------
-#     SimulatedComponent
-#         After the circuit has been fully connected, the result is a single 
-#         ComponentSimulation with fields f (frequency), s (s-matrix), and nets 
-#         (external ports: negative numbers, as strings).
-#     """
-#     component_list = copy.deepcopy(components)
-#     for n in range(0, net_count):
-#         logging.debug("Entering pass {} of {}".format(n, net_count))
-#         ca, ia, cb, ib = match_ports(n, component_list)
-
-#         # If pin occurances are in the same component:
-#         if ca == cb:
-#             component_list[ca].s = innerconnect_s(component_list[ca].s, ia, ib)
-#             del component_list[ca].nets[ia]
-#             if ia < ib:
-#                 del component_list[ca].nets[ib-1]
-#             else:
-#                 del component_list[ca].nets[ib]
-
-#         # If pin occurances are in different components:
-#         else:
-#             combination = SimulatedComponent()
-#             combination.f = component_list[0].f
-#             combination.s = connect_s(component_list[ca].s, ia, component_list[cb].s, ib)
-#             del component_list[ca].nets[ia]
-#             del component_list[cb].nets[ib]
-#             combination.nets = component_list[ca].nets + component_list[cb].nets
-#             del component_list[ca]
-#             if ca < cb:
-#                 del component_list[cb-1]
-#             else:
-#                 del component_list[cb]
-#             component_list.append(combination)
-
-#     assert len(component_list) == 1
-#     return component_list[0]
 
 
 # #
