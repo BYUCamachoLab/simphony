@@ -25,6 +25,12 @@ class NetGenerator:
         return ret
 
 
+class Netlist:
+    def __init__(self):
+        self.netid = NetGenerator()
+        self.nets = {}
+
+
 class Subcircuit:
     """
     This implements a subcircuit that can be constructed and reused throughout
@@ -68,6 +74,8 @@ class Subcircuit:
     @property
     def nodes(self):
         nodes = [(block.name, node) for block in self._blocks for node in block.nodes]
+        print(nodes)
+        print(self.nets.values())
         for net in self.nets.values():
             e1, n1, e2, n2 = net
             nodes.remove((e1, n1))
@@ -98,9 +106,14 @@ class Subcircuit:
         """
         if type(blocks) is not list:
             raise TypeError('list expected, received {}'.format(type(blocks)))
+        tmp = []
         for block in blocks:
             if block.name not in self.blocks.keys():
-                self._blocks.append(block)
+                tmp.append(block)
+            else:
+                raise ValueError('name "{}" is already in circuit (names must be unique)')
+        self._blocks += tmp
+
 
     def connect(self, element1, node1, element2, node2):
         """

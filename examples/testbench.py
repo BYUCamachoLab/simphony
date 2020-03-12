@@ -71,8 +71,10 @@
 #         ('splitter', 'out1', 'wg_long', 'n1'),
 #         ('splitter', 'out2', 'wg_short', 'n1'),
 #         ('recombiner', 'in1', 'wg_long', 'n2'),
-#         ('recombiner', 'in1', 'wg_short', 'n2'),
+#         ('recombiner', 'in2', 'wg_short', 'n2'),
 #     ])
+
+#     # circuit.rename_nodes('n1', 'n2',)
 #     return circuit
 
 # circuit = Subcircuit('MZI Cascade')
@@ -122,3 +124,9 @@ circuit.connect_many([
 # Run a simulation on the netlist.
 simulation = SweepSimulation(circuit, 1500e-9, 1600e-9)
 simulation.simulate()
+
+
+from simphony.elements import Element, PinList
+a = Element()
+a.nodes = PinList('a', 'b', 'c', 'd')
+print(a.nodes)

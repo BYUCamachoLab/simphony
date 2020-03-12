@@ -230,7 +230,7 @@ class SweepSimulation(Simulation):
         self._simulate_helper(self.circuit)
 
     def _simulate_helper(self, blocks: Subcircuit):
-        elements = []
+        elements = {}
         # For every item in the circuit
         for block in blocks:
 
@@ -238,11 +238,11 @@ class SweepSimulation(Simulation):
             if issubclass(type(block), Element):
                 f, s = self.cache[block]
                 sim = SimulatedBlock(f, s, block.nodes)
-                elements.append(sim)
+                elements[block.name] = sim
             
             # If it's a subcircuit, recursively call this function.
             elif type(block) is Subcircuit:
-                elements.append(self._simulate_helper(block))
+                elements[block.name] = self._simulate_helper(block)
             
             # If it's something else--
             # well, ya got trouble, right here in River City.
@@ -254,7 +254,7 @@ class SweepSimulation(Simulation):
         print(elements)
 
     @staticmethod
-    def connect_circuit(components, nets) -> SimulatedBlock:
+    def connect_circuit(elements, netlist) -> SimulatedBlock:
         """
         Connects the s-matrices of a photonic circuit given its Netlist
         and returns a single 'SimulatedComponent' object containing the frequency
@@ -276,13 +276,16 @@ class SweepSimulation(Simulation):
             (external ports: negative numbers, as strings).
         """
         # component_list = copy.deepcopy(components)
-        for n in range(len(nets)):
-            logging.debug("Entering pass {} of {}".format(n, len(nets)))
+        print(len(netlist))
+            # logging.debug("Entering pass {} of {}".format(n, len(netlist)))
             # ca, ia, cb, ib = match_ports(n, component_list)
-            for net in nets.values():
-                e1, n1, e2, n2 = net
+        for net in netlist.values():
+            e1, n1, e2, n2 = net
+            e1 = elements[e1]
+            e2 = elements[e2]
                 
-                print(net)
+                # print(net)
+            print(e1, n1, e2, n2)
 
         #         # If pin occurances are in the same component:
         #         if e1 == e2:

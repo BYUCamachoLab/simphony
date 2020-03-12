@@ -10,6 +10,33 @@ from scipy.interpolate import interp1d
 
 # FIXME: Is interpolating in frequency better than in wavelength?
 
+class PinList:
+    def __init__(self, *args):
+        for item in args:
+            print(item)
+        self.pins = [*args]
+
+    def __getitem__(self, item):
+        if type(item) is str:
+            idx = self.pins.index(item)
+            return idx
+
+    def __setitem__(self, key, value):
+        if type(key) is str:
+            idx = self.pins.index(key)
+            self.pins[idx] = value
+        elif type(key) is int:
+            self.pins[key] = value
+        else:
+            raise TypeError
+
+    def __repr__(self):
+        return str(self.pins)
+
+    def __len__(self):
+        return len(self.pins)
+        
+
 class Element:
     """
     The basic element type describing the model for a component with scattering
@@ -29,11 +56,18 @@ class Element:
         (lower, upper).
     """
     name = None
+    # Change to pins? Instead of nodes?
     nodes = None
-    wl_bounds = None
+    wl_bounds = (None, None)
+
+    _ignored_ = ['name', 'nodes', 'wl_bounds']
 
     def __init__(self, name: str = None):
         self._rename(name)
+
+    def __getattr__(self, name):
+        print(name)
+        return super().__getattribute__(name)
 
     def __eq__(self, other: 'Element'):
         # TODO: What if the two instances have different class variable values?
@@ -94,28 +128,6 @@ class Element:
     def _monte_carlo_(self, *args, **kwargs):
         raise NotImplementedError
 
-    @staticmethod
-    def interpolate(resampled, sampled, s_parameters):
-        """Returns the result of a cubic interpolation for a given frequency range.
-
-        Parameters
-        ----------
-        output_freq : np.array
-            The desired frequency range for a given input to be interpolated to.
-        input_freq : np.array
-            A frequency array, indexed matching the given s_parameters.
-        s_parameters : np.array
-            S-parameters for each frequency given in input_freq.
-
-        Returns
-        -------
-        result : np.array
-            The values of the interpolated function (fitted to the input 
-            s-parameters) evaluated at the `output_freq` frequencies.
-        """
-        func = interp1d(sampled, s_parameters, kind='cubic', axis=0)
-        return func(resampled)
-
     def rename_nodes(self, nodes) -> None:
         """
         Renames the nodes for the instance object. Order is preserved and only
@@ -160,6 +172,27 @@ class Element:
         """
         raise NotImplementedError
 
+    @staticmethod
+    def interpolate(resampled, sampled, s_parameters):
+        """Returns the result of a cubic interpolation for a given frequency range.
+
+        Parameters
+        ----------
+        output_freq : np.array
+            The desired frequency range for a given input to be interpolated to.
+        input_freq : np.array
+            A frequency array, indexed matching the given s_parameters.
+        s_parameters : np.array
+            S-parameters for each frequency given in input_freq.
+
+        Returns
+        -------
+        result : np.array
+            The values of the interpolated function (fitted to the input 
+            s-parameters) evaluated at the `output_freq` frequencies.
+        """
+        func = interp1d(sampled, s_parameters, kind='cubic', axis=0)
+        return func(resampled)
 
 # class PElement(Element):
 #     """
