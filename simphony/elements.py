@@ -4,22 +4,51 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
+from collections import OrderedDict
+import copy
+import logging
 import uuid
 
 from scipy.interpolate import interp1d
 
 # FIXME: Is interpolating in frequency better than in wavelength?
 
+_module_logger = logging.getLogger(__name__)
+
+
+def rename_keys(d, keys):
+    return OrderedDict([(keys.get(k, k), v) for k, v in d.items()])
+
+
+class Pin:
+    _logger = _module_logger.getChild('Pin')
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        o = ".".join([self.__module__, type(self).__name__])
+        return "<'{}': {} object at {}>".format(self.name, o, hex(id(self)))
+
+
 class PinList:
+    """
+    Notes
+    -----
+    If renaming pins, the assigned value must be a string.
+
+    Examples
+    --------
+    pins = PinList('n1', 'n2', 'n3')
+    pins.n2 = 'out1'
+    """
+    _logger = _module_logger.getChild('PinList')
+    pins = OrderedDict()
+
     def __init__(self, *args):
-        for item in args:
-            print(item)
-        self.pins = [*args]
+        self.pins = OrderedDict({arg: Pin(arg) for arg in args})
 
     def __getitem__(self, item):
-        if type(item) is str:
-            idx = self.pins.index(item)
-            return idx
+        return list(self.pins.values())[item]
 
     def __setitem__(self, key, value):
         if type(key) is str:
@@ -30,8 +59,27 @@ class PinList:
         else:
             raise TypeError
 
-    def __repr__(self):
-        return str(self.pins)
+    def __getattr__(self, name):
+        for key, pin in self.pins.items():
+            if name == pin.name:
+                return pin
+        return super().__getattribute__(name)
+
+    def __setattr__(self, name, value):
+        if name not in self.pins.keys():
+            return super().__setattr__(name, value)
+        if value in self.pins.keys():
+            raise AttributeError("'{}' already exists in PinList".format(value))
+        self.pins[name].name = value
+        self.pins = rename_keys(self.pins, {name: value})
+
+    def __str__(self):
+        val = ''
+        o = ".".join([self.__module__, type(self).__name__])
+        val += "<{} object at {}>".format(o, hex(id(self)))
+        for idx, pin in enumerate(self.pins.values()):
+            val += "\n - {}: {}".format(idx, pin)
+        return val
 
     def __len__(self):
         return len(self.pins)
@@ -54,20 +102,33 @@ class Element:
     wl_bounds : tuple of float
         A tuple of the valid wavelength bounds for the element in the order
         (lower, upper).
+
+    Notes
+    -----
+    If you extended the element with attributes you don't want included
+    in an equality comparison, you can add the name of the attribute (as a 
+    string) to the base object's `_ignored_` list and it won't be used.
     """
-    name = None
-    # Change to pins? Instead of nodes?
-    nodes = None
+    _logger = _module_logger.getChild('Element')
+
+    pins = None
     wl_bounds = (None, None)
+    ignored = ['ignored']
 
-    _ignored_ = ['name', 'nodes', 'wl_bounds']
+    _ignored_ = ['name', 'pins', 'wl_bounds']
 
-    def __init__(self, name: str = None):
-        self._rename(name)
+    def __init__(self, name: str=None):
+        if name:
+            self.name = name
+        else:
+            self.name = self.__class__.__name__ + "_" + str(uuid.uuid4())[:8]
 
-    def __getattr__(self, name):
-        print(name)
-        return super().__getattribute__(name)
+        self.pins = copy.deepcopy(self.pins)
+        self._ignored_ += self.ignored
+
+    # def __getattr__(self, name):
+    #     self._logger.debug("Getting attribute '{}'".format(name))
+    #     return super().__getattribute__(name)
 
     def __eq__(self, other: 'Element'):
         # TODO: What if the two instances have different class variable values?
@@ -76,10 +137,18 @@ class Element:
         # not required by the parent Element class.
         # parent_attr = dir(Element)
         # child_attr = dir(self)
+        # if type(self) is type(other):
+        #     not_ignored = [attr for attr in dir(self) if attr not in dir(Element)]
+        #     sdict = {k : getattr(self, k) for k in not_ignored}
+        #     odict = {k : getattr(other, k) for k in not_ignored}
+        #     return sdict == odict
+        # else:
+        #     return False
         if type(self) is type(other):
-            not_ignored = [attr for attr in dir(self) if attr not in dir(Element)]
-            sdict = {k : getattr(self, k) for k in not_ignored}
-            odict = {k : getattr(other, k) for k in not_ignored}
+            not_ignored = set([attr for attr in self.__dict__ if attr not in self._ignored_])
+            not_ignored = set([attr for attr in other.__dict__ if attr not in other._ignored_])
+            sdict = {k : v for k, v in self.__dict__.items() if k not in self._ignored_}
+            odict = {k : v for k, v in other.__dict__.items() if k not in other._ignored_}
             return sdict == odict
         else:
             return False
@@ -90,61 +159,8 @@ class Element:
     def __hash__(self):
         return super().__hash__()
 
-    def _node_idx_by_name(self, name: str) -> int:
-        """
-        Given a string representing a node name, returns which index
-        that node represents.
-
-        Since scattering parameters are stored as a matrix, the order of the
-        node names corresponds to the order of those ports in the s-matrix.
-
-        Parameters
-        ----------
-        name : str
-            The name of the node.
-
-        Returns
-        -------
-        idx : int
-            The index corresponding to the given node name.
-        
-        Raises
-        ------
-        ValueError
-            If the node name doesn't exist in the element.
-        """
-        try:
-            return self.nodes.index(name)
-        except ValueError:
-            raise ValueError('name "{}" not in defined nodes.'.format(name))
-
-    def _rename(self, name: str = None) -> None:
-        if name:
-            self.name = name
-        else:
-            self.name = self.__class__.__name__ + "_" + str(uuid.uuid4())[:8]
-
-
     def _monte_carlo_(self, *args, **kwargs):
         raise NotImplementedError
-
-    def rename_nodes(self, nodes) -> None:
-        """
-        Renames the nodes for the instance object. Order is preserved and only
-        names are remapped.
-
-        Parameters
-        ----------
-        nodes : tuple
-            The string names of the new nodes, in order, as a tuple.
-        """
-        if type(nodes) is not tuple:
-            raise TypeError('nodes must be a tuple, but is {}.'.format(type(nodes)))
-
-        if len(self.nodes) == len(nodes):
-            self.nodes = nodes
-        else:
-            raise ValueError('number of node names provided does not match (needs {})'.format(len(self.nodes)))
 
     def s_parameters(self, start: float, end: float, num: int):
         """

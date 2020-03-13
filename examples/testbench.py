@@ -92,6 +92,50 @@
 
 
 
+# import os
+# import sys
+# sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# import numpy as np
+
+# import simphony
+# import simphony.library.ebeam as ebeam
+# from simphony.netlist import Subcircuit
+# from simphony.simulation import SweepSimulation
+
+# circuit = Subcircuit('MZI')
+# circuit.add([
+#     ebeam.ebeam_y_1550('splitter'),
+#     ebeam.ebeam_y_1550('recombiner'),
+#     ebeam.ebeam_wg_integral_1550('wg_long', length=150e-6), # can optionally include ne=10.1, ng=1.3
+#     ebeam.ebeam_wg_integral_1550('wg_short', length=50e-6),
+# ])
+
+# circuit['splitter'].rename_nodes(('in1', 'out1', 'out2'))
+# circuit['recombiner'].rename_nodes(('out1', 'in2', 'in1'))
+
+# circuit.connect_many([
+#     ('splitter', 'out1', 'wg_long', 'n1'),
+#     ('splitter', 'out2', 'wg_short', 'n1'),
+#     ('recombiner', 'in1', 'wg_long', 'n2'),
+#     ('recombiner', 'in2', 'wg_short', 'n2'),
+# ])
+
+# # Run a simulation on the netlist.
+# simulation = SweepSimulation(circuit, 1500e-9, 1600e-9)
+# simulation.simulate()
+
+
+from simphony.elements import Element, PinList
+a = Element()
+a.nodes = PinList('a', 'b', 'c', 'd')
+print(a.nodes)
+
+
+
+
+
+
 import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -111,8 +155,8 @@ circuit.add([
     ebeam.ebeam_wg_integral_1550('wg_short', length=50e-6),
 ])
 
-circuit['splitter'].rename_nodes(('in1', 'out1', 'out2'))
-circuit['recombiner'].rename_nodes(('out1', 'in2', 'in1'))
+circuit['splitter'].pins = PinList('in1', 'out1', 'out2')
+circuit['recombiner'].pins = PinList('out1', 'in2', 'in1')
 
 circuit.connect_many([
     ('splitter', 'out1', 'wg_long', 'n1'),
@@ -121,12 +165,6 @@ circuit.connect_many([
     ('recombiner', 'in2', 'wg_short', 'n2'),
 ])
 
-# Run a simulation on the netlist.
-simulation = SweepSimulation(circuit, 1500e-9, 1600e-9)
-simulation.simulate()
-
-
-from simphony.elements import Element, PinList
-a = Element()
-a.nodes = PinList('a', 'b', 'c', 'd')
-print(a.nodes)
+# # Run a simulation on the netlist.
+# simulation = SweepSimulation(circuit, 1500e-9, 1600e-9)
+# simulation.simulate()
