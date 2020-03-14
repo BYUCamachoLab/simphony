@@ -4,7 +4,6 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-from collections import OrderedDict
 import copy
 import logging
 import uuid
@@ -16,18 +15,20 @@ from scipy.interpolate import interp1d
 _module_logger = logging.getLogger(__name__)
 
 
-def rename_keys(d, keys):
-    return OrderedDict([(keys.get(k, k), v) for k, v in d.items()])
+# def rename_keys(d, keys):
+#     return OrderedDict([(keys.get(k, k), v) for k, v in d.items()])
 
 
 class Pin:
     _logger = _module_logger.getChild('Pin')
-    def __init__(self, name):
+    
+    def __init__(self, pinlist, name: str):
+        self._pinlist = pinlist
         self.name = name
 
     def __repr__(self):
         o = ".".join([self.__module__, type(self).__name__])
-        return "<'{}': {} object at {}>".format(self.name, o, hex(id(self)))
+        return "<'{}' {} object at {}>".format(self.name, o, hex(id(self)))
 
 
 class PinList:
@@ -38,51 +39,51 @@ class PinList:
 
     Examples
     --------
-    pins = PinList('n1', 'n2', 'n3')
-    pins.n2 = 'out1'
+    >>> pins = PinList('n1', 'n2', 'n3')
+    >>> pins.n2 = 'out1'
     """
     _logger = _module_logger.getChild('PinList')
-    pins = OrderedDict()
+    pins = []
 
-    def __init__(self, *args):
-        self.pins = OrderedDict({arg: Pin(arg) for arg in args})
+    def __init__(self, element, *args):
+        self.element = element
+        self.pins = [Pin(self, arg) for arg in args]
 
     def __getitem__(self, item):
-        return list(self.pins.values())[item]
+        return self.pins[item]
 
     def __setitem__(self, key, value):
-        if type(key) is str:
-            idx = self.pins.index(key)
-            self.pins[idx] = value
-        elif type(key) is int:
-            self.pins[key] = value
-        else:
-            raise TypeError
+        self.pins[key].name = value
 
     def __getattr__(self, name):
-        for key, pin in self.pins.items():
+        for pin in self.pins:
             if name == pin.name:
                 return pin
         return super().__getattribute__(name)
 
     def __setattr__(self, name, value):
-        if name not in self.pins.keys():
+        if name not in [pin.name for pin in self.pins]:
             return super().__setattr__(name, value)
-        if value in self.pins.keys():
+        if value in [pin.name for pin in self.pins]:
             raise AttributeError("'{}' already exists in PinList".format(value))
-        self.pins[name].name = value
-        self.pins = rename_keys(self.pins, {name: value})
+        for pin in self.pins:
+            if name == pin.name:
+                pin.name = value
+                return
 
-    def __str__(self):
+    def __repr__(self):
         val = ''
         o = ".".join([self.__module__, type(self).__name__])
         val += "<{} object at {}>".format(o, hex(id(self)))
-        for idx, pin in enumerate(self.pins.values()):
-            val += "\n - {}: {}".format(idx, pin)
+        for idx, pin in enumerate(self.pins):
+            val += "\n  {}".format(pin)
         return val
 
     def __len__(self):
         return len(self.pins)
+
+    def index(self, item):
+        return self.pins.index(item)
         
 
 class Element:
@@ -113,7 +114,7 @@ class Element:
 
     pins = None
     wl_bounds = (None, None)
-    ignored = ['ignored']
+    ignore = ['ignore']
 
     _ignored_ = ['name', 'pins', 'wl_bounds']
 
@@ -123,27 +124,11 @@ class Element:
         else:
             self.name = self.__class__.__name__ + "_" + str(uuid.uuid4())[:8]
 
-        self.pins = copy.deepcopy(self.pins)
-        self._ignored_ += self.ignored
-
-    # def __getattr__(self, name):
-    #     self._logger.debug("Getting attribute '{}'".format(name))
-    #     return super().__getattribute__(name)
+        if self.pins:
+            self.rename_pins(*self.pins)
+        self._ignored_ += self.ignore
 
     def __eq__(self, other: 'Element'):
-        # TODO: What if the two instances have different class variable values?
-        # As in, it was instantiated with the default but one of them was later
-        # changed. These are variables that subclasses implement but that are
-        # not required by the parent Element class.
-        # parent_attr = dir(Element)
-        # child_attr = dir(self)
-        # if type(self) is type(other):
-        #     not_ignored = [attr for attr in dir(self) if attr not in dir(Element)]
-        #     sdict = {k : getattr(self, k) for k in not_ignored}
-        #     odict = {k : getattr(other, k) for k in not_ignored}
-        #     return sdict == odict
-        # else:
-        #     return False
         if type(self) is type(other):
             not_ignored = set([attr for attr in self.__dict__ if attr not in self._ignored_])
             not_ignored = set([attr for attr in other.__dict__ if attr not in other._ignored_])
@@ -161,6 +146,9 @@ class Element:
 
     def _monte_carlo_(self, *args, **kwargs):
         raise NotImplementedError
+
+    def rename_pins(self, *pins):
+        self.pins = PinList(self, *pins)
 
     def s_parameters(self, start: float, end: float, num: int):
         """

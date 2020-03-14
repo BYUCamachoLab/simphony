@@ -128,7 +128,7 @@
 
 from simphony.elements import Element, PinList
 a = Element()
-a.nodes = PinList('a', 'b', 'c', 'd')
+a.nodes = PinList(a, 'a', 'b', 'c', 'd')
 print(a.nodes)
 
 
@@ -155,8 +155,8 @@ circuit.add([
     ebeam.ebeam_wg_integral_1550('wg_short', length=50e-6),
 ])
 
-circuit['splitter'].pins = PinList('in1', 'out1', 'out2')
-circuit['recombiner'].pins = PinList('out1', 'in2', 'in1')
+circuit['splitter'].rename_pins('in1', 'out1', 'out2')
+circuit['recombiner'].rename_pins('out1', 'in2', 'in1')
 
 circuit.connect_many([
     ('splitter', 'out1', 'wg_long', 'n1'),

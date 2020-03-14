@@ -27,8 +27,29 @@ class NetGenerator:
 
 class Netlist:
     def __init__(self):
-        self.netid = NetGenerator()
-        self.nets = {}
+        # self.netid = NetGenerator()
+        # self.nets = {}
+        self.nets = []
+
+    def __repr__(self):
+        val = ''
+        o = ".".join([self.__module__, type(self).__name__])
+        val += "<{} object at {}>".format(o, hex(id(self)))
+        for item in self.nets:
+            val += '\n  {}'.format(str(item))
+        return val
+
+    def add(self, pin1, pin2):
+        for net in self.nets:
+            p1, p2 = net
+            culprit = None
+            if pin1 == p1 or pin1 == p2:
+                culprit = pin1
+            if pin2 == p1 or pin2 == p2:
+                culprit = pin2
+            if culprit:
+                raise ValueError("Netlist already contains connection for '{}'".format(culprit))
+        self.nets.append((pin1, pin2))
 
 
 class Subcircuit:
@@ -47,10 +68,11 @@ class Subcircuit:
 
     def __init__(self, name=None):
         self.name = name
-        self.netid = NetGenerator()
-        self.nets = {}
+        # self.netid = NetGenerator()
+        # self.nets = {}
         self._blocks = []
-        self.labels = {}
+        # self.labels = {}
+        self.netlist = Netlist()
 
     def __getitem__(self, item):
         """
@@ -67,20 +89,29 @@ class Subcircuit:
         else:
             raise KeyError('"{}" not in subcircuit.'.format(item))
 
+    def __repr__(self):
+        val = ''
+        o = ".".join([self.__module__, type(self).__name__])
+        val += "<{} object at {}>".format(o, hex(id(self)))
+        for item in self._blocks:
+            val += '\n  {}'.format(str(item))
+        return val
+
     @property
     def blocks(self):
         return {obj.name: obj for obj in self._blocks}
 
     @property
     def nodes(self):
-        nodes = [(block.name, node) for block in self._blocks for node in block.nodes]
-        print(nodes)
-        print(self.nets.values())
-        for net in self.nets.values():
-            e1, n1, e2, n2 = net
-            nodes.remove((e1, n1))
-            nodes.remove((e2, n2))
-        return nodes
+        # nodes = [(block.name, node) for block in self._blocks for node in block.nodes]
+        # print(nodes)
+        # print(self.nets.values())
+        # for net in self.nets.values():
+        #     e1, n1, e2, n2 = net
+        #     nodes.remove((e1, n1))
+        #     nodes.remove((e2, n2))
+        # return nodes+
+        pass
 
 
     def add(self, blocks):
@@ -135,34 +166,39 @@ class Subcircuit:
         # Handle the first element first
         # If the element is an object:
         if issubclass(type(element1), Element):
-            for name, element in self._blocks.items():
-                if element1 is element:
-                    e1 = name
+            # for name, element in self._blocks.items():
+            #     if element1 is element:
+            #         e1 = name
+            e1 = element1
         # Else if the element is a string name:
         elif type(element1) is str:
-            e1 = element1
+            # e1 = element1
+            e1 = self.blocks[element1]
         # Otherwise it's a TypeError
         else:
             raise TypeError('element1 should be string or Element, not "{}"'.format(type(element1)))
         # Ensure that the specified node exists on the specified element
-        _ = self[e1]._node_idx_by_name(n1)
+        # _ = self[e1]._node_idx_by_name(n1)
         
         # Handle the second element next
         # If the element is an object:
         if issubclass(type(element2), Element):
-            for name, element in self._blocks.items():
-                if element2 is element:
-                    e2 = name
+            # for name, element in self._blocks.items():
+            #     if element2 is element:
+            #         e2 = name
+            e2 = element2
         # Else if the element is a string name:
         elif type(element2) is str:
-            e2 = element2
+            # e2 = element2
+            e2 = self.blocks[element2]
         # Otherwise it's a TypeError
         else:
             raise TypeError('element1 should be string or Element, not "{}"'.format(type(element1)))
         # Ensure that the specified node exists on the specified element
-        _ = self[e2]._node_idx_by_name(n2)
+        # _ = self[e2]._node_idx_by_name(n2)
 
-        self.nets[next(self.netid)] = (e1, n1, e2, n2)
+        # self.nets[next(self.netid)] = (e1, n1, e2, n2)
+        self.netlist.add(getattr(e1.pins, n1), getattr(e2.pins, n2))
         # uid = next(self.netid)
         # self.nets[(e1, n1)] = uid
         # self.nets[(e2, n2)] = uid
