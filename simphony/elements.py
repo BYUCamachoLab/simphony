@@ -22,13 +22,28 @@ _module_logger = logging.getLogger(__name__)
 class Pin:
     _logger = _module_logger.getChild('Pin')
     
-    def __init__(self, pinlist, name: str):
+    def __init__(self, pinlist, name):
+        """
+        Parameters
+        ----------
+        pinlist : simphony.elements.PinList
+        name : str
+        """
         self._pinlist = pinlist
-        self.name = name
+        self._name = name
 
     def __repr__(self):
         o = ".".join([self.__module__, type(self).__name__])
         return "<'{}' {} object at {}>".format(self.name, o, hex(id(self)))
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        # TODO: Make sure that there is no pin with the same name in _pinlist
+        self._name = value
 
 
 class PinList:
@@ -46,6 +61,12 @@ class PinList:
     pins = []
 
     def __init__(self, element, *args):
+        """
+        Parameters
+        ----------
+        element : simphony.elements.Element
+        args : tuple of str
+        """
         self.element = element
         self.pins = [Pin(self, arg) for arg in args]
 
@@ -83,6 +104,12 @@ class PinList:
         return len(self.pins)
 
     def index(self, item):
+        """
+        Returns
+        -------
+        idx : int
+            The index of the pin passed in.
+        """
         return self.pins.index(item)
         
 
@@ -114,21 +141,24 @@ class Element:
 
     pins = None
     wl_bounds = (None, None)
-    ignore = ['ignore']
+    ignore = None
 
     _ignored_ = ['name', 'pins', 'wl_bounds']
 
-    def __init__(self, name: str=None):
-        if name:
-            self.name = name
-        else:
-            self.name = self.__class__.__name__ + "_" + str(uuid.uuid4())[:8]
+    def __init__(self, name=None):
+        """
+        Parameters
+        ----------
+        name : str
+        """
+        self.name = name if name else self.__class__.__name__ + "_" + str(uuid.uuid4())[:8]
 
         if self.pins:
-            self.rename_pins(*self.pins)
-        self._ignored_ += self.ignore
+            self.pins = PinList(self, *self.pins)
+        if self.ignore:
+            self._ignored_ += self.ignore
 
-    def __eq__(self, other: 'Element'):
+    def __eq__(self, other):
         if type(self) is type(other):
             not_ignored = set([attr for attr in self.__dict__ if attr not in self._ignored_])
             not_ignored = set([attr for attr in other.__dict__ if attr not in other._ignored_])
@@ -145,10 +175,18 @@ class Element:
         return super().__hash__()
 
     def _monte_carlo_(self, *args, **kwargs):
+        """Implements the monte carlo routine for the given Element.
+
+        Raises
+        ------
+        NotImplementedError
+            If the function hasn't been implemented by a child class.
+        """
         raise NotImplementedError
 
     def rename_pins(self, *pins):
-        self.pins = PinList(self, *pins)
+        for i, pin in enumerate(pins):
+            self.pins[i].name = pin
 
     def s_parameters(self, start: float, end: float, num: int):
         """

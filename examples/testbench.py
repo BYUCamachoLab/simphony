@@ -1,6 +1,6 @@
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # import simphony
 # from simphony.elements import Element
@@ -136,9 +136,9 @@ print(a.nodes)
 
 
 
-import os
-import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# import os
+# import sys
+# sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import numpy as np
 
@@ -165,6 +165,6 @@ circuit.connect_many([
     ('recombiner', 'in2', 'wg_short', 'n2'),
 ])
 
-# # Run a simulation on the netlist.
-# simulation = SweepSimulation(circuit, 1500e-9, 1600e-9)
-# simulation.simulate()
+# Run a simulation on the netlist.
+simulation = SweepSimulation(circuit, 1500e-9, 1600e-9)
+simulation.simulate()
