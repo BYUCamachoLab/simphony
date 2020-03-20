@@ -23,7 +23,7 @@ from scipy.constants import c
 from scipy.interpolate import interp1d
 from simphony.connect import connect_s, innerconnect_s
 
-from simphony.elements import Element
+from simphony.elements import Model
 from simphony.netlist import Subcircuit
 
 _module_logger = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ class Cache:
     _logger = _module_logger.getChild('Cache')
 
     def __init__(self):
-        # _elements_id_mapping is a mapping of Element instances to string id's
+        # _elements_id_mapping is a mapping of Model instances to string id's
         # implemented using a dict. Every element that's been cached is 
         # contained within _elements_id_mapping, regardless of whether an 
         # identical object is included.
@@ -191,8 +191,8 @@ class SweepSimulation(Simulation):
         # For every item in the circuit
         for block in blocks:
 
-            # If it's an Element type, cache it.
-            if issubclass(type(block), Element):
+            # If it's an Model type, cache it.
+            if issubclass(type(block), Model):
                 self._cache_elements_element_helper(block, cache)
             
             # If it's a subcircuit, recursively call this function.
@@ -206,7 +206,7 @@ class SweepSimulation(Simulation):
 
         return cache
 
-    def _cache_elements_element_helper(self, element: Element, cache: Cache):
+    def _cache_elements_element_helper(self, element: Model, cache: Cache):
         # Caching items base case: if matching object in cache, return.
         if cache.contains(element):
             return cache
@@ -234,8 +234,8 @@ class SweepSimulation(Simulation):
         # For every item in the circuit
         for block in blocks:
 
-            # If it's an Element type, cache it.
-            if issubclass(type(block), Element):
+            # If it's an Model type, cache it.
+            if issubclass(type(block), Model):
                 f, s = self.cache[block]
                 sim = SimulatedBlock(f, s, block.nodes)
                 elements[block.name] = sim

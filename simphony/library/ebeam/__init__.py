@@ -2,84 +2,67 @@ import os
 
 import numpy as np
 
-from simphony.elements import Element
+from simphony.elements import Model, interpolate
 from simphony.simulation import freq2wl, wl2freq
 
 # FIXME: Is interpolating in frequency better than in wavelength?
-class ebeam_bdc_te1550(Element):
+class ebeam_bdc_te1550(Model):
+    pins = ('n1', 'n2', 'n3', 'n4')
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_bdc_te1550.npz'))
     s_params = (freq2wl(loaded['f']), loaded['s'])
     wl_bounds = (1.5e-6, 1.6e-6)
-    pins = ('n1', 'n2', 'n3', 'n4')
-    ignore = ['loaded'] # optional
-
-    def __init__(self, name: str = None):
-        super().__init__(name=name)
 
     def s_parameters(self, start, stop, num):
         wl = np.linspace(start, stop, num)
-        return wl, self.interpolate(wl, self.s_params[0], self.s_params[1])
+        return wl, interpolate(wl, self.s_params[0], self.s_params[1])
 
-class ebeam_bdc_te1550(Element):
+class ebeam_bdc_te1550(Model):
     pins = ('n1', 'n2', 'n3', 'n4',)
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_bdc_te1550.npz'))
     s_params = (freq2wl(loaded['f']), loaded['s'])
     wl_bounds = (1.5e-6, 1.6e-6)
 
-    def __init__(self, name: str = None):
-        super().__init__(name=name)
-
     def s_parameters(self, start, stop, num):
         wl = np.linspace(start, stop, num)
         return wl, self.interpolate(wl, self.s_params[0], self.s_params[1])
 
-class ebeam_dc_halfring_te1550(Element):
+class ebeam_dc_halfring_te1550(Model):
     pins = ('n1', 'n2',)
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_dc_halfring_te1550.npz'))
     s_params = (freq2wl(loaded['f']), loaded['s'])
     wl_bounds = (1.5e-6, 1.6e-6)
 
-    def __init__(self, name: str = None):
-        super().__init__(name=name)
-
     def s_parameters(self, start, stop, num):
         wl = np.linspace(start, stop, num)
         return wl, self.interpolate(wl, self.s_params[0], self.s_params[1])
 
-class ebeam_gc_te1550(Element):
+class ebeam_gc_te1550(Model):
     pins = ('n1', 'n2',)
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_gc_te1550.npz'))
     s_params = (freq2wl(loaded['f']), loaded['s'])
     wl_bounds = (1.5e-6, 1.6e-6)
-
-    def __init__(self, name: str = None):
-        super().__init__(name=name)
     
     def s_parameters(self, start, stop, num):
         wl = np.linspace(start, stop, num)
         return wl, self.interpolate(wl, self.s_params[0], self.s_params[1])
 
-class ebeam_terminator_te1550(Element):
+class ebeam_terminator_te1550(Model):
     pins = ('n1',)
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_terminator_te1550.npz'))
     s_params = (freq2wl(loaded['f']), loaded['s'])
     wl_bounds = (1.5e-6, 1.6e-6)
-
-    def __init__(self, name: str = None):
-        super().__init__(name=name)
 
     def s_parameters(self, start, stop, num):
         wl = np.linspace(start, stop, num)
         return wl, self.interpolate(wl, self.s_params[0], self.s_params[1])
 
 
-class ebeam_wg_integral_1550(Element):
+class ebeam_wg_integral_1550(Model):
     """Component model for an ebeam_wg_integral_1550"""
     pins = ('n1', 'n2',)
     wl_bounds = (1.5e-6, 1.6e-6)
 
-    def __init__(self, name, length, lam0=1.55e-06, ne=2.44553, ng=4.19088, nd=0.000354275):
-        super().__init__(name=name)
+    def __init__(self, length, lam0=1.55e-06, ne=2.44553, ng=4.19088, nd=0.000354275):
         self.length = length
         self.lam0 = lam0
         self.ne = ne
@@ -137,14 +120,11 @@ class ebeam_wg_integral_1550(Element):
         return (wl, s)
 
 
-class ebeam_y_1550(Element):
+class ebeam_y_1550(Model):
     pins = ('n1', 'n2', 'n3')
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_y_1550.npz'))
     s_params = (freq2wl(loaded['f']), loaded['s'])
     wl_bounds = (1.5e-6, 1.6e-6)
-
-    def __init__(self, name: str = None):
-        super().__init__(name=name)
 
     def s_parameters(self, start, stop, num):
         wl = np.linspace(start, stop, num)
