@@ -4,7 +4,15 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
+"""
+simphony.netlist
+================
+
+This package contains the base classes for defining circuits.
+"""
+
 from collections import OrderedDict
+import copy
 import itertools
 import logging
 import uuid
@@ -15,21 +23,34 @@ _module_logger = logging.getLogger(__name__)
 
 
 class Pin:
+    """
+    A class representing a pin on a unique element instance. 
+
+    Note that these are not the pins defined in Models, but are created from
+    the names defined there.
+    """
     _logger = _module_logger.getChild('Pin')
     
     def __init__(self, pinlist, name):
         """
+        Creates a new pin.
+
         Parameters
         ----------
         pinlist : simphony.elements.PinList
+            The `PinList` this pin resides in.
         name : str
+            The name of the pin.
         """
         self._pinlist = pinlist
         self._name = name
 
     def __repr__(self):
         o = ".".join([self.__module__, type(self).__name__])
-        return "<'{}' {} object from '{}' at {}>".format(self.name, o, self.element.name, hex(id(self)))
+        try:
+            return "<'{}' {} object from '{}' at {}>".format(self.name, o, self.element.name, hex(id(self)))
+        except AttributeError:
+            return "<'{}' {} object from at {}>".format(self.name, o, hex(id(self)))
 
     @property
     def name(self):
@@ -42,19 +63,47 @@ class Pin:
 
     @property
     def element(self):
+        """
+        Returns the element to which this pin belongs by tracing the path to
+        PinList, which ought to hold a reference to an `Element`.
+        """
         return self._pinlist.element
+
+    @property
+    def index(self):
+        return self._pinlist.index(self)
 
 
 class PinList:
     """
+    A list of pins belonging to an `Element`, indexed the same way the 
+    s-parameters of a `Model` are indexed.
+
+    `PinList` maintains unique `Pin` names within its list. Pins can also be 
+    accessed by index instead of name.
+
+    Attributes
+    ----------
+    element : simphony.elements.Element
+        The `Element` the `PinList` belongs to.
+    pins : list of simphony.element.Pin
+        A list of `Pin` objects, indexed in the same order as the s-parameters
+        of the `Model` it represents.
+
     Notes
     -----
     If renaming pins, the assigned value must be a string.
 
     Examples
     --------
-    >>> pins = PinList('n1', 'n2', 'n3')
-    >>> pins.n2 = 'out1'
+    >>> pinlist = PinList(None, 'n1', 'n2', 'n3')
+    >>> pinlist.pins
+    [<'n1' simphony.netlist.Pin object from at 0x7f1098ef39b0>, <'n2' simphony.netlist.Pin object from at 0x7f1098ef3c88>, <'n3' simphony.netlist.Pin object from at 0x7f108aec6160>]
+    >>> pinlist.n2 = 'out1'
+    >>> pinlist.pins
+    [<'n1' simphony.netlist.Pin object from at 0x7f1098ef39b0>, <'out1' simphony.netlist.Pin object from at 0x7f1098ef3c88>, <'n3' simphony.netlist.Pin object from at 0x7f108aec6160>]
+    >>> pinlist.pins = ('out', 'in', 'mix')
+    >>> pinlist.pins = ('n1')
     """
     _logger = _module_logger.getChild('PinList')
     _pins = []
@@ -64,10 +113,31 @@ class PinList:
         Parameters
         ----------
         element : simphony.elements.Element
-        args : tuple of str
+            The element this PinList defines the pins for.
+        args : str or Pin
+            Number of unnamed arguments is not limited; each corresponds to a
+            new `Pin` in the `PinList`. If str, Pin is created. If Pin, its
+            `pinlist` attribute is updated to point to this `PinList`.
         """
         self.element = element
-        self._pins = [Pin(self, arg) for arg in args]
+        self._pins = [self._normalize(pin) for pin in args]
+
+    def _normalize(self, pin):
+        """
+        Takes a pin argument (string or Pin) and creates a `Pin` object.
+
+        Parameters
+        ----------
+        pin : str or Pin
+            The pin to be normalized to a `Pin`.
+        """
+        if type(pin) is Pin:
+            pin._pinlist = self
+            return pin
+        if type(pin) is str:
+            return Pin(self, pin)
+        err = "expected type 'str' or 'Pin', got {}".format(type(pin))
+        raise TypeError(err)
 
     def __getitem__(self, item):
         return self._pins[item]
@@ -101,7 +171,7 @@ class PinList:
 
     @property
     def pins(self):
-        self._logger.warn("'pins' property called")
+        self._logger.debug("'pins' property called")
         return self._pins
 
     @pins.setter
@@ -115,25 +185,67 @@ class PinList:
         for idx, pin in enumerate(self._pins):
             pin.name = names[idx]
 
-    def index(self, item):
+    def index(self, pin):
         """
+        Given a `Pin` object, returns its index or position in the `PinList`.
+
+        Parameters
+        ----------
+        pin : simphony.netlist.Pin
+            The pin object to be found in the PinList.
+
         Returns
         -------
         idx : int
             The index of the pin passed in.
         """
-        return self._pins.index(item)
+        return self._pins.index(pin)
 
     @property
     def names(self):
+        """
+        Get the names of the pins in the `PinList`, in order.
+
+        Returns
+        -------
+        names : tuple of str
+            The formal names of each pin in the pinlist.
+        """
         return tuple([pin.name for pin in self._pins])
 
 
 class Element:
+    """
+    Represents an instantiation of some model in a circuit.
+
+    Unites a `Model` with a `PinList` to allow unique instances to be 
+    instantiated within a `Subcircuit`.
+
+    Attributes
+    ----------
+    name : str
+        The read-only name of the element, unique within each `Subcircuit`. 
+        If not specified on instantiation, it is autogenerated.
+    model : simphony.elements.Model
+        A reference to a `Model` instance (NOTe: it must be an instance, not a 
+        class reference).
+    pins : simphony.netlist.PinList
+        A PinList, generated automatically from the model, with pins renameable
+        after instantiation.
+    """
     def __init__(self, model, name=None):
-        self.name = name if name else model.__class__.__name__ + "_" + str(uuid.uuid4())[:8]
         self.model = model
+        self._name = name if name else self.generate_name()
         self._pins = PinList(self, *model.pins)
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        err = "'name' attribute is read-only."
+        raise ValueError(err)
 
     @property
     def pins(self):
@@ -143,14 +255,33 @@ class Element:
     def pins(self, value):
         self._pins.pins = value
 
+    @property
+    def wl_bounds(self):
+        return self.model.wl_bounds
+
     def __str__(self):
         pins = str(tuple([pin.name for pin in self.pins]))
         return "Element (Name: '{}', Model: '{}', Pins: {})".format(self.name, self.model.__class__.__name__, pins)
 
+    def _generate_name(self) -> str:
+        """
+        Generates a new name for the `Element` based on the `Model` class name
+        and a randomly generated string.
+
+        Returns
+        -------
+        name : str
+            A new random name for the Element.
+        """
+        return self.model.__class__.__name__ + "_" + str(uuid.uuid4())[:8]
+
 class ElementList:
     """
-    Maintains an ordered dict. If an update to a key is attempted, the update
-    fails. Keys must be deleted before being used.
+    Maintains an ordered dict. If an update to an existing key is attempted, 
+    the update fails. Keys must be deleted before being used.
+
+    Dictionary is a mapping of names (type: `str`) to elements or blocks (type:
+    `Element` or `Subcircuit`).
     """
     def __init__(self):
         self.elements = OrderedDict()
@@ -175,6 +306,9 @@ class ElementList:
             raise KeyError("Key '{}' already exists.".format(key))
         self.elements[key] = value
 
+    def __delitem__(self, key):
+        del self.elements[key]
+
     def __len__(self):
         return len(self.elements)
 
@@ -188,8 +322,30 @@ class ElementList:
         else:
             return "{}"
 
+    def __iter__(self):
+        yield from self.elements.values()
+
+    def keys(self):
+        """
+        Returns the keys of the `ElementList` as a list of strings.
+
+        Returns
+        -------
+        keys : list of str
+            The keys (or, names of `Element` instances) of `ElementList`.
+        """
+        return self.elements.keys()
+
 
 class Netlist:
+    """
+    Maintains a list of all connections, or "nets", in a circuit.
+
+    Attributes
+    ----------
+    nets : list of list
+        Nets is a list of connections, stored as a list of two `Pins`.
+    """
     def __init__(self):
         self.nets = []
 
@@ -211,7 +367,18 @@ class Netlist:
             if culprit:
                 err = "Netlist already contains connection for {}".format(culprit)
                 raise ValueError(err)
-        self.nets.append((pin1, pin2))
+        self.nets.append([pin1, pin2])
+
+    def clone(self):
+        ret = Netlist()
+        ret.nets = [[p[0], p[1]] for p in self.nets]
+        return ret
+
+    def __len__(self):
+        return len(self.nets)
+
+    def __iter__(self):
+        yield from self.nets
 
 
 class Subcircuit:
@@ -221,6 +388,8 @@ class Subcircuit:
 
     Attributes
     ----------
+    name : str
+        A formal name for the Subcircuit (`None` allowed).
     elements : list of elements
     connections : netlist
     pins : the new pins to use as the pins of the subcircuit
@@ -229,7 +398,7 @@ class Subcircuit:
     _logger = _module_logger.getChild('Subcircuit')
 
     def __init__(self, name=None):
-        self.name = name
+        self.name = name if name else str(uuid.uuid4())
         self.elements = ElementList()
         self.netlist = Netlist()
 
@@ -250,6 +419,18 @@ class Subcircuit:
         con_pins = set(itertools.chain(*self.netlist.nets))
         ext_pins = all_pins ^ con_pins
         return ext_pins
+
+    @property
+    def wl_bounds(self):
+        """
+        Returns a tuple of the valid wavelength range.
+        """
+        min_wl = []
+        max_wl = []
+        for element in self.elements:
+            min_wl.append(element.wl_bounds[0])
+            max_wl.append(element.wl_bounds[1])
+        return (min(min_wl), max(max_wl))
 
     def add(self, elements):
         """
@@ -274,10 +455,19 @@ class Subcircuit:
         
         new_elements = []
         for item in elements:
-            e = Element(*item) if type(item) is tuple else Element(item)
-            self.elements[e.name] = e
-            new_elements.append(e)
-        return new_elements
+            # TODO: Find some way to guarantee that the automatically generated
+            # name does not already exist in the ElementList.
+            if type(item) is tuple:
+                model, name = item 
+            else:
+                model, name = item, None
+            if issubclass(type(model), Subcircuit):
+                self.elements[name if name else model.name] = model
+            elif issubclass(type(model), Model):
+                e = Element(model, name)
+                self.elements[e.name] = e
+            # new_elements.append(e)
+        # return new_elements
 
     def connect(self, element1, pin1, element2, pin2):
         """
@@ -318,7 +508,12 @@ class Subcircuit:
         if type(pin) is Pin:
             return pin
         elif type(pin) is str:
-            return getattr(element.pins, pin)
+            if issubclass(type(element), Element):
+                return getattr(element.pins, pin)
+            elif issubclass(type(element), Subcircuit):
+                for opin in element.pins:
+                    if opin.name == pin:
+                        return opin
         else:
             err = "expected type 'Pin' or 'str', got {}".format(type(pin))
             raise TypeError(err)

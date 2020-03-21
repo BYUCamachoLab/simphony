@@ -55,6 +55,31 @@ algorithms, a common practice in microwave/radio-frequency (RF) engineering.
 Benchmark testing of Simphony against commercial software indicates a speedup
 of approximately 20x.
 
+Notes about the implementation
+
+Simphony aims to be Pythonic, yet pragmatic. Instead of reinventing a new
+framework for everyone to learn, we build off the concepts that engineers and
+scientists are already familiar with in electronics: the SPICE way of 
+organizing and defining circuits and connections. In this case, we use much
+of the same terminology but make it Python friendly (and, in our opinion,
+improving upon its usability).
+
+Simphony follows Python's EAFP (easier to ask forgiveness than permission) 
+coding style. This contrasts with the LBYL (look before you leap) style common
+to other languages. In practice, this means that if, say, a library element
+component is implemented but is missing attributes, it won't be noticed until
+runtime when a call to a nonexistent attribute throws an exception.
+
+Python often uses magic methods (also known as "dunder" methods) to implement
+underlying class functionality. Simphony uses the same convention, but with
+what we'll call "sunder" methods (for single-underscore methods), since
+Python's dunder syntax is reserved for future Python features.
+
+Units throughout simphony are all SI units (unless otherwise specified) 
+to avoid ambiguity and confusion. This can sometimes lead to not-as-pretty 
+looking values, especially when dealing with sub-wavelength values and 
+frequencies in THz. But, it is consistent.
+
 .. _intro-circuit-data-model
 
 Circuit Data Model
@@ -75,3 +100,20 @@ a single text file.
 
 
 Elements can be added to circuits anonymously.
+
+Subcircuits
+-----------
+
+Creating subcircuits is therefore just as easy. Often, a circuit can be 
+broken up into smaller circuit segments that make up the whole design.
+Subcircuits allow us to create these (for example, cascading a set of
+ring resonators of varying radius).
+
+A SPICE subcircuit (.subckt) wraps around a block of circuit text and allows 
+external connections to this circuitry only through the subcircuit's nodes. 
+
+Because the internal circuitry is isolated from external circuitry, internal 
+devices and node names with the same names as those external to the 
+subcircuit are neither conflicting nor shorted. In addition, subcircuits can 
+accept circuit parameters which can be used to assign values to internal 
+devices or nested subcircuits. 
