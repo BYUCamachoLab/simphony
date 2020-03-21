@@ -4,6 +4,13 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
+"""
+simphony.elements
+=================
+
+This package contains the base classes for defining models.
+"""
+
 import copy
 import logging
 import uuid
@@ -14,9 +21,6 @@ from scipy.interpolate import interp1d
 
 _module_logger = logging.getLogger(__name__)
 
-
-# def rename_keys(d, keys):
-#     return OrderedDict([(keys.get(k, k), v) for k, v in d.items()])
 
 def interpolate(resampled, sampled, s_parameters):
     """Returns the result of a cubic interpolation for a given frequency range.
@@ -95,6 +99,8 @@ class Model:
 
         Returns
         -------
+        # FIXME: Are we returning f or wl? Everything subclassing is currently
+        # returning wl.
         f, s : float, array
             The frequency range and corresponding scattering parameters.
         

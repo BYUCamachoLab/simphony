@@ -1,89 +1,130 @@
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import numpy as np
 
-import simphony.core as core
-from simphony.core import ComponentInstance as inst
-import simphony.DeviceLibrary.ebeam as dev
-import simphony.DeviceLibrary.sipann as lib
-import simphony.simulation as sim
+from simphony.library import ebeam, sipann
+from simphony.netlist import Subcircuit
+from simphony.simulation import SweepSimulation
 
-# -----------------------------------------------------------------------------
-#
-# Some helper functions for converting between wavelength and frequency
-#
-c = 299792458
-def freq2wl(f):
-    return c/f
-def wl2freq(l):
-    return c/l
+def ring_factory(radius):
+    """
+    Creates a full ring (with terminator) from a half ring.
+
+    Ports of a half ring are ordered like so:
+    2           4
+     \         /
+      \       /
+       \     /
+     ---=====---
+    1           3
+
+    Resulting pins are ('in', 'out', 'pass').
+    """
+    # Have rings for selecting out frequencies from the data line.
+    half_ring = sipann.sipann_dc_halfring(radius)
+
+    circuit = Subcircuit()
+    circuit.add([
+        (half_ring, 'input'),
+        (half_ring, 'output'),
+        (term, 'terminator')
+    ])
+
+    circuit.elements['input'].pins = ('pass', 'midb', 'in', 'midt')
+    circuit.elements['output'].pins = ('out', 'midt', 'term', 'midb')
+    
+    circuit.connect_many([
+        ('input', 'midb', 'output', 'midb'),
+        ('input', 'midt', 'output', 'midt'),
+        ('terminator', 'n1', 'output', 'term')
+    ])
+    return circuit
 
 # Have a main data line where frequency multiplexed data enters the circuit.
-data_line = [inst(dev.ebeam_wg_integral_1550, extras={'length':100e-6}) for _ in range(3)]
-# Have different radii rings for selecting out frequencies from the data line.
-radii = [10+i for i in range(3)]
-selectors = []
-for i in range(3):
-    # Format of a ring resonator:
-    #   - Each ring is made up of two half rings of the same radius.
-    #   - The first ring in the tuple is the upper ring, the second the lower
-    #     (see diagram).
-    ring = inst(lib.sipann_dc_halfring, extras={'radius': radii[i]}), inst(lib.sipann_dc_halfring, extras={'radius': radii[i]})
-    selectors.append(ring)
-# The outputs are waveguides that connect to the output of each ring resonator.
-outputs = [inst(dev.ebeam_wg_integral_1550, extras={'length':100e-6}) for _ in range(3)]
-# Terminators dissipate any light that might by some misfortune reach them, 
-# and including them helps remove "false" output ports from the simulation.
-terminators = [inst(dev.ebeam_terminator_te1550) for _ in range(4)]
+wg_data = ebeam.ebeam_wg_integral_1550(100e-6)
 
-connections = []
+# A terminator for dispersing unused light
+term = ebeam.ebeam_terminator_te1550()
 
-for i in range(3):
-    connections.append([data_line[i], 1, selectors[i][0], 2])
-for i in range(1, 3):
-    connections.append([data_line[i], 0, selectors[i-1][0], 0])
-for i in range(3):
-    connections.append([selectors[i][0], 3, selectors[i][1], 1])
-    connections.append([selectors[i][0], 1, selectors[i][1], 3])
-for i in range(3):
-    connections.append([outputs[i], 0, selectors[i][1], 0])
-    connections.append([terminators[i], 0, selectors[i][1], 2])
-connections.append([selectors[2][0], 0, terminators[-1], 0])
+# Create the circuit, add all individual instances
+circuit = Subcircuit('Add-Drop Filter')
+e = circuit.add([
+    (wg_data, 'input'),
+    (ring_factory(10), 'ring10'),
+    (wg_data, 'out1'),
 
-nl = core.Netlist()
-nl.load(connections, formatter='ll')
-simu = sim.Simulation(nl, start_freq=wl2freq(1551.15e-9), stop_freq=wl2freq(1524.5e-9))
+    (wg_data, 'connect1'),
+    (ring_factory(11), 'ring11'),
+    (wg_data, 'out2'),
+
+    (wg_data, 'connect2'),
+    (ring_factory(12), 'ring12'),
+    (wg_data, 'out3'),
+
+    (term, 'terminator')
+])
+
+circuit.connect_many([
+    ('input', 'n2', 'ring10', 'in'),
+    ('out1', 'n1', 'ring10', 'out'),
+    ('connect1', 'n1', 'ring10', 'pass'),
+
+    ('connect1', 'n2', 'ring11', 'in'),
+    ('out2', 'n1', 'ring11', 'out'),
+    ('connect2', 'n1', 'ring11', 'pass'),
+
+    ('connect2', 'n2', 'ring12', 'in'),
+    ('out3', 'n1', 'ring12', 'out'),
+    ('terminator', 'n1', 'ring12', 'pass'),
+])
+
+# Run a simulation on the netlist.
+simulation = SweepSimulation(circuit, 1500e-9, 1600e-9)
+# simulation = SweepSimulation(circuit, 1551.15e-9, 1524.5e-9)
+result = simulation.simulate()
 
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-
-freq, s = simu.freq_array, simu.s_parameters()
-
-fig = plt.figure(tight_layout=True)
-gs = gridspec.GridSpec(1, 3)
-
-ax = fig.add_subplot(gs[0, :2])
-for inport in range(1):
-    for outport in range(1,4):
-        ax.plot(freq2wl(freq)*1e9, np.abs(s[:, outport, inport])**2, label="Out {}".format(outport), lw="0.7")
-        # plt.plot(freq, 10*np.log10(np.abs(s[:, outport, inport])**2), label="Port {} to {}".format(inport, outport))
-ax.set_ylabel("Fractional Optical Power")
-ax.set_xlabel("Wavelength (nm)")
-plt.legend(loc='upper right')
-
-ax = fig.add_subplot(gs[0, 2])
-for inport in range(1):
-    for outport in range(1,4):
-        ax.plot(freq2wl(freq)*1e9, np.abs(s[:, outport, inport])**2, label="Output {}".format(outport), lw="0.7")
-        # plt.plot(freq, 10*np.log10(np.abs(s[:, outport, inport])**2), label="Port {} to {}".format(inport, outport))
-ax.set_xlim(1543,1545)
-ax.set_ylabel("Fractional Optical Power")
-ax.set_xlabel("Wavelength (nm)")
-
-fig.align_labels()
-
+f, s = result.data(result.pins.input, result.pins.output)
+plt.plot(f*1e9, s)
+plt.title("MZI")
+plt.tight_layout()
 plt.show()
 
+
+# import matplotlib.pyplot as plt
+# import matplotlib.gridspec as gridspec
+
+# freq, s = simu.freq_array, simu.s_parameters()
+
+# fig = plt.figure(tight_layout=True)
+# gs = gridspec.GridSpec(1, 3)
+
+# ax = fig.add_subplot(gs[0, :2])
+# for inport in range(1):
+#     for outport in range(1,4):
+#         ax.plot(freq2wl(freq)*1e9, np.abs(s[:, outport, inport])**2, label="Out {}".format(outport), lw="0.7")
+#         # plt.plot(freq, 10*np.log10(np.abs(s[:, outport, inport])**2), label="Port {} to {}".format(inport, outport))
+# ax.set_ylabel("Fractional Optical Power")
+# ax.set_xlabel("Wavelength (nm)")
 # plt.legend(loc='upper right')
-# plt.xlabel("Wavelength (nm)")
-# plt.ylabel("Fractional Optical Power")
-# # plt.title("Optical Filter Simulation")
+
+# ax = fig.add_subplot(gs[0, 2])
+# for inport in range(1):
+#     for outport in range(1,4):
+#         ax.plot(freq2wl(freq)*1e9, np.abs(s[:, outport, inport])**2, label="Output {}".format(outport), lw="0.7")
+#         # plt.plot(freq, 10*np.log10(np.abs(s[:, outport, inport])**2), label="Port {} to {}".format(inport, outport))
+# ax.set_xlim(1543,1545)
+# ax.set_ylabel("Fractional Optical Power")
+# ax.set_xlabel("Wavelength (nm)")
+
+# fig.align_labels()
+
 # plt.show()
+
+# # plt.legend(loc='upper right')
+# # plt.xlabel("Wavelength (nm)")
+# # plt.ylabel("Fractional Optical Power")
+# # # plt.title("Optical Filter Simulation")
+# # plt.show()
