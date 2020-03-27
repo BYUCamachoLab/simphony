@@ -1,2 +1,7 @@
 numpy
 scipy
+
+# For the SiPANN library, the following packages are required:
+SiPANN
+numba
+ctypes
