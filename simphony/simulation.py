@@ -327,6 +327,7 @@ class SinglePortSweepSimulation(SweepSimulation):
 
 
 class MonteCarloSweepSimulation(SweepSimulation):
+    pass
 #     """A simulator that models manufacturing variability by altering the
 #     width, thickness, and length of waveguides instantiated from a 
 #     `ebeam_wg_integral_1550` from the default DeviceLibrary.
@@ -404,6 +405,7 @@ class MonteCarloSweepSimulation(SweepSimulation):
 
 
 class MultiInputSweepSimulation(SweepSimulation):
+    pass
 #     """A simulator that models sweeping multiple inputs simultaneously by 
 #     performing algebraic operations on the simulated, cascaded s-parameter
 #     matrix.
