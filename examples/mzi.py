@@ -26,8 +26,8 @@ e = circuit.add([
 ])
 
 # You can set pin names individually:
-circuit.elements['input'].pins.n2 = 'input'
-circuit.elements['output'].pins.n2 = 'output'
+circuit.elements['input'].pins['n2'] = 'input'
+circuit.elements['output'].pins['n2'] = 'output'
 
 # Or you can rename all the pins simultaneously:
 circuit.elements['splitter'].pins = ('in1', 'out1', 'out2')
@@ -55,7 +55,7 @@ simulation = SweepSimulation(circuit, 1500e-9, 1600e-9)
 result = simulation.simulate()
 
 import matplotlib.pyplot as plt
-f, s = result.data(result.pins.input, result.pins.output)
+f, s = result.data(result.pinlist['input'], result.pinlist['output'])
 plt.plot(f*1e9, s)
 plt.title("MZI")
 plt.tight_layout()
