@@ -42,24 +42,8 @@ class Pin:
         name : str
             The name of the pin.
         """
-        self._pinlist = pinlist
-        self._name = name
-
-    def __repr__(self):
-        o = ".".join([self.__module__, type(self).__name__])
-        try:
-            return "<'{}' {} object from '{}' at {}>".format(self.name, o, self.element.name, hex(id(self)))
-        except AttributeError:
-            return "<'{}' {} object from at {}>".format(self.name, o, hex(id(self)))
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, value):
-        # TODO: Make sure that there is no pin with the same name in _pinlist
-        self._name = value
+        self.pinlist = pinlist
+        self.name = name
 
     @property
     def element(self):
@@ -67,12 +51,11 @@ class Pin:
         Returns the element to which this pin belongs by tracing the path to
         PinList, which ought to hold a reference to an `Element`.
         """
-        return self._pinlist.element
+        return self.pinlist.element
 
     @property
     def index(self):
-        return self._pinlist.index(self)
-
+        return self.pinlist.index(self)
 
 class PinList:
     """
@@ -94,6 +77,11 @@ class PinList:
     -----
     If renaming pins, the assigned value must be a string.
 
+    Warning
+    -------
+    Adding two PinLists together will change the pinlist reference of the pins
+    they contain to point to the new result.
+
     Examples
     --------
     >>> pinlist = PinList(None, 'n1', 'n2', 'n3')
@@ -106,31 +94,61 @@ class PinList:
     >>> pinlist.pins = ('n1')
     """
     _logger = _module_logger.getChild('PinList')
-    _pins = []
 
-    def __init__(self, element, *args):
+    def __init__(self, element, *pins):
         """
         Parameters
         ----------
         element : simphony.elements.Element
             The element this PinList defines the pins for.
-        args : str or Pin
+        pins : str or Pin
             Number of unnamed arguments is not limited; each corresponds to a
             new `Pin` in the `PinList`. If str, Pin is created. If Pin, its
             `pinlist` attribute is updated to point to this `PinList`.
         """
         self.element = element
-        self._pins = [self._normalize(pin) for pin in args]
+        self.pins = []
+
+        for pin in pins:
+            self.append(pin)
+
+    def __getitem__(self, item):
+        if type(item) is str:
+            for pin in self.pins:
+                if pin.name == item:
+                    return pin
+        elif type(item) is int:
+            return self.pins[item]
+        elif type(item) is Pin:
+            if item in self.pins:
+                return item
+        err = "'{}' not in PinList.".format(item)
+        raise KeyError(err)
+
+    def __setitem__(self, key, value):
+        key = self[key]
+        if type(value) is str:
+            key.name = value
+            return
+        elif type(value) is Pin:
+            value = self._normalize(value)
+            idx = self.index(key)
+            self.pins[idx] = value
+            return
+        err = "'{}' not in PinList.".format(key)
+        raise KeyError(err)
+
+    def __len__(self):
+        return len(self.pins)
+
+    def __add__(self, other):
+        pinlist = PinList(self.element)
+        pinlist.pins = self.pins + other.pins
+        for pin in pinlist:
+            pin.pinlist = pinlist
+        return pinlist
 
     def _normalize(self, pin):
-        """
-        Takes a pin argument (string or Pin) and creates a `Pin` object.
-
-        Parameters
-        ----------
-        pin : str or Pin
-            The pin to be normalized to a `Pin`.
-        """
         if type(pin) is Pin:
             pin._pinlist = self
             return pin
@@ -139,51 +157,72 @@ class PinList:
         err = "expected type 'str' or 'Pin', got {}".format(type(pin))
         raise TypeError(err)
 
-    def __getitem__(self, item):
-        return self._pins[item]
+    def contains(self, pin):
+        """
+        Parameters
+        ----------
+        pin : str or Pin
+            The pin to verify is in the list.
+            
+        Returns
+        -------
+        bool 
+            True if the pin is in the list.
+        """
+        if type(pin) is str:
+            if pin.name in [pin.name for pin in self.pins]:
+                return True
+        elif type(pin) is Pin:
+            if pin in self.pins:
+                return True
+        return False
+    
+    def append(self, pin):
+        """
+        Takes a pin argument (string or Pin) and creates a `Pin` object.
 
-    def __setitem__(self, key, value):
-        self._pins[key].name = value
+        Parameters
+        ----------
+        pin : str or Pin
+            The pin to be normalized to a `Pin`.
+        """
+        pin = self._normalize(pin)
+        if self.contains(pin): raise ValueError("name '{}' is not unique in PinList")
+        self.pins.append(pin)
 
-    def __getattr__(self, name):
-        for pin in self._pins:
-            if name == pin.name:
-                return pin
-        return super().__getattribute__(name)
+    def remove(self, pin):
+        """
+        Removes a pin from the pinlist by name or value.
 
-    def __setattr__(self, name, value):
-        if name not in [pin.name for pin in self._pins]:
-            return super().__setattr__(name, value)
-        if value in [pin.name for pin in self._pins]:
-            error = "'{}' already exists in PinList".format(value)
-            raise AttributeError(error)
-        for pin in self._pins:
-            if name == pin.name:
-                pin.name = value
-                return
+        Parameters
+        ----------
+        pin : str or Pin
+            Removes the pin from the pinlist.
+        """
+        self.pins.remove(self[pin])
 
-    def __str__(self):
-        _pins = str(tuple([pin.name for pin in self._pins]))
-        return "{} (Pins: {})".format(self.__class__.__name__, _pins)
+    def pop(self, idx=-1):
+        """
+        Removes a pin from the pinlist by index (or, the last inserted pin by
+        default).
 
-    def __len__(self):
-        return len(self._pins)
+        Parameters
+        ----------
+        idx : int, optional
+            The index of the pin to remove from the list. If none, removes the
+            last item in the list.
+        """
+        return self.pins.pop(idx)
 
-    @property
-    def pins(self):
-        self._logger.debug("'pins' property called")
-        return self._pins
+    def rename_pin(self, current_name, new_name):
+        self[current_name].name = new_name
 
-    @pins.setter
-    def pins(self, names):
-        if type(names) is not tuple:
-            err = "expected type 'tuple' but got '{}'".format(type(names))
-            raise TypeError(err)
-        if len(names) != len(self._pins):
-            err = "number of new pins does not match number of existing pins ({} != {})".format(len(names), len(self._pins))
+    def rename_pins(self, *names):
+        if len(names) != len(self.pins):
+            err = "number of new pins does not match number of existing pins ({} != {})".format(len(names), len(self.pins))
             raise ValueError(err)
-        for idx, pin in enumerate(self._pins):
-            pin.name = names[idx]
+        for pin, name in zip(self.pins, names):
+            pin.name = name
 
     def index(self, pin):
         """
@@ -199,10 +238,10 @@ class PinList:
         idx : int
             The index of the pin passed in.
         """
-        return self._pins.index(pin)
+        return self.pins.index(pin)
 
     @property
-    def names(self):
+    def pinnames(self):
         """
         Get the names of the pins in the `PinList`, in order.
 
@@ -211,7 +250,7 @@ class PinList:
         names : tuple of str
             The formal names of each pin in the pinlist.
         """
-        return tuple([pin.name for pin in self._pins])
+        return tuple([pin.name for pin in self.pins])
 
 
 class Element:
@@ -233,35 +272,25 @@ class Element:
         A PinList, generated automatically from the model, with pins renameable
         after instantiation.
     """
+    # FIXME: Do we want `name` to be read-only/
+
     def __init__(self, model, name=None):
         self.model = model
-        self._name = name if name else self.generate_name()
-        self._pins = PinList(self, *model.pins)
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, value):
-        err = "'name' attribute is read-only."
-        raise ValueError(err)
+        self.name = name if name else self.generate_name()
+        self.pinlist = PinList(self, *model.pins)
 
     @property
     def pins(self):
-        return self._pins
+        return self.pinlist
 
     @pins.setter
     def pins(self, value):
-        self._pins.pins = value
+        if type(value) is tuple:
+            self.pinlist.rename_pins(*value)
 
     @property
     def wl_bounds(self):
         return self.model.wl_bounds
-
-    def __str__(self):
-        pins = str(tuple([pin.name for pin in self.pins]))
-        return "Element (Name: '{}', Model: '{}', Pins: {})".format(self.name, self.model.__class__.__name__, pins)
 
     def _generate_name(self) -> str:
         """
@@ -282,48 +311,45 @@ class ElementList:
 
     Dictionary is a mapping of names (type: `str`) to elements or blocks (type:
     `Element` or `Subcircuit`).
+
+    Allows for access to blocks within the subcircuit by name or index,
+    similar to a dictionary or list.
     """
+    # FIXME: Should elements be an OrderedDict?
+
     def __init__(self):
-        self.elements = OrderedDict()
+        self.elements = []
 
     def __getitem__(self, item):
-        """
-        Allows for access to blocks within the subcircuit by name or index,
-        similar to a dictionary or list.
-        """
         if type(item) is str:
-            try:
-                return self.elements[item]
-            except KeyError:
-                raise KeyError('name "{}" not in subcircuit.'.format(item))
+            for element in self.elements:
+                if element.name == item:
+                    return element
         elif type(item) is int:
-            return list(self.elements.values())[item]
-        else:
-            raise KeyError('"{}" not in subcircuit.'.format(item))
-
-    def __setitem__(self, key, value):
-        if key in self.elements.keys():
-            raise KeyError("Key '{}' already exists.".format(key))
-        self.elements[key] = value
-
-    def __delitem__(self, key):
-        del self.elements[key]
+            return self.elements[item]
+        elif type(item) is Element:
+            if item in self.elements:
+                return item
+        err = '"{}" not in ElementList.'.format(item)
+        raise KeyError(err)
 
     def __len__(self):
         return len(self.elements)
 
-    def __str__(self):
-        if len(self) > 0:
-            val = '{'
-            for k, v in self.elements.items():
-                val += "{}: {}, ".format(k, v)
-            val = val[:-2] + '}'
-            return val
-        else:
-            return "{}"
-
     def __iter__(self):
-        yield from self.elements.values()
+        yield from self.elements
+
+    def append(self, element):
+        if element.name in [element.name for element in self.elements]:
+            raise KeyError("Key '{}' already exists.".format(element.name))
+        self.elements.append(element)
+
+    def remove(self, name):
+        element = self[name]
+        self.elements.remove(element)
+
+    def pop(self, idx):
+        return self.elements.pop(idx)
 
     def keys(self):
         """
@@ -335,6 +361,12 @@ class ElementList:
             The keys (or, names of `Element` instances) of `ElementList`.
         """
         return self.elements.keys()
+
+
+class Net:
+    def __init__(self, p1, p2):
+        self.p1 = p1
+        self.p2 = p2
 
 
 class Netlist:
@@ -349,13 +381,19 @@ class Netlist:
     def __init__(self):
         self.nets = []
 
-    def __str__(self):
-        val = ''
-        o = ".".join([self.__module__, type(self).__name__])
-        val += "<{} object at {}>".format(o, hex(id(self)))
-        for item in self.nets:
-            val += '\n  {}'.format(str(item))
-        return val
+    def __getitem__(self, idx):
+        return self.nets[idx]
+
+    def __iter__(self):
+        yield from self.nets
+
+    # def __str__(self):
+    #     val = ''
+    #     o = ".".join([self.__module__, type(self).__name__])
+    #     val += "<{} object at {}>".format(o, hex(id(self)))
+    #     for item in self.nets:
+    #         val += '\n  {}'.format(str(item))
+    #     return val
 
     def add(self, pin1, pin2):
         for pin in itertools.chain(*self.nets):
@@ -402,17 +440,6 @@ class Subcircuit:
         self.elements = ElementList()
         self.netlist = Netlist()
 
-    # TODO: Do we want to be able to access elements as dictionary items from
-    # the subcircuit directly? Or make them pass through `elements` first?
-
-    # def __repr__(self):
-    #     val = ''
-    #     o = ".".join([self.__module__, type(self).__name__])
-    #     val += "<{} object at {}>".format(o, hex(id(self)))
-    #     for item in self._blocks:
-    #         val += '\n  {}'.format(str(item))
-    #     return val
-
     @property
     def pins(self):
         all_pins = set([pin for element in self.elements for pin in element.pins])
@@ -428,8 +455,11 @@ class Subcircuit:
         min_wl = []
         max_wl = []
         for element in self.elements:
-            min_wl.append(element.wl_bounds[0])
-            max_wl.append(element.wl_bounds[1])
+            minn, maxx = element.wl_bounds
+            # min_wl.append(element.wl_bounds[0])
+            # max_wl.append(element.wl_bounds[1])
+            if minn is not None: min_wl.append(minn)
+            if maxx is not None: max_wl.append(maxx)
         return (min(min_wl), max(max_wl))
 
     def add(self, elements):
@@ -453,21 +483,18 @@ class Subcircuit:
         if type(elements) is not list:
             raise TypeError('list expected, received {}'.format(type(elements)))
         
-        new_elements = []
         for item in elements:
             # TODO: Find some way to guarantee that the automatically generated
             # name does not already exist in the ElementList.
             if type(item) is tuple:
-                model, name = item 
+                model, name = item
             else:
                 model, name = item, None
             if issubclass(type(model), Subcircuit):
-                self.elements[name if name else model.name] = model
+                model.name = name if name else model.name
+                self.elements.append(model)
             elif issubclass(type(model), Model):
-                e = Element(model, name)
-                self.elements[e.name] = e
-            # new_elements.append(e)
-        # return new_elements
+                self.elements.append(Element(model, name))
 
     def connect(self, element1, pin1, element2, pin2):
         """
@@ -509,7 +536,8 @@ class Subcircuit:
             return pin
         elif type(pin) is str:
             if issubclass(type(element), Element):
-                return getattr(element.pins, pin)
+                # return getattr(element.pins, pin)
+                return element.pins[pin]
             elif issubclass(type(element), Subcircuit):
                 for opin in element.pins:
                     if opin.name == pin:
