@@ -27,30 +27,32 @@ _module_logger = logging.getLogger(__name__)
 
 
 def freq2wl(freq):
-    """
+    """Convenience function for converting from frequency to wavelength.
+
     Parameters
     ----------
     freq : float
-        The frequency in SI units.
+        The frequency in SI units (Hz).
 
     Returns
     -------
     wl : float
-        The wavelength in SI units.
+        The wavelength in SI units (m).
     """
     return c/freq
 
 def wl2freq(wl):
-    """
+    """Convenience function for converting from wavelength to frequency.
+
     Parameters
     ----------
     wl : float
-        The wavelength in SI units.
+        The wavelength in SI units (m).
 
     Returns
     -------
     freq : float
-        The frequency in SI units.
+        The frequency in SI units (Hz).
     """
     return c/wl
 
@@ -72,7 +74,9 @@ class SimulationResult:
     s : np.array
         A numpy array of the s-parameter matrix for the given frequency range.
     """
-    def __init__(self, freq=None, s=None, pins=None):
+    _logger = _module_logger.getChild('SimulationResult')
+
+    def __init__(self, freq=None, s=None, pinlist=None):
         """
         Instantiates an object from a Component if provided; empty, if not.
 
@@ -81,9 +85,23 @@ class SimulationResult:
         component : Component, optional
             A component to initialize the data members of the object.
         """
+        self._pinlist = None
+
         self.f = freq
         self.s = s
-        self.pins = pins
+        self.pinlist = pinlist
+
+    @property
+    def pinlist(self):
+        return self._pinlist
+
+    @pinlist.setter
+    def pinlist(self, pinlist):
+        self._logger.debug('pinlist property set')
+        if pinlist:
+            pinlist.element = self
+            self._pinlist = pinlist
+            assert self.pinlist.element == self
 
 class SweepSimulationResult(SimulationResult):
     def __init__(self, freq, s, pins):
@@ -104,87 +122,6 @@ class SweepSimulationResult(SimulationResult):
             s = np.log10(s)
         return freq, s
 
-# class Cache:
-#     """
-#     A cache for simulated scattering parameters and recording which elements
-#     they correspond to.
-#     """
-#     _logger = _module_logger.getChild('Cache')
-
-#     def __init__(self):
-#         # _elements_id_mapping is a mapping of Model instances to string id's
-#         # implemented using a dict. Every element that's been cached is 
-#         # contained within _elements_id_mapping, regardless of whether an 
-#         # identical object is included.
-        
-#         # _elements_id_mapping = {element: uid}
-#         self._elements_id_mapping = {}
-#         # _id_cache_mapping = {uid: parameters}
-#         self._id_cache_mapping = {}
-
-#     def __setitem__(self, key, value):
-#         self._logger.debug('Entering __setitem__')
-#         # Check to see if an identical item is already in the cache
-#         for k, v in self._elements_id_mapping.items():
-#             # If it is, then set the new item's uid to the existing item's uid
-#             if key == k:
-#                 self._elements_id_mapping[key] = v
-#                 return
-        
-#         # Otherwise, the element has not yet been saved to the cache.
-#         # Create a unique id for the parameters and save which id the element
-#         # should use to access the cached value.
-#         uid = uuid.uuid4()
-#         self._id_cache_mapping[uid] = value
-#         self._elements_id_mapping[key] = uid
-
-#     def __getitem__(self, key):
-#         self._logger.debug('Entering __getitem__')
-#         if key in self._elements_id_mapping.keys():
-#             return self._id_cache_mapping[self._elements_id_mapping[key]]
-#         else:
-#             raise KeyError
-#         # return self.__dict__[key]
-
-#     def contains(self, element) -> bool:
-#         for key in self._elements_id_mapping.keys():
-#             if element is key:
-#                 return True
-#             elif element == key:
-#                 self._elements_id_mapping[element] = self._elements_id_mapping[key]
-#                 return True
-#             else:
-#                 return False
-
-#     def keys(self):
-#         return self._elements_id_mapping.keys()
-
-class Cache:
-    _logger = _module_logger.getChild('Cache') 
-
-    def __init__(self):
-        self.cache = {}
-
-    def __getitem__(self, key):
-        return self.cache[key]
-
-    def __setitem__(self, key, value):
-        # TODO: Enforce keys to be non-updatable.
-        self.cache[key] = value
-
-    def contains(self, key):
-        if key in self.cache.keys():
-            return True
-        return False
-
-    def keys(self):
-        return self.cache.keys()
-
-    def values(self):
-        return self.cache.values()
-
-    
-
 
 class Simulation:
     """
@@ -194,39 +131,65 @@ class Simulation:
 
     Attributes
     ----------
-    circuit : simphony.netlist.subcircuit
+    circuit : simphony.netlist.Subcircuit
         A simulation is instantiated with a completed circuit.
     """
     def __init__(self, circuit: Subcircuit):
-        self.circuit = circuit
+        self.circuit = copy.deepcopy(circuit)
 
 
 class SweepSimulation(Simulation):
     """
+    A swept simulation.
+
     Attributes
     ----------
     start : float
+        The starting simulation frequency (in Hz).
     stop : float
-    num : float
-    cache : dict
+        The ending simulation frequency (in Hz).
+    num : int
+        The number of sampled points between `start` and `stop`.
     """
-    def __init__(self, circuit: Subcircuit, start: float=1.5e-6, stop: float=1.6e-6, num: int=2000):
+    def __init__(self, circuit: Subcircuit, start: float=1.5e-6, stop: float=1.6e-6, num: int=2000, mode='wl'):
+        """
+        Parameters
+        ----------
+        circuit : Subcircuit
+            The circuit to be simulated.
+        start : float
+            The start wavelength (in meters) or frequency (in Hz).
+        stop : float
+            The stop wavelength (in meters) or frequency (in Hz).
+        num : int
+            The number of sampled points.
+        mode : str
+            Defines sweep range mode; either 'wl' for wavelength (m) or 
+            'freq' for frequency (Hz).
+        """
         super().__init__(circuit)
-        self.start = start
-        self.stop = stop
+        if mode == 'wl':
+            self.start = wl2freq(stop)
+            self.stop = wl2freq(start)
+        elif mode == 'freq':
+            self.start = start
+            self.stop = stop
+        else:
+            err = "mode '{}' is not one of 'freq' or 'wl'".format(mode)
+            raise ValueError(err)
         self.num = num
 
     def _cache_elements(self):
-        cache = Cache()
-        self.cache = self._cache_elements_helper(self.circuit, cache)
+        # cache = {}
+        self.cache = self._cache_elements_helper(self.circuit, {})
         
-    def _cache_elements_helper(self, blocks, cache: Cache):
+    def _cache_elements_helper(self, circuit, cache: dict):
         """
-        Recursively caches all blocks in the subcircuit.
+        Recursively caches all circuit in the subcircuit.
 
         Parameters
         ----------
-        blocks : list of simphony.netlist.ElementList
+        circuit : list of simphony.netlist.ElementList
             The elements to be cached.
         cache : simphony.simulation.Cache
             A cache for containing simulated models.
@@ -237,41 +200,38 @@ class SweepSimulation(Simulation):
             The updated cache.
         """
         # For every item in the circuit
-        for block in blocks.elements:
-            print(block)
+        for item in circuit.elements:
 
             # If it's an Element type, cache it.
-            if issubclass(type(block), Element):
-                print(type(block), Element, issubclass(type(block), Element))
-                self._cache_elements_element_helper(block, cache)
+            if issubclass(type(item), Element):
+                self._cache_elements_element_helper(item, cache)
             
             # If it's a subcircuit, recursively call this function.
-            elif type(block) is Subcircuit:
-                print(type(block), Subcircuit, issubclass(type(block), Subcircuit))
-                self._cache_elements_helper(block, cache)
+            elif type(item) is Subcircuit:
+                self._cache_elements_helper(item, cache)
             
             # If it's something else--
             # well, ya got trouble, right here in River City.
             else:
-                raise TypeError('Invalid object in circuit (type "{}")'.format(type(block)))
+                raise TypeError('Invalid object in circuit (type "{}")'.format(type(item)))
 
         return cache
 
-    def _cache_elements_element_helper(self, element: Element, cache: Cache):
+    def _cache_elements_element_helper(self, element: Element, cache: dict):
         # Caching items base case: if matching object in cache, return.
         model = element.model
-        if cache.contains(model):
+        if model in cache:
             return cache
         
         # Ensure that models have required attributes.
         try:
-            lower, upper = model.wl_bounds
+            lower, upper = model.freq_range
         except TypeError:
             raise NotImplementedError('Does the model "{}" define a valid frequency range?'.format(type(model).__name__))
         
         # Ensure that models are valid with current simulation parameters.
-        if lower < self.start or upper > self.stop:
-            raise ValueError('Simulation frequencies ({}-{}) out of valid bounds for "{}"'.format(self.start, self.stop, type(model).__name__))
+        if lower > self.start or upper < self.stop:
+            raise ValueError('Simulation frequencies ({} - {}) out of valid bounds for "{}"'.format(self.start, self.stop, type(model).__name__))
 
         # Cache the element's s-matrix using the simulation parameters
         cache[model] = model.s_parameters(self.start, self.stop, self.num)
@@ -280,50 +240,39 @@ class SweepSimulation(Simulation):
     def simulate(self):
         self._cache_elements()
         sim = self._simulate_helper(self.circuit)
-        sim = SweepSimulationResult(sim.f, sim.s, sim.pins)
+        sim = SweepSimulationResult(sim.f, sim.s, sim.pinlist)
         return sim
 
-    def _simulate_helper(self, blocks):
+    def _simulate_helper(self, circuit):
         elements = {}
-        netlist = blocks.netlist.clone()
+        netlist = circuit.netlist
 
         # For every item in the circuit
-        for block in blocks.elements:
+        for item in circuit.elements:
 
-            # If it's an Model type, cache it.
-            if issubclass(type(block), Element):
-                elements[block.name] = self._create_simulated_result(block, netlist)
+            # If it's an Element type, simulate it.
+            if issubclass(type(item), Element):
+                elements[item.name] = self._create_simulated_result(item, netlist)
             
             # If it's a subcircuit, recursively call this function.
-            elif type(block) is Subcircuit:
-                elements[block.name] = self._simulate_helper(block)
+            elif type(item) is Subcircuit:
+                elements[item.name] = self._simulate_helper(item)
             
             # If it's something else--
             # well, ya got trouble, right here in River City.
             else:
-                raise TypeError('Invalid object in circuit (type "{}")'.format(type(block)))
+                err = 'Invalid object in circuit (type "{}")'.format(type(item))
+                raise TypeError(err)
 
         # Connect all the elements together and return a super element.
         built = self.connect_circuit(elements, netlist) 
         assert type(built) is SimulationResult
         return built
 
-    def _create_simulated_result(self, block, netlist):
-        f, s = self.cache[block.model]
-        pins = copy.deepcopy(block.pins)
-        sim = SimulationResult(f, s, pins)
-        sim.pins.element = sim
-        for idx, pin in enumerate(block.pins):
-            assert pin.name == sim.pins[idx].name
-            self._update_netlist(netlist, pin, sim.pins[idx])
+    def _create_simulated_result(self, element, netlist):
+        f, s = self.cache[element.model]
+        sim = SimulationResult(f, s, element.pins)
         return sim
-
-    @staticmethod
-    def _update_netlist(netlist, old_pin, new_pin):
-        for net in netlist:
-            for i in range(len(net)):
-                if net[i] == old_pin:
-                    net[i] = new_pin
 
     @staticmethod
     def connect_circuit(elements, netlist) -> SimulationResult:
@@ -356,260 +305,28 @@ class SweepSimulation(Simulation):
                 combined = SimulationResult()
                 combined.f = p1.element.f
                 combined.s = innerconnect_s(p1.element.s, p1.index, p2.index)
-                new_pins = p1._pinlist.pins
-                new_pins.remove(p1)
-                new_pins.remove(p2)
-                pins = PinList(combined, *tuple(new_pins))
-                combined.pins = pins
+                pinlist = p1.pinlist
+                pinlist.remove(p1)
+                pinlist.remove(p2)
+                combined.pinlist = pinlist
             else:
                 _logger.debug('External connection')
                 combined = SimulationResult()
                 combined.f = p1.element.f
                 combined.s = connect_s(p1.element.s, p1.index, p2.element.s, p2.index)
-                new_pins = p1._pinlist.pins + p2._pinlist.pins
-                new_pins.remove(p1)
-                new_pins.remove(p2)
-                pins = PinList(combined, *tuple(new_pins))
-                combined.pins = pins
+                pinlist = p1.pinlist + p2.pinlist
+                pinlist.remove(p1)
+                pinlist.remove(p2)
+                combined.pinlist = pinlist
         return combined
-
-        #         # If pin occurances are in the same component:
-        #         if e1 == e2:
-        #             component_list[ca].s = innerconnect_s(component_list[ca].s, ia, ib)
-        #             del component_list[ca].nets[ia]
-        #             if ia < ib:
-        #                 del component_list[ca].nets[ib-1]
-        #             else:
-        #                 del component_list[ca].nets[ib]
-
-        #         # If pin occurances are in different components:
-        #         else:
-        #             combination = SimulatedBlock()
-        #             combination.f = component_list[0].f
-        #             combination.s = connect_s(component_list[ca].s, ia, component_list[cb].s, ib)
-        #             del component_list[ca].nets[ia]
-        #             del component_list[cb].nets[ib]
-        #             combination.nets = component_list[ca].nets + component_list[cb].nets
-        #             del component_list[ca]
-        #             if ca < cb:
-        #                 del component_list[cb-1]
-        #             else:
-        #                 del component_list[cb]
-        #             component_list.append(combination)
-
-        # assert len(component_list) == 1
-        # return component_list[0]
 
 
 class SinglePortSweepSimulation(SweepSimulation):
     def __init__(self, circuit, start=1.5e-6, stop=1.6e-6, num=2000):
         super().__init__(circuit, start, stop, num)
 
-# #
-# #
-# # BASE SIMULATION STRUCTURE
-# #
-# # The main class and functions pertaining to operations that any type of 
-# # simulation will invariably need.
-# #
-# #
 
-
-# class Simulation:
-#     """The main simulation class providing methods for running simulations,
-#     tracking frequency ranges, and matrix rearranging (according to port
-#     numbering).
-
-#     All simulators can inherit from Simulation to get basic functionality that
-#     doesn't need reimplementing.
-#     """
-#     def __init__(self, netlist: Netlist, start_freq: float=1.88e+14, stop_freq: float=1.99e+14, num: int=2000):
-#         """Creates and automatically runs a simulation by cascading the netlist.
-
-#         Parameters
-#         ----------
-#         netlist : Netlist
-#             The netlist to be simulated.
-#         start_freq : float
-#             The starting (lower) value for the frequency range to be analyzed.
-#         stop_freq : float
-#             The ending (upper) value for the frequency range to be analyzed.
-#         num : int
-#             The number of points to be used between start_freq and stop_freq.
-#         """
-#         self.netlist: Netlist = netlist
-#         self.start_freq: float = start_freq
-#         self.stop_freq: float = stop_freq
-#         self.num: int = num
-#         self.cache: dict = {}
-
-#         logging.info("Starting simulation...")
-#         start = time.time()
-#         self._cache_models()
-#         self._cascade()
-#         stop = time.time()
-#         logging.info("Simulation complete.")
-#         logging.info("Total simulation time: " + str(timedelta(seconds=(stop - start))))
-
-#     @property
-#     def freq_array(self):
-#         """Returns the linearly spaced frequency array from start_freq to stop_freq with num points."""
-#         logging.debug("Entering freq_array()")
-#         return np.linspace(self.start_freq, self.stop_freq, self.num)
-
-#     def _cache_models(self):
-#         """Caches all models marked as `cachable=True` to avoid constant I/O 
-#         operations and redundant calculations"""
-#         logging.debug("Entering _cache_models()")
-#         for component in self.netlist.components:
-#             if component.model.component_type not in self.cache and component.model.cachable:
-#                 freq, s_parameters = interpolate(self.freq_array, *component.get_s_parameters())
-#                 self.cache[component.model.component_type] = (freq, s_parameters)
-
-#     def _cascade(self):
-#         """Cascades all components together into a single SimulatedComponent.
-
-#         This is essentially the function that performs the full simulation.
-#         """
-#         logging.debug("Entering _cascade()")
-#         extras = {}
-#         extras['start_freq'] = self.start_freq
-#         extras['stop_freq'] = self.stop_freq
-#         extras['num'] = self.num
-#         component_list = [component2simulated(component, self.cache, extras) for component in self.netlist.components]
-#         self.combined = rearrange(connect_circuit(component_list, self.netlist.net_count))
-
-#     def s_parameters(self):
-#         """Returns the s-parameters of the cascaded, simulated netlist.
-
-#         Returns
-#         -------
-#         np.ndarray
-#             The simulated s-matrix.
-
-#         # TODO: Implement slicing for the s_parameters matrix.
-#         def __getitem__(self, name):
-#             print(name, type(name), len(name))
-#             # return self._parameters[name]
-#         """
-#         return self.combined.s
-
-#     @property
-#     def external_ports(self):
-#         """Returns a list of the external port numbers.
-
-#         Returns
-#         -------
-#         List[int]
-#             The external nets of the simulated netlist. These are positive
-#             integers, corresponding to rows/columns of the netlist.
-#         """
-#         return self.combined.nets
-
-#     # @property
-#     # def external_components(self):
-#     #     # return [component for component in self.netlist.components if (any(int(x) < 0 for x in component.nets))]
-#     #     externals = []
-#     #     for component in self.netlist.components:
-#     #         if (any(int(x) < 0 for x in component.nets)):
-#     #             externals.append(component)
-#     #     return externals
-
-# def rearrange_order(ports: List[int]):
-#     """Determines what order the ports should be placed in after simulation.
-    
-#     Ports are usually passed in as a scrambled list of negative integers.
-#     This function returns a list containing indices corresponding to the
-#     order in which the input list should be reordered to be sorted.
-
-#     Parameters
-#     ----------
-#     ports : List[int]
-#         A list of ports to be sorted.
-
-#     Returns
-#     -------
-#     List[int]
-#         Indices corresponding to how ports should be reordered.
-
-#     Examples
-#     --------
-#     >>> list_a = [-3 -5 -2 -1 -4]
-#     >>> list_b = rearrange_order(list_a)
-#     >>> list_b
-#     [3, 2, 0, 4, 1]
-#     """
-#     logging.debug("Entering rearrange_order()")
-#     reordered = copy.deepcopy(ports)
-#     reordered.sort(reverse = True)
-#     logging.debug("Order: " + str(reordered))
-#     return [ports.index(i) for i in reordered]
-
-# def rearrange(component: SimulatedComponent) -> SimulatedComponent:
-#     """Rearranges the s-matrix of the simulated component according to its 
-#     port ordering.
-
-#     Parameters
-#     ----------
-#     component : SimulatedComponent
-#         A component that has external ports and a calculated s-parameter
-#         matrix.
-
-#     Returns
-#     -------
-#     SimulatedComponent
-#         A single component with its reordered s-matrix and new port list.
-#     """
-#     concatenate_order = rearrange_order(component.nets)
-#     s_params = rearrange_matrix(component.s, concatenate_order)
-#     reordered_nets = [(-x - 1) for x in component.nets]
-#     reordered_nets.sort()
-#     return SimulatedComponent(nets=reordered_nets, freq=component.f, s_parameters=s_params)
-
-# def rearrange_matrix(s_matrix, concatenate_order: List[int]) -> np.ndarray:
-#     """Reorders a matrix given a list mapping indices to columns.
-
-#     S-matrices are indexed in the following manner:
-#     matrix[frequency, input, output].
-
-#     Parameters
-#     ----------
-#     s_matrix : np.ndarray
-#         The s-matrix to be rearranged.
-#     concatenate_order : List[int]
-#         The index-to-column mapping. See `rearrange`.
-
-#     Returns
-#     -------
-#     np.ndarray
-#         The reordered s-matrix.
-#     """
-#     port_count = len(concatenate_order)
-#     reordered_s = np.zeros(s_matrix.shape, dtype=complex)
-#     for i in range(port_count):
-#         for j in range(port_count):
-#             x = concatenate_order[i]
-#             y = concatenate_order[j]
-#             reordered_s[:, i, j] = s_matrix[:, x, y]
-#     return reordered_s
-
-
-
-
-
-
-
-# #
-# #
-# # OTHER SIMULATORS
-# #
-# # Other simulators, as they are coded, can be found in this section. They 
-# # mostly inherit from the default simulator.
-# #
-# #
-
-
-# class MonteCarloSimulation(Simulation):
+class MonteCarloSweepSimulation(SweepSimulation):
 #     """A simulator that models manufacturing variability by altering the
 #     width, thickness, and length of waveguides instantiated from a 
 #     `ebeam_wg_integral_1550` from the default DeviceLibrary.
@@ -684,10 +401,9 @@ class SinglePortSweepSimulation(SweepSimulation):
             
 #         stop = time.time()
 #         return (stop - start)
-                
 
-    
-# class MultiInputSimulation(Simulation):
+
+class MultiInputSweepSimulation(SweepSimulation):
 #     """A simulator that models sweeping multiple inputs simultaneously by 
 #     performing algebraic operations on the simulated, cascaded s-parameter
 #     matrix.
@@ -745,3 +461,12 @@ class SinglePortSweepSimulation(SweepSimulation):
 #         frequency, matrix: np.array, np.ndarray
 #         """
 #         return self.freq_array, self.simulated_matrix
+
+
+# class MonteCarloSimulation(Simulation):
+
+                
+
+    
+# class MultiInputSimulation(Simulation):
+
