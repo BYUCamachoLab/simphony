@@ -58,9 +58,9 @@ class Model:
     ----------
     nodes : tuple of str
         A tuple of all the node names for the element.
-    wl_bounds : tuple of float
-        A tuple of the valid wavelength bounds for the element in the order
-        (lower, upper).
+    freq_range : tuple of float
+        A tuple of the valid frequency bounds for the element in the order
+        (lower, upper). Can be made (-infty, infty) be setting to (None, None).
 
     Notes
     -----
@@ -71,7 +71,7 @@ class Model:
     _logger = _module_logger.getChild('Model')
 
     pins = None
-    wl_range = (None, None)
+    freq_range = (None, None)
 
     def _monte_carlo_(self, *args, **kwargs):
         """Implements the monte carlo routine for the given Element.
@@ -91,16 +91,14 @@ class Model:
         Parameters
         ----------
         start : float
-            The lower wavelength bound for the simulation.
+            The lower frequency bound for the simulation.
         end : float
-            The upper wavelength bound for the simulation.
+            The upper frequency bound for the simulation.
         num : int
             The number of points to interpolate between `start` and `end`.
 
         Returns
         -------
-        # FIXME: Are we returning f or wl? Everything subclassing is currently
-        # returning wl.
         f, s : float, array
             The frequency range and corresponding scattering parameters.
         

@@ -1,12 +1,12 @@
 import os
 from itertools import combinations_with_replacement as comb_w_r
 
+import ctypes
+from numba import njit
+from numba.extending import get_cython_function_address
 import numpy as np
 from scipy import special
 from SiPANN import dc
-from numba import njit
-import ctypes
-from numba.extending import get_cython_function_address
 
 from simphony.elements import Model
 from simphony.simulation import freq2wl, wl2freq
@@ -16,7 +16,7 @@ class sipann_wg_integral(Model):
     """Neural-net trained model of a waveguide.
     """
     pins = ('n1', 'n2')
-    wl_bounds = (1.5e-6, 1.6e-6)
+    freq_range = (187370000000000.0, 199862000000000.0)
 
     # TODO: Remove the delta_length part of this model; should be implemented
     # only in the simphony.simulation.MonteCarloSimulation part of the program
@@ -45,8 +45,7 @@ class sipann_wg_integral(Model):
     def s_parameters(self, start, stop, num):
         wl = np.linspace(start, stop, num)
         frequency = wl2freq(wl)
-        f, s = self.ann_s_params(frequency, self.length, self.width, self.thickness, self.dL)
-        return wl, s
+        return self.ann_s_params(frequency, self.length, self.width, self.thickness, self.dL)
 
     @staticmethod
     def cartesian_product(arrays):
@@ -247,7 +246,7 @@ class sipann_dc_halfring(Model):
     """Regression Based Closed Form solution of half of a ring resonator
     """
     pins = ('n1', 'n2', 'n3', 'n4')
-    wl_bounds = (1.5e-6, 1.6e-6)
+    freq_range = (187370000000000.0, 199862000000000.0)
 
     def __init__(self, width=0.5, thickness=0.22, gap=0.1, radius=10.0, sw_angle=90.0):
         """Get the s-parameters of a parameterized waveguide.
@@ -284,13 +283,12 @@ class sipann_dc_halfring(Model):
         self.radius    = radius*1000
 
     def s_parameters(self, start, stop, num):
-        start_wl = start * 1e9
-        stop_wl  = stop * 1e9
+        start_wl = freq2wl(start)
+        stop_wl  = freq2wl(stop)
         wl       = np.linspace(start_wl, stop_wl, num)
 
         item = dc.RR(self.width, self.thickness, self.radius, self.gap)
-        f, s = item.sparams(wl)
-        return freq2wl(f), s
+        return item.sparams(wl)
 
     # @classmethod
     # def s_parameters(cls,
