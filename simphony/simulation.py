@@ -107,7 +107,7 @@ class SweepSimulationResult(SimulationResult):
     def __init__(self, freq, s, pins):
         super().__init__(freq, s, pins)
 
-    def data(self, inp, outp, dB=True):
+    def data(self, inp, outp, dB=False):
         """
         Parameters
         ----------
@@ -168,6 +168,8 @@ class SweepSimulation(Simulation):
             'freq' for frequency (Hz).
         """
         super().__init__(circuit)
+        if start > stop:
+            raise ValueError("simulation 'start' value must be less than 'stop' value.")
         if mode == 'wl':
             self.start = wl2freq(stop)
             self.stop = wl2freq(start)
@@ -266,6 +268,7 @@ class SweepSimulation(Simulation):
 
         # Connect all the elements together and return a super element.
         built = self.connect_circuit(elements, netlist) 
+        # TODO: Remove assertion
         assert type(built) is SimulationResult
         return built
 
@@ -298,6 +301,8 @@ class SweepSimulation(Simulation):
         """
         _logger = _module_logger.getChild('SweepSimulation.connect_circuit')
 
+        # FIXME: What if there are no items in the netlist (only one element
+        # in the circuit)?
         for net in netlist:
             p1, p2 = net
             if p1.element == p2.element:

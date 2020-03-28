@@ -315,7 +315,6 @@ class ElementList:
     Allows for access to blocks within the subcircuit by name or index,
     similar to a dictionary or list.
     """
-    # FIXME: Should elements be an OrderedDict?
 
     def __init__(self):
         self.elements = []
@@ -363,12 +362,6 @@ class ElementList:
         return self.elements.keys()
 
 
-class Net:
-    def __init__(self, p1, p2):
-        self.p1 = p1
-        self.p2 = p2
-
-
 class Netlist:
     """
     Maintains a list of all connections, or "nets", in a circuit.
@@ -386,14 +379,6 @@ class Netlist:
 
     def __iter__(self):
         yield from self.nets
-
-    # def __str__(self):
-    #     val = ''
-    #     o = ".".join([self.__module__, type(self).__name__])
-    #     val += "<{} object at {}>".format(o, hex(id(self)))
-    #     for item in self.nets:
-    #         val += '\n  {}'.format(str(item))
-    #     return val
 
     def add(self, pin1, pin2):
         for pin in itertools.chain(*self.nets):

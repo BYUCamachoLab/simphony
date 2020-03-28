@@ -17,8 +17,6 @@ import uuid
 
 from scipy.interpolate import interp1d
 
-# FIXME: Is interpolating in frequency better than in wavelength?
-
 _module_logger = logging.getLogger(__name__)
 
 
