@@ -2,11 +2,13 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import numpy as np
 
 from simphony.library import ebeam, sipann
 from simphony.netlist import Subcircuit
-from simphony.simulation import SweepSimulation
+from simphony.simulation import SweepSimulation, freq2wl
 
 # Have a main data line where frequency multiplexed data enters the circuit.
 wg_data = ebeam.ebeam_wg_integral_1550(100e-6)
@@ -34,7 +36,7 @@ def ring_factory(radius):
         The radius of the ring resonator, in microns.
     """
     # Have rings for selecting out frequencies from the data line.
-    half_ring = sipann.sipann_dc_halfring(radius)
+    half_ring = sipann.sipann_dc_halfring(radius=radius)
 
     circuit = Subcircuit()
     circuit.add([
@@ -53,24 +55,26 @@ def ring_factory(radius):
     ])
     return circuit
 
-# Run a simulation on the netlist.
-simulation = SweepSimulation(ring_factory(10), 1500e-9, 1600e-9)
-# simulation = SweepSimulation(circuit, 1551.15e-9, 1524.5e-9)
-result = simulation.simulate()
+# Behold, we can run a simulation on a single ring resonator.
+# sim1 = SweepSimulation(ring_factory(10), 1500e-9, 1600e-9)
+# res1 = sim1.simulate()
+# sim2 = SweepSimulation(ring_factory(10), 1520e-9, 1580e-9)
+# res2 = sim2.simulate()
 
-import matplotlib.pyplot as plt
-f, s = result.data(result.pinlist['in'], result.pinlist['pass'])
-plt.plot(f*1e9, s)
-plt.title("MZI")
-plt.tight_layout()
-plt.show()
+# f1, s = res1.data(res1.pinlist['in'], res1.pinlist['pass'])
+# plt.plot(f1*1e9, s, 'rx')
+# f2, s = res2.data(res2.pinlist['in'], res2.pinlist['pass'])
+# plt.plot(f2*1e9, s, 'bx')
+# plt.title("10-micron Ring Resonator")
+# plt.tight_layout()
+# plt.show()
+
+# import sys
+# sys.exit()
 
 
-import sys
-sys.exit()
-
-
-# Create the circuit, add all individual instances
+# Now, we'll create the circuit (using several ring resonator subcircuits)
+# and add all individual instances.
 circuit = Subcircuit('Add-Drop Filter')
 e = circuit.add([
     (wg_data, 'input'),
@@ -88,7 +92,9 @@ e = circuit.add([
     (term, 'terminator')
 ])
 
-# You can set pin names individually:
+# You can set pin names individually (here I'm naming all the outputs that
+# I'll want to access before they get scrambled and associated with different
+# elements):
 circuit.elements['input'].pins['n1'] = 'input'
 circuit.elements['out1'].pins['n2'] = 'out1'
 circuit.elements['out2'].pins['n2'] = 'out2'
@@ -109,50 +115,53 @@ circuit.connect_many([
 ])
 
 # Run a simulation on the netlist.
-simulation = SweepSimulation(circuit, 1500e-9, 1600e-9)
-# simulation = SweepSimulation(circuit, 1551.15e-9, 1524.5e-9)
+# simulation = SweepSimulation(circuit, 1500e-9, 1600e-9)
+simulation = SweepSimulation(circuit, 1524.5e-9, 1551.15e-9)
 result = simulation.simulate()
 
-import matplotlib.pyplot as plt
-f, s = result.data(result.pinlist['input'], result.pinlist['out1'])
-plt.plot(f*1e9, s)
-plt.title("MZI")
-plt.tight_layout()
-plt.show()
 
 
-# import matplotlib.pyplot as plt
-# import matplotlib.gridspec as gridspec
+# f, s = result.data(result.pinlist['input'], result.pinlist['out1'])
+# plt.plot(freq2wl(f)*1e9, s)
+# f, s = result.data(result.pinlist['input'], result.pinlist['out2'])
+# plt.plot(freq2wl(f*1e9), s)
+# f, s = result.data(result.pinlist['input'], result.pinlist['out3'])
+# plt.plot(freq2wl(f*1e9), s)
 
-# freq, s = simu.freq_array, simu.s_parameters()
-
-# fig = plt.figure(tight_layout=True)
-# gs = gridspec.GridSpec(1, 3)
-
-# ax = fig.add_subplot(gs[0, :2])
-# for inport in range(1):
-#     for outport in range(1,4):
-#         ax.plot(freq2wl(freq)*1e9, np.abs(s[:, outport, inport])**2, label="Out {}".format(outport), lw="0.7")
-#         # plt.plot(freq, 10*np.log10(np.abs(s[:, outport, inport])**2), label="Port {} to {}".format(inport, outport))
-# ax.set_ylabel("Fractional Optical Power")
-# ax.set_xlabel("Wavelength (nm)")
-# plt.legend(loc='upper right')
-
-# ax = fig.add_subplot(gs[0, 2])
-# for inport in range(1):
-#     for outport in range(1,4):
-#         ax.plot(freq2wl(freq)*1e9, np.abs(s[:, outport, inport])**2, label="Output {}".format(outport), lw="0.7")
-#         # plt.plot(freq, 10*np.log10(np.abs(s[:, outport, inport])**2), label="Port {} to {}".format(inport, outport))
-# ax.set_xlim(1543,1545)
-# ax.set_ylabel("Fractional Optical Power")
-# ax.set_xlabel("Wavelength (nm)")
-
-# fig.align_labels()
-
+# plt.title("MZI")
+# plt.tight_layout()
 # plt.show()
 
-# # plt.legend(loc='upper right')
-# # plt.xlabel("Wavelength (nm)")
-# # plt.ylabel("Fractional Optical Power")
-# # # plt.title("Optical Filter Simulation")
-# # plt.show()
+# import sys
+# sys.exit()
+
+
+fig = plt.figure(tight_layout=True)
+gs = gridspec.GridSpec(1, 3)
+
+ax = fig.add_subplot(gs[0, :2])
+f, s = result.data(result.pinlist['input'], result.pinlist['out1'])
+ax.plot(freq2wl(f)*1e9, s, label='Output 1', lw='0.7')
+f, s = result.data(result.pinlist['input'], result.pinlist['out2'])
+ax.plot(freq2wl(f)*1e9, s, label='Output 2', lw='0.7')
+f, s = result.data(result.pinlist['input'], result.pinlist['out3'])
+ax.plot(freq2wl(f)*1e9, s, label='Output 3', lw='0.7')
+
+ax.set_ylabel("Fractional Optical Power")
+ax.set_xlabel("Wavelength (nm)")
+plt.legend(loc='upper right')
+
+ax = fig.add_subplot(gs[0, 2])
+f, s = result.data(result.pinlist['input'], result.pinlist['out1'])
+ax.plot(freq2wl(f)*1e9, s, label='Output 1', lw='0.7')
+f, s = result.data(result.pinlist['input'], result.pinlist['out2'])
+ax.plot(freq2wl(f)*1e9, s, label='Output 2', lw='0.7')
+f, s = result.data(result.pinlist['input'], result.pinlist['out3'])
+ax.plot(freq2wl(f)*1e9, s, label='Output 3', lw='0.7')
+
+ax.set_xlim(1543,1545)
+ax.set_ylabel("Fractional Optical Power")
+ax.set_xlabel("Wavelength (nm)")
+
+fig.align_labels()
+plt.show()
