@@ -1,3 +1,16 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright © Simphony Project Contributors
+# Licensed under the terms of the MIT License
+# (see simphony/__init__.py for details)
+
+"""
+simphony.library.sipann
+=======================
+
+This package contains the models for the SiPANN integration.
+"""
+
 import os
 from itertools import combinations_with_replacement as comb_w_r
 
@@ -283,8 +296,8 @@ class sipann_dc_halfring(Model):
         self.radius    = radius*1000
 
     def s_parameters(self, start, stop, num):
-        start_wl = freq2wl(start)
-        stop_wl  = freq2wl(stop)
+        start_wl = freq2wl(stop) * 1e9
+        stop_wl  = freq2wl(start) * 1e9
         wl       = np.linspace(start_wl, stop_wl, num)
 
         item = dc.RR(self.width, self.thickness, self.radius, self.gap)
