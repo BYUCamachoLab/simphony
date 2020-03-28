@@ -13,7 +13,6 @@ It is speedy and easily extensible.
 """
 
 import io
-# import re
 import os
 import sys
 
@@ -70,9 +69,6 @@ extra_files += ['*.ini']
 with io.open('README.md', encoding='utf-8') as f:
     LONG_DESCRIPTION = f.read()
 
-# with open("README.md", "r") as fh:
-#     long_description = fh.read()
-
 #==============================================================================
 # Setup arguments
 #==============================================================================
@@ -120,12 +116,14 @@ if 'setuptools' in sys.modules:
     setup_args['install_requires'] = install_requires
     # setup_args['extras_require'] = extras_require
 
-    # setup_args['entry_points'] = {
-    #     'gui_scripts': [
-    #         '{} = spyder.app.start:main'.format(
-    #             'spyder3' if PY3 else 'spyder')
-    #     ]
-    # }
+    setup_args['entry_points'] = {
+        # 'gui_scripts': [
+        #     'simphony = simphony.app.start:main'
+        # ], 
+        'console_scripts': [
+            'simphony = simphony.app.cli_start:main'
+        ]
+    }
 
     # setup_args.pop('scripts', None)
 
