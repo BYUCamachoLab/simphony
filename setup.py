@@ -116,14 +116,14 @@ if 'setuptools' in sys.modules:
     setup_args['install_requires'] = install_requires
     # setup_args['extras_require'] = extras_require
 
-    setup_args['entry_points'] = {
-        # 'gui_scripts': [
-        #     'simphony = simphony.app.start:main'
-        # ], 
-        'console_scripts': [
-            'simphony = simphony.app.cli_start:main'
-        ]
-    }
+    # setup_args['entry_points'] = {
+    #     # 'gui_scripts': [
+    #     #     'simphony = simphony.app.start:main'
+    #     # ], 
+    #     'console_scripts': [
+    #         'simphony = simphony.app.cli_start:main'
+    #     ]
+    # }
 
     # setup_args.pop('scripts', None)
 
