@@ -93,8 +93,10 @@ class Model:
 
         Returns
         -------
-        f, s : float, array
-            The frequency range and corresponding scattering parameters.
+        # f, s : float, array
+        s : np.ndarray
+            # The frequency range and corresponding scattering parameters.
+            The scattering parameters corresponding to the frequency range.
         
         Raises
         ------

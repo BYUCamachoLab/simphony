@@ -21,7 +21,7 @@ import numpy as np
 from scipy import special
 from SiPANN import dc
 
-from simphony.elements import Model
+from simphony.elements import Model, interpolate
 from simphony.simulation import freq2wl, wl2freq
 
 
@@ -55,10 +55,9 @@ class sipann_wg_integral(Model):
         self.radius = radius
         self.dL = dL
 
-    def s_parameters(self, start, stop, num):
-        wl = np.linspace(start, stop, num)
-        frequency = wl2freq(wl)
-        return self.ann_s_params(frequency, self.length, self.width, self.thickness, self.dL)
+    def s_parameters(self, freq):
+        s = self.ann_s_params(freq, self.length, self.width, self.thickness, self.dL)
+        return s
 
     @staticmethod
     def cartesian_product(arrays):
@@ -127,7 +126,7 @@ class sipann_wg_integral(Model):
 
         Returns
         -------
-        (frequency, s) : tuple
+        s : np.ndarray
             Returns a tuple containing the frequency array, `frequency`,
             corresponding to the calculated s-parameter matrix, `s`.
         '''
@@ -154,7 +153,7 @@ class sipann_wg_integral(Model):
             mat[x,0,1] = mat[x,1,0] = np.exp(-alpha*waveguideLength + (K[x]*waveguideLength*1j))
         s = mat
 
-        return (frequency, s)
+        return s
 
 
 # class sipann_dc_straight(Model):
@@ -276,18 +275,11 @@ class sipann_dc_halfring(Model):
             Radius of bent portions of waveguide
         sw_angle : float  
             Angle in degrees of sidewall of waveguide (between 80 and 90)
-        start_freq : float  
-            The starting frequency to obtain s-parameters for.
-        stop_freq : float  
-            The ending frequency to obtain s-parameters for.
-        num : int    
-            The number of points to use between start_freq and stop_freq.
 
         Returns
         -------
-        (frequency, s) : tuple
-            Returns a tuple containing the frequency array, `frequency`,
-            corresponding to the calculated s-parameter matrix, `s`.
+        s : np.ndarray
+            Returns the calculated s-parameter matrix.
         """
         #resize everything to nms
         self.width     = width*1000
@@ -295,54 +287,20 @@ class sipann_dc_halfring(Model):
         self.gap       = gap*1000
         self.radius    = radius*1000
 
-    def s_parameters(self, start, stop, num):
-        start_wl = freq2wl(stop) * 1e9
-        stop_wl  = freq2wl(start) * 1e9
-        wl       = np.linspace(start_wl, stop_wl, num)
+    def s_parameters(self, freq):
+        """
+        Notes
+        -----
+        start_wl and stop_wl are in nanometers.
+        """
+        # FIXME: Note that we're returning just our own created frequency array
+        # and hoping that it correlates correctly with the sparams, since its
+        # argument is wavelength, not frequency.
+        wl = freq2wl(freq) * 1e9
 
         item = dc.RR(self.width, self.thickness, self.radius, self.gap)
-        return item.sparams(wl)
-
-    # @classmethod
-    # def s_parameters(cls,
-    #                 width: float=0.5,
-    #                 thickness: float=0.22,
-    #                 gap: float=0.1,
-    #                 radius: float=10,
-    #                 sw_angle: float=90,
-    #                 start_freq: float=1.88e+14,
-    #                 stop_freq: float=1.99e+14,
-    #                 num: int=2000):
-    #     """Get the s-parameters of a parameterized waveguide.
-    #     Parameters
-    #     ----------
-    #     width:      float  Width of the waveguide in microns.
-    #     thickness:  float  Thickness of the waveguide in microns.
-    #     gap:        float  Gap between the two waveguides
-    #     radius:     float  Radius of bent portions of waveguide
-    #     sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90)
-    #     start_freq: float  The starting frequency to obtain s-parameters for.
-    #     stop_freq:  float  The ending frequency to obtain s-parameters for.
-    #     num:        int    The number of points to use between start_freq and stop_freq.
-    #     Returns
-    #     -------
-    #     (frequency, s) : tuple
-    #         Returns a tuple containing the frequency array, `frequency`,
-    #         corresponding to the calculated s-parameter matrix, `s`."""
-    #     #resize everything to nms
-    #     width     = width*1000
-    #     thickness = thickness*1000
-    #     gap       = gap*1000
-    #     radius    = radius*1000
-
-    #     #switch to wavelength
-    #     c = 299792458
-    #     start_wl = c * 10**9 / stop_freq
-    #     stop_wl  = c * 10**9 / start_freq
-    #     wl       = np.linspace(start_wl, stop_wl, num)
-
-    #     item = dc.RR(width, thickness, radius, gap)
-    #     return item.sparams(wl)
+        f, s = item.sparams(wl[::-1])
+        return s
 
 
 
@@ -603,131 +561,135 @@ class sipann_dc_halfring(Model):
 #         return item.sparams(wl)
 
 
-# class sipann_dc_crossover1550(Model):
-#     """Regression Based form of any directional coupler provided gap function
-#     """
-#     ports = 4
-#     # cachable = False
-#     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_dc_crossover1550_s.npz'))
-#     s_parameters = (loaded['f'], loaded['s'])
-#     cachable = True
+class sipann_dc_crossover1550(Model):
+    """Regression Based form of any directional coupler provided gap function
+    """
+    ports = ('n1', 'n2', 'n3', 'n4')
+    loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_dc_crossover1550_s.npz'))
+    s_params = (loaded['f'], loaded['s'])
+    freq_range = (s_params[0][0], s_params[0][-1])
 
-#     # @classmethod
-#     # def s_parameters(cls,
-#     #                 start_freq: float=1.88e+14,
-#     #                 stop_freq: float=1.99e+14,
-#     #                 num: int=2000):
-#     #     """Get the s-parameters of a parameterized waveguide.
-#     #     Parameters
-#     #     ----------
-#     #     start_freq: float  The starting frequency to obtain s-parameters for.
-#     #     stop_freq:  float  The ending frequency to obtain s-parameters for.
-#     #     num:        int    The number of points to use between start_freq and stop_freq.
-#     #     Returns
-#     #     -------
-#     #     (frequency, s) : tuple
-#     #         Returns a tuple containing the frequency array, `frequency`,
-#     #         corresponding to the calculated s-parameter matrix, `s`."""
-#     #     #load and make gap function
-#     #     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_crossover1550.npz'))
-#     #     x = loaded['GAP']
-#     #     b = loaded['LENGTH']
+    def s_parameters(self, freq):
+        return interpolate(freq, self.s_params[0], self.s_params[1])
 
-#     #     #load scipy.special.binom as a C-compiled function
-#     #     addr = get_cython_function_address("scipy.special.cython_special", "binom")
-#     #     functype = ctypes.CFUNCTYPE(ctypes.c_double, ctypes.c_double, ctypes.c_double)
-#     #     binom_fn = functype(addr)
+    # @classmethod
+    # def s_parameters(cls,
+    #                 start_freq: float=1.88e+14,
+    #                 stop_freq: float=1.99e+14,
+    #                 num: int=2000):
+    #     """Get the s-parameters of a parameterized waveguide.
+    #     Parameters
+    #     ----------
+    #     start_freq: float  The starting frequency to obtain s-parameters for.
+    #     stop_freq:  float  The ending frequency to obtain s-parameters for.
+    #     num:        int    The number of points to use between start_freq and stop_freq.
+    #     Returns
+    #     -------
+    #     (frequency, s) : tuple
+    #         Returns a tuple containing the frequency array, `frequency`,
+    #         corresponding to the calculated s-parameter matrix, `s`."""
+    #     #load and make gap function
+    #     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_crossover1550.npz'))
+    #     x = loaded['GAP']
+    #     b = loaded['LENGTH']
 
-#     #     #load all seperate functions that we'll need
-#     #     n = len(x) - 1
-#     #     @njit
-#     #     def binom_in_njit(x, y):
-#     #         return binom_fn(x, y)
-#     #     @njit
-#     #     def bernstein(n,j,t):
-#     #         return binom_in_njit(n, j) * t ** j * (1 - t) ** (n - j)
-#     #     @njit
-#     #     def bez(t):
-#     #         n = len(x) - 1
-#     #         return np.sum(np.array([(x[j])*bernstein(n,j,t/b) for j in range(len(x))]),axis=0)
-#     #     @njit
-#     #     def dbez(t):
-#     #         return np.sum(np.array([n*(x[j])*(bernstein(n-1,j-1,t/b)-bernstein(n-1,j,t/b)) for j in range(len(x))]),axis=0)/b
+    #     #load scipy.special.binom as a C-compiled function
+    #     addr = get_cython_function_address("scipy.special.cython_special", "binom")
+    #     functype = ctypes.CFUNCTYPE(ctypes.c_double, ctypes.c_double, ctypes.c_double)
+    #     binom_fn = functype(addr)
 
-#     #     #resize everything to nms
-#     #     width     = 500
-#     #     thickness = 220
+    #     #load all seperate functions that we'll need
+    #     n = len(x) - 1
+    #     @njit
+    #     def binom_in_njit(x, y):
+    #         return binom_fn(x, y)
+    #     @njit
+    #     def bernstein(n,j,t):
+    #         return binom_in_njit(n, j) * t ** j * (1 - t) ** (n - j)
+    #     @njit
+    #     def bez(t):
+    #         n = len(x) - 1
+    #         return np.sum(np.array([(x[j])*bernstein(n,j,t/b) for j in range(len(x))]),axis=0)
+    #     @njit
+    #     def dbez(t):
+    #         return np.sum(np.array([n*(x[j])*(bernstein(n-1,j-1,t/b)-bernstein(n-1,j,t/b)) for j in range(len(x))]),axis=0)/b
 
-#     #     #switch to wavelength
-#     #     c = 299792458
-#     #     start_wl = c * 10**9 / stop_freq
-#     #     stop_wl  = c * 10**9 / start_freq
-#     #     wl       = np.linspace(start_wl, stop_wl, num)
+    #     #resize everything to nms
+    #     width     = 500
+    #     thickness = 220
 
-#     #     item = dc.GapFuncSymmetric(width, thickness, bez, dbez, 0, b)
-#     #     return item.sparams(wl)
+    #     #switch to wavelength
+    #     c = 299792458
+    #     start_wl = c * 10**9 / stop_freq
+    #     stop_wl  = c * 10**9 / start_freq
+    #     wl       = np.linspace(start_wl, stop_wl, num)
+
+    #     item = dc.GapFuncSymmetric(width, thickness, bez, dbez, 0, b)
+    #     return item.sparams(wl)
 
 
-# class sipann_dc_fifty(Model):
-#     """Regression Based form of any directional coupler provided gap function
-#     """
-#     ports = 4
-#     # cachable = False
-#     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_dc_fifty_s.npz'))
-#     s_parameters = (loaded['f'], loaded['s'])
-#     cachable = True
+class sipann_dc_fifty(Model):
+    """Regression Based form of any directional coupler provided gap function
+    """
+    ports = ('n1', 'n2', 'n3', 'n4')
+    loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_dc_fifty_s.npz'))
+    s_params = (loaded['f'], loaded['s'])
+    freq_range = (s_params[0][0], s_params[0][-1])
 
-#     # @classmethod
-#     # def s_parameters(cls,
-#     #                 start_freq: float=1.88e+14,
-#     #                 stop_freq: float=1.99e+14,
-#     #                 num: int=2000):
-#     #     """Get the s-parameters of a parameterized waveguide.
-#     #     Parameters
-#     #     ----------
-#     #     start_freq: float  The starting frequency to obtain s-parameters for.
-#     #     stop_freq:  float  The ending frequency to obtain s-parameters for.
-#     #     num:        int    The number of points to use between start_freq and stop_freq.
-#     #     Returns
-#     #     -------
-#     #     (frequency, s) : tuple
-#     #         Returns a tuple containing the frequency array, `frequency`,
-#     #         corresponding to the calculated s-parameter matrix, `s`."""
-#     #     #load and make gap function
-#     #     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_fifty.npz'))
-#     #     x = loaded['GAP']
-#     #     b = loaded['LENGTH']
+    def s_parameters(self, freq):
+        return interpolate(freq, self.s_params[0], self.s_params[1])
 
-#     #     #load scipy.special.binom as a C-compiled function
-#     #     addr = get_cython_function_address("scipy.special.cython_special", "binom")
-#     #     functype = ctypes.CFUNCTYPE(ctypes.c_double, ctypes.c_double, ctypes.c_double)
-#     #     binom_fn = functype(addr)
+    # @classmethod
+    # def s_parameters(cls,
+    #                 start_freq: float=1.88e+14,
+    #                 stop_freq: float=1.99e+14,
+    #                 num: int=2000):
+    #     """Get the s-parameters of a parameterized waveguide.
+    #     Parameters
+    #     ----------
+    #     start_freq: float  The starting frequency to obtain s-parameters for.
+    #     stop_freq:  float  The ending frequency to obtain s-parameters for.
+    #     num:        int    The number of points to use between start_freq and stop_freq.
+    #     Returns
+    #     -------
+    #     (frequency, s) : tuple
+    #         Returns a tuple containing the frequency array, `frequency`,
+    #         corresponding to the calculated s-parameter matrix, `s`."""
+    #     #load and make gap function
+    #     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_fifty.npz'))
+    #     x = loaded['GAP']
+    #     b = loaded['LENGTH']
 
-#     #     #load all seperate functions that we'll need
-#     #     n = len(x) - 1
-#     #     @njit
-#     #     def binom_in_njit(x, y):
-#     #         return binom_fn(x, y)
-#     #     @njit
-#     #     def bernstein(n,j,t):
-#     #         return binom_in_njit(n, j) * t ** j * (1 - t) ** (n - j)
-#     #     @njit
-#     #     def bez(t):
-#     #         n = len(x) - 1
-#     #         return np.sum(np.array([(x[j])*bernstein(n,j,t/b) for j in range(len(x))]),axis=0)
-#     #     @njit
-#     #     def dbez(t):
-#     #         return np.sum(np.array([n*(x[j])*(bernstein(n-1,j-1,t/b)-bernstein(n-1,j,t/b)) for j in range(len(x))]),axis=0)/b
+    #     #load scipy.special.binom as a C-compiled function
+    #     addr = get_cython_function_address("scipy.special.cython_special", "binom")
+    #     functype = ctypes.CFUNCTYPE(ctypes.c_double, ctypes.c_double, ctypes.c_double)
+    #     binom_fn = functype(addr)
 
-#     #     #resize everything to nms
-#     #     width     = 500
-#     #     thickness = 220
+    #     #load all seperate functions that we'll need
+    #     n = len(x) - 1
+    #     @njit
+    #     def binom_in_njit(x, y):
+    #         return binom_fn(x, y)
+    #     @njit
+    #     def bernstein(n,j,t):
+    #         return binom_in_njit(n, j) * t ** j * (1 - t) ** (n - j)
+    #     @njit
+    #     def bez(t):
+    #         n = len(x) - 1
+    #         return np.sum(np.array([(x[j])*bernstein(n,j,t/b) for j in range(len(x))]),axis=0)
+    #     @njit
+    #     def dbez(t):
+    #         return np.sum(np.array([n*(x[j])*(bernstein(n-1,j-1,t/b)-bernstein(n-1,j,t/b)) for j in range(len(x))]),axis=0)/b
 
-#     #     #switch to wavelength
-#     #     c = 299792458
-#     #     start_wl = c * 10**9 / stop_freq
-#     #     stop_wl  = c * 10**9 / start_freq
-#     #     wl       = np.linspace(start_wl, stop_wl, num)
+    #     #resize everything to nms
+    #     width     = 500
+    #     thickness = 220
 
-#     #     item = dc.GapFuncSymmetric(width, thickness, bez, dbez, 0, b)
-#     #     return item.sparams(wl)
+    #     #switch to wavelength
+    #     c = 299792458
+    #     start_wl = c * 10**9 / stop_freq
+    #     stop_wl  = c * 10**9 / start_freq
+    #     wl       = np.linspace(start_wl, stop_wl, num)
+
+    #     item = dc.GapFuncSymmetric(width, thickness, bez, dbez, 0, b)
+    #     return item.sparams(wl)

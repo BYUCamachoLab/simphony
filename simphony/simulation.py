@@ -244,7 +244,7 @@ class SweepSimulation(Simulation):
     def simulate(self):
         self._cache_elements()
         sim = self._simulate_helper(self.circuit)
-        sim = SweepSimulationResult(sim.f, sim.s, sim.pinlist)
+        sim = SweepSimulationResult(self.freq, sim.s, sim.pinlist)
         return sim
 
     def _simulate_helper(self, circuit):
@@ -270,13 +270,11 @@ class SweepSimulation(Simulation):
 
         # Connect all the elements together and return a super element.
         built = self.connect_circuit(elements, netlist) 
-        # TODO: Remove assertion
-        assert type(built) is SimulationResult
         return built
 
     def _create_simulated_result(self, element, netlist):
-        f, s = self.cache[element.model]
-        sim = SimulationResult(f, s, element.pins)
+        s = self.cache[element.model]
+        sim = SimulationResult(s=s, pinlist=element.pins)
         return sim
 
     @staticmethod
@@ -310,7 +308,6 @@ class SweepSimulation(Simulation):
             if p1.element == p2.element:
                 _logger.debug('Internal connection')
                 combined = SimulationResult()
-                combined.f = p1.element.f
                 combined.s = innerconnect_s(p1.element.s, p1.index, p2.index)
                 pinlist = p1.pinlist
                 pinlist.remove(p1)
@@ -319,7 +316,6 @@ class SweepSimulation(Simulation):
             else:
                 _logger.debug('External connection')
                 combined = SimulationResult()
-                combined.f = p1.element.f
                 combined.s = connect_s(p1.element.s, p1.index, p2.element.s, p2.index)
                 pinlist = p1.pinlist + p2.pinlist
                 pinlist.remove(p1)

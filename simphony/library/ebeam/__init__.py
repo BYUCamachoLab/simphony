@@ -13,7 +13,7 @@ class ebeam_bdc_te1550(Model):
     freq_range = (s_params[0][0], s_params[0][-1])
 
     def s_parameters(self, freq):
-        return freq, interpolate(freq, self.s_params[0], self.s_params[1])
+        return interpolate(freq, self.s_params[0], self.s_params[1])
 
 class ebeam_dc_halfring_te1550(Model):
     pins = ('n1', 'n2',)
@@ -22,7 +22,7 @@ class ebeam_dc_halfring_te1550(Model):
     freq_range = (s_params[0][0], s_params[0][-1])
 
     def s_parameters(self, freq):
-        return freq, interpolate(freq, self.s_params[0], self.s_params[1])
+        return interpolate(freq, self.s_params[0], self.s_params[1])
 
 class ebeam_gc_te1550(Model):
     pins = ('n1', 'n2',)
@@ -31,7 +31,7 @@ class ebeam_gc_te1550(Model):
     freq_range = (s_params[0][0], s_params[0][-1])
     
     def s_parameters(self, freq):
-        return freq, interpolate(freq, self.s_params[0], self.s_params[1])
+        return interpolate(freq, self.s_params[0], self.s_params[1])
 
 class ebeam_terminator_te1550(Model):
     pins = ('n1',)
@@ -40,7 +40,7 @@ class ebeam_terminator_te1550(Model):
     freq_range = (s_params[0][0], s_params[0][-1])
 
     def s_parameters(self, freq):
-        return freq, interpolate(freq, self.s_params[0], self.s_params[1])
+        return interpolate(freq, self.s_params[0], self.s_params[1])
 
 
 class ebeam_wg_integral_1550(Model):
@@ -115,7 +115,8 @@ class ebeam_wg_integral_1550(Model):
             mat[x,0,1] = mat[x,1,0] = np.exp(-alpha*length + (K[x]*length*1j))
         
         s = mat
-        return (frequency, s)
+        # return (frequency, s)
+        return s
 
 
 class ebeam_y_1550(Model):
@@ -125,4 +126,4 @@ class ebeam_y_1550(Model):
     freq_range = (s_params[0][0], s_params[0][-1])
 
     def s_parameters(self, freq):
-        return freq, interpolate(freq, self.s_params[0], self.s_params[1])
+        return interpolate(freq, self.s_params[0], self.s_params[1])
