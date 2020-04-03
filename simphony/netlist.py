@@ -45,6 +45,12 @@ class Pin:
         self.pinlist = pinlist
         self.name = name
 
+    def __repr__(self):
+        try:
+            return "<Pin '{}' at {}>".format(self.name, self.element)
+        except:
+            return "<Pin '{}' at {}>".format(self.name, hex(id(self)))
+
     @property
     def element(self):
         """
@@ -276,8 +282,11 @@ class Element:
 
     def __init__(self, model, name=None):
         self.model = model
-        self.name = name if name else self.generate_name()
+        self.name = name if name else self._generate_name()
         self.pinlist = PinList(self, *model.pins)
+
+    def __repr__(self):
+        return "<Element '{}' at {}>".format(self.name, hex(id(self)))
 
     @property
     def pins(self):
