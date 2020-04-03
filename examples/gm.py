@@ -1,22 +1,117 @@
-import numpy as np
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright © Simphony Project Contributors
+# Licensed under the terms of the MIT License
+# (see simphony/__init__.py for details)
 
-import simphony.core as core
-from simphony.core import ComponentInstance as inst
-import simphony.DeviceLibrary.ebeam as dev
-import simphony.DeviceLibrary.sipann as lib
-import simphony.simulation as sim
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import matplotlib.pyplot as plt
+import numpy as np
 
-# -----------------------------------------------------------------------------
-#
-# Some helper functions for converting between wavelength and frequency
-#
-c = 299792458
-def freq2wl(f):
-    return c/f
-def wl2freq(l):
-    return c/l
+from simphony.library import ebeam, sipann
+from simphony.netlist import Subcircuit
+from simphony.simulation import SweepSimulation, freq2wl, wl2freq
+
+# We can rename the pins attribute on the class before we instantiate them;
+# then we don't have to rename the pins on each element individually later.
+ebeam.ebeam_wg_integral_1550.pins = ('in', 'out')
+sipann.sipann_dc_fifty.pins = ('in1', 'in2', 'out1', 'out2')
+sipann.sipann_dc_crossover1550.pins = ('in1', 'in2', 'out1', 'out2')
+
+# Get all the models we're going to need for the green machine circuit:
+gc = ebeam.ebeam_gc_te1550()
+wg100 = ebeam.ebeam_wg_integral_1550(length=100e-6)
+dc = sipann.sipann_dc_fifty()
+crossover = sipann.sipann_dc_crossover1550()
+wgin2 = ebeam.ebeam_wg_integral_1550(length=102.125e-6)
+wg300 = ebeam.ebeam_wg_integral_1550(length=300e-6)
+
+# Add all the elements used in the circuit
+circuit = Subcircuit('Green Machine')
+e = circuit.add([
+    # Define the four input grating couplers
+    (gc, 'in1'),
+    (gc, 'in2'),
+    (gc, 'in3'),
+    (gc, 'in4'),
+
+    # The grating couplers each feed into their own waveguide
+    (wg100, 'wg1'),
+    (wg100, 'wg2'),
+    (wg100, 'wg3'),
+    (wg100, 'wg4'),
+
+    # Each pair of waveguides feeds into a 50/50 directional coupler
+    (dc, 'dc1'),
+    (dc, 'dc2'),
+
+    # After mixing, the center pair of waveguides cross paths at a 100/0 
+    # crossing. The edge pair of waveguides pass uninterrupted.
+    (wg300, 'wg_pass1'),
+    (wg100, 'wg_in1'), (wgin2, 'wg_out1'),
+    (crossover, 'crossing'),
+    (wg100, 'wg_in2'), (wgin2, 'wg_out2'),
+    (wg300, 'wg_pass2'),
+
+    # After crossing, the waveguides are mixed again.
+    (dc, 'dc3'),
+    (dc, 'dc4'),
+
+    # The outputs are fed through waveguides.
+    (wg100, 'wg5'),
+    (wg100, 'wg6'),
+    (wg100, 'wg7'),
+    (wg100, 'wg8'),
+
+    # We finally output the values through grating couplers.
+    (gc, 'out1'),
+    (gc, 'out2'),
+    (gc, 'out3'),
+    (gc, 'out4'),
+])
+
+# Let's rename some ports on some of our elements so that we can:
+#   1) find them again later, and
+#   2) make our code clearer by using plain english for the connections.
+circuit.elements['in1'].pins['n1'] = 'in1'
+circuit.elements['in2'].pins['n1'] = 'in2'
+circuit.elements['in3'].pins['n1'] = 'in3'
+circuit.elements['in4'].pins['n1'] = 'in4'
+
+circuit.elements['out1'].pins['n2'] = 'out1'
+circuit.elements['out2'].pins['n2'] = 'out2'
+circuit.elements['out3'].pins['n2'] = 'out3'
+circuit.elements['out4'].pins['n2'] = 'out4'
+
+# Phew! Now that we got all those elements out of the way, we can finally
+# work on the circuit connnections.
+circuit.connect_many([
+    ('in1', 'n2', 'wg1', 'in'),
+    ('in2', 'n2', 'wg2', 'in'),
+    ('in3', 'n2', 'wg3', 'in'),
+    ('in4', 'n2', 'wg4', 'in'),
+
+    ('wg1', 'out', 'dc1', 'in1'),
+    ('wg2', 'out', 'dc1', 'in1'),
+    ('wg3', 'out', 'dc1', 'in1'),
+    ('wg4', 'out', 'dc1', 'in1'),
+
+    ('input', 'n2', 'ring10', 'in'),
+    ('out1', 'n1', 'ring10', 'out'),
+    ('connect1', 'n1', 'ring10', 'pass'),
+
+    ('connect1', 'n2', 'ring11', 'in'),
+    ('out2', 'n1', 'ring11', 'out'),
+    ('connect2', 'n1', 'ring11', 'pass'),
+
+    ('connect2', 'n2', 'ring12', 'in'),
+    ('out3', 'n1', 'ring12', 'out'),
+    ('terminator', 'n1', 'ring12', 'pass'),
+])
 
 # -----------------------------------------------------------------------------
 #
@@ -38,8 +133,6 @@ outputs = [inst(dev.ebeam_gc_te1550) for _ in range(4)]
 # Define all circuit connections
 #
 connections = []
-for i in range(4):
-    connections.append([inputs[i], 0, wg1[i], 0])
 
 connections.append([wg1[0], 1, dc1[0], 1])
 connections.append([wg1[1], 1, dc1[0], 0])
