@@ -150,7 +150,7 @@ class PinList:
 
     def _normalize(self, pin):
         if type(pin) is Pin:
-            pin._pinlist = self
+            pin.pinlist = self
             return pin
         if type(pin) is str:
             return Pin(self, pin)
