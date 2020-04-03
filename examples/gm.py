@@ -96,185 +96,93 @@ circuit.connect_many([
     ('in4', 'n2', 'wg4', 'in'),
 
     ('wg1', 'out', 'dc1', 'in1'),
-    ('wg2', 'out', 'dc1', 'in1'),
-    ('wg3', 'out', 'dc1', 'in1'),
-    ('wg4', 'out', 'dc1', 'in1'),
+    ('wg2', 'out', 'dc1', 'in2'),
+    ('wg3', 'out', 'dc2', 'in1'),
+    ('wg4', 'out', 'dc2', 'in2'),
 
-    ('input', 'n2', 'ring10', 'in'),
-    ('out1', 'n1', 'ring10', 'out'),
-    ('connect1', 'n1', 'ring10', 'pass'),
+    ('dc1', 'out1', 'wg_pass1', 'in'),
+    ('dc1', 'out2', 'wg_in1', 'in'), ('wg_in1', 'out', 'crossing', 'in1'), ('crossing', 'out1', 'wg_out1', 'in'), 
+    ('dc2', 'out1', 'wg_in2', 'in'), ('wg_in2', 'out', 'crossing', 'in2'), ('crossing', 'out2', 'wg_out2', 'in'),
+    ('dc2', 'out2', 'wg_pass2', 'in'),
 
-    ('connect1', 'n2', 'ring11', 'in'),
-    ('out2', 'n1', 'ring11', 'out'),
-    ('connect2', 'n1', 'ring11', 'pass'),
+    ('wg_pass1', 'out', 'dc3', 'in1'),
+    ('wg_out1', 'out', 'dc3', 'in2'),
+    ('wg_out2', 'out', 'dc4', 'in1'),
+    ('wg_pass2', 'out', 'dc4', 'in2'),
 
-    ('connect2', 'n2', 'ring12', 'in'),
-    ('out3', 'n1', 'ring12', 'out'),
-    ('terminator', 'n1', 'ring12', 'pass'),
+    ('dc3', 'out1', 'wg5', 'in'),
+    ('dc3', 'out2', 'wg6', 'in'),
+    ('dc4', 'out1', 'wg7', 'in'),
+    ('dc4', 'out2', 'wg8', 'in'),
+
+    ('wg5', 'out', 'out1', 'n1'),
+    ('wg6', 'out', 'out2', 'n1'),
+    ('wg7', 'out', 'out3', 'n1'),
+    ('wg8', 'out', 'out4', 'n1'),
 ])
 
-# -----------------------------------------------------------------------------
-#
-# Define all input component instances
-#
-inputs = [inst(dev.ebeam_gc_te1550) for _ in range(4)]
-wg1 = [inst(dev.ebeam_wg_integral_1550, extras={'length':100e-6}) for _ in range(4)]
-dc1 = [inst(lib.sipann_dc_fifty) for _ in range(2)]
-wg_inner1 = [inst(dev.ebeam_wg_integral_1550, extras={'length':100e-6}) for _ in range(2)]
-crossover = inst(lib.sipann_dc_crossover1550)
-wg_inner2 = [inst(dev.ebeam_wg_integral_1550, extras={'length':102.125e-6}) for _ in range(2)]
-wg_outer = [inst(dev.ebeam_wg_integral_1550, extras={'length':300e-6}) for _ in range(2)]
-dc2 = [inst(lib.sipann_dc_fifty) for _ in range(2)]
-wg3 = [inst(dev.ebeam_wg_integral_1550, extras={'length':100e-6}) for _ in range(4)]
-outputs = [inst(dev.ebeam_gc_te1550) for _ in range(4)]
-
-# -----------------------------------------------------------------------------
-#
-# Define all circuit connections
-#
-connections = []
-
-connections.append([wg1[0], 1, dc1[0], 1])
-connections.append([wg1[1], 1, dc1[0], 0])
-connections.append([wg1[2], 1, dc1[1], 1])
-connections.append([wg1[3], 1, dc1[1], 0])
-
-connections.append([wg_outer[0], 0, dc1[0], 3])
-connections.append([wg_outer[1], 0, dc1[1], 2])
-connections.append([wg_inner1[0], 0, dc1[0], 2])
-connections.append([wg_inner1[1], 0, dc1[1], 3])
-
-connections.append([wg_inner1[0], 1, crossover, 1])
-connections.append([wg_inner1[1], 1, crossover, 0])
-connections.append([crossover, 3, wg_inner2[0], 0])
-connections.append([crossover, 2, wg_inner2[1], 0])
-
-connections.append([wg_outer[0], 1, dc2[0], 1])
-connections.append([wg_outer[1], 1, dc2[1], 0])
-connections.append([wg_inner2[0], 1, dc2[0], 0])
-connections.append([wg_inner2[1], 1, dc2[1], 1])
-
-connections.append([dc2[0], 3, wg3[0], 0])
-connections.append([dc2[0], 2, wg3[1], 0])
-connections.append([dc2[1], 3, wg3[2], 0])
-connections.append([dc2[1], 2, wg3[3], 0])
-
-for i in range(4):
-    connections.append([outputs[i], 0, wg3[i], 1])
-
-def local():
-    plt.figure()
-    device = dc1[0]
-    f,s = device.get_s_parameters()
-
-    set_wl = 1550e-9
-    set_freq = wl2freq(set_wl)
-    # set_freq = 1.93e+14
-    idx = np.argmax(f>set_freq)
-    print(idx, freq2wl(f[idx]))
-
-    plt.plot(f, np.abs(s[:,3,0])**2)
-    plt.plot(f, np.abs(s[:,2,0])**2)
-    plt.title("DC")
-    plt.legend()
-    plt.tight_layout()
-
-    plt.figure()
-    plt.plot(f, np.rad2deg(np.unwrap(np.angle(s[:,3,0]))))
-    plt.plot(f, np.rad2deg(np.unwrap(np.angle(s[:,2,0]))))
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-# local()
-
-# -----------------------------------------------------------------------------
-#
-# Run the actual simulation (over some optional frequency range)
-#
-nl = core.Netlist()
-nl.load(connections, formatter='ll')
-# simu = sim.Simulation(nl, start_freq=1.925e+14, stop_freq=1.945e+14)
-simu = sim.Simulation(nl, start_freq=wl2freq(1.5501e-6), stop_freq=wl2freq(1.5499e-6))
-# simu = sim.Simulation(nl)
+# Run a simulation on our circuit.
+simulation = SweepSimulation(circuit, 1549.9e-9, 1550.1e-9)
+# simulation = SweepSimulation(circuit, 1510e-9, 1590e-9)
+result = simulation.simulate()
 
 # Get the simulation results
-freq, s = simu.freq_array, simu.s_parameters()
+# f, s = result.data(result.pinlist['in1'], result.pinlist['out1'])
 
+# The Green Machine is optimized for 1550 nanometers. We'd like to investigate
+# its behavior at that specific frequency:
+set_freq = wl2freq(1550e-9)
 
-# -----------------------------------------------------------------------------
-#
-# We're interested in investigating behavior at this frequency
-#
-set_wl = 1550e-9
-set_freq = wl2freq(set_wl)
-# set_freq = 1.93e+14
-
-# -----------------------------------------------------------------------------
-#
-# Plot the response of the entire green machine using input port i
-#
-# for i in range(0,4):
-i = 2
-# plt.figure()
-# # for i in range(1, 2):
-# for j in range(4,8):
-#     # plt.plot(freq/1e12, np.abs(s[:,j,i])**2, label="Port {} to {}".format(i, j))
-#     plt.plot(freq2wl(freq)*1e9, np.abs(s[:,j,i])**2, label="Port {}".format(j), linewidth="0.7")
-# # plt.axvline(set_freq/1e12)
-# # plt.axvline(1550)
-# plt.legend(loc="upper right")
-# plt.xlabel("Wavelength (nm)")
-# plt.ylabel("Fractional Optical Power")
-
+in_port = 'in1'
 plt.figure()
+plt.plot(*result.data(result.pinlist[in_port], result.pinlist['out1']), label='1 to 5')
+plt.plot(*result.data(result.pinlist[in_port], result.pinlist['out2']), label='1 to 6')
+plt.plot(*result.data(result.pinlist[in_port], result.pinlist['out3']), label='1 to 7')
+plt.plot(*result.data(result.pinlist[in_port], result.pinlist['out4']), label='1 to 8')
+plt.axvline(set_freq)
+plt.legend(loc="upper right")
+plt.xlabel("Frequency (Hz)")
+plt.ylabel("Fractional Optical Power")
+plt.show()
+
+# We're interested now in the phase offsets at our wavelength of interest.
+plt.figure()
+freq, s = result.f, result.s
 idx = np.argmax(freq>set_freq)
-print(idx, freq2wl(freq[idx]))
-# for i in range(1, 2):
-offsets = [0] * 4
-for j in range(4,8):
-    offsets[j-4] = np.angle(s[idx,j,i])
+input_pin = result.pinlist['in1'].index
+outputs = [result.pinlist['out' + str(n)].index for n in range(1,5)]
+offset = min(np.angle(s[idx, outputs, input_pin]))
+# angles = np.unwrap(np.angle(s[:, outputs, input_pin])).T - offset
+angles = np.angle(s[:, outputs, input_pin]).T - offset
 
-angles = [None] * 4
-for j in range(4,8):
-    angles[j-4] = np.unwrap(np.angle(s[:,j,i]))
-
-print(offsets, "Min:", min(offsets))
-for j in range(4):
-    angles[j] -= min(offsets)
-    print(angles[j][idx])
-
-for j in range(4,8):
-    # plt.plot(freq/1e12, np.rad2deg(np.unwrap(np.angle(s[:,j,i]))), label="Port {} to {}".format(i, j))
-    # angles = np.rad2deg(np.unwrap(np.angle(s[:,j,i])))
-    # angles = np.unwrap(np.angle(s[:,j,i]))
-    # angles -= min(offsets)
-    # angles = angles + (angles[idx] % 2*np.pi) - angles[idx]
-    plt.plot(freq2wl(freq)*1e9, angles[j-4], linewidth='0.7')
+for angle in angles:
+    plt.plot(freq2wl(freq)*1e9, angle, linewidth='0.7')
 plt.axvline(1550, color='k', linestyle='--', linewidth='0.5')
 plt.legend([r'$\phi_4$',r'$\phi_5$',r'$\phi_6$',r'$\phi_7$'], loc='upper right')
 plt.xlabel("Wavelength (nm)")
 plt.ylabel("Phase")
 plt.show()
 
-import sys; sys.exit()
+import sys
+sys.exit()
 
 plt.figure()
 idx = np.argmax(freq>set_freq)
 print(idx, freq2wl(freq[idx]))
-for j in range(4,8):
-    # print(np.rad2deg(np.angle(s[idx,j,i])))
-    angles = np.rad2deg(np.unwrap(np.angle(s[:,j,i])))
-    angles = angles + (angles[idx] % 2*np.pi) - angles[idx]
-    print(angles[idx], angles)
-    plt.plot(freq2wl(freq)*1e9, angles, label="Port {} to {}".format(i, j))
-    plt.plot(freq2wl(freq[idx])*1e9, angles[idx], 'rx')
+angles = np.rad2deg(np.unwrap(np.angle(s[:,outputs,input_pin]))).T
+angles = angles + ((angles[:,idx] % 2*np.pi) - angles[:,idx]).reshape((4,1))
+print(angles[:,idx], angles)
+for i in range(4):
+    plt.plot(freq2wl(freq)*1e9, angles[i])#, label="Port {} to {}".format(i, j))
+    plt.plot(freq2wl(freq[idx])*1e9, angles[i][idx], 'rx')
 
 plt.axvline(1550)
-plt.legend()
+# plt.legend()
 plt.xlabel("Wavelength (nm)")
 plt.ylabel("Phase")
-
-
+plt.show()
+import sys
+sys.exit()
 # plt.axvline(set_freq/1e12)
 
 
