@@ -81,19 +81,15 @@ class Model:
         """
         raise NotImplementedError
 
-    def s_parameters(self, start: float, end: float, num: int):
+    def s_parameters(self, freq):
         """
         Returns scattering parameters for the element with its given 
         parameters.
 
         Parameters
         ----------
-        start : float
-            The lower frequency bound for the simulation.
-        end : float
-            The upper frequency bound for the simulation.
-        num : int
-            The number of points to interpolate between `start` and `end`.
+        freq : np.ndarray
+            The frequency range to get scattering parameters for.
 
         Returns
         -------

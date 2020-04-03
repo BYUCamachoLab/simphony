@@ -12,8 +12,7 @@ class ebeam_bdc_te1550(Model):
     s_params = (loaded['f'], loaded['s'])
     freq_range = (s_params[0][0], s_params[0][-1])
 
-    def s_parameters(self, start, stop, num):
-        freq = np.linspace(start, stop, num)
+    def s_parameters(self, freq):
         return freq, interpolate(freq, self.s_params[0], self.s_params[1])
 
 class ebeam_dc_halfring_te1550(Model):
@@ -22,8 +21,7 @@ class ebeam_dc_halfring_te1550(Model):
     s_params = (loaded['f'], loaded['s'])
     freq_range = (s_params[0][0], s_params[0][-1])
 
-    def s_parameters(self, start, stop, num):
-        freq = np.linspace(start, stop, num)
+    def s_parameters(self, freq):
         return freq, interpolate(freq, self.s_params[0], self.s_params[1])
 
 class ebeam_gc_te1550(Model):
@@ -32,8 +30,7 @@ class ebeam_gc_te1550(Model):
     s_params = (loaded['f'], loaded['s'])
     freq_range = (s_params[0][0], s_params[0][-1])
     
-    def s_parameters(self, start, stop, num):
-        freq = np.linspace(start, stop, num)
+    def s_parameters(self, freq):
         return freq, interpolate(freq, self.s_params[0], self.s_params[1])
 
 class ebeam_terminator_te1550(Model):
@@ -42,8 +39,7 @@ class ebeam_terminator_te1550(Model):
     s_params = (loaded['f'], loaded['s'])
     freq_range = (s_params[0][0], s_params[0][-1])
 
-    def s_parameters(self, start, stop, num):
-        freq = np.linspace(start, stop, num)
+    def s_parameters(self, freq):
         return freq, interpolate(freq, self.s_params[0], self.s_params[1])
 
 
@@ -73,7 +69,7 @@ class ebeam_wg_integral_1550(Model):
         self.ng = ng
         self.nd = nd
     
-    def s_parameters(self, start, stop, num):
+    def s_parameters(self, freq):
         """Get the s-parameters of a waveguide.
 
         Parameters
@@ -91,7 +87,7 @@ class ebeam_wg_integral_1550(Model):
             Returns a tuple containing the frequency array, `frequency`, 
             corresponding to the calculated s-parameter matrix, `s`.
         """
-        frequency = np.linspace(start, stop, num)
+        frequency = freq
 
         # Initialize array to hold s-params
         mat = np.zeros((len(frequency),2,2), dtype=complex) 
@@ -128,6 +124,5 @@ class ebeam_y_1550(Model):
     s_params = (loaded['f'], loaded['s'])
     freq_range = (s_params[0][0], s_params[0][-1])
 
-    def s_parameters(self, start, stop, num):
-        freq = np.linspace(start, stop, num)
+    def s_parameters(self, freq):
         return freq, interpolate(freq, self.s_params[0], self.s_params[1])

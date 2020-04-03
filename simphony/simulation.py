@@ -117,7 +117,7 @@ class SweepSimulationResult(SimulationResult):
             Output pin.
         """
         freq = self.f
-        s = abs(self.s[:, inp.index, outp.index])**2
+        s = abs(self.s[:, outp.index, inp.index])**2
         if dB:
             s = np.log10(s)
         return freq, s
@@ -171,18 +171,20 @@ class SweepSimulation(Simulation):
         if start > stop:
             raise ValueError("simulation 'start' value must be less than 'stop' value.")
         if mode == 'wl':
-            self.start = wl2freq(stop)
-            self.stop = wl2freq(start)
+            tmp_start = start
+            tmp_stop = stop
+            start = wl2freq(tmp_stop)
+            stop = wl2freq(tmp_start)
         elif mode == 'freq':
-            self.start = start
-            self.stop = stop
+            pass
         else:
             err = "mode '{}' is not one of 'freq' or 'wl'".format(mode)
             raise ValueError(err)
-        self.num = num
+        if start > stop:
+            raise ValueError('starting frequency cannot be greater than stopping frequency')
+        self.freq = np.linspace(start, stop, num)
 
     def _cache_elements(self):
-        # cache = {}
         self.cache = self._cache_elements_helper(self.circuit, {})
         
     def _cache_elements_helper(self, circuit, cache: dict):
@@ -232,11 +234,11 @@ class SweepSimulation(Simulation):
             raise NotImplementedError('Does the model "{}" define a valid frequency range?'.format(type(model).__name__))
         
         # Ensure that models are valid with current simulation parameters.
-        if lower > self.start or upper < self.stop:
-            raise ValueError('Simulation frequencies ({} - {}) out of valid bounds for "{}"'.format(self.start, self.stop, type(model).__name__))
+        if lower > self.freq[0] or upper < self.freq[-1]:
+            raise ValueError('Simulation frequencies ({} - {}) out of valid bounds for "{}"'.format(self.freq[0], self.freq[-1], type(model).__name__))
 
         # Cache the element's s-matrix using the simulation parameters
-        cache[model] = model.s_parameters(self.start, self.stop, self.num)
+        cache[model] = model.s_parameters(self.freq)
         return cache
 
     def simulate(self):
