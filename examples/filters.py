@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright © Simphony Project Contributors
+# Licensed under the terms of the MIT License
+# (see simphony/__init__.py for details)
+
 import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -53,24 +59,20 @@ def ring_factory(radius):
         ('input', 'midt', 'output', 'midt'),
         ('terminator', 'n1', 'output', 'term')
     ])
+
     return circuit
 
 # Behold, we can run a simulation on a single ring resonator.
-# sim1 = SweepSimulation(ring_factory(10), 1500e-9, 1600e-9)
-# res1 = sim1.simulate()
-# sim2 = SweepSimulation(ring_factory(10), 1520e-9, 1580e-9)
-# res2 = sim2.simulate()
+cir1 = ring_factory(10)
+sim1 = SweepSimulation(cir1, 1500e-9, 1600e-9)
+res1 = sim1.simulate()
 
-# f1, s = res1.data(res1.pinlist['in'], res1.pinlist['pass'])
-# plt.plot(f1*1e9, s, 'rx')
-# f2, s = res2.data(res2.pinlist['in'], res2.pinlist['pass'])
-# plt.plot(f2*1e9, s, 'bx')
-# plt.title("10-micron Ring Resonator")
-# plt.tight_layout()
-# plt.show()
+f1, s = res1.data(res1.pinlist['in'], res1.pinlist['pass'])
+plt.plot(f1, s)
+plt.title("10-micron Ring Resonator")
+plt.tight_layout()
+plt.show()
 
-# import sys
-# sys.exit()
 
 
 # Now, we'll create the circuit (using several ring resonator subcircuits)
@@ -115,26 +117,8 @@ circuit.connect_many([
 ])
 
 # Run a simulation on the netlist.
-# simulation = SweepSimulation(circuit, 1500e-9, 1600e-9)
 simulation = SweepSimulation(circuit, 1524.5e-9, 1551.15e-9)
 result = simulation.simulate()
-
-
-
-# f, s = result.data(result.pinlist['input'], result.pinlist['out1'])
-# plt.plot(freq2wl(f)*1e9, s)
-# f, s = result.data(result.pinlist['input'], result.pinlist['out2'])
-# plt.plot(freq2wl(f*1e9), s)
-# f, s = result.data(result.pinlist['input'], result.pinlist['out3'])
-# plt.plot(freq2wl(f*1e9), s)
-
-# plt.title("MZI")
-# plt.tight_layout()
-# plt.show()
-
-# import sys
-# sys.exit()
-
 
 fig = plt.figure(tight_layout=True)
 gs = gridspec.GridSpec(1, 3)
