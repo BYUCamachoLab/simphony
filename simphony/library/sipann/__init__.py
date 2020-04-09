@@ -27,9 +27,16 @@ from simphony.simulation import freq2wl, wl2freq
 
 class sipann_wg_integral(Model):
     """Neural-net trained model of a waveguide.
+
+    A waveguide easily connects other components within the circuit.
+    The SiP-ANN waveguide is different from the EBeam package since its
+    values are calculated based on a regression fit to simulation data.
+
+    .. image:: /reference/images/ebeam_wg_integral_1550.png
+        :alt: ebeam_wg_integral_1550.png
     """
-    pins = ('n1', 'n2')
-    freq_range = (187370000000000.0, 199862000000000.0)
+    pins = ('n1', 'n2') #: The default pin names of the device
+    freq_range = (187370000000000.0, 199862000000000.0) #: The valid frequency range for this model.
 
     # TODO: Remove the delta_length part of this model; should be implemented
     # only in the simphony.simulation.MonteCarloSimulation part of the program
@@ -158,6 +165,9 @@ class sipann_wg_integral(Model):
 
 # class sipann_dc_straight(Model):
 #     """Regression Based Closed Form solution of a straight directional coupler
+#
+#     .. comment image:: /reference/images/ebeam_bdc_te1550.png
+#         :alt: ebeam_bdc_te1550.png
 #     """
 #     ports = 4
 #     cachable = False
@@ -205,6 +215,9 @@ class sipann_wg_integral(Model):
 
 # class sipann_dc_halfracetrack(Model):
 #     """Regression Based Closed Form solution of half a racetrack resonator
+#
+#     .. comment image:: /reference/images/ebeam_bdc_te1550.png
+#         :alt: ebeam_bdc_te1550.png
 #     """
 #     ports = 4
 #     cachable = False
@@ -256,9 +269,12 @@ class sipann_wg_integral(Model):
 
 class sipann_dc_halfring(Model):
     """Regression Based Closed Form solution of half of a ring resonator
+
+    # .. comment image:: /reference/images/ebeam_bdc_te1550.png
+    #     :alt: ebeam_bdc_te1550.png
     """
-    pins = ('n1', 'n2', 'n3', 'n4')
-    freq_range = (187370000000000.0, 199862000000000.0)
+    pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
+    freq_range = (187370000000000.0, 199862000000000.0) #: The valid frequency range for this model.
 
     def __init__(self, width=0.5, thickness=0.22, gap=0.1, radius=10.0, sw_angle=90.0):
         """Get the s-parameters of a parameterized waveguide.
@@ -306,6 +322,9 @@ class sipann_dc_halfring(Model):
 
 # class sipann_dc_standard(Model):
 #     """Regression Based Closed Form solution of a standard shaped directional coupler
+#
+#     .. comment image:: /reference/images/ebeam_bdc_te1550.png
+#         :alt: ebeam_bdc_te1550.png
 #     """
 #     ports = 4
 #     cachable = False
@@ -362,6 +381,9 @@ class sipann_dc_halfring(Model):
 
 # class sipann_dc_doublehalfring(Model):
 #     """Regression Based Closed Form solution of double half ring resonator
+#
+#     .. comment image:: /reference/images/ebeam_bdc_te1550.png
+#         :alt: ebeam_bdc_te1550.png
 #     """
 #     ports = 4
 #     cachable = False
@@ -411,6 +433,9 @@ class sipann_dc_halfring(Model):
 
 # class sipann_dc_angledhalfring(Model):
 #     """Regression Based Closed Form solution of an angled ring resonator
+#
+#     .. comment image:: /reference/images/ebeam_bdc_te1550.png
+#         :alt: ebeam_bdc_te1550.png
 #     """
 #     ports = 4
 #     cachable = False
@@ -462,6 +487,9 @@ class sipann_dc_halfring(Model):
 
 # class sipann_dc_arbitrarysym(Model):
 #     """Regression Based form of any directional coupler provided gap function
+#
+#     .. comment image:: /reference/images/ebeam_bdc_te1550.png
+#         :alt: ebeam_bdc_te1550.png
 #     """
 #     ports = 4
 #     cachable = False
@@ -511,6 +539,9 @@ class sipann_dc_halfring(Model):
 
 # class sipann_dc_arbitraryantisym(Model):
 #     """Regression Based form of any directional coupler provided gap function
+#
+#     .. comment image:: /reference/images/ebeam_bdc_te1550.png
+#         :alt: ebeam_bdc_te1550.png
 #     """
 #     ports = 4
 #     cachable = False
@@ -563,11 +594,16 @@ class sipann_dc_halfring(Model):
 
 class sipann_dc_crossover1550(Model):
     """Regression Based form of any directional coupler provided gap function
+
+    Regression based form of a 100/0 directional coupler.
+
+    .. image:: /reference/images/sipann_dc_crossover1550.png
+        :alt: ebeam_bdc_te1550.png
     """
-    ports = ('n1', 'n2', 'n3', 'n4')
+    pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_dc_crossover1550_s.npz'))
     s_params = (loaded['f'], loaded['s'])
-    freq_range = (s_params[0][0], s_params[0][-1])
+    freq_range = (s_params[0][0], s_params[0][-1]) #: The valid frequency range for this model.
 
     def s_parameters(self, freq):
         return interpolate(freq, self.s_params[0], self.s_params[1])
@@ -631,10 +667,10 @@ class sipann_dc_crossover1550(Model):
 class sipann_dc_fifty(Model):
     """Regression Based form of any directional coupler provided gap function
     """
-    ports = ('n1', 'n2', 'n3', 'n4')
+    pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_dc_fifty_s.npz'))
     s_params = (loaded['f'], loaded['s'])
-    freq_range = (s_params[0][0], s_params[0][-1])
+    freq_range = (s_params[0][0], s_params[0][-1]) #: The valid frequency range for this model.
 
     def s_parameters(self, freq):
         return interpolate(freq, self.s_params[0], self.s_params[1])

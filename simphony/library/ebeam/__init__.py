@@ -7,46 +7,86 @@ from simphony.simulation import freq2wl, wl2freq
 
 
 class ebeam_bdc_te1550(Model):
-    pins = ('n1', 'n2', 'n3', 'n4')
+    """
+    A bidirectional coupler optimized for TE polarized light at 1550 nanometers.
+
+    The bidirectional coupler has 4 ports, labeled as pictured. Its efficiently
+    splits light that is input from one port into the two outputs on the opposite
+    side (with a corresponding pi/2 phase shift). Additionally, it efficiently 
+    interferes lights from two adjacent inputs, efficiently splitting the 
+    interfered signal between the two ports on the opposing side.
+
+    .. image:: /reference/images/ebeam_bdc_te1550.png
+        :alt: ebeam_bdc_te1550.png
+    """
+    pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_bdc_te1550.npz'))
     s_params = (loaded['f'], loaded['s'])
-    freq_range = (s_params[0][0], s_params[0][-1])
+    freq_range = (s_params[0][0], s_params[0][-1]) #: The valid frequency range for this model.
 
     def s_parameters(self, freq):
         return interpolate(freq, self.s_params[0], self.s_params[1])
 
 class ebeam_dc_halfring_te1550(Model):
-    pins = ('n1', 'n2',)
+    pins = ('n1', 'n2',) #: The default pin names of the device
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_dc_halfring_te1550.npz'))
     s_params = (loaded['f'], loaded['s'])
-    freq_range = (s_params[0][0], s_params[0][-1])
+    freq_range = (s_params[0][0], s_params[0][-1]) #: The valid frequency range for this model.
 
     def s_parameters(self, freq):
         return interpolate(freq, self.s_params[0], self.s_params[1])
 
 class ebeam_gc_te1550(Model):
-    pins = ('n1', 'n2',)
+    """
+    A grating coupler optimized for TE polarized light at 1550 nanometers.
+
+    The grating coupler efficiently couples light from a fiber array positioned
+    above the chip into the circuit. For the TE mode, the angle is -25 degrees 
+    [needs citation].
+
+    .. image:: /reference/images/ebeam_gc_te1550.png
+        :alt: ebeam_bdc_te1550.png
+    """
+    pins = ('n1', 'n2',) #: The default pin names of the device
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_gc_te1550.npz'))
     s_params = (loaded['f'], loaded['s'])
-    freq_range = (s_params[0][0], s_params[0][-1])
+    freq_range = (s_params[0][0], s_params[0][-1]) #: The valid frequency range for this model.
     
     def s_parameters(self, freq):
         return interpolate(freq, self.s_params[0], self.s_params[1])
 
 class ebeam_terminator_te1550(Model):
-    pins = ('n1',)
+    """
+    A terminator component that dissipates light into free space optimized for
+    TE polarized light at 1550 nanometers.
+
+    The terminator dissipates excess light into free space. If you have a path
+    where the light doesn't need to be measured but you don't want it reflecting
+    back into the circuit, you can use a terminator to release it from the circuit.
+
+    .. image:: /reference/images/ebeam_terminator_te1550.png
+        :alt: ebeam_bdc_te1550.png
+    """
+    pins = ('n1',) #: The default pin names of the device
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_terminator_te1550.npz'))
     s_params = (loaded['f'], loaded['s'])
-    freq_range = (s_params[0][0], s_params[0][-1])
+    freq_range = (s_params[0][0], s_params[0][-1]) #: The valid frequency range for this model.
 
     def s_parameters(self, freq):
         return interpolate(freq, self.s_params[0], self.s_params[1])
 
 
 class ebeam_wg_integral_1550(Model):
-    """Component model for an ebeam_wg_integral_1550"""
-    pins = ('n1', 'n2',)
-    freq_range = (187370000000000.0, 199862000000000.0)
+    """
+    Model for an waveguide optimized for TE polarized light at 1550 nanometers.
+
+    A waveguide easily connects other optical components within a circuit.
+
+    .. image:: /reference/images/ebeam_wg_integral_1550.png
+        :alt: ebeam_bdc_te1550.png
+    """
+    pins = ('n1', 'n2',) #: The default pin names of the device
+    freq_range = (187370000000000.0, 199862000000000.0) #: The valid frequency range for this model.
 
     def __init__(self, length, lam0=1.55e-06, ne=2.44553, ng=4.19088, nd=0.000354275):
         """
@@ -120,10 +160,16 @@ class ebeam_wg_integral_1550(Model):
 
 
 class ebeam_y_1550(Model):
-    pins = ('n1', 'n2', 'n3')
+    """
+    The y-branch efficiently splits the input between the two outputs.
+
+    .. image:: /reference/images/ebeam_y_1550.png
+        :alt: ebeam_bdc_te1550.png
+    """
+    pins = ('n1', 'n2', 'n3') #: The default pin names of the device
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_y_1550.npz'))
     s_params = (loaded['f'], loaded['s'])
-    freq_range = (s_params[0][0], s_params[0][-1])
+    freq_range = (s_params[0][0], s_params[0][-1]) #: The valid frequency range for this model.
 
     def s_parameters(self, freq):
         return interpolate(freq, self.s_params[0], self.s_params[1])
