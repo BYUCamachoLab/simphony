@@ -68,18 +68,17 @@ class Model:
     """
     _logger = _module_logger.getChild('Model')
 
-    pins = None
-    freq_range = (None, None)
+    pins = None #: The default pin names of the device
+    freq_range = (None, None) #: The frequency range this model is valid over.
 
-    def _monte_carlo_(self, *args, **kwargs):
+    def monte_carlo_s_parameters(self, *args, **kwargs):
         """Implements the monte carlo routine for the given Element.
 
-        Raises
-        ------
-        NotImplementedError
-            If the function hasn't been implemented by a child class.
+        It (permanently, for the life of the object) modifies parameters 
+        within the object used to calculate the scattering parameters.
+        If not defined by the implementing class, this function does nothing.
         """
-        raise NotImplementedError
+        pass
 
     def s_parameters(self, freq):
         """
@@ -93,10 +92,13 @@ class Model:
 
         Returns
         -------
-        # f, s : float, array
         s : np.ndarray
-            # The frequency range and corresponding scattering parameters.
             The scattering parameters corresponding to the frequency range.
+            Its shape should be:
+                (the number of frequency point x ports x ports)
+            If the scattering parameters are requested for only a single 
+            frequency, for example, and the device has 4 ports, the shape
+            returned by `s_parameters` would be (1, 4, 4).
         
         Raises
         ------
@@ -104,28 +106,6 @@ class Model:
             Raised if the subclassing element doesn't implement this function.
         """
         raise NotImplementedError
-
-    @staticmethod
-    def interpolate(resampled, sampled, s_parameters):
-        """Returns the result of a cubic interpolation for a given frequency range.
-
-        Parameters
-        ----------
-        output_freq : np.array
-            The desired frequency range for a given input to be interpolated to.
-        input_freq : np.array
-            A frequency array, indexed matching the given s_parameters.
-        s_parameters : np.array
-            S-parameters for each frequency given in input_freq.
-
-        Returns
-        -------
-        result : np.array
-            The values of the interpolated function (fitted to the input 
-            s-parameters) evaluated at the `output_freq` frequencies.
-        """
-        func = interp1d(sampled, s_parameters, kind='cubic', axis=0)
-        return func(resampled)
 
 class PModel(Model):
     """

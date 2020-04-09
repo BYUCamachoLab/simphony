@@ -76,7 +76,7 @@ class SimulationResult:
     """
     _logger = _module_logger.getChild('SimulationResult')
 
-    def __init__(self, freq=None, s=None, pinlist=None):
+    def __init__(self, pinlist=None):
         """
         Instantiates an object from a Component if provided; empty, if not.
 
@@ -86,9 +86,6 @@ class SimulationResult:
             A component to initialize the data members of the object.
         """
         self._pinlist = None
-
-        self.f = freq
-        self.s = s
         self.pinlist = pinlist
 
     @property
@@ -104,8 +101,10 @@ class SimulationResult:
             assert self.pinlist.element == self
 
 class SweepSimulationResult(SimulationResult):
-    def __init__(self, freq, s, pins):
-        super().__init__(freq, s, pins)
+    def __init__(self, freq=None, s=None, pins=None):
+        super().__init__(pins)
+        self.f = freq
+        self.s = s
 
     def data(self, inp, outp, dB=False):
         """
@@ -122,6 +121,16 @@ class SweepSimulationResult(SimulationResult):
             s = np.log10(s)
         return freq, s
 
+class MonteCarloSimulationResult(SimulationResult):
+    def __init__(self, freq, s, pins, runs):
+        super().__init__(pins)
+        self.f = freq
+        self.ideal = s
+        self.runs = runs
+        self.results = []
+
+    def add_result(self, result):
+        self.results.append(result)
 
 class Simulation:
     """
@@ -144,12 +153,8 @@ class SweepSimulation(Simulation):
 
     Attributes
     ----------
-    start : float
-        The starting simulation frequency (in Hz).
-    stop : float
-        The ending simulation frequency (in Hz).
-    num : int
-        The number of sampled points between `start` and `stop`.
+    freq : np.ndarray
+        The frequency array over which the simulation is performed.
     """
     def __init__(self, circuit: Subcircuit, start: float=1.5e-6, stop: float=1.6e-6, num: int=2000, mode='wl'):
         """
@@ -161,9 +166,9 @@ class SweepSimulation(Simulation):
             The start wavelength (in meters) or frequency (in Hz).
         stop : float
             The stop wavelength (in meters) or frequency (in Hz).
-        num : int
+        num : int, optional
             The number of sampled points.
-        mode : str
+        mode : str, optional
             Defines sweep range mode; either 'wl' for wavelength (m) or 
             'freq' for frequency (Hz).
         """
@@ -184,70 +189,89 @@ class SweepSimulation(Simulation):
             raise ValueError('starting frequency cannot be greater than stopping frequency')
         self.freq = np.linspace(start, stop, num)
 
-    def _cache_elements(self):
-        self.cache = self._cache_elements_helper(self.circuit, {})
-        
-    def _cache_elements_helper(self, circuit, cache: dict):
-        """
-        Recursively caches all circuit in the subcircuit.
+    @staticmethod
+    def _cache_elements(collection, freq):
+        cache = {}
+        for model in collection:
+            cache[model] = model.s_parameters(freq)
+        return cache
+
+    @staticmethod
+    def _collect_models(circuit: Subcircuit, collection: set = set()):
+        """Recursively collects all models in a subcircuit.
 
         Parameters
         ----------
-        circuit : list of simphony.netlist.ElementList
-            The elements to be cached.
-        cache : simphony.simulation.Cache
-            A cache for containing simulated models.
+        circuit : simphony.netlist.Subcircuit
+            The circuit containing elements to be collected.
+        collection : set, optional
+            An set for containing simulated models (default is an empty set).
 
         Returns
         -------
-        cache : dict
-            The updated cache.
+        collection : set
+            A set containing all unique models in the circuit.
         """
         # For every item in the circuit
         for item in circuit.elements:
 
             # If it's an Element type, cache it.
             if issubclass(type(item), Element):
-                self._cache_elements_element_helper(item, cache)
+                collection.add(item.model)
             
             # If it's a subcircuit, recursively call this function.
             elif type(item) is Subcircuit:
-                self._cache_elements_helper(item, cache)
+                SweepSimulation._collect_models(item, collection)
             
             # If it's something else--
             # well, ya got trouble, right here in River City.
             else:
                 raise TypeError('Invalid object in circuit (type "{}")'.format(type(item)))
 
-        return cache
+        return collection
 
-    def _cache_elements_element_helper(self, element: Element, cache: dict):
-        # Caching items base case: if matching object in cache, return.
-        model = element.model
-        if model in cache:
-            return cache
-        
-        # Ensure that models have required attributes.
-        try:
-            lower, upper = model.freq_range
-        except TypeError:
-            raise NotImplementedError('Does the model "{}" define a valid frequency range?'.format(type(model).__name__))
-        
-        # Ensure that models are valid with current simulation parameters.
-        if lower > self.freq[0] or upper < self.freq[-1]:
-            raise ValueError('Simulation frequencies ({} - {}) out of valid bounds for "{}"'.format(self.freq[0], self.freq[-1], type(model).__name__))
+    @staticmethod
+    def validate_models(models, freq):
+        """Ensures all models are valid over the specified frequency range.
 
-        # Cache the element's s-matrix using the simulation parameters
-        cache[model] = model.s_parameters(self.freq)
-        return cache
+        Parameters
+        ----------
+        models : list
+            A list of the model objects to be verified.
+        freq : np.ndarray
+            The array of frequency values the simulation is defined over.
+
+        Raises
+        ------
+        NotImplementedError
+            If a model does not have a class attribute `freq_range` defining
+            the valid frequency range for the model.
+        ValueError
+            If the simulation frequencies are outside of the range of the valid
+            frequencies for a model.
+        """
+        for model in models:
+            # Ensure that models have required attributes.
+            try:
+                lower, upper = model.freq_range
+            except TypeError:
+                raise NotImplementedError('Does the model "{}" define a valid frequency range?'.format(type(model).__name__))
+            
+            # Ensure that models are valid with current simulation parameters.
+            if lower > freq[0] or upper < freq[-1]:
+                raise ValueError('Simulation frequencies ({} - {}) out of valid bounds for "{}"'.format(freq[0], freq[-1], type(model).__name__))
 
     def simulate(self):
-        self._cache_elements()
-        sim = self._simulate_helper(self.circuit)
+        self.models = SweepSimulation._collect_models(self.circuit)
+        SweepSimulation.validate_models(self.models, self.freq)
+        self.cache = SweepSimulation._cache_elements(self.models, self.freq)
+
+        sim = SweepSimulation._simulate_helper(self.circuit, self.cache)
         sim = SweepSimulationResult(self.freq, sim.s, sim.pinlist)
         return sim
 
-    def _simulate_helper(self, circuit):
+    @staticmethod
+    def _simulate_helper(circuit: Subcircuit, cache: dict):
         elements = {}
         netlist = circuit.netlist
 
@@ -256,11 +280,11 @@ class SweepSimulation(Simulation):
 
             # If it's an Element type, simulate it.
             if issubclass(type(item), Element):
-                elements[item.name] = self._create_simulated_result(item, netlist)
+                elements[item.name] = SweepSimulation._create_simulated_result(item, netlist, cache)
             
             # If it's a subcircuit, recursively call this function.
             elif type(item) is Subcircuit:
-                elements[item.name] = self._simulate_helper(item)
+                elements[item.name] = SweepSimulation._simulate_helper(item, cache)
             
             # If it's something else--
             # well, ya got trouble, right here in River City.
@@ -269,12 +293,13 @@ class SweepSimulation(Simulation):
                 raise TypeError(err)
 
         # Connect all the elements together and return a super element.
-        built = self.connect_circuit(elements, netlist) 
+        built = SweepSimulation.connect_circuit(elements, netlist) 
         return built
 
-    def _create_simulated_result(self, element, netlist):
-        s = self.cache[element.model]
-        sim = SimulationResult(s=s, pinlist=element.pins)
+    @staticmethod
+    def _create_simulated_result(element, netlist, cache: dict):
+        s = cache[element.model]
+        sim = SweepSimulationResult(s=s, pins=element.pins)
         return sim
 
     @staticmethod
@@ -330,7 +355,52 @@ class SinglePortSweepSimulation(SweepSimulation):
 
 
 class MonteCarloSweepSimulation(SweepSimulation):
-    pass
+    """
+    A sweeping monte carlo simulation.
+    """
+    def __init__(self, circuit: Subcircuit, start: float=1.5e-6, stop: float=1.6e-6, num: int=2000, mode='wl'):
+        """
+        Parameters
+        ----------
+        circuit : Subcircuit
+            The circuit to be simulated.
+        start : float
+            The start wavelength (in meters) or frequency (in Hz).
+        stop : float
+            The stop wavelength (in meters) or frequency (in Hz).
+        num : int
+            The number of sampled points.
+        mode : str
+            Defines sweep range mode; either 'wl' for wavelength (m) or 
+            'freq' for frequency (Hz).
+        runs : int
+            The number of monte carlo iterations to run.
+        """
+        super().__init__(circuit, start, stop, num, mode)
+        # self.original_circuit = circuit
+        # self.circuit = copy.deepcopy(circuit)
+
+    def simulate(self, runs=10):
+        models = SweepSimulation._collect_models(self.circuit)
+        SweepSimulation.validate_models(models, self.freq)
+        cache = SweepSimulation._cache_elements(models, self.freq)
+
+        sim = self._simulate_helper(copy.deepcopy(self.circuit), cache)
+        sim = MonteCarloSimulationResult(self.freq, sim.s, sim.pinlist, runs)
+
+        ideal_cache = cache
+        for run in range(runs):
+            self.cache = self.tweak_monte_carlo_parameters(ideal_cache)
+            sim.add_result(self._simulate_helper(copy.deepcopy(self.circuit)))
+
+        self.cache = ideal_cache
+        return sim
+
+    def tweak_monte_carlo_parameters(self, cache):
+        for model in cache.keys():
+            cache[model] = model.monte_carlo_s_parameters()
+        return cache
+        
 #     """A simulator that models manufacturing variability by altering the
 #     width, thickness, and length of waveguides instantiated from a 
 #     `ebeam_wg_integral_1550` from the default DeviceLibrary.

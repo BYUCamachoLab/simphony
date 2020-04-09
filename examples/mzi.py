@@ -13,7 +13,7 @@ import numpy as np
 
 from simphony.library import ebeam
 from simphony.netlist import Subcircuit
-from simphony.simulation import SweepSimulation
+from simphony.simulation import SweepSimulation, MonteCarloSweepSimulation
 
 # Declare the models used in the circuit
 gc = ebeam.ebeam_gc_te1550()
@@ -67,3 +67,7 @@ plt.plot(f*1e9, s)
 plt.title("MZI")
 plt.tight_layout()
 plt.show()
+
+simulation = MonteCarloSweepSimulation(circuit, 1500e-9, 1600e-9)
+result = simulation.simulate(runs=10)
+
