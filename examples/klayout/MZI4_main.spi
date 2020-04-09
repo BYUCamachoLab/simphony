@@ -1,0 +1,15 @@
+* Spice output from KLayout SiEPIC-Tools v0.3.56, 2020-02-12 14:05:51.
+
+* Optical Network Analyzer:
+.ona input_unit=wavelength input_parameter=start_and_stop
+  + minimum_loss=80
+  + analysis_type=scattering_data
+  + multithreading=user_defined number_of_threads=1
+  + orthogonal_identifier=1
+  + start=1500.000e-9
+  + stop=1600.000e-9
+  + number_of_points=2000
+  + input(1)=MZI4,ebeam_gc_te1550_detector2
+  + output=MZI4,ebeam_gc_te1550_laser1
+.INCLUDE "/tmp/tmpplrx_2sz/MZI4.spi"
+

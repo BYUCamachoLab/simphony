@@ -1,0 +1,20 @@
+* Spice output from KLayout SiEPIC-Tools v0.3.56, 2020-02-12 14:05:51.
+
+.subckt MZI4 ebeam_gc_te1550_detector2 ebeam_gc_te1550_laser1
+.param MC_uniformity_width=0 
+.param MC_uniformity_thickness=0 
+.param MC_resolution_x=100 
+.param MC_resolution_y=100 
+.param MC_grid=10e-6 
+.param MC_non_uniform=99 
+ ebeam_y_1550_0  N$0 N$2 N$1 ebeam_y_1550 library="Design kits/ebeam"  lay_x=7.4E-6 lay_y=127.0E-6 sch_x=478.534829E-3 sch_y=8.212692343E0 
+ ebeam_gc_te1550_1  ebeam_gc_te1550_detector2 N$0 ebeam_gc_te1550 library="Design kits/ebeam"  lay_x=-16.500000000000004E-6 lay_y=127.0E-6 sch_x=-1.067003336E0 sch_y=8.212692343E0 
+ ebeam_gc_te1550_2  ebeam_gc_te1550_laser1 N$3 ebeam_gc_te1550 library="Design kits/ebeam"  lay_x=-16.500000000000004E-6 lay_y=254.0E-6 sch_x=-1.067003336E0 sch_y=16.425384686E0 
+ ebeam_y_1550_3  N$6 N$5 N$4 ebeam_y_1550 library="Design kits/ebeam"  lay_x=89.93E-6 lay_y=127.0E-6 sch_x=5.815491515E0 sch_y=8.212692343E0  sch_f=true
+ ebeam_wg_integral_1550_4  N$1 N$4 ebeam_wg_integral_1550 library="Design kits/ebeam" wg_length=67.730u wg_width=0.500u points="[[14.8,124.25],[82.53,124.25]]" radius=5.0 lay_x=48.665000000000006E-6 lay_y=124.25000000000001E-6 sch_x=3.147013172E0 sch_y=8.034858453E0 
+ ebeam_wg_integral_1550_5  N$2 N$5 ebeam_wg_integral_1550 library="Design kits/ebeam" wg_length=297.394u wg_width=0.500u points="[[14.8,129.75],[28.64,129.75],[28.64,247.68],[75.36,247.68],[75.36,129.75],[82.53,129.75]]" radius=5.0 lay_x=48.665000000000006E-6 lay_y=188.715E-6 sch_x=3.147013172E0 sch_y=12.203608153E0 
+ ebeam_wg_integral_1550_6  N$6 N$3 ebeam_wg_integral_1550 library="Design kits/ebeam" wg_length=256.152u wg_width=0.500u points="[[97.33,127.0],[114.79,127.0],[114.79,254.0],[0.0,254.0]]" radius=5.0 lay_x=57.77E-6 lay_y=190.5E-6 sch_x=3.735805013E0 sch_y=12.319038514E0 
+.ends MZI4
+
+MZI4   ebeam_gc_te1550_detector2 ebeam_gc_te1550_laser1 MZI4 sch_x=-1 sch_y=-1 
+
