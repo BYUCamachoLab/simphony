@@ -3,6 +3,6 @@ scipy
 
 # For the SiPANN library, the following packages are required:
 # SiPANN
-git+git://github.com/contagon/SiPANN.git
+git+git://github.com/contagon/SiPANN.git@master#egg=SiPANN
 numba
-ctypes
+# ctypes

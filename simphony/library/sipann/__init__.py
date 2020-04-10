@@ -14,7 +14,7 @@ This package contains the models for the SiPANN integration.
 import os
 from itertools import combinations_with_replacement as comb_w_r
 
-import ctypes
+# import ctypes
 from numba import njit
 from numba.extending import get_cython_function_address
 import numpy as np
