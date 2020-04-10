@@ -42,9 +42,9 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.graphviz',
     'sphinx.ext.ifconfig',
-    'matplotlib.sphinxext.plot_directive',
-    'IPython.sphinxext.ipython_console_highlighting',
-    'IPython.sphinxext.ipython_directive',
+    # 'matplotlib.sphinxext.plot_directive',
+    # 'IPython.sphinxext.ipython_console_highlighting',
+    # 'IPython.sphinxext.ipython_directive',
     'sphinx.ext.imgmath',
     # 'sphinx.ext.todo', #
     # 'sphinx.ext.mathjax', #
