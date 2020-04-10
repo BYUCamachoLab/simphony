@@ -2,6 +2,7 @@ numpy
 scipy
 
 # For the SiPANN library, the following packages are required:
-SiPANN
+# SiPANN
+git+git://github.com/contagon/SiPANN.git
 numba
 ctypes
