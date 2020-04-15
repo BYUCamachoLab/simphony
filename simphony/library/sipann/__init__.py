@@ -34,6 +34,20 @@ class sipann_wg_integral(Model):
 
     .. image:: /reference/images/ebeam_wg_integral_1550.png
         :alt: ebeam_wg_integral_1550.png
+
+    Parameters
+    ----------
+    length : float
+        The length of the waveguide in microns.
+    width : float
+        The width of the waveguide in microns.
+    thickness : float
+        The thickness of the waveguide in microns.
+    radius : float
+        The radius of the waveguide bends in microns.
+    dL : float
+        A length difference in microns, only used in monte carlo 
+        simulations to randomly vary length.
     """
     pins = ('n1', 'n2') #: The default pin names of the device
     freq_range = (187370000000000.0, 199862000000000.0) #: The valid frequency range for this model.
@@ -41,21 +55,6 @@ class sipann_wg_integral(Model):
     # TODO: Remove the delta_length part of this model; should be implemented
     # only in the simphony.simulation.MonteCarloSimulation part of the program
     def __init__(self, length, width=0.5, thickness=0.22, radius=5, dL=0.0):
-        """
-        Parameters
-        ----------
-        length : float
-            The length of the waveguide in microns.
-        width : float
-            The width of the waveguide in microns.
-        thickness : float
-            The thickness of the waveguide in microns.
-        radius : float
-            The radius of the waveguide bends in microns.
-        dL : float
-            A length difference in microns, only used in monte carlo 
-            simulations to randomly vary length.
-        """
         self.length = length
         self.width = width
         self.thickness = thickness
@@ -272,31 +271,24 @@ class sipann_dc_halfring(Model):
 
     # .. comment image:: /reference/images/ebeam_bdc_te1550.png
     #     :alt: ebeam_bdc_te1550.png
+
+    Parameters
+    ----------
+    width : float  
+        Width of the waveguide in microns.
+    thickness: float  
+        Thickness of the waveguide in microns.
+    gap : float  
+        Gap between the two waveguides
+    radius : float  
+        Radius of bent portions of waveguide
+    sw_angle : float  
+        Angle in degrees of sidewall of waveguide (between 80 and 90)
     """
     pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
     freq_range = (187370000000000.0, 199862000000000.0) #: The valid frequency range for this model.
 
     def __init__(self, width=0.5, thickness=0.22, gap=0.1, radius=10.0, sw_angle=90.0):
-        """Get the s-parameters of a parameterized waveguide.
-
-        Parameters
-        ----------
-        width : float  
-            Width of the waveguide in microns.
-        thickness: float  
-            Thickness of the waveguide in microns.
-        gap : float  
-            Gap between the two waveguides
-        radius : float  
-            Radius of bent portions of waveguide
-        sw_angle : float  
-            Angle in degrees of sidewall of waveguide (between 80 and 90)
-
-        Returns
-        -------
-        s : np.ndarray
-            Returns the calculated s-parameter matrix.
-        """
         #resize everything to nms
         self.width     = width*1000
         self.thickness = thickness*1000
@@ -305,9 +297,17 @@ class sipann_dc_halfring(Model):
 
     def s_parameters(self, freq):
         """
-        Notes
-        -----
-        start_wl and stop_wl are in nanometers.
+        Get the s-parameters of a parameterized half ring.
+
+        Parameters
+        ----------
+        freq : np.ndarray
+            A frequency array to calculate s-parameters over (in Hz).
+
+        Returns
+        -------
+        s : np.ndarray
+            Returns the calculated s-parameter matrix.
         """
         # FIXME: Note that we're returning just our own created frequency array
         # and hoping that it correlates correctly with the sparams, since its

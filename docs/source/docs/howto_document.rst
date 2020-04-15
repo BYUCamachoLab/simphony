@@ -54,3 +54,6 @@ You can add images to your inline documentation using rST syntax as long as
 the actual image resides in the docs/source directory. References 
 can be expressed as absolute paths with respect to the source directory 
 (see `Stack Overflow <https://stackoverflow.com/a/45739603/11530613>`_ for more details).
+
+In keeping with the numpydoc standard, class initialization parameters
+should be documented in the class docstring, not under ``__init__()``.

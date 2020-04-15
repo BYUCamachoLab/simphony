@@ -65,6 +65,11 @@ class SimulationResult:
     included subcircuits and elements while cascading all blocks into one final
     component representing the circuit as a whole.
 
+    Parameters
+    ----------
+    component : Component, optional
+        A component to initialize the data members of the object.
+
     Attributes
     ----------
     pins : simphony.netlist.PinList
@@ -77,14 +82,6 @@ class SimulationResult:
     _logger = _module_logger.getChild('SimulationResult')
 
     def __init__(self, pinlist=None):
-        """
-        Instantiates an object from a Component if provided; empty, if not.
-
-        Parameters
-        ----------
-        component : Component, optional
-            A component to initialize the data members of the object.
-        """
         self._pinlist = None
         self.pinlist = pinlist
 
@@ -151,27 +148,26 @@ class SweepSimulation(Simulation):
     """
     A swept simulation.
 
+    Parameters
+    ----------
+    circuit : Subcircuit
+        The circuit to be simulated.
+    start : float
+        The start wavelength (in meters) or frequency (in Hz).
+    stop : float
+        The stop wavelength (in meters) or frequency (in Hz).
+    num : int, optional
+        The number of sampled points.
+    mode : str, optional
+        Defines sweep range mode; either 'wl' for wavelength (m) or 
+        'freq' for frequency (Hz).
+
     Attributes
     ----------
     freq : np.ndarray
         The frequency array over which the simulation is performed.
     """
     def __init__(self, circuit: Subcircuit, start: float=1.5e-6, stop: float=1.6e-6, num: int=2000, mode='wl'):
-        """
-        Parameters
-        ----------
-        circuit : Subcircuit
-            The circuit to be simulated.
-        start : float
-            The start wavelength (in meters) or frequency (in Hz).
-        stop : float
-            The stop wavelength (in meters) or frequency (in Hz).
-        num : int, optional
-            The number of sampled points.
-        mode : str, optional
-            Defines sweep range mode; either 'wl' for wavelength (m) or 
-            'freq' for frequency (Hz).
-        """
         super().__init__(circuit)
         if start > stop:
             raise ValueError("simulation 'start' value must be less than 'stop' value.")
@@ -357,25 +353,24 @@ class SinglePortSweepSimulation(SweepSimulation):
 class MonteCarloSweepSimulation(SweepSimulation):
     """
     A sweeping monte carlo simulation.
+
+    Parameters
+    ----------
+    circuit : Subcircuit
+        The circuit to be simulated.
+    start : float
+        The start wavelength (in meters) or frequency (in Hz).
+    stop : float
+        The stop wavelength (in meters) or frequency (in Hz).
+    num : int
+        The number of sampled points.
+    mode : str
+        Defines sweep range mode; either 'wl' for wavelength (m) or 
+        'freq' for frequency (Hz).
+    runs : int
+        The number of monte carlo iterations to run.
     """
     def __init__(self, circuit: Subcircuit, start: float=1.5e-6, stop: float=1.6e-6, num: int=2000, mode='wl'):
-        """
-        Parameters
-        ----------
-        circuit : Subcircuit
-            The circuit to be simulated.
-        start : float
-            The start wavelength (in meters) or frequency (in Hz).
-        stop : float
-            The stop wavelength (in meters) or frequency (in Hz).
-        num : int
-            The number of sampled points.
-        mode : str
-            Defines sweep range mode; either 'wl' for wavelength (m) or 
-            'freq' for frequency (Hz).
-        runs : int
-            The number of monte carlo iterations to run.
-        """
         super().__init__(circuit, start, stop, num, mode)
         # self.original_circuit = circuit
         # self.circuit = copy.deepcopy(circuit)

@@ -84,25 +84,24 @@ class ebeam_wg_integral_1550(Model):
 
     .. image:: /reference/images/ebeam_wg_integral_1550.png
         :alt: ebeam_bdc_te1550.png
+
+    Parameters
+    ----------
+    length : float
+        Waveguide length in meters.
+    lam0 : float
+        Central wavelength for calculation.
+    ne : float
+        Effective index.
+    ng : float
+        Group velocity.
+    nd : float
+        Group dispersion.
     """
     pins = ('n1', 'n2',) #: The default pin names of the device
     freq_range = (187370000000000.0, 199862000000000.0) #: The valid frequency range for this model.
 
     def __init__(self, length, lam0=1.55e-06, ne=2.44553, ng=4.19088, nd=0.000354275):
-        """
-        Parameters
-        ----------
-        length : float
-            Waveguide length in meters.
-        lam0 : float
-            Central wavelength for calculation.
-        ne : float
-            Effective index.
-        ng : float
-            Group velocity.
-        nd : float
-            Group dispersion.
-        """
         self.length = length
         self.lam0 = lam0
         self.ne = ne

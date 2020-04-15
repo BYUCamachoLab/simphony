@@ -28,20 +28,17 @@ class Pin:
 
     Note that these are not the pins defined in Models, but are created from
     the names defined there.
+
+    Parameters
+    ----------
+    pinlist : simphony.elements.PinList
+        The `PinList` this pin resides in.
+    name : str
+        The name of the pin.
     """
     _logger = _module_logger.getChild('Pin')
     
     def __init__(self, pinlist, name):
-        """
-        Creates a new pin.
-
-        Parameters
-        ----------
-        pinlist : simphony.elements.PinList
-            The `PinList` this pin resides in.
-        name : str
-            The name of the pin.
-        """
         self.pinlist = pinlist
         self.name = name
 
@@ -70,6 +67,15 @@ class PinList:
 
     `PinList` maintains unique `Pin` names within its list. Pins can also be 
     accessed by index instead of name.
+
+    Parameters
+    ----------
+    element : simphony.elements.Element
+        The element this PinList defines the pins for.
+    pins : str or Pin
+        Number of unnamed arguments is not limited; each corresponds to a
+        new `Pin` in the `PinList`. If str, Pin is created. If Pin, its
+        `pinlist` attribute is updated to point to this `PinList`.
 
     Attributes
     ----------
@@ -102,16 +108,6 @@ class PinList:
     _logger = _module_logger.getChild('PinList')
 
     def __init__(self, element, *pins):
-        """
-        Parameters
-        ----------
-        element : simphony.elements.Element
-            The element this PinList defines the pins for.
-        pins : str or Pin
-            Number of unnamed arguments is not limited; each corresponds to a
-            new `Pin` in the `PinList`. If str, Pin is created. If Pin, its
-            `pinlist` attribute is updated to point to this `PinList`.
-        """
         self.element = element
         self.pins = []
 
@@ -266,6 +262,11 @@ class Element:
     Unites a `Model` with a `PinList` to allow unique instances to be 
     instantiated within a `Subcircuit`.
 
+    Parameters
+    ----------
+    model : simphony.elements.Model
+        The model this element represents.
+
     Attributes
     ----------
     name : str
@@ -417,6 +418,11 @@ class Subcircuit:
     """
     This implements a subcircuit that can be constructed and reused throughout
     the circuit.
+
+    Parameters
+    ----------
+    name : str
+        A name for identifying the subcircuit.
 
     Attributes
     ----------

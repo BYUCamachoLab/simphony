@@ -1,6 +1,6 @@
 .. _sipann-documentation:
 
-SiPANN model mibrary
+SiPANN model library
 --------------------
 
 .. automodule:: simphony.library.sipann
