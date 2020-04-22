@@ -45,25 +45,32 @@ class sipann_wg_integral(Model):
         The thickness of the waveguide in microns.
     radius : float
         The radius of the waveguide bends in microns.
-    dL : float
-        A length difference in microns, only used in monte carlo 
-        simulations to randomly vary length.
     """
     pins = ('n1', 'n2') #: The default pin names of the device
     freq_range = (187370000000000.0, 199862000000000.0) #: The valid frequency range for this model.
 
-    # TODO: Remove the delta_length part of this model; should be implemented
-    # only in the simphony.simulation.MonteCarloSimulation part of the program
-    def __init__(self, length, width=0.5, thickness=0.22, radius=5, dL=0.0):
+    def __init__(self, length, width=0.5, thickness=0.22, radius=5, 
+        sigma_length=0.0, sigma_width=0.005, sigma_thickness=0.002):
         self.length = length
         self.width = width
         self.thickness = thickness
         self.radius = radius
-        self.dL = dL
+        self.sigma_length = sigma_length
+        self.sigma_width = sigma_width
+        self.sigma_thickness = sigma_thickness
+        self.regenerate_monte_carlo_parameters()
 
     def s_parameters(self, freq):
-        s = self.ann_s_params(freq, self.length, self.width, self.thickness, self.dL)
+        s = self.ann_s_params(freq, self.length, self.width, self.thickness)
         return s
+
+    def monte_carlo_s_parameters(self, freq, *args, **kwargs):
+        return self.ann_s_params(freq, self.rand_length, self.rand_width, self.rand_thickness)
+
+    def regenerate_monte_carlo_parameters(self):
+        self.rand_width = np.random.normal(self.width, self.sigma_width)
+        self.rand_thickness = np.random.normal(self.thickness, self.sigma_thickness)
+        self.rand_length = np.random.normal(self.length, self.sigma_length)
 
     @staticmethod
     def cartesian_product(arrays):
@@ -118,7 +125,7 @@ class sipann_wg_integral(Model):
         return polyCombos@coeffs
 
     @staticmethod
-    def ann_s_params(frequency, length, width, thickness, delta_length):
+    def ann_s_params(frequency, length, width, thickness):
         '''
         Function that calculates the s-parameters for a waveguide using the ANN model
 
@@ -128,7 +135,6 @@ class sipann_wg_integral(Model):
         length : float
         width : float
         thickness : float
-        delta_length : float
 
         Returns
         -------
@@ -143,7 +149,7 @@ class sipann_wg_integral(Model):
         mode = 0 #TE
         TE_loss = 700 #dB/m for width 500nm
         alpha = TE_loss/(20*np.log10(np.exp(1))) #assuming lossless waveguide
-        waveguideLength = length + (length * delta_length)
+        waveguideLength = length
 
         #calculate wavelength
         wl = np.true_divide(c0,frequency)

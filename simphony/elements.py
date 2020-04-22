@@ -71,15 +71,6 @@ class Model:
     pins = None #: The default pin names of the device
     freq_range = (None, None) #: The frequency range this model is valid over.
 
-    def monte_carlo_s_parameters(self, *args, **kwargs):
-        """Implements the monte carlo routine for the given Element.
-
-        It (permanently, for the life of the object) modifies parameters 
-        within the object used to calculate the scattering parameters.
-        If not defined by the implementing class, this function does nothing.
-        """
-        pass
-
     def s_parameters(self, freq):
         """
         Returns scattering parameters for the element with its given 
@@ -106,6 +97,53 @@ class Model:
             Raised if the subclassing element doesn't implement this function.
         """
         raise NotImplementedError
+
+    def monte_carlo_s_parameters(self, freq):
+        """
+        Implements the monte carlo routine for the given Model.
+
+        If no monte carlo routine is defined, ideal s-parameters for the given
+        frequency range are returned.
+
+        Parameters
+        ----------
+        freq : np.ndarray
+            The frequency range to generate monte carlo s-parameters over.
+
+        Returns
+        -------
+        s : np.ndarray
+            The scattering parameters corresponding to the frequency range.
+            Its shape should be:
+                (the number of frequency points x ports x ports)
+            If the scattering parameters are requested for only a single 
+            frequency, for example, and the device has 4 ports, the shape
+            returned by `monte_carlo_s_parameters` would be (1, 4, 4).
+        """
+        return self.s_parameters(freq)
+    
+    def regenerate_monte_carlo_parameters(self):
+        """
+        Regenerates parameters used to generate monte carlo s-matrices.
+
+        If a monte carlo method is not implemented for a given model, this
+        method does nothing. However, it can optionally be implemented so that
+        parameters are regenerated once per circuit simulation. This ensures
+        correlation between all components of the same type that reference 
+        this model in a circuit. For example, the effective index of a 
+        waveguide should not be different for each waveguide in a small 
+        circuit; they will be more or less consistent within a single small
+        circuit.
+
+        The MonteCarloSweepSimulation calls this function once per run over
+        the circuit.
+
+        Notes
+        -----
+        This function should not accept any parameters, but may act on instance
+        or class attributes.
+        """
+        pass
 
 class PModel(Model):
     """

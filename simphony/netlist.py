@@ -35,6 +35,12 @@ class Pin:
         The `PinList` this pin resides in.
     name : str
         The name of the pin.
+
+    Notes
+    -----
+    A Pin can only exist in one PinList at a time. Moving a Pin into another
+    PinList will result in the automatic and silent change of the `pinlist`
+    reference.
     """
     _logger = _module_logger.getChild('Pin')
     
@@ -92,7 +98,9 @@ class PinList:
     Warning
     -------
     Adding two PinLists together will change the pinlist reference of the pins
-    they contain to point to the new result.
+    they contain to point to the new result. This is because Pins can only 
+    be referenced by one PinList at a time. Inserting them into a new PinList
+    automatically and silently changes their references.
 
     Examples
     --------
@@ -116,9 +124,14 @@ class PinList:
 
     def __getitem__(self, item):
         if type(item) is str:
+            ret = None
             for pin in self.pins:
                 if pin.name == item:
-                    return pin
+                    if ret is None:
+                        ret = pin 
+                    else:
+                        raise LookupError("Name '{}' is ambiguous; multiple pins with that name exist!".format(item))
+            return ret
         elif type(item) is int:
             return self.pins[item]
         elif type(item) is Pin:
@@ -192,16 +205,18 @@ class PinList:
         if self.contains(pin): raise ValueError("name '{}' is not unique in PinList")
         self.pins.append(pin)
 
-    def remove(self, pin):
+    def remove(self, *pins):
         """
         Removes a pin from the pinlist by name or value.
 
         Parameters
         ----------
-        pin : str or Pin
-            Removes the pin from the pinlist.
+        pins : str or Pin
+            Variable length argument list; the pins to be removed from the 
+            circuit.
         """
-        self.pins.remove(self[pin])
+        for pin in pins:
+            self.pins.remove(self[pin])
 
     def pop(self, idx=-1):
         """
@@ -278,6 +293,13 @@ class Element:
     pins : simphony.netlist.PinList
         A PinList, generated automatically from the model, with pins renameable
         after instantiation.
+
+    Notes
+    -----
+    Deep copying doesn't have the full effect on this object. Since models are
+    supposed to be universal throughout a simulation (thereby reducing cache
+    and comparison time), when this object is deep copied, the `model` 
+    attribute remains as a reference to the same former model object. 
     """
     # FIXME: Do we want `name` to be read-only/
 
@@ -285,6 +307,17 @@ class Element:
         self.model = model
         self.name = name if name else self._generate_name()
         self.pinlist = PinList(self, *model.pins)
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            if k == 'model':
+                setattr(result, k, v)
+            else:
+                setattr(result, k, copy.deepcopy(v, memo))
+        return result
 
     def __repr__(self):
         return "<Element '{}' at {}>".format(self.name, hex(id(self)))

@@ -9,6 +9,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 from simphony.library import ebeam
@@ -18,7 +19,7 @@ from simphony.simulation import SweepSimulation, MonteCarloSweepSimulation
 # Declare the models used in the circuit
 gc = ebeam.ebeam_gc_te1550()
 y = ebeam.ebeam_y_1550()
-wg150 = ebeam.ebeam_wg_integral_1550(length=150e-6) # can optionally include ne=10.1, ng=1.3
+wg150 = ebeam.ebeam_wg_integral_1550(length=150e-6)
 wg50 = ebeam.ebeam_wg_integral_1550(length=50e-6)
 
 # Create the circuit, add all individual instances
@@ -61,13 +62,24 @@ circuit.connect_many([
 simulation = SweepSimulation(circuit, 1500e-9, 1600e-9)
 result = simulation.simulate()
 
-import matplotlib.pyplot as plt
-f, s = result.data(result.pinlist['input'], result.pinlist['output'])
+f, s = result.data('input', 'output')
 plt.plot(f*1e9, s)
 plt.title("MZI")
 plt.tight_layout()
 plt.show()
 
-simulation = MonteCarloSweepSimulation(circuit, 1500e-9, 1600e-9)
-result = simulation.simulate(runs=10)
 
+# We can run a monte carlo simulation on the circuit, too
+simulation = MonteCarloSweepSimulation(circuit, 1500e-9, 1600e-9)
+runs = 10
+result = simulation.simulate(runs=runs)
+for i in range(1, runs + 1):
+    f, s = result.data('input', 'output', i)
+    plt.plot(f*1e9, s)
+
+# The data located at the 0 position is the ideal values.
+f, s = result.data('input', 'output', 0)
+plt.plot(f*1e9, s, 'k')
+plt.title("MZI Monte Carlo")
+plt.tight_layout()
+plt.show()

@@ -16,7 +16,7 @@ import logging
 import uuid
 
 import numpy as np
-from scipy.constants import c
+from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import interp1d
 
 from simphony.connect import connect_s, innerconnect_s
@@ -39,7 +39,7 @@ def freq2wl(freq):
     wl : float
         The wavelength in SI units (m).
     """
-    return c/freq
+    return SPEED_OF_LIGHT/freq
 
 def wl2freq(wl):
     """Convenience function for converting from wavelength to frequency.
@@ -54,7 +54,24 @@ def wl2freq(wl):
     freq : float
         The frequency in SI units (Hz).
     """
-    return c/wl
+    return SPEED_OF_LIGHT/wl
+
+class ScatteringMatrix:
+    def __init__(self, freq=None, s=None, pinlist=None):
+        self.freq = freq
+        self.s = s
+        self._pinlist = None
+        self.pinlist = pinlist
+
+    @property
+    def pinlist(self):
+        return self._pinlist
+
+    @pinlist.setter
+    def pinlist(self, pinlist):
+        if pinlist:
+            pinlist.element = self
+            self._pinlist = pinlist
 
 class SimulationResult:
     """
@@ -74,10 +91,6 @@ class SimulationResult:
     ----------
     pins : simphony.netlist.PinList
         An ordered tuple of the nodes of the component.
-    f : np.array
-        A numpy array of the frequency values in its simulation.
-    s : np.array
-        A numpy array of the s-parameter matrix for the given frequency range.
     """
     _logger = _module_logger.getChild('SimulationResult')
 
@@ -98,36 +111,68 @@ class SimulationResult:
             assert self.pinlist.element == self
 
 class SweepSimulationResult(SimulationResult):
-    def __init__(self, freq=None, s=None, pins=None):
-        super().__init__(pins)
+    """
+    A simulation result for a swept simulation.
+
+    Parameters
+    ----------
+    freq : np.array
+        A numpy array of the frequency values in its simulation.
+    smat : simphony.simulation.ScatteringMatrix
+        A numpy array of the s-parameter matrix for the given frequency range.
+    """
+    def __init__(self, freq, smat):
+        super().__init__(smat.pinlist)
         self.f = freq
-        self.s = s
+        self.s = smat.s
 
     def data(self, inp, outp, dB=False):
         """
         Parameters
         ----------
-        inp : Pin
+        inp : str or Pin
             Input pin.
-        outp : Pin
+        outp : str or Pin
             Output pin.
         """
         freq = self.f
-        s = abs(self.s[:, outp.index, inp.index])**2
+        s = abs(self.s[:, self.pinlist[outp].index, self.pinlist[inp].index])**2
         if dB:
             s = np.log10(s)
         return freq, s
 
 class MonteCarloSimulationResult(SimulationResult):
-    def __init__(self, freq, s, pins, runs):
-        super().__init__(pins)
+    """
+    Parameters
+    ----------
+    freq : np.ndarray
+    smat : simphony.simulation.ScatteringMatrix
+    runs : int
+    """
+    def __init__(self, freq, smat, runs):
+        super().__init__(smat.pinlist)
         self.f = freq
-        self.ideal = s
+        self.results = [smat]
         self.runs = runs
-        self.results = []
 
     def add_result(self, result):
         self.results.append(result)
+
+    def data(self, inp, outp, run, dB=False):
+        """
+        Parameters
+        ----------
+        inp : str or Pin
+            Input pin.
+        outp : str or Pin
+            Output pin.
+        """
+        res = self.results[run]
+        freq = self.f
+        s = abs(res.s[:, self.pinlist[outp].index, self.pinlist[inp].index])**2
+        if dB:
+            s = np.log10(s)
+        return freq, s
 
 class Simulation:
     """
@@ -185,12 +230,14 @@ class SweepSimulation(Simulation):
             raise ValueError('starting frequency cannot be greater than stopping frequency')
         self.freq = np.linspace(start, stop, num)
 
-    @staticmethod
-    def _cache_elements(collection, freq):
-        cache = {}
-        for model in collection:
-            cache[model] = model.s_parameters(freq)
-        return cache
+    def simulate(self):
+        models = self._collect_models(self.circuit)
+        self.validate_models(models, self.freq)
+        cache = self._cache_elements(models, self.freq)
+
+        smat = self._simulate_helper(self.circuit, cache)
+        sim = SweepSimulationResult(self.freq, smat)
+        return sim
 
     @staticmethod
     def _collect_models(circuit: Subcircuit, collection: set = set()):
@@ -257,18 +304,15 @@ class SweepSimulation(Simulation):
             if lower > freq[0] or upper < freq[-1]:
                 raise ValueError('Simulation frequencies ({} - {}) out of valid bounds for "{}"'.format(freq[0], freq[-1], type(model).__name__))
 
-    def simulate(self):
-        self.models = SweepSimulation._collect_models(self.circuit)
-        SweepSimulation.validate_models(self.models, self.freq)
-        self.cache = SweepSimulation._cache_elements(self.models, self.freq)
-
-        sim = SweepSimulation._simulate_helper(self.circuit, self.cache)
-        sim = SweepSimulationResult(self.freq, sim.s, sim.pinlist)
-        return sim
+    @staticmethod
+    def _cache_elements(collection, freq):
+        cache = {}
+        for model in collection:
+            cache[model] = model.s_parameters(freq)
+        return cache
 
     @staticmethod
     def _simulate_helper(circuit: Subcircuit, cache: dict):
-        elements = {}
         netlist = circuit.netlist
 
         # For every item in the circuit
@@ -276,11 +320,11 @@ class SweepSimulation(Simulation):
 
             # If it's an Element type, simulate it.
             if issubclass(type(item), Element):
-                elements[item.name] = SweepSimulation._create_simulated_result(item, netlist, cache)
+                SweepSimulation._create_simulated_result(item, cache)
             
             # If it's a subcircuit, recursively call this function.
             elif type(item) is Subcircuit:
-                elements[item.name] = SweepSimulation._simulate_helper(item, cache)
+                SweepSimulation._simulate_helper(item, cache)
             
             # If it's something else--
             # well, ya got trouble, right here in River City.
@@ -289,17 +333,17 @@ class SweepSimulation(Simulation):
                 raise TypeError(err)
 
         # Connect all the elements together and return a super element.
-        built = SweepSimulation.connect_circuit(elements, netlist) 
+        built = SweepSimulation.connect_circuit(netlist) 
         return built
 
     @staticmethod
-    def _create_simulated_result(element, netlist, cache: dict):
+    def _create_simulated_result(element, cache: dict):
         s = cache[element.model]
-        sim = SweepSimulationResult(s=s, pins=element.pins)
+        sim = ScatteringMatrix(s=s, pinlist=element.pins)
         return sim
 
     @staticmethod
-    def connect_circuit(elements, netlist) -> SimulationResult:
+    def connect_circuit(netlist):
         """
         Connects the s-matrices of a photonic circuit given its Netlist
         and returns a single 'SimulatedComponent' object containing the frequency
@@ -315,10 +359,19 @@ class SweepSimulation(Simulation):
 
         Returns
         -------
-        SimulatedComponent
+        combined : ScatteringMatrix
             After the circuit has been fully connected, the result is a single 
             ComponentSimulation with fields f (frequency), s (s-matrix), and nets 
             (external ports: negative numbers, as strings).
+
+        Notes
+        -----
+        This function doesn't actually store `combined` on each iteration 
+        through the netlist. That's because the Pin objects can only reference
+        one PinList at a time, which in turn can only reference one Element.
+        Since we transferring the actual Pin objects between lists, keeping
+        a reference to the Pin also keeps a reference to the `combined` 
+        Element alive. Hence, we track pins but not the `SimulationResult`.
         """
         _logger = _module_logger.getChild('SweepSimulation.connect_circuit')
 
@@ -328,19 +381,17 @@ class SweepSimulation(Simulation):
             p1, p2 = net
             if p1.element == p2.element:
                 _logger.debug('Internal connection')
-                combined = SimulationResult()
+                combined = ScatteringMatrix()
                 combined.s = innerconnect_s(p1.element.s, p1.index, p2.index)
                 pinlist = p1.pinlist
-                pinlist.remove(p1)
-                pinlist.remove(p2)
+                pinlist.remove(p1, p2)
                 combined.pinlist = pinlist
             else:
                 _logger.debug('External connection')
-                combined = SimulationResult()
+                combined = ScatteringMatrix()
                 combined.s = connect_s(p1.element.s, p1.index, p2.element.s, p2.index)
                 pinlist = p1.pinlist + p2.pinlist
-                pinlist.remove(p1)
-                pinlist.remove(p2)
+                pinlist.remove(p1, p2)
                 combined.pinlist = pinlist
         return combined
 
@@ -352,7 +403,7 @@ class SinglePortSweepSimulation(SweepSimulation):
 
 class MonteCarloSweepSimulation(SweepSimulation):
     """
-    A sweeping monte carlo simulation.
+    A monte carlo sweep simulation.
 
     Parameters
     ----------
@@ -367,109 +418,38 @@ class MonteCarloSweepSimulation(SweepSimulation):
     mode : str
         Defines sweep range mode; either 'wl' for wavelength (m) or 
         'freq' for frequency (Hz).
-    runs : int
-        The number of monte carlo iterations to run.
     """
     def __init__(self, circuit: Subcircuit, start: float=1.5e-6, stop: float=1.6e-6, num: int=2000, mode='wl'):
         super().__init__(circuit, start, stop, num, mode)
-        # self.original_circuit = circuit
-        # self.circuit = copy.deepcopy(circuit)
 
     def simulate(self, runs=10):
+        """
+        Parameters
+        ----------
+        runs : int, optional
+            The number of monte carlo iterations to run (default 10).
+        """
         models = SweepSimulation._collect_models(self.circuit)
         SweepSimulation.validate_models(models, self.freq)
         cache = SweepSimulation._cache_elements(models, self.freq)
 
-        sim = self._simulate_helper(copy.deepcopy(self.circuit), cache)
-        sim = MonteCarloSimulationResult(self.freq, sim.s, sim.pinlist, runs)
+        smat = self._simulate_helper(copy.deepcopy(self.circuit), cache)
+        sim = MonteCarloSimulationResult(self.freq, smat, runs)
 
-        ideal_cache = cache
         for run in range(runs):
-            self.cache = self.tweak_monte_carlo_parameters(ideal_cache)
-            sim.add_result(self._simulate_helper(copy.deepcopy(self.circuit)))
+            for model in models:
+                model.regenerate_monte_carlo_parameters()
+            cache = self._cache_elements_monte_carlo(models, self.freq)
+            sim.add_result(self._simulate_helper(copy.deepcopy(self.circuit), cache))
 
-        self.cache = ideal_cache
         return sim
 
-    def tweak_monte_carlo_parameters(self, cache):
-        for model in cache.keys():
-            cache[model] = model.monte_carlo_s_parameters()
+    @staticmethod
+    def _cache_elements_monte_carlo(collection, freq):
+        cache = {}
+        for model in collection:
+            cache[model] = model.monte_carlo_s_parameters(freq)
         return cache
-        
-#     """A simulator that models manufacturing variability by altering the
-#     width, thickness, and length of waveguides instantiated from a 
-#     `ebeam_wg_integral_1550` from the default DeviceLibrary.
-#     """
-#     def __init__(self, netlist: Netlist, start_freq: float=1.88e+14, stop_freq: float=1.99e+14, num: int=2000):
-#         """Initializes the MonteCarloSimulation with a Netlist and runs a 
-#         single simulation for the "ideal," pre-modified model.
-
-#         Parameters
-#         ----------
-#         netlist : Netlist
-#             The netlist to be simulated.
-#         start_freq : float
-#             The starting (lower) value for the frequency range to be analyzed.
-#         stop_freq : float
-#             The ending (upper) value for the frequency range to be analyzed.
-#         num : int
-#             The number of points to be used between start_freq and stop_freq.
-#         """
-#         super().__init__(netlist, start_freq=start_freq, stop_freq=stop_freq, num=num)
-
-#     def monte_carlo_sim(self, num_sims: int=10, 
-#         mu_width: float=0.5, sigma_width: float=0.005, 
-#         mu_thickness: float=0.22, sigma_thickness: float=0.002, 
-#         mu_length: float=1.0, sigma_length: float=0):
-#         """Runs a Monte Carlo simulation on the netlist and stores the results
-#         in an attribute called `results`.
-
-#         Parameters
-#         ----------
-#         num_sims : int, optional
-#             The number of varied simulations to perform.
-#         mu_width : float, optional
-#             The mean width to use for the waveguide.
-#         sigma_width : float, optional
-#             The standard deviation to use for altering the waveguide width.
-#         mu_thickness : float, optional
-#             The mean thickness to use for the waveguide.
-#         sigma_thickness : float, optional
-#             The standard deviation to use for altering the waveguide thickness.
-#         mu_length : float, optional
-#             The mean length of the waveguide (as a decimal of the actual 
-#             length, i.e. 50% -> 0.5).
-#         sigma_length : float, optional
-#             The standard deviation to use for altering the waveguide length.
-
-#         Returns
-#         -------
-#         time : int
-#             The amount of time it took, in seconds, to complete the simulation.
-#         """
-#         start = time.time()
-
-#         # Randomly generate variation in the waveguides.
-#         random_width = np.random.normal(mu_width, sigma_width, num_sims)
-#         random_thickness = np.random.normal(mu_thickness, sigma_thickness, num_sims)
-#         random_deltaLength = np.random.normal(mu_length, sigma_length, num_sims)
-
-#         # Create an array for holding the results
-#         results_shape = np.append(np.asarray([num_sims]), self.s_parameters().shape)
-#         self.results = np.zeros([dim for dim in results_shape], dtype='complex128')
-
-#         # Run simulations with varied width and thickness
-#         for sim in range(num_sims):
-#             modified_netlist = copy.deepcopy(self.netlist)
-#             for component in modified_netlist.components:
-#                 if component.model.component_type == "ann_wg_integral":
-#                     component.extras['width'] = random_width[sim]
-#                     component.extras['thickness'] = random_thickness[sim]
-#                     # TODO: Implement length monte carlo using random_deltaLength[sim]
-#             self.results[sim, :, :, :] = Simulation(modified_netlist, self.start_freq, self.stop_freq, self.num).s_parameters()
-            
-#         stop = time.time()
-#         return (stop - start)
 
 
 class MultiInputSweepSimulation(SweepSimulation):
@@ -531,12 +511,3 @@ class MultiInputSweepSimulation(SweepSimulation):
 #         frequency, matrix: np.array, np.ndarray
 #         """
 #         return self.freq_array, self.simulated_matrix
-
-
-# class MonteCarloSimulation(Simulation):
-
-                
-
-    
-# class MultiInputSimulation(Simulation):
-

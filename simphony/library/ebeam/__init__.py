@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+from scipy.constants import c as SPEED_OF_LIGHT
 
 from simphony.elements import Model, interpolate
 from simphony.simulation import freq2wl, wl2freq
@@ -89,24 +90,39 @@ class ebeam_wg_integral_1550(Model):
     ----------
     length : float
         Waveguide length in meters.
-    lam0 : float
-        Central wavelength for calculation.
-    ne : float
-        Effective index.
-    ng : float
-        Group velocity.
-    nd : float
-        Group dispersion.
+    lam0 : float, optional
+        Central wavelength for calculation in meters (default 1.55 microns).
+    ne : float, optional
+        Effective index (default 2.44553).
+    ng : float, optional
+        Group velocity (default 4.19088).
+    nd : float, optional
+        Group dispersion (default 3.54275e-04).
+    sigma_ne : float, optional
+        Standard deviation of the effective index (default 0.05).
+    sigma_ng : float, optional
+        Standard deviation of the group velocity (default 0.05).
+    sigma_nd : float, optional
+        Standard deviation of the group dispersion (default 0.0001).
+
+    Notes
+    -----
+    The `sigma_` values in the parameters are used for monte carlo simulations.
     """
     pins = ('n1', 'n2',) #: The default pin names of the device
     freq_range = (187370000000000.0, 199862000000000.0) #: The valid frequency range for this model.
 
-    def __init__(self, length, lam0=1.55e-06, ne=2.44553, ng=4.19088, nd=0.000354275):
+    def __init__(self, length, lam0=1.55e-06, ne=2.44553, ng=4.19088, nd=0.000354275,
+        sigma_ne=0.05, sigma_ng=0.05, sigma_nd=0.0001):
         self.length = length
         self.lam0 = lam0
         self.ne = ne
         self.ng = ng
         self.nd = nd
+        self.sigma_ne = sigma_ne
+        self.sigma_ng = sigma_ng
+        self.sigma_nd = sigma_nd
+        self.regenerate_monte_carlo_parameters()
     
     def s_parameters(self, freq):
         """Get the s-parameters of a waveguide.
@@ -126,35 +142,44 @@ class ebeam_wg_integral_1550(Model):
             Returns a tuple containing the frequency array, `frequency`, 
             corresponding to the calculated s-parameter matrix, `s`.
         """
-        frequency = freq
+        return self.cacl_s_params(freq, self.length, self.lam0, self.ne, self.ng, self.nd)
 
+    def monte_carlo_s_parameters(self, freq):
+        """
+        Returns a monte carlo (randomized) set of s-parameters.
+
+        In this implementation of the monte carlo routine, random values are
+        generated for ne, ng, and nd for each run through of the monte carlo
+        simulation. This means that all waveguide elements throughout a single 
+        circuit will have the same (random) ne, ng, and nd values. Hence, there
+        is correlated randomness in the monte carlo parameters but they are 
+        consistent within a single circuit.
+        """
+        return self.cacl_s_params(freq, self.length, self.lam0, self.rand_ne, self.rand_ng, self.rand_nd)
+
+    def regenerate_monte_carlo_parameters(self):
+        self.rand_ne = np.random.normal(self.ne, self.sigma_ne)
+        self.rand_ng = np.random.normal(self.ng, self.sigma_ng)
+        self.rand_nd = np.random.normal(self.nd, self.sigma_nd)
+
+    @staticmethod
+    def cacl_s_params(frequency, length, lam0, ne, ng, nd):
         # Initialize array to hold s-params
-        mat = np.zeros((len(frequency),2,2), dtype=complex) 
-        
-        c0 = 299792458 #m/s
+        s = np.zeros((len(frequency),2,2), dtype=complex) 
 
         # Loss calculation
         TE_loss = 700 #dB/m for width 500nm
         alpha = TE_loss/(20*np.log10(np.exp(1)))  
 
         w = np.asarray(frequency) * 2 * np.pi #get angular frequency from frequency
-        lam0 = self.lam0
-        w0 = (2*np.pi*c0) / lam0 #center frequency (angular)
-        
-        ne = self.ne
-        ng = self.ng
-        nd = self.nd
-
-        length = self.length
+        w0 = (2*np.pi*SPEED_OF_LIGHT) / lam0 #center frequency (angular)
 
         #calculation of K
-        K = 2*np.pi*ne/lam0 + (ng/c0)*(w - w0) - (nd*lam0**2/(4*np.pi*c0))*((w - w0)**2)
+        K = 2*np.pi*ne/lam0 + (ng/SPEED_OF_LIGHT)*(w - w0) - (nd*lam0**2/(4*np.pi*SPEED_OF_LIGHT))*((w - w0)**2)
         
         for x in range(0, len(frequency)): #build s-matrix from K and waveguide length
-            mat[x,0,1] = mat[x,1,0] = np.exp(-alpha*length + (K[x]*length*1j))
+            s[x,0,1] = s[x,1,0] = np.exp(-alpha*length + (K[x]*length*1j))
         
-        s = mat
-        # return (frequency, s)
         return s
 
 
