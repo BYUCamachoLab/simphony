@@ -1,3 +1,8 @@
+import os
+
+import numpy as np
+
+
 def _read_s_parameters():
     """Returns the s-parameters across some frequency range for the ebeam_y_1550 model
     in the form [frequency, s-parameters].
@@ -8,7 +13,7 @@ def _read_s_parameters():
         The number of ports the photonic component has.
     """
     numports = 3
-    filename = os.path.join(os.path.dirname(os.path.realpath(__file__)), "sparams", "ebeam_y_1550", "Ybranch_Thickness =220 width=500.sparam")
+    filename = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Ybranch_Thickness =220 width=500.sparam")
     F = []
     S = []
     with open(filename, "r") as fid:
@@ -35,3 +40,6 @@ def _read_s_parameters():
                     if(n == numports):
                         break
     return (F, S)
+
+if __name__ == "__main__":
+    _read_s_parameters()
