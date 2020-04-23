@@ -1,5 +1,6 @@
 numpy
 scipy
+parsimonious>=0.8.1
 
 # For the SiPANN library, the following packages are required:
 # SiPANN
