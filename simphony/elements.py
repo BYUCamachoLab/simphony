@@ -54,8 +54,8 @@ class Model:
 
     Attributes
     ----------
-    nodes : tuple of str
-        A tuple of all the node names for the element.
+    pins : tuple of str
+        A tuple of all the default pin names of the device.
     freq_range : tuple of float
         A tuple of the valid frequency bounds for the element in the order
         (lower, upper). Can be made (-infty, infty) be setting to (None, None).
@@ -68,8 +68,8 @@ class Model:
     """
     _logger = _module_logger.getChild('Model')
 
-    pins = None #: The default pin names of the device
-    freq_range = (None, None) #: The frequency range this model is valid over.
+    pins = None
+    freq_range = (None, None)
 
     def s_parameters(self, freq):
         """
