@@ -110,6 +110,7 @@ install_requires = [
     'scipy>=1.2.1',
     'numpy',
     'numba',
+    'SiPANN',
 ]
 
 if 'setuptools' in sys.modules:
