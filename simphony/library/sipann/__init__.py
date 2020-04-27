@@ -108,8 +108,8 @@ class sipann_wg_integral(Model):
         degree = 4
         features = 4
         combos = []
-        for i in range(5):
-            combos += [k for k in comb_w_r(range(degree),i)]
+        for i in range(degree+1):
+            combos += [k for k in comb_w_r(range(features),i)]
 
         #make matrix of all combinations
         n = len(INPUT)
