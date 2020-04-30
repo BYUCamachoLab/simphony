@@ -63,7 +63,7 @@ simulation = SweepSimulation(circuit, 1500e-9, 1600e-9)
 result = simulation.simulate()
 
 f, s = result.data('input', 'output')
-plt.plot(f*1e9, s)
+plt.plot(f, s)
 plt.title("MZI")
 plt.tight_layout()
 plt.show()
@@ -75,11 +75,11 @@ runs = 10
 result = simulation.simulate(runs=runs)
 for i in range(1, runs + 1):
     f, s = result.data('input', 'output', i)
-    plt.plot(f*1e9, s)
+    plt.plot(f, s)
 
 # The data located at the 0 position is the ideal values.
 f, s = result.data('input', 'output', 0)
-plt.plot(f*1e9, s, 'k')
+plt.plot(f, s, 'k')
 plt.title("MZI Monte Carlo")
 plt.tight_layout()
 plt.show()

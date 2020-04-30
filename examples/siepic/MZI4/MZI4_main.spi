@@ -11,5 +11,5 @@
   + number_of_points=2000
   + input(1)=MZI4,ebeam_gc_te1550_detector2
   + output=MZI4,ebeam_gc_te1550_laser1
-.INCLUDE "/tmp/tmpplrx_2sz/MZI4.spi"
+.INCLUDE "./MZI4.spi"
 
