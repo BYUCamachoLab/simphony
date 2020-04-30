@@ -30,7 +30,7 @@ Python 2 (January 1, 2020), no future compatability is planned.
 
 ## Documentation
 
-You can read the docs [here](https://byucamacholab.github.io/simphony/docs/html/index.html).
+You can read the docs [here](https://simphonyphotonics.readthedocs.io/en/latest/).
 
 Documentation is built on Sphinx. They can be built using the default files by 
 navigating to the docs directory and running:
