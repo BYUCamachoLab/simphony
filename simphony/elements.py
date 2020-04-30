@@ -15,31 +15,7 @@ import copy
 import logging
 import uuid
 
-from scipy.interpolate import interp1d
-
 _module_logger = logging.getLogger(__name__)
-
-
-def interpolate(resampled, sampled, s_parameters):
-    """Returns the result of a cubic interpolation for a given frequency range.
-
-    Parameters
-    ----------
-    output_freq : np.array
-        The desired frequency range for a given input to be interpolated to.
-    input_freq : np.array
-        A frequency array, indexed matching the given s_parameters.
-    s_parameters : np.array
-        S-parameters for each frequency given in input_freq.
-
-    Returns
-    -------
-    result : np.array
-        The values of the interpolated function (fitted to the input 
-        s-parameters) evaluated at the `output_freq` frequencies.
-    """
-    func = interp1d(sampled, s_parameters, kind='cubic', axis=0)
-    return func(resampled)
 
 
 class Model:
@@ -145,24 +121,24 @@ class Model:
         """
         pass
 
-class PModel(Model):
-    """
-    Parameterized Elements have scattering parameters that are calculated on
-    the fly, usually based on instance attributes.
-    """
-    pass
+# class PModel(Model):
+#     """
+#     Parameterized Elements have scattering parameters that are calculated on
+#     the fly, usually based on instance attributes.
+#     """
+#     pass
 
-class SModel(Model):
-    """
-    Static Elements have pre-simulated scattering parameters, often loaded 
-    from a file and independent of instance attributes.
-    """
-    pass
+# class SModel(Model):
+#     """
+#     Static Elements have pre-simulated scattering parameters, often loaded 
+#     from a file and independent of instance attributes.
+#     """
+#     pass
 
-class EModel(Model):
-    """
-    Extended models are those that are made up of other models. For instance,
-    a subcircuit can be converted into a model and its monte carlo methods
-    are preserved.
-    """
-    pass
+# class EModel(Model):
+#     """
+#     Extended models are those that are made up of other models. For instance,
+#     a subcircuit can be converted into a model and its monte carlo methods
+#     are preserved.
+#     """
+#     pass

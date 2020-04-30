@@ -15,7 +15,8 @@ import numpy as np
 
 from simphony.library import ebeam, sipann
 from simphony.netlist import Subcircuit
-from simphony.simulation import SweepSimulation, freq2wl
+from simphony.simulation import SweepSimulation
+from simphony.tools import freq2wl
 
 # Have a main data line where frequency multiplexed data enters the circuit.
 wg_data = ebeam.ebeam_wg_integral_1550(100e-6)
