@@ -1,0 +1,17 @@
+switchtolayout;
+deleteall;
+importnetlist('/tmp/tmpz6njr_pt/top_main.spi');
+addproperty("::Root Element::top", "MC_uniformity_thickness", "wafer", "Matrix");
+addproperty("::Root Element::top", "MC_uniformity_width", "wafer", "Matrix");
+addproperty("::Root Element::top", "MC_grid", "wafer", "Number");
+addproperty("::Root Element::top", "MC_resolution_x", "wafer", "Number");
+addproperty("::Root Element::top", "MC_resolution_y", "wafer", "Number");
+addproperty("::Root Element::top", "MC_non_uniform", "wafer", "Number");
+select("::Root Element::top");
+set("run setup script",2);
+save('/tmp/tmpz6njr_pt/top.icp');
+run;
+t1 = getresult("ONA_1", "input 1/mode 1/gain");
+t2 = getresult("ONA_1", "input 2/mode 1/gain");
+t3 = getresult("ONA_1", "input 3/mode 1/gain");
+visualize(t1, t2, t3);

@@ -6,7 +6,6 @@
 
 import pytest
 
-from .context import simphony
 import simphony.library.ebeam as ebeam
 
 class TestNodes:
