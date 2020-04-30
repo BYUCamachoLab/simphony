@@ -18,20 +18,6 @@ import sys
 
 import setuptools
 
-# verstr = "unknown"
-# try:
-#     verstrline = open('simphony/_version.py', "rt").read()
-# except EnvironmentError:
-#     # No version file.
-#     raise RuntimeError("Unable to find version in simphony/_version.py")
-# else:
-#     VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
-#     mo = re.search(VSRE, verstrline, re.M)
-#     if mo:
-#         verstr = mo.group(1)
-#     else:
-#         raise RuntimeError("unable to find version in simphony/_version.py")
-
 #==============================================================================
 # Constants
 #==============================================================================
@@ -60,11 +46,11 @@ def package_data_files(directory):
                 paths.append(os.path.join('..', path, filename))
     return paths
 
-extra_files += package_data_files('simphony/DeviceLibrary')
+extra_files += package_data_files('simphony/library')
 extra_files += ['*.ini']
 
 #==============================================================================
-# Use Readme for long description
+# Use README for long description
 #==============================================================================
 with io.open('README.md', encoding='utf-8') as f:
     LONG_DESCRIPTION = f.read()
@@ -109,6 +95,8 @@ setup_args = dict(
 install_requires = [
     'scipy>=1.2.1',
     'numpy',
+    'parsimonious>=0.8.1',
+    'SiPANN',
     'numba',
 ]
 

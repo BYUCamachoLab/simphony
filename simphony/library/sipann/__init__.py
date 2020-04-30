@@ -21,8 +21,8 @@ import numpy as np
 from scipy import special
 from SiPANN import dc
 
-from simphony.elements import Model, interpolate
-from simphony.simulation import freq2wl, wl2freq
+from simphony.elements import Model
+from simphony.tools import freq2wl, wl2freq, interpolate
 
 
 class sipann_wg_integral(Model):

@@ -16,45 +16,14 @@ import logging
 import uuid
 
 import numpy as np
-from scipy.constants import c as SPEED_OF_LIGHT
-from scipy.interpolate import interp1d
 
 from simphony.connect import connect_s, innerconnect_s
 from simphony.elements import Model
 from simphony.netlist import Subcircuit, ElementList, Element, PinList
+from simphony.tools import wl2freq
 
 _module_logger = logging.getLogger(__name__)
 
-
-def freq2wl(freq):
-    """Convenience function for converting from frequency to wavelength.
-
-    Parameters
-    ----------
-    freq : float
-        The frequency in SI units (Hz).
-
-    Returns
-    -------
-    wl : float
-        The wavelength in SI units (m).
-    """
-    return SPEED_OF_LIGHT/freq
-
-def wl2freq(wl):
-    """Convenience function for converting from wavelength to frequency.
-
-    Parameters
-    ----------
-    wl : float
-        The wavelength in SI units (m).
-
-    Returns
-    -------
-    freq : float
-        The frequency in SI units (Hz).
-    """
-    return SPEED_OF_LIGHT/wl
 
 class ScatteringMatrix:
     def __init__(self, freq=None, s=None, pinlist=None):

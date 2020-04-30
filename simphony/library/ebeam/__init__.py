@@ -3,8 +3,8 @@ import os
 import numpy as np
 from scipy.constants import c as SPEED_OF_LIGHT
 
-from simphony.elements import Model, interpolate
-from simphony.simulation import freq2wl, wl2freq
+from simphony.elements import Model
+from simphony.tools import freq2wl, wl2freq, interpolate
 
 
 class ebeam_bdc_te1550(Model):
@@ -192,6 +192,27 @@ class ebeam_y_1550(Model):
     """
     pins = ('n1', 'n2', 'n3') #: The default pin names of the device
     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_y_1550.npz'))
+    s_params = (loaded['f'], loaded['s'])
+    freq_range = (s_params[0][0], s_params[0][-1]) #: The valid frequency range for this model.
+
+    def s_parameters(self, freq):
+        return interpolate(freq, self.s_params[0], self.s_params[1])
+
+class ebeam_dc_te1550(Model):
+    """
+    A directional coupler optimized for TE polarized light at 1550 nanometers.
+
+    The directional coupler has 4 ports, labeled as pictured. Its efficiently
+    splits light that is input from one port into the two outputs on the opposite
+    side (with a corresponding pi/2 phase shift). Additionally, it efficiently 
+    interferes lights from two adjacent inputs, efficiently splitting the 
+    interfered signal between the two ports on the opposing side.
+
+    .. image:: /reference/images/ebeam_bdc_te1550.png
+        :alt: ebeam_bdc_te1550.png
+    """
+    pins = ('n1', 'n2', 'n3', 'n4')
+    loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_dc_te1550.npz'))
     s_params = (loaded['f'], loaded['s'])
     freq_range = (s_params[0][0], s_params[0][-1]) #: The valid frequency range for this model.
 

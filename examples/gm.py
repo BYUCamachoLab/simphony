@@ -14,7 +14,8 @@ import numpy as np
 
 from simphony.library import ebeam, sipann
 from simphony.netlist import Subcircuit
-from simphony.simulation import SweepSimulation, freq2wl, wl2freq
+from simphony.simulation import SweepSimulation
+from simphony.tools import freq2wl, wl2freq
 
 # We can rename the pins attribute on the class before we instantiate them;
 # then we don't have to rename the pins on each element individually later.

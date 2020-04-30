@@ -1,8 +1,5 @@
 numpy
 scipy
-
-# For the SiPANN library, the following packages are required:
-# SiPANN
-git+git://github.com/contagon/SiPANN.git@master#egg=SiPANN
+parsimonious>=0.8.1
+SiPANN
 numba
-# ctypes

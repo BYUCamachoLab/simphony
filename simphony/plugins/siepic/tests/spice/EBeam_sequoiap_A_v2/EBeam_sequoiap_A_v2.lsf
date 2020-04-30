@@ -1,0 +1,15 @@
+switchtolayout;
+deleteall;
+importnetlist('/tmp/tmpdpn0am81/EBeam_sequoiap_A_v2_main.spi');
+addproperty("::Root Element::EBeam_sequoiap_A_v2", "MC_uniformity_thickness", "wafer", "Matrix");
+addproperty("::Root Element::EBeam_sequoiap_A_v2", "MC_uniformity_width", "wafer", "Matrix");
+addproperty("::Root Element::EBeam_sequoiap_A_v2", "MC_grid", "wafer", "Number");
+addproperty("::Root Element::EBeam_sequoiap_A_v2", "MC_resolution_x", "wafer", "Number");
+addproperty("::Root Element::EBeam_sequoiap_A_v2", "MC_resolution_y", "wafer", "Number");
+addproperty("::Root Element::EBeam_sequoiap_A_v2", "MC_non_uniform", "wafer", "Number");
+select("::Root Element::EBeam_sequoiap_A_v2");
+set("run setup script",2);
+save('/tmp/tmpdpn0am81/EBeam_sequoiap_A_v2.icp');
+run;
+t1 = getresult("ONA_1", "input 1/mode 1/gain");
+visualize(t1);
