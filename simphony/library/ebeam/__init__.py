@@ -3,8 +3,8 @@ import os
 import numpy as np
 from scipy.constants import c as SPEED_OF_LIGHT
 
-from simphony.elements import Model, interpolate
-from simphony.simulation import freq2wl, wl2freq
+from simphony.elements import Model
+from simphony.tools import freq2wl, wl2freq, interpolate
 
 
 class ebeam_bdc_te1550(Model):

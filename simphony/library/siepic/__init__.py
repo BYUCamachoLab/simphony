@@ -86,22 +86,8 @@ import numpy as np
 from scipy.constants import c as SPEED_OF_LIGHT
 
 from simphony.library.siepic import parser
-from simphony.elements import Model, interpolate
-from simphony.simulation import freq2wl, wl2freq
-
-
-MATH_SUFFIXES = {
-    'f' : 1e-15,
-    'p' : 1e-12,
-    'n' : 1e-9,
-    'u' : 1e-6,
-    'm' : 1e-3,
-    'c' : 1e-2,
-    'k' : 1e3,
-    'M' : 1e6,
-    'G' : 1e9,
-    'T' : 1e12,
-}
+from simphony.elements import Model
+from simphony.tools import interpolate, freq2wl, wl2freq, str2float
 
 
 def closest(sorted_list, value):
@@ -178,51 +164,6 @@ def extract_args(strings, regex, args):
         if len(matches):
             argsets.append(dict(zip(args, matches[0])))
     return argsets
-
-
-def str2float(num):
-    """
-    Converts a number represented as a string to a float. Can include suffixes
-    (such as 'u' for micro, 'k' for kilo, etc.).
-
-    Parameters
-    ----------
-    num : str
-        A string representing a number, optionally with a suffix.
-    
-    Returns
-    -------
-    float
-        The string converted back to its floating point representation.
-
-    Raises
-    ------
-    ValueError
-        If the argument is malformed or the suffix is not recognized.
-
-    Examples
-    --------
-    >>> str2float('14.5c')
-    0.145
-    
-    Values without suffixes get converted to floats normally.
-
-    >>> str2float('2.53')
-    2.53
-
-    If an unrecognized suffix is present, a `ValueError` is raised.
-
-    >>> str2float('17.3o')
-    ValueError: Suffix 'o' in '17.3o' not recognized.
-    """
-    matches = re.findall(r'([-+]?[0-9]+(?:[.][0-9]+)?)([a-zA-Z]?)', num)
-    if len(matches) > 1:
-        raise ValueError("Argument '{}' is malformed".format(num))
-    split = matches[0]
-    try:
-        return float(split[0]) * (MATH_SUFFIXES[split[1]] if split[1] != '' else 1.0)
-    except KeyError as e:
-        raise ValueError("Suffix {} in '{}' not recognized.".format(str(e), num))
 
 
 def percent_diff(ideal, actual):
@@ -933,7 +874,7 @@ class ebeam_wg_integral_1550(siepic_ebeam_pdk_base):
     Parameters
     ----------
     length : float
-        Waveguide length in meters.
+        Waveguide length in meters (default 0.0 meters).
     width : float, optional
         Waveguide width in meters (default 500 nanometers).
     height : float, optional
@@ -968,7 +909,7 @@ class ebeam_wg_integral_1550(siepic_ebeam_pdk_base):
         r'(?:\.txt)'
     )
 
-    def __init__(self, length, width=500e-9, height=220e-9, polarization='TE', 
+    def __init__(self, length=0.0, width=500e-9, height=220e-9, polarization='TE', 
                  sigma_ne=0.05, sigma_ng=0.05, sigma_nd=0.0001):
         if polarization not in ['TE', 'TM']:
             raise ValueError("Unknown polarization value '{}', must be one of 'TE' or 'TM'".format(polarization))
