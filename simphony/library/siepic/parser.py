@@ -4,6 +4,8 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
+# FIXME: No need for multiple files to all claim the simphony.library.siepic 
+# header.
 """
 simphony.library.siepic
 =======================
@@ -42,10 +44,7 @@ sparam_grammar = Grammar(
     lbrack      = "["
     rbrack      = "]"
     comma       = ","
-    ws          = ~"\s*"
-
-    # word        = ~r"[-\w]+"
-    # emptyline   = ws+
+    ws          = ~r"\s*"
     """
 )
 
