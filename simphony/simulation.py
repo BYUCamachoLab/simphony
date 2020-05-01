@@ -87,7 +87,7 @@ class SweepSimulationResult(SimulationResult):
     ----------
     freq : np.array
         A numpy array of the frequency values in its simulation.
-    smat : simphony.simulation.ScatteringMatrix
+    smat : ScatteringMatrix
         A numpy array of the s-parameter matrix for the given frequency range.
     """
     def __init__(self, freq, smat):

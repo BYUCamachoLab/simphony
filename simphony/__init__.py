@@ -1,5 +1,13 @@
 # -*- coding: utf-8 -*-
 """
+simphony
+========
+
+A Simulator for Photonic circuits
+
+License
+-------
+
 MIT License
 
 Copyright (c) 2019- Simphony Project Contributors and others (see AUTHORS.txt)

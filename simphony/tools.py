@@ -122,9 +122,9 @@ def interpolate(resampled, sampled, s_parameters):
 
     Parameters
     ----------
-    output_freq : np.array
+    output_freq : np.ndarray
         The desired frequency range for a given input to be interpolated to.
-    input_freq : np.array
+    input_freq : np.ndarray
         A frequency array, indexed matching the given s_parameters.
     s_parameters : np.array
         S-parameters for each frequency given in input_freq.
