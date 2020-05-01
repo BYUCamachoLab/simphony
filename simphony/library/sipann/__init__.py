@@ -17,9 +17,10 @@ from itertools import combinations_with_replacement as comb_w_r
 # import ctypes
 from numba import njit
 from numba.extending import get_cython_function_address
+import ctypes
 import numpy as np
 from scipy import special
-from SiPANN import dc
+from SiPANN import scee
 
 from simphony.elements import Model
 from simphony.tools import freq2wl, wl2freq, interpolate
@@ -107,8 +108,8 @@ class sipann_wg_integral(Model):
         degree = 4
         features = 4
         combos = []
-        for i in range(5):
-            combos += [k for k in comb_w_r(range(degree),i)]
+        for i in range(degree+1):
+            combos += [k for k in comb_w_r(range(features),i)]
 
         #make matrix of all combinations
         n = len(INPUT)
@@ -168,111 +169,110 @@ class sipann_wg_integral(Model):
         return s
 
 
-# class sipann_dc_straight(Model):
-#     """Regression Based Closed Form solution of a straight directional coupler
-#
-#     .. comment image:: /reference/images/ebeam_bdc_te1550.png
-#         :alt: ebeam_bdc_te1550.png
-#     """
-#     ports = 4
-#     cachable = False
+class sipann_scee_straight(Model):
+    """Regression Based Closed Form solution of parallel straight waveguides
 
-#     @classmethod
-#     def s_parameters(cls,
-#                     length: float=0,
-#                     width: float=0.5,
-#                     thickness: float=0.22,
-#                     gap: float=0.1,
-#                     sw_angle: float=90,
-#                     start_freq: float=1.88e+14,
-#                     stop_freq: float=1.99e+14,
-#                     num: int=2000):
-#         """Get the s-parameters of a parameterized waveguide.
-#         Parameters
-#         ----------
-#         length:     float  Length of the waveguide.
-#         width:      float  Width of the waveguide in microns.
-#         thickness:  float  Thickness of the waveguide in microns.
-#         gap:        float  Gap between the two waveguides
-#         sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90)
-#         start_freq: float  The starting frequency to obtain s-parameters for.
-#         stop_freq:  float  The ending frequency to obtain s-parameters for.
-#         num:        int    The number of points to use between start_freq and stop_freq.
-#         Returns
-#         -------
-#         (frequency, s) : tuple
-#             Returns a tuple containing the frequency array, `frequency`,
-#             corresponding to the calculated s-parameter matrix, `s`."""
-#         #resize everything to nms
-#         length    = length*1000
-#         width     = width*1000
-#         thickness = thickness*1000
-#         gap       = gap*1000
+    # .. comment image:: /reference/images/ebeam_bdc_te1550.png
+    #     :alt: ebeam_bdc_te1550.png
 
-#         #switch to wavelength
-#         c = 299792458
-#         start_wl = c * 10**9 / stop_freq
-#         stop_wl  = c * 10**9 / start_freq
-#         wl       = np.linspace(start_wl, stop_wl, num)
-#         item = dc.Straight(width, thickness, gap, length)
-#         return item.sparams(wl)
+    Parameters
+    ----------
+    width : float  
+        Width of the waveguide in microns.
+    thickness: float  
+        Thickness of the waveguide in microns.
+    gap : float
+        Distance between the two waveguides edge in microns.
+    length : float
+        Length of both waveguides in microns.
+    sw_angle : float, optional
+        Sidewall angle of waveguide from horizontal in degrees. Defaults to 90.
+    """
+    pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
+    freq_range = (182800279268292.0, 205337300000000.0) #: The valid frequency range for this model.
 
+    def __init__(self, width=0.5, thickness=0.22, gap=0.1, length=10.0, sw_angle=90.0):
+        #resize everything to nms
+        self.width     = width*1000
+        self.thickness = thickness*1000
+        self.gap       = gap*1000
+        self.length    = length*1000
+        self.sw_angle  = sw_angle
 
-# class sipann_dc_halfracetrack(Model):
-#     """Regression Based Closed Form solution of half a racetrack resonator
-#
-#     .. comment image:: /reference/images/ebeam_bdc_te1550.png
-#         :alt: ebeam_bdc_te1550.png
-#     """
-#     ports = 4
-#     cachable = False
+    def s_parameters(self, freq):
+        """
+        Get the s-parameters of parameterized parallel waveguides.
 
-#     @classmethod
-#     def s_parameters(cls,
-#                     length: float=0,
-#                     width: float=0.5,
-#                     thickness: float=0.22,
-#                     gap: float=0.1,
-#                     radius: float=10,
-#                     sw_angle: float=90,
-#                     start_freq: float=1.88e+14,
-#                     stop_freq: float=1.99e+14,
-#                     num: int=2000):
-#         """Get the s-parameters of a parameterized waveguide.
-#         Parameters
-#         ----------
-#         length:     float  Length of the waveguide.
-#         width:      float  Width of the waveguide in microns.
-#         thickness:  float  Thickness of the waveguide in microns.
-#         gap:        float  Gap between the two waveguides
-#         radius:     float  Radius of bent portions of waveguide
-#         sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90)
-#         start_freq: float  The starting frequency to obtain s-parameters for.
-#         stop_freq:  float  The ending frequency to obtain s-parameters for.
-#         num:        int    The number of points to use between start_freq and stop_freq.
-#         Returns
-#         -------
-#         (frequency, s) : tuple
-#             Returns a tuple containing the frequency array, `frequency`,
-#             corresponding to the calculated s-parameter matrix, `s`."""
-#         #resize everything to nms
-#         length    = length*1000
-#         width     = width*1000
-#         thickness = thickness*1000
-#         gap       = gap*1000
-#         radius    = radius*1000
+        Parameters
+        ----------
+        freq : np.ndarray
+            A frequency array to calculate s-parameters over (in Hz).
 
-#         #switch to wavelength
-#         c = 299792458
-#         start_wl = c * 10**9 / stop_freq
-#         stop_wl  = c * 10**9 / start_freq
-#         wl       = np.linspace(start_wl, stop_wl, num)
+        Returns
+        -------
+        s : np.ndarray
+            Returns the calculated s-parameter matrix.
+        """
+        wl = freq2wl(freq) * 1e9
 
-#         item = dc.Racetrack(width, thickness, radius, gap, length)
-#         return item.sparams(wl)
+        item = scee.StraightCoupler(width=self.width, thickness=self.thickness, gap=self.gap, length=self.length, sw_angle=self.sw_angle)
+        return item.sparams(wl)
 
 
-class sipann_dc_halfring(Model):
+class sipann_scee_halfracetrack(Model):
+    """Regression Based Closed Form solution of half of a racetrack ring resonator
+
+    # .. comment image:: /reference/images/ebeam_bdc_te1550.png
+    #     :alt: ebeam_bdc_te1550.png
+
+    Parameters
+    ----------
+    width : float  
+        Width of the waveguide in microns.
+    thickness: float  
+        Thickness of the waveguide in microns.
+    radius : float
+        Distance from center of ring to middle of waveguide in microns.
+    gap : float
+        Minimum distance from ring waveguide edge to straight waveguide edge in microns.
+    length : float
+        Length of straight portion of ring waveguide in microns.
+    sw_angle : float, optional
+        Sidewall angle of waveguide from horizontal in degrees. Defaults to 90.
+    """
+    pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
+    freq_range = (182800279268292.0, 205337300000000.0) #: The valid frequency range for this model.
+
+    def __init__(self, width=0.5, thickness=0.22, gap=0.1, radius=10.0, length=2.5, sw_angle=90.0):
+        #resize everything to nms
+        self.width     = width*1000
+        self.thickness = thickness*1000
+        self.gap       = gap*1000
+        self.radius    = radius*1000
+        self.length    = length*1000
+        self.sw_angle  = sw_angle
+
+    def s_parameters(self, freq):
+        """
+        Get the s-parameters of a parameterized half racetrack ring.
+
+        Parameters
+        ----------
+        freq : np.ndarray
+            A frequency array to calculate s-parameters over (in Hz).
+
+        Returns
+        -------
+        s : np.ndarray
+            Returns the calculated s-parameter matrix.
+        """
+        wl = freq2wl(freq) * 1e9
+
+        item = scee.HalfRacetrack(width=self.width, thickness=self.thickness, radius=self.radius, gap=self.gap, length=self.length, sw_angle=self.sw_angle)
+        return item.sparams(wl)
+
+
+class sipann_scee_halfring(Model):
     """Regression Based Closed Form solution of half of a ring resonator
 
     # .. comment image:: /reference/images/ebeam_bdc_te1550.png
@@ -285,14 +285,14 @@ class sipann_dc_halfring(Model):
     thickness: float  
         Thickness of the waveguide in microns.
     gap : float  
-        Gap between the two waveguides
+        Gap between the two waveguides in microns.
     radius : float  
         Radius of bent portions of waveguide
     sw_angle : float  
         Angle in degrees of sidewall of waveguide (between 80 and 90)
     """
     pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
-    freq_range = (187370000000000.0, 199862000000000.0) #: The valid frequency range for this model.
+    freq_range = (182800279268292.0, 205337300000000.0) #: The valid frequency range for this model.
 
     def __init__(self, width=0.5, thickness=0.22, gap=0.1, radius=10.0, sw_angle=90.0):
         #resize everything to nms
@@ -300,6 +300,7 @@ class sipann_dc_halfring(Model):
         self.thickness = thickness*1000
         self.gap       = gap*1000
         self.radius    = radius*1000
+        self.sw_angle  = sw_angle
 
     def s_parameters(self, freq):
         """
@@ -315,321 +316,317 @@ class sipann_dc_halfring(Model):
         s : np.ndarray
             Returns the calculated s-parameter matrix.
         """
-        # FIXME: Note that we're returning just our own created frequency array
-        # and hoping that it correlates correctly with the sparams, since its
-        # argument is wavelength, not frequency.
         wl = freq2wl(freq) * 1e9
 
-        item = dc.RR(self.width, self.thickness, self.radius, self.gap)
-        f, s = item.sparams(wl[::-1])
-        return s
+        item = scee.HalfRing(width=self.width, thickness=self.thickness, radius=self.radius, gap=self.gap, sw_angle=self.sw_angle)
+        return item.sparams(wl)
 
 
+class sipann_scee_standard(Model):
+    """Regression Based Closed Form solution of a standard shaped directional coupler
 
-# class sipann_dc_standard(Model):
-#     """Regression Based Closed Form solution of a standard shaped directional coupler
-#
-#     .. comment image:: /reference/images/ebeam_bdc_te1550.png
-#         :alt: ebeam_bdc_te1550.png
-#     """
-#     ports = 4
-#     cachable = False
+    # .. comment image:: /reference/images/ebeam_bdc_te1550.png
+    #     :alt: ebeam_bdc_te1550.png
 
-#     @classmethod
-#     def s_parameters(cls,
-#                     width: float=0.5,
-#                     thickness: float=0.22,
-#                     gap: float=0.1,
-#                     length: float=10,
-#                     H: float=2,
-#                     V: float=7,
-#                     sw_angle: float=90,
-#                     start_freq: float=1.88e+14,
-#                     stop_freq: float=1.99e+14,
-#                     num: int=2000):
-#         """Get the s-parameters of a parameterized waveguide.
-#         Parameters
-#         ----------
-#         width:      float  Width of the waveguide in microns.
-#         thickness:  float  Thickness of the waveguide in microns.
-#         gap:        float  Gap between the two waveguides
-#         length:     float  Length of coupling region
-#         H:          float  Horizontal distance of s-bends on end
-#         V:          float  Vertical distance of s-bends on end
-#         sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90)
-#         start_freq: float  The starting frequency to obtain s-parameters for.
-#         stop_freq:  float  The ending frequency to obtain s-parameters for.
-#         num:        int    The number of points to use between start_freq and stop_freq.
-#         Returns
-#         -------
-#         (frequency, s) : tuple
-#             Returns a tuple containing the frequency array, `frequency`,
-#             corresponding to the calculated s-parameter matrix, `s`."""
-#         #resize everything to nms
-#         width     = width*1000
-#         thickness = thickness*1000
-#         gap       = gap*1000
-#         length    = length*1000
-#         H         = H*1000
-#         V         = V*1000
+    Parameters
+    ----------
+    width : float  
+        Width of the waveguide in microns.
+    thickness : float
+        Thickness of waveguide in microns
+    gap : float
+        Minimum distance between the two waveguides edge in microns.
+    length : float
+        Length of the straight portion of both waveguides in microns.
+    H : float
+        Horizontal distance between end of coupler until straight portion in microns.
+    H : float
+        Vertical distance between end of coupler until straight portion in microns.
+    sw_angle : float, optional
+        Sidewall angle of waveguide from horizontal in degrees. Defaults to 90.
+    """
+    pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
+    freq_range = (182800279268292.0, 205337300000000.0) #: The valid frequency range for this model.
 
+    def __init__(self, width=0.5, thickness=0.22, gap=0.1, length=5.0, H=2.0, V=2.0, sw_angle=90.0):
+        #resize everything to nms
+        self.width     = width*1000
+        self.thickness = thickness*1000
+        self.gap       = gap*1000
+        self.length    = length*1000
+        self.H         = H*1000
+        self.V         = V*1000
+        self.sw_angle  = sw_angle
 
-#         #switch to wavelength
-#         c = 299792458
-#         start_wl = c * 10**9 / stop_freq
-#         stop_wl  = c * 10**9 / start_freq
-#         wl       = np.linspace(start_wl, stop_wl, num)
+    def s_parameters(self, freq):
+        """
+        Get the s-parameters of a parameterized standard directional coupler.
 
-#         item = dc.Standard(width, thickness, gap, length, H, V)
-#         return item.sparams(wl)
+        Parameters
+        ----------
+        freq : np.ndarray
+            A frequency array to calculate s-parameters over (in Hz).
+
+        Returns
+        -------
+        s : np.ndarray
+            Returns the calculated s-parameter matrix.
+        """
+        wl = freq2wl(freq) * 1e9
+
+        item = scee.Standard(width=self.width, thickness=self.thickness, gap=self.gap, length=self.length, H=self.H, V=self.V, sw_angle=self.sw_angle)
+        return item.sparams(wl)
 
 
+class sipann_scee_doublehalfring(Model):
+    """Regression Based Closed Form solution of 2 coupling half rings
 
-# class sipann_dc_doublehalfring(Model):
-#     """Regression Based Closed Form solution of double half ring resonator
-#
-#     .. comment image:: /reference/images/ebeam_bdc_te1550.png
-#         :alt: ebeam_bdc_te1550.png
-#     """
-#     ports = 4
-#     cachable = False
+    # .. comment image:: /reference/images/ebeam_bdc_te1550.png
+    #     :alt: ebeam_bdc_te1550.png
 
-#     @classmethod
-#     def s_parameters(cls,
-#                     width: float=0.5,
-#                     thickness: float=0.22,
-#                     gap: float=0.1,
-#                     radius: float=10,
-#                     sw_angle: float=90,
-#                     start_freq: float=1.88e+14,
-#                     stop_freq: float=1.99e+14,
-#                     num: int=2000):
-#         """Get the s-parameters of a parameterized waveguide.
-#         Parameters
-#         ----------
-#         width:      float  Width of the waveguide in microns.
-#         thickness:  float  Thickness of the waveguide in microns.
-#         gap:        float  Minimum gap between the two waveguides
-#         radius:     float  Radius of halfrings (on both sides)
-#         sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90)
-#         start_freq: float  The starting frequency to obtain s-parameters for.
-#         stop_freq:  float  The ending frequency to obtain s-parameters for.
-#         num:        int    The number of points to use between start_freq and stop_freq.
-#         Returns
-#         -------
-#         (frequency, s) : tuple
-#             Returns a tuple containing the frequency array, `frequency`,
-#             corresponding to the calculated s-parameter matrix, `s`."""
-#         #resize everything to nms
-#         width     = width*1000
-#         thickness = thickness*1000
-#         gap       = gap*1000
-#         radius    = radius*1000
+    Parameters
+    ----------
+    width : float  
+        Width of the waveguide in microns.
+    thickness: float  
+        Thickness of the waveguide in microns.
+    gap : float  
+        Gap between the two waveguides in microns.
+    gap : float
+            Minimum distance from ring waveguide edge to other ring waveguide edge in microns.
+    sw_angle : float, optional
+        Sidewall angle of waveguide from horizontal in degrees. Defaults to 90.
+    """
+    pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
+    freq_range = (182800279268292.0, 205337300000000.0) #: The valid frequency range for this model.
 
-#         #switch to wavelength
-#         c = 299792458
-#         start_wl = c * 10**9 / stop_freq
-#         stop_wl  = c * 10**9 / start_freq
-#         wl       = np.linspace(start_wl, stop_wl, num)
+    def __init__(self, width=0.5, thickness=0.22, gap=0.1, radius=10.0, sw_angle=90.0):
+        #resize everything to nms
+        self.width     = width*1000
+        self.thickness = thickness*1000
+        self.gap       = gap*1000
+        self.radius    = radius*1000
+        self.sw_angle  = sw_angle
 
-#         item = dc.DoubleRR(width, thickness, radius, gap)
-#         return item.sparams(wl)
+    def s_parameters(self, freq):
+        """
+        Get the s-parameters of parameterized 2 coupling half rings.
+
+        Parameters
+        ----------
+        freq : np.ndarray
+            A frequency array to calculate s-parameters over (in Hz).
+
+        Returns
+        -------
+        s : np.ndarray
+            Returns the calculated s-parameter matrix.
+        """
+        wl = freq2wl(freq) * 1e9
+
+        item = scee.DoubleHalfRing(width=self.width, thickness=self.thickness, radius=self.radius, gap=self.gap, sw_angle=self.sw_angle)
+        return item.sparams(wl)
 
 
+class sipann_scee_angledhalfring(Model):
+    """Regression Based Closed Form solution of half of a ring resonator pushed into a 
+    straight coupling waveguide.
 
-# class sipann_dc_angledhalfring(Model):
-#     """Regression Based Closed Form solution of an angled ring resonator
-#
-#     .. comment image:: /reference/images/ebeam_bdc_te1550.png
-#         :alt: ebeam_bdc_te1550.png
-#     """
-#     ports = 4
-#     cachable = False
+    # .. comment image:: /reference/images/ebeam_bdc_te1550.png
+    #     :alt: ebeam_bdc_te1550.png
 
-#     @classmethod
-#     def s_parameters(cls,
-#                     width: float=0.5,
-#                     thickness: float=0.22,
-#                     gap: float=0.1,
-#                     radius: float=10,
-#                     theta: float=np.pi/4,
-#                     sw_angle: float=90,
-#                     start_freq: float=1.88e+14,
-#                     stop_freq: float=1.99e+14,
-#                     num: int=2000):
-#         """Get the s-parameters of a parameterized waveguide.
-#         Parameters
-#         ----------
-#         width:      float  Width of the waveguide in microns.
-#         thickness:  float  Thickness of the waveguide in microns.
-#         gap:        float  Gap between the two waveguides
-#         radius:     float  Radius of bent portions of waveguide
-#         theta:      float  Angled distance where through waveguide is parallel to ring
-#         sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90)
-#         start_freq: float  The starting frequency to obtain s-parameters for.
-#         stop_freq:  float  The ending frequency to obtain s-parameters for.
-#         num:        int    The number of points to use between start_freq and stop_freq.
-#         Returns
-#         -------
-#         (frequency, s) : tuple
-#             Returns a tuple containing the frequency array, `frequency`,
-#             corresponding to the calculated s-parameter matrix, `s`."""
-#         #resize everything to nms
-#         width     = width*1000
-#         thickness = thickness*1000
-#         gap       = gap*1000
-#         radius    = radius*1000
-#         theta     = theta*1000
+    Parameters
+    ----------
+    width : float  
+        Width of the waveguide in microns.
+    thickness: float  
+        Thickness of the waveguide in microns.
+    gap : float  
+        Gap between the two waveguides in microns.
+    radius : float  
+        Radius of bent portions of waveguide
+    theta : float
+        Angle that the straight waveguide is curved in radians (???).
+    sw_angle : float  
+        Angle in degrees of sidewall of waveguide (between 80 and 90)
+    """
+    pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
+    freq_range = (182800279268292.0, 205337300000000.0) #: The valid frequency range for this model.
 
-#         #switch to wavelength
-#         c = 299792458
-#         start_wl = c * 10**9 / stop_freq
-#         stop_wl  = c * 10**9 / start_freq
-#         wl       = np.linspace(start_wl, stop_wl, num)
+    def __init__(self, width=0.5, thickness=0.22, gap=0.1, radius=10.0, theta=np.pi/4, sw_angle=90.0):
+        #resize everything to nms
+        self.width     = width*1000
+        self.thickness = thickness*1000
+        self.gap       = gap*1000
+        self.radius    = radius*1000
+        self.theta     = theta
+        self.sw_angle  = sw_angle
 
-#         item = dc.AngledRR(width, thickness, radius, gap, theta)
-#         return item.sparams(wl)
+    def s_parameters(self, freq):
+        """
+        Get the s-parameters of a parameterized angled half ring.
 
+        Parameters
+        ----------
+        freq : np.ndarray
+            A frequency array to calculate s-parameters over (in Hz).
 
-# class sipann_dc_arbitrarysym(Model):
-#     """Regression Based form of any directional coupler provided gap function
-#
-#     .. comment image:: /reference/images/ebeam_bdc_te1550.png
-#         :alt: ebeam_bdc_te1550.png
-#     """
-#     ports = 4
-#     cachable = False
+        Returns
+        -------
+        s : np.ndarray
+            Returns the calculated s-parameter matrix.
+        """
+        wl = freq2wl(freq) * 1e9
 
-#     @classmethod
-#     def s_parameters(cls,
-#                     gap: callable,
-#                     dgap: callable,
-#                     zmin: float,
-#                     zmax: float,
-#                     width: float=0.5,
-#                     thickness: float=0.22,
-#                     sw_angle: float=90,
-#                     start_freq: float=1.88e+14,
-#                     stop_freq: float=1.99e+14,
-#                     num: int=2000):
-#         """Get the s-parameters of a parameterized waveguide.
-#         Parameters
-#         ----------
-#         width:      float  Width of the waveguide in microns.
-#         thickness:  float  Thickness of the waveguide in microns.
-#         gap:        function  Gap between the two waveguides as a function of z (in nm for now)
-#         dgap:       function  Derivative of above gap function (in nm for now)
-#         zmin:       float  Beginning of dc in gap function (also in nm)
-#         zmax:       float  End of dc in gap function (also in nm)
-#         sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90)
-#         start_freq: float  The starting frequency to obtain s-parameters for.
-#         stop_freq:  float  The ending frequency to obtain s-parameters for.
-#         num:        int    The number of points to use between start_freq and stop_freq.
-#         Returns
-#         -------
-#         (frequency, s) : tuple
-#             Returns a tuple containing the frequency array, `frequency`,
-#             corresponding to the calculated s-parameter matrix, `s`."""
-#         #resize everything to nms
-#         width     = width*1000
-#         thickness = thickness*1000
-
-#         #switch to wavelength
-#         c = 299792458
-#         start_wl = c * 10**9 / stop_freq
-#         stop_wl  = c * 10**9 / start_freq
-#         wl       = np.linspace(start_wl, stop_wl, num)
-
-#         item = dc.GapFuncSymmetric(width, thickness, gap, dgap, zmin, zmax)
-#         return item.sparams(wl)
-
-# class sipann_dc_arbitraryantisym(Model):
-#     """Regression Based form of any directional coupler provided gap function
-#
-#     .. comment image:: /reference/images/ebeam_bdc_te1550.png
-#         :alt: ebeam_bdc_te1550.png
-#     """
-#     ports = 4
-#     cachable = False
-
-#     @classmethod
-#     def s_parameters(cls,
-#                     gap: callable,
-#                     zmin: float,
-#                     zmax: float,
-#                     arc_l: float,
-#                     arc_u: float,
-#                     width: float=0.5,
-#                     thickness: float=0.22,
-#                     sw_angle: float=90,
-#                     start_freq: float=1.88e+14,
-#                     stop_freq: float=1.99e+14,
-#                     num: int=2000):
-#         """Get the s-parameters of a parameterized waveguide.
-#         Parameters
-#         ----------
-#         width:      float  Width of the waveguide in microns.
-#         thickness:  float  Thickness of the waveguide in microns.
-#         gap:        function  Gap between the two waveguides as a function of z (in nm for now)
-#         zmin:       float  Beginning of dc in gap function (also in nm)
-#         zmax:       float  End of dc in gap function (also in nm)
-#         arc_l:      float  Arc length of lower waveguide
-#         arc_u:      float  Arc length of upper waveguide
-#         sw_angle    float  Angle in degrees of sidewall of waveguide (between 80 and 90)
-#         start_freq: float  The starting frequency to obtain s-parameters for.
-#         stop_freq:  float  The ending frequency to obtain s-parameters for.
-#         num:        int    The number of points to use between start_freq and stop_freq.
-#         Returns
-#         -------
-#         (frequency, s) : tuple
-#             Returns a tuple containing the frequency array, `frequency`,
-#             corresponding to the calculated s-parameter matrix, `s`."""
-#         #resize everything to nms
-#         width     = width*1000
-#         thickness = thickness*1000
-
-#         #switch to wavelength
-#         c = 299792458
-#         start_wl = c * 10**9 / stop_freq
-#         stop_wl  = c * 10**9 / start_freq
-#         wl       = np.linspace(start_wl, stop_wl, num)
-
-#         item = dc.GapFuncAntiSymmetric(width, thickness, gap, zmin, zmax, arc_l, arc_u)
-#         return item.sparams(wl)
+        item = scee.AngledHalfRing(width=self.width, thickness=self.thickness, radius=self.radius, gap=self.gap, theta=self.theta, sw_angle=self.sw_angle)
+        return item.sparams(wl)
 
 
-class sipann_dc_crossover1550(Model):
-    """Regression Based form of any directional coupler provided gap function
+class sipann_scee_arbitrary_antisym(Model):
+    """Regression Based Solution for arbitrarily shaped anti-symmetric coupler
+
+    # .. comment image:: /reference/images/ebeam_bdc_te1550.png
+    #     :alt: ebeam_bdc_te1550.png
+
+    Parameters
+    ----------
+    width : float  
+        Width of the waveguide in microns.
+    thickness: float  
+        Thickness of the waveguide in microns.
+    gap : function
+        Gap function as one progresses along the waveguide (nm)
+    zmin : float
+        Where to begin integration in the gap function (nm)
+    zmax : float
+        Where to end integration in the gap function (nm)
+    arc1, arc2, arc3, arc4 : float
+        Arclength from entrance of each port till minimum coupling point (nm)
+    sw_angle : float, optional
+        Sidewall angle of waveguide from horizontal in degrees. Defaults to 90.
+    """
+    pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
+    freq_range = (182800279268292.0, 205337300000000.0) #: The valid frequency range for this model.
+
+    def __init__(self, gap, zmin, zmax, arc1, arc2, arc3, arc4, width=0.5, thickness=0.22, sw_angle=90.0):
+        #resize everything to nms
+        self.width     = width*1000
+        self.thickness = thickness*1000
+        self.gap       = gap
+        self.zmin      = zmin
+        self.zmax      = zmax
+        self.arc1      = arc1
+        self.arc2      = arc2
+        self.arc3      = arc3
+        self.arc4      = arc4
+        self.sw_angle  = sw_angle
+
+    def s_parameters(self, freq):
+        """
+        Get the s-parameters of a parameterized arbitrarily shaped anti-symmetric coupler.
+
+        Parameters
+        ----------
+        freq : np.ndarray
+            A frequency array to calculate s-parameters over (in Hz).
+
+        Returns
+        -------
+        s : np.ndarray
+            Returns the calculated s-parameter matrix.
+        """
+        wl = freq2wl(freq) * 1e9
+
+        item = scee.GapFuncAntiSymmetric(width=self.width, thickness=self.thickness, gap=self.gap, zmin=self.zmin, zmax=self.zmax, arc1=self.arc1, arc2=self.arc2, arc3=self.arc3, arc4=self.arc4, sw_angle=self.sw_angle)
+        return item.sparams(wl)
+
+
+class sipann_scee_arbitrary_sym(Model):
+    """Regression Based Solution for arbitrarily shaped symmetric coupler
+
+    # .. comment image:: /reference/images/ebeam_bdc_te1550.png
+    #     :alt: ebeam_bdc_te1550.png
+
+    Parameters
+    ----------
+    width : float  
+        Width of the waveguide in microns.
+    thickness: float  
+        Thickness of the waveguide in microns.
+    gap : function
+        Gap function as one progresses along the waveguide (nm)
+    dgap : function
+        Derivative of the gap function (nm)
+    zmin : float
+        Where to begin integration in the gap function (nm)
+    zmax : float
+        Where to end integration in the gap function (nm)
+    sw_angle : float, optional
+        Sidewall angle of waveguide from horizontal in degrees. Defaults to 90.
+    """
+    pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
+    freq_range = (182800279268292.0, 205337300000000.0) #: The valid frequency range for this model.
+
+    def __init__(self, gap, dgap, zmin, zmax, width=0.5, thickness=0.22, sw_angle=90.0):
+        #resize everything to nms
+        self.width     = width*1000
+        self.thickness = thickness*1000
+        self.gap       = gap
+        self.dgap      = dgap
+        self.zmin      = zmin
+        self.zmax      = zmax
+        self.sw_angle  = sw_angle
+
+    def s_parameters(self, freq):
+        """
+        Get the s-parameters of a parameterized arbitrarily shaped symmetric coupler.
+
+        Parameters
+        ----------
+        freq : np.ndarray
+            A frequency array to calculate s-parameters over (in Hz).
+
+        Returns
+        -------
+        s : np.ndarray
+            Returns the calculated s-parameter matrix.
+        """
+        wl = freq2wl(freq) * 1e9
+
+        item = scee.GapFuncSymmetric(width=self.width, thickness=self.thickness, gap=self.gap, dgap=self.gap, zmin=self.zmin, zmax=self.zmax, sw_angle=self.sw_angle)
+        return item.sparams(wl)
+
+
+class sipann_scee_crossover1550(Model):
+    """Regression Based form of a crossover at lambda=1550nm
 
     Regression based form of a 100/0 directional coupler.
 
-    .. image:: /reference/images/sipann_dc_crossover1550.png
+    .. image:: /reference/images/sipann_scee_crossover1550.png
         :alt: ebeam_bdc_te1550.png
     """
     pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
-    loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_dc_crossover1550_s.npz'))
+    loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_scee_crossover1550_s.npz'))
     s_params = (loaded['f'], loaded['s'])
     freq_range = (s_params[0][0], s_params[0][-1]) #: The valid frequency range for this model.
 
     def s_parameters(self, freq):
         return interpolate(freq, self.s_params[0], self.s_params[1])
 
-    # @classmethod
-    # def s_parameters(cls,
-    #                 start_freq: float=1.88e+14,
-    #                 stop_freq: float=1.99e+14,
-    #                 num: int=2000):
-    #     """Get the s-parameters of a parameterized waveguide.
+    ############## Use the below function to manually run computation of crossover ################
+    ############## Can be used to expand range of sparams saved before as needed   ################
+    # def s_parameters(self, freq):
+    #     """Get the s-parameters of a parameterized 50/50 directional coupler.
     #     Parameters
     #     ----------
-    #     start_freq: float  The starting frequency to obtain s-parameters for.
-    #     stop_freq:  float  The ending frequency to obtain s-parameters for.
-    #     num:        int    The number of points to use between start_freq and stop_freq.
+    #     freq : np.ndarray
+    #         A frequency array to calculate s-parameters over (in Hz).
+
     #     Returns
     #     -------
-    #     (frequency, s) : tuple
-    #         Returns a tuple containing the frequency array, `frequency`,
-    #         corresponding to the calculated s-parameter matrix, `s`."""
+    #     s : np.ndarray
+    #         Returns the calculated s-parameter matrix.
+    #     """
     #     #load and make gap function
     #     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_crossover1550.npz'))
     #     x = loaded['GAP']
@@ -661,42 +658,37 @@ class sipann_dc_crossover1550(Model):
     #     thickness = 220
 
     #     #switch to wavelength
-    #     c = 299792458
-    #     start_wl = c * 10**9 / stop_freq
-    #     stop_wl  = c * 10**9 / start_freq
-    #     wl       = np.linspace(start_wl, stop_wl, num)
+    #     wl = freq2wl(freq) * 1e9
 
-    #     item = dc.GapFuncSymmetric(width, thickness, bez, dbez, 0, b)
+    #     item = scee.GapFuncSymmetric(width, thickness, bez, dbez, 0, b)
     #     return item.sparams(wl)
 
 
-class sipann_dc_fifty(Model):
-    """Regression Based form of any directional coupler provided gap function
+class sipann_scee_fifty(Model):
+    """Regression Based form of a 50/50 directional coupler at lambda=1550nm
     """
     pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
-    loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_dc_fifty_s.npz'))
+    loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_scee_fifty_s.npz'))
     s_params = (loaded['f'], loaded['s'])
     freq_range = (s_params[0][0], s_params[0][-1]) #: The valid frequency range for this model.
 
     def s_parameters(self, freq):
         return interpolate(freq, self.s_params[0], self.s_params[1])
-
-    # @classmethod
-    # def s_parameters(cls,
-    #                 start_freq: float=1.88e+14,
-    #                 stop_freq: float=1.99e+14,
-    #                 num: int=2000):
-    #     """Get the s-parameters of a parameterized waveguide.
+    
+    ############## Use the below function to manually run computation of 50/50   ################
+    ############## Can be used to expand range of sparams saved before as needed ################
+    # def s_parameters(self, freq):
+    #     """Get the s-parameters of a parameterized 50/50 directional coupler.
     #     Parameters
     #     ----------
-    #     start_freq: float  The starting frequency to obtain s-parameters for.
-    #     stop_freq:  float  The ending frequency to obtain s-parameters for.
-    #     num:        int    The number of points to use between start_freq and stop_freq.
+    #     freq : np.ndarray
+    #         A frequency array to calculate s-parameters over (in Hz).
+
     #     Returns
     #     -------
-    #     (frequency, s) : tuple
-    #         Returns a tuple containing the frequency array, `frequency`,
-    #         corresponding to the calculated s-parameter matrix, `s`."""
+    #     s : np.ndarray
+    #         Returns the calculated s-parameter matrix.
+    #     """
     #     #load and make gap function
     #     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'sipann_fifty.npz'))
     #     x = loaded['GAP']
@@ -728,10 +720,56 @@ class sipann_dc_fifty(Model):
     #     thickness = 220
 
     #     #switch to wavelength
-    #     c = 299792458
-    #     start_wl = c * 10**9 / stop_freq
-    #     stop_wl  = c * 10**9 / start_freq
-    #     wl       = np.linspace(start_wl, stop_wl, num)
+    #     wl = freq2wl(freq) * 1e9
 
-    #     item = dc.GapFuncSymmetric(width, thickness, bez, dbez, 0, b)
+    #     item = scee.GapFuncSymmetric(width, thickness, bez, dbez, 0, b)
     #     return item.sparams(wl)
+
+
+class sipann_scee_waveguide(Model):
+    """Lossless model for a straight waveguide. 
+    
+    Simple model that makes sparameters for a straight waveguide. May not be 
+    the best option, but plays nice with other models in SCEE. Ports are numbered as::
+
+        |  1 ----------- 2   |
+
+    Parameters
+    ----------
+    width : float
+        Width of the waveguide in microns
+    thickness : float
+        Thickness of waveguide in microns
+    length : float
+        Length of waveguide in microns.
+    sw_angle : float, optional
+        Sidewall angle of waveguide from horizontal in degrees. Defaults to 90.
+    """
+    pins = ('n1', 'n2') #: The default pin names of the device
+    freq_range = (182800279268292.0, 205337300000000.0) #: The valid frequency range for this model.
+
+    def __init__(self, width=0.5, thickness=0.22, length=10.0, sw_angle=90.0):
+        #resize everything to nms
+        self.width     = width*1000
+        self.thickness = thickness*1000
+        self.length    = length*1000
+        self.sw_angle  = sw_angle
+
+    def s_parameters(self, freq):
+        """
+        Get the s-parameters of a parameterized waveguide.
+
+        Parameters
+        ----------
+        freq : np.ndarray
+            A frequency array to calculate s-parameters over (in Hz).
+
+        Returns
+        -------
+        s : np.ndarray
+            Returns the calculated s-parameter matrix.
+        """
+        wl = freq2wl(freq) * 1e9
+
+        item = scee.Waveguide(width=self.width, thickness=self.thickness, length=self.length, sw_angle=self.sw_angle)
+        return item.sparams(wl)

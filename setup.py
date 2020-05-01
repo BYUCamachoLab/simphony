@@ -98,6 +98,7 @@ install_requires = [
     'parsimonious>=0.8.1',
     'SiPANN',
     'numba',
+    'SiPANN',
 ]
 
 if 'setuptools' in sys.modules:
