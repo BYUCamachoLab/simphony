@@ -70,26 +70,26 @@ setup_args = dict(
     url=__website_url__,
     license='MIT',
     keywords='photonics simulation circuits science',
-    platforms=["Linux"], #["Windows", "Linux", "Mac OS-X"] support coming
+    platforms=["Windows", "Linux"], #["Mac OS-X"] support coming
     packages=setuptools.find_packages(),
     package_data={
         '': extra_files,
     },
-    classifiers=['License :: OSI Approved :: MIT License',
-                #  'Operating System :: MacOS',
-                #  'Operating System :: Microsoft :: Windows',
-                 'Operating System :: POSIX :: Linux',
-                #  'Operating System :: OS Independent',
-                #  'Programming Language :: Python :: 3',
-                #  'Programming Language :: Python :: 3.4',
-                 'Programming Language :: Python :: 3.5',
-                 'Programming Language :: Python :: 3.6',
-                 'Programming Language :: Python :: 3.7',
-                 'Development Status :: 2 - Pre-Alpha',
-                 'Intended Audience :: Education',
-                 'Intended Audience :: Science/Research',
-                #  'Intended Audience :: Developers',
-                 'Topic :: Scientific/Engineering'],
+    classifiers=[
+        'License :: OSI Approved :: MIT License',
+        # 'Operating System :: MacOS',
+        'Operating System :: Microsoft :: Windows',
+        'Operating System :: POSIX :: Linux',
+        # 'Operating System :: OS Independent',
+        # 'Programming Language :: Python :: 3',
+        # 'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Development Status :: 2 - Pre-Alpha',
+        'Intended Audience :: Education',
+        'Intended Audience :: Science/Research',
+        'Topic :: Scientific/Engineering'],
 )
 
 install_requires = [
