@@ -61,8 +61,7 @@ class Model:
         -------
         s : np.ndarray
             The scattering parameters corresponding to the frequency range.
-            Its shape should be:
-                (the number of frequency point x ports x ports)
+            Its shape should be (the number of frequency points x ports x ports).
             If the scattering parameters are requested for only a single 
             frequency, for example, and the device has 4 ports, the shape
             returned by `s_parameters` would be (1, 4, 4).
@@ -90,8 +89,7 @@ class Model:
         -------
         s : np.ndarray
             The scattering parameters corresponding to the frequency range.
-            Its shape should be:
-                (the number of frequency points x ports x ports)
+            Its shape should be (the number of frequency points x ports x ports).
             If the scattering parameters are requested for only a single 
             frequency, for example, and the device has 4 ports, the shape
             returned by `monte_carlo_s_parameters` would be (1, 4, 4).

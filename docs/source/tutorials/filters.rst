@@ -1,7 +1,7 @@
 .. _example-filters:
 
-Example: Add-Drop Filters
-=========================
+Add-Drop Filters
+================
 
 .. literalinclude:: ../../../examples/filters.py
 

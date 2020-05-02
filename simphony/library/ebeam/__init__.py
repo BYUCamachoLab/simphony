@@ -17,7 +17,7 @@ class ebeam_bdc_te1550(Model):
     interferes lights from two adjacent inputs, efficiently splitting the 
     interfered signal between the two ports on the opposing side.
 
-    .. image:: /reference/images/ebeam_bdc_te1550.png
+    .. image:: /libraries/images/ebeam_bdc_te1550.png
         :alt: ebeam_bdc_te1550.png
     """
     pins = ('n1', 'n2', 'n3', 'n4') #: The default pin names of the device
@@ -45,7 +45,7 @@ class ebeam_gc_te1550(Model):
     above the chip into the circuit. For the TE mode, the angle is -25 degrees 
     [needs citation].
 
-    .. image:: /reference/images/ebeam_gc_te1550.png
+    .. image:: /libraries/images/ebeam_gc_te1550.png
         :alt: ebeam_bdc_te1550.png
     """
     pins = ('n1', 'n2',) #: The default pin names of the device
@@ -65,7 +65,7 @@ class ebeam_terminator_te1550(Model):
     where the light doesn't need to be measured but you don't want it reflecting
     back into the circuit, you can use a terminator to release it from the circuit.
 
-    .. image:: /reference/images/ebeam_terminator_te1550.png
+    .. image:: /libraries/images/ebeam_terminator_te1550.png
         :alt: ebeam_bdc_te1550.png
     """
     pins = ('n1',) #: The default pin names of the device
@@ -83,7 +83,7 @@ class ebeam_wg_integral_1550(Model):
 
     A waveguide easily connects other optical components within a circuit.
 
-    .. image:: /reference/images/ebeam_wg_integral_1550.png
+    .. image:: /libraries/images/ebeam_wg_integral_1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -187,7 +187,7 @@ class ebeam_y_1550(Model):
     """
     The y-branch efficiently splits the input between the two outputs.
 
-    .. image:: /reference/images/ebeam_y_1550.png
+    .. image:: /libraries/images/ebeam_y_1550.png
         :alt: ebeam_bdc_te1550.png
     """
     pins = ('n1', 'n2', 'n3') #: The default pin names of the device
@@ -208,7 +208,7 @@ class ebeam_dc_te1550(Model):
     interferes lights from two adjacent inputs, efficiently splitting the 
     interfered signal between the two ports on the opposing side.
 
-    .. image:: /reference/images/ebeam_bdc_te1550.png
+    .. image:: /libraries/images/ebeam_bdc_te1550.png
         :alt: ebeam_bdc_te1550.png
     """
     pins = ('n1', 'n2', 'n3', 'n4')

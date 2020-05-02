@@ -1,6 +1,6 @@
 .. _example-gm:
 
-Example: The Green Machine
-==========================
+The Green Machine
+=================
 
 .. literalinclude:: ../../../examples/gm.py
