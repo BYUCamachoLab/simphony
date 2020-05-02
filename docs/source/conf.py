@@ -239,7 +239,7 @@ html_sidebars = {
 # template names.
 #html_additional_pages = {}
 # html_additional_pages = {
-#     'index': 'indexcontent.html',
+#     'index': 'index.html',
 # } # NumPy setting
 
 # If false, no module index is generated.

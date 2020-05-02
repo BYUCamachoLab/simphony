@@ -1,11 +1,6 @@
 Simphony Documentation
 ======================
 
-.. toctree::
-   :hidden:
-
-   self
-
 .. image:: /images/simphony_logo.jpg
    :alt: Simphony (Image)
 
@@ -24,8 +19,8 @@ designing and simulating photonic integrated circuits with Python.
 - Included model libraries from SiEPIC and SiPANN.
 
 
-Download
---------
+Getting Started
+---------------
 
 The source repository is hosted on GitHub. Prepackaged wheels of stable 
 versions are in Releases, along with the release history. An additional 
@@ -33,18 +28,16 @@ Changelog is included in the repository.
 
 .. toctree::
    :hidden:
-   :caption: Setting Up
+   :caption: Getting Started
 
-   user/setting_up
-   user/quickstart
-   .. user/absolute_beginners
-   user/howtos_index
-   reference/index
-   .. user/explanations_index
+   about
+   user/whatissimphony
+   intro/siliconphotonics
+   intro/pics
 
 
-Installation
-------------
+Setting Up
+----------
 
 Simphony only supports Python 3. Installation is really easy.::
 
@@ -53,9 +46,60 @@ Simphony only supports Python 3. Installation is really easy.::
 If you wish to install outside of pip, you can find prebuilt wheels under
 GitHub Releases.
 
+.. toctree::
+   :hidden:
+   :caption: Setting Up
 
-Documentation
--------------
+   user/setting_up
+   user/quickstart
+   user/install
+   .. user/absolute_beginners
+   .. user/explanations_index
+
+
+Using Simphony
+--------------
+
+Learn the syntax and how to build useful circuits using our simple tutorials.
+
+* **Build simple circuits**:
+   :doc:`tutorials/mzi` | 
+   :doc:`tutorials/gm`
+
+* **Advanced circuits**:
+   :doc:`tutorials/gm`
+
+* **Using Simphony with SiEPIC**:
+   :doc:`tutorials/siepic`
+
+* **Useful design patterns**:
+   :doc:`howtos/factory_subcircuits`
+
+* **Use the preinstalled models**:
+   :doc:`libraries/ebeam` | 
+   :doc:`libraries/sipann`
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Using Simphony
+
+   tutorials/index
+   howtos/index
+   libraries/index
+
+
+Development
+-----------
+
+Simphony was developed by CamachoLab at Brigham Young University but also
+strives to be an open-source project that welcomes the efforts of volunteers. 
+If there is anything you feel can be improved, functionally or in our documentation,
+we welcome your feedback -- let us know what the problem is or open a pull
+request with a fix!
+
+More information about the development of Simphony can be found at our 
+`project webpage <https://camacholab.byu.edu/research/computational-photonics>`__.
 
 The documentation is hosted for free at https://simphonyphotonics.readthedocs.io/.
 The source for this documentation can be found in the master branch of the repository.
@@ -67,80 +111,27 @@ more detailed documentation of the referred object.
 
 Examples presented are prefixed with the Python prompt ``>>>``. 
 
-.. toctree::
-   :hidden:
-   :caption: Documentation
+* **Documenting The Simphony Project**:
+   :doc:`dev/docs/howto_document` | 
+   :doc:`dev/docs/howto_build_docs`
 
-   docs/howto_document
-   docs/howto_build_docs
+* **Contributing to Simphony**:
+   :doc:`dev/index` | 
+   :doc:`dev/style_guide`
 
-Tutorials
----------
-
-.. toctree::
-   :maxdepth: 2
-   :hidden:
-   :caption: Tutorials
-
-   tutorials/filters
-   tutorials/gm
-   tutorials/mzi
-
-
-Simphony How-To's
------------------
-
-These documents are intended as recipes for common tasks using Simphony. 
-For detailed reference documentation of the functions and classes 
-contained in the package, see the :ref:`API reference <reference>`.
-
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-   :caption: How To's
-
-   howtos/factory_subcircuits
-
-
-Simphony Community
-------------------
-
-Simphony was developed by CamachoLab at Brigham Young University but also
-strives to be an open-source project that welcomes the efforts of volunteers. 
-If there is anything you feel can be improved, functionally or in our documentation,
-we welcome your feedback -- let us know what the problem is or open a pull
-request with a fix!
-
-More information about the development of Simphony can be found at our 
-`project webpage <https://camacholab.byu.edu/research/computational-photonics>`__.
+* **Bugs and Feature Requests**:
+   :doc:`dev/bugs`
 
 .. toctree::
    :hidden:
-   :caption: Contribute
+   :caption: Development
 
+   dev/docs/howto_document
+   dev/docs/howto_build_docs
    dev/index
    dev/style_guide
    .. benchmarking
    .. release
-
-Bugs and Feature Requests
--------------------------
-
-File bug reports or feature requests, and make contributions
-(e.g. code patches), by opening a "new issue" on GitHub:
-
-- Simphony Issues: https://github.com/BYUCamachoLab/simphony/issues
-
-Please give as much information as you can in the ticket. It is extremely
-useful if you can supply a small self-contained code snippet that reproduces
-the problem. Also specify the component or module and the version you are 
-using.
-
-.. toctree::
-   :hidden:
-   :caption: Libraries
-
-   libraries/index
 
 
 Acknowledgements

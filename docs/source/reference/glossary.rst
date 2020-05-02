@@ -7,7 +7,7 @@ Glossary
 compound structure
     Any structure that cannot be broken down into smaller, simpler parts.
     A subcircuit is an example of a complex structure; it contains simpler
-    elements (or other compound structuresS) connected internally to form 
+    elements (or other compound structures) connected internally to form 
     the overall larger structure.
 
 decorator
