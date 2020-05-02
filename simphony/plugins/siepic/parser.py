@@ -353,7 +353,8 @@ def load_spi(path):
     """
     cwd = os.getcwd()
     path, filename = os.path.split(path)
-    os.chdir(path)
+    if path != "":
+        os.chdir(path)
     with open(filename, 'r') as f:
         tree = spi_grammar.parse(f.read())
     sv = SpiceVisitor()
