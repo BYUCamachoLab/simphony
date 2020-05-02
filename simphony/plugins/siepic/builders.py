@@ -10,35 +10,7 @@ from simphony.elements import Model
 from simphony.netlist import Subcircuit
 from simphony.simulation import SweepSimulation
 from simphony.plugins.siepic.mapping import rearg
-
-def get_subclasses(cls):
-    """
-    Recursively gets all subclasses for a given class, even the subclasses of 
-    subclasses.
-
-    If a subclass resides in a model not imported by default by Simphony, those
-    classes will not be returned. Libraries must be imported first for this
-    function to be able to find those classes.
-
-    Parameters
-    ----------
-    cls : class
-        The class to find all the subclasses of.
-
-    Yields
-    -------
-    subclass : class
-        Yields the next subclass from the generator.
-
-    Notes
-    -----
-    To get a list of subclasses, simply use the following syntax::
-
-        list(get_subclasses(klass))
-    """
-    for subclass in cls.__subclasses__():
-        yield from get_subclasses(subclass)
-        yield subclass
+from simphony.tools import get_subclasses
 
 def get_components(libraries):
     """
