@@ -13,10 +13,6 @@ by plain Sphinx when it encounters numpy docstring conventions like
 section headers (e.g. ``-------------``) that sphinx does not expect to
 find in docstrings.
 
-.. Some features described in this document require a recent version of
-.. ``numpydoc``. For example, the **Yields** section was added in
-.. ``numpydoc`` 0.6.
-
 Note that for documentation within Simphony, it is not necessary to do
 ``import simphony`` at the beginning of an example.  However, some
 sub-modules, such as ``library``, are not imported by default, and you have to
@@ -57,3 +53,14 @@ can be expressed as absolute paths with respect to the source directory
 
 In keeping with the numpydoc standard, class initialization parameters
 should be documented in the class docstring, not under ``__init__()``.
+
+Names of classes, objects, constants, etc. should typically be linked to the
+more detailed documentation of the referred object.
+
+Examples presented are prefixed with the Python prompt ``>>>``. 
+
+The docs are written in reST. There is a nice syntax guide with guidelines that
+we follow in the documentation 
+[here](https://thomas-cokelaer.info/tutorials/sphinx/rest_syntax.html). The 
+majority of the documentation is generated from python docstrings written using
+the NumPy documentation format.

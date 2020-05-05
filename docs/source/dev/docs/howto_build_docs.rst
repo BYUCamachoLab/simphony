@@ -21,12 +21,7 @@ in several different formats.
 Instructions
 ------------
 
-.. If you obtained Simphony via git, get also the git submodules that contain
-.. additional parts required for building the documentation::
-
-..     git submodule update --init
-
-In addition, building the documentation requires the Sphinx extension
+Building the documentation requires the Sphinx extension
 `plot_directive`, which is shipped with Matplotlib_. This Sphinx extension can
 be installed by installing Matplotlib. You will also need Python>=3.6.
 
@@ -53,9 +48,6 @@ Now you are ready to generate the docs, so write::
 
 in the ``doc/`` directory. If all goes well, this will generate a
 ``build/html`` subdirectory containing the built documentation. 
-.. If you get
-.. a message about ``installed simphony != current repo git version``, you must
-.. either override the check by setting ``GITVER`` or re-install Simphony.
 
 Note that building the documentation on Windows is currently not actively
 supported, though it should be possible. (See Sphinx_ documentation
@@ -95,7 +87,7 @@ Simphony's documentation uses several Sphinx extensions. While the
 code docstrings are written using the `numpydoc`_ standard, we
 actually use Sphinx's built-in `napolean`_ extension to parse
 our files. Napolean has been included in the standard Sphinx since
-version 1.3, so no special extensions are required to generate this
+version 1.3, so no special parsing extensions are required to generate this
 documentation.
 
 .. _numpydoc: https://python.org/pypi/numpydoc

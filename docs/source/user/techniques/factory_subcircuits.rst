@@ -1,6 +1,8 @@
-==========================
-The Factory Design Pattern
-==========================
+.. _factory-method-design-pattern:
+
+=================================
+The Factory Method Design Pattern
+=================================
 
 .. currentmodule:: simphony
 

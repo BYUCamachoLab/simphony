@@ -12,13 +12,6 @@ if you have not forked the repository but simply cloned it locally. You can
 also edit ``.git/config`` and add ``upstream`` if it isn't already present.
 
 
-Backport Pull Requests
-----------------------
-
-Changes that have been marked for this release must be backported to the
-maintenance/1.14.x branch.
-
-
 Update Release documentation
 ----------------------------
 
@@ -33,18 +26,6 @@ for new releases like ``1.14.0``, as the changelogs for ``*.0`` releases tend to
 excessively long. The ``doc/source/release.rst`` file should also be
 updated with a link to the new release notes. These changes should be committed
 to the maintenance branch, and later will be forward ported to master.
-
-
-Finish the Release Note
------------------------
-
-.. note:
-
-  This has changed now that we use ``towncrier``. See the instructions for
-  creating the release note in ``doc/release/upcoming_changes/README.rst``.
-
-Fill out the release note ``doc/release/1.14.5-notes.rst`` calling out
-significant changes.
 
 
 Prepare the release commit
@@ -139,15 +120,6 @@ upload later using ``twine``::
 
 If you do this often, consider making CDN_URL and NPY_WHLS part of your default
 environment.
-
-Generate the README files
--------------------------
-
-This needs to be done after all installers are downloaded, but before the pavement
-file is updated for continued development::
-
-    $ cd ../numpy
-    $ paver write_release
 
 
 Tag the release

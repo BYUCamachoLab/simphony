@@ -22,39 +22,30 @@ designing and simulating photonic integrated circuits with Python.
 Getting Started
 ---------------
 
-The source repository is hosted on GitHub. Prepackaged wheels of stable 
-versions are in Releases, along with the release history. An additional 
-Changelog is included in the repository.
+The source repository is hosted on `GitHub`_. Prepackaged wheels of stable 
+versions are in `Releases`_, along with the release history. An additional 
+`Changelog`_ is included in the repository.
+
+.. _GitHub: https://github.com/BYUCamachoLab/simphony
+.. _Releases: https://github.com/BYUCamachoLab/simphony/releases
+.. _Changelog: https://github.com/BYUCamachoLab/simphony/tree/master/docs/changelog
+
+.. we can add links to silicon photonics, pics articles, etc.
+
+* **Get familiar with Simphony**:
+  :doc:`starter/intro`
+
+* **Installation instructions**:
+  :doc:`starter/install` | 
+  :ref:`companion-libraries`
 
 .. toctree::
    :hidden:
    :caption: Getting Started
 
-   about
-   user/whatissimphony
-   intro/siliconphotonics
-   intro/pics
-
-
-Setting Up
-----------
-
-Simphony only supports Python 3. Installation is really easy.::
-
-   pip3 install simphony
-
-If you wish to install outside of pip, you can find prebuilt wheels under
-GitHub Releases.
-
-.. toctree::
-   :hidden:
-   :caption: Setting Up
-
-   user/setting_up
-   user/quickstart
-   user/install
-   .. user/absolute_beginners
-   .. user/explanations_index
+   self
+   Introduction <starter/intro>
+   starter/install
 
 
 Using Simphony
@@ -63,30 +54,30 @@ Using Simphony
 Learn the syntax and how to build useful circuits using our simple tutorials.
 
 * **Build simple circuits**:
-   :doc:`tutorials/mzi` | 
-   :doc:`tutorials/gm`
+  :doc:`user/tutorials/mzi` | 
+  :doc:`user/tutorials/filters`
 
-* **Advanced circuits**:
-   :doc:`tutorials/gm`
+* **More advanced circuits**:
+  :doc:`user/tutorials/gm`
 
 * **Using Simphony with SiEPIC**:
-   :doc:`tutorials/siepic`
+  :doc:`user/tutorials/siepic`
 
 * **Useful design patterns**:
-   :doc:`howtos/factory_subcircuits`
+  :doc:`user/techniques/factory_subcircuits`
 
-* **Use the preinstalled models**:
-   :doc:`libraries/ebeam` | 
-   :doc:`libraries/sipann`
+* **Use models from the available libraries**:
+  :doc:`user/libraries/ebeam` | 
+  :doc:`user/libraries/sipann`
 
 .. toctree::
-   :maxdepth: 2
    :hidden:
    :caption: Using Simphony
 
-   tutorials/index
-   howtos/index
-   libraries/index
+   user/tutorials/index
+   Techniques <user/techniques/index>
+   user/libraries/index
+   Integrations <user/integrations/index>
 
 
 Development
@@ -104,23 +95,15 @@ More information about the development of Simphony can be found at our
 The documentation is hosted for free at https://simphonyphotonics.readthedocs.io/.
 The source for this documentation can be found in the master branch of the repository.
 
-**Conventions**
-
-Names of classes, objects, constants, etc. should typically be linked to the
-more detailed documentation of the referred object.
-
-Examples presented are prefixed with the Python prompt ``>>>``. 
-
 * **Documenting The Simphony Project**:
-   :doc:`dev/docs/howto_document` | 
-   :doc:`dev/docs/howto_build_docs`
+  :doc:`dev/docs/howto_document` | 
+  :doc:`dev/docs/howto_build_docs`
 
 * **Contributing to Simphony**:
-   :doc:`dev/index` | 
-   :doc:`dev/style_guide`
+  :doc:`dev/index`
 
 * **Bugs and Feature Requests**:
-   :doc:`dev/bugs`
+  :doc:`dev/bugs`
 
 .. toctree::
    :hidden:
@@ -129,19 +112,20 @@ Examples presented are prefixed with the Python prompt ``>>>``.
    dev/docs/howto_document
    dev/docs/howto_build_docs
    dev/index
-   dev/style_guide
-   .. benchmarking
-   .. release
+   dev/releasing
 
 
-Acknowledgements
-----------------
+Reference
+---------
 
-We would like to give credit where credit is due.
-Much of the documentation is based on the documentation for NumPy.
-It was, in fact, used as a model and starting point for this project's
-documentation. Kudos to them for such an excellent structure and
-a job well done.
+* **View the API**:
+  :doc:`reference/api`
+
+* **License agreement**:
+  :doc:`reference/license`
+
+* **How we name stuff**:
+  :doc:`reference/glossary`
 
 .. toctree::
    :hidden:
@@ -150,4 +134,3 @@ a job well done.
    reference/api
    reference/license
    reference/glossary
-   reference/appendix

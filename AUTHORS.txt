@@ -1,0 +1,17 @@
+The Simphony Project Contributors is composed of:
+
+* Sequoia Ploeg <sequoia.ploeg@ieee.org> (Main Simphony author)
+* Hyrum Gunther (Main Simphony author)
+* All other developers that have contributed to the simphony repository:
+  <https://github.com/BYUCamachoLab/simphony/graphs/contributors>
+
+Additionally, some assets and code were originally sourced from third-party
+authors or projects, including:
+
+* S-parameter matrix cascading uses the scikit-rf implementation, by
+  scikit-rf <https://github.com/scikit-rf/scikit-rf>
+
+For information about the sources and authors of other third-party code
+and other resources used, please see the NOTICE.txt file, located in the
+root of the spyder repository or online at:
+<https://github.com/spyder-ide/spyder/blob/master/NOTICE.txt>
