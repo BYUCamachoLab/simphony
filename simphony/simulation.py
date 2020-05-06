@@ -256,7 +256,7 @@ class SweepSimulation(Simulation):
         Raises
         ------
         NotImplementedError
-            If a model does not have a class attribute `freq_range` defining
+            If a model does not have a class attribute ``freq_range`` defining
             the valid frequency range for the model.
         ValueError
             If the simulation frequencies are outside of the range of the valid
@@ -335,12 +335,12 @@ class SweepSimulation(Simulation):
 
         Notes
         -----
-        This function doesn't actually store `combined` on each iteration 
+        This function doesn't actually store ``combined`` on each iteration 
         through the netlist. That's because the Pin objects can only reference
         one PinList at a time, which in turn can only reference one Element.
         Since we transferring the actual Pin objects between lists, keeping
-        a reference to the Pin also keeps a reference to the `combined` 
-        Element alive. Hence, we track pins but not the `SimulationResult`.
+        a reference to the Pin also keeps a reference to the ``combined`` 
+        Element alive. Hence, we track pins but not the ``SimulationResult``.
         """
         _logger = _module_logger.getChild('SweepSimulation.connect_circuit')
 

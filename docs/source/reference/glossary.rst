@@ -59,6 +59,10 @@ dictionary
     For more information on dictionaries, read the
     `Python tutorial <https://docs.python.org/tutorial/>`_.
 
+externals
+    Pins not connected internally within a circuit, thus available for 
+    input/output.
+
 instance
     A class definition gives the blueprint for constructing an object::
 
@@ -147,6 +151,21 @@ self
         >>> p.color = 'red'
         >>> p.paint() # self refers to 'p'
         Painting the city red!
+
+scattering matrix
+    See *scattering parameters*.
+
+scattering parameters
+    Scattering parameters describe the phase and amplitude relationship between 
+    the ports of an abstracted device or circuit. It is represented by a 
+    `N x N` matrix where `N` is the number of inputs/outputs/ports of the 
+    device.
+
+s-matrix
+    See *scattering parameters*.
+
+s-parameters
+    See *scattering parameters*.
 
 tuple
     A sequence that may contain a variable number of types of any

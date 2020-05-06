@@ -4,8 +4,8 @@ EBeam model library
 -------------------
 
 .. automodule:: simphony.library.ebeam
-   :members:
+   :members: pins
    :inherited-members:
-   :no-undoc-members:
    :exclude-members: s_params, loaded
+   :no-undoc-members:
    :show-inheritance:

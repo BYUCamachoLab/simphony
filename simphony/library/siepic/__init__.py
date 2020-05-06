@@ -17,12 +17,13 @@ Terminology
 
 argset
 ******
+
 The code and documentation of this module frequently refer to something 
 hereafter known as an "argset". An *argset* is a dictionary of parameters
 to values.
 
 For example, let's look at the data files available for a y-branch coupler,
-as available in `source_data/y_branch_source`. The filename has the format:
+as available in `source_data/y_branch_source`. The filename has the format::
 
     Ybranch_Thickness =220 width=500.sparam
 
@@ -46,7 +47,7 @@ nanometers. The model therefore creates a normalized set of argsets by
 converting the values to a form that can be compared with the arguments 
 received by `__init__()`.
 
-Suppose we have the following filename:
+Suppose we have the following filename::
 
     te_ebeam_dc_halfring_straight_gap=30nm_radius=3um_width=520nm_thickness=210nm_CoupleLength=0um.dat
 
@@ -190,6 +191,7 @@ def percent_diff(ideal, actual):
     -----
     Percent error is calculated as (ideal - actual) / ideal
     """
+    # TODO: Make actual, if 0, not zero.
     try:
         return (ideal - actual) / ideal
     except TypeError:
@@ -311,22 +313,28 @@ class siepic_ebeam_pdk_base(Model):
         This function should operate only on instance attributes and should
         not accept parameters.
 
-        In summary, `on_args_changed()` must do the following things:
+        In summary, ``on_args_changed()`` must do the following things:
         
-            1. Disable autoupdate (`suspend_autoupdate()`).
+            1. Disable autoupdate (``suspend_autoupdate()``).
+
             2. Normalize all argsets for comparison with model attributes.
-            3. Pass the list of normalized argsets to `_get_matched_args()`, 
+
+            3. Pass the list of normalized argsets to ``_get_matched_args()``, 
                which returns a single normalized argset most closely matching
                the model's attributes.
+
             4. Update the model's attributes with valid values; values for
                which we actually have simulation data (so, the values in the 
-               argset returned by `_get_matched_args()`.
+               argset returned by ``_get_matched_args()``.
+
             5. Load the s-parameters from file and store them in a way they can
                later be accessed by `s_parameters()`, a function also 
                implemented on a class-by-class basis.
-            6. Set the instance attribute `freq_range`; if this is not set, all
+
+            6. Set the instance attribute ``freq_range``; if this is not set, all
                simulations on circuits incorporating this model will fail.
-            5. Enable autoupdate (`enable_autoupdate()`).
+
+            7. Enable autoupdate (``enable_autoupdate()``).
 
         Warning
         -------
@@ -482,7 +490,7 @@ class ebeam_bdc_te1550(siepic_ebeam_pdk_base):
     interferes lights from two adjacent inputs, efficiently splitting the 
     interfered signal between the two ports on the opposing side.
 
-    .. image:: /libraries/images/ebeam_bdc_te1550.png
+    .. image:: /user/libraries/images/ebeam_bdc_te1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -569,7 +577,7 @@ class ebeam_dc_halfring_straight(siepic_ebeam_pdk_base):
     interferes lights from two adjacent inputs, efficiently splitting the 
     interfered signal between the two ports on the opposing side.
 
-    .. image:: /libraries/images/ebeam_bdc_te1550.png
+    .. image:: /user/libraries/images/ebeam_bdc_te1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -638,7 +646,7 @@ class ebeam_dc_te1550(siepic_ebeam_pdk_base):
     interferes lights from two adjacent inputs, efficiently splitting the 
     interfered signal between the two ports on the opposing side.
 
-    .. image:: /libraries/images/ebeam_bdc_te1550.png
+    .. image:: /user/libraries/images/ebeam_bdc_te1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -710,7 +718,7 @@ class ebeam_terminator_te1550(siepic_ebeam_pdk_base):
     where the light doesn't need to be measured but you don't want it reflecting
     back into the circuit, you can use a terminator to release it from the circuit.
 
-    .. image:: /libraries/images/ebeam_terminator_te1550.png
+    .. image:: /user/libraries/images/ebeam_terminator_te1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -775,7 +783,7 @@ class ebeam_terminator_te1550(siepic_ebeam_pdk_base):
 #     where the light doesn't need to be measured but you don't want it reflecting
 #     back into the circuit, you can use a terminator to release it from the circuit.
 
-#     .. image:: /libraries/images/ebeam_terminator_te1550.png
+#     .. image:: /user/libraries/images/ebeam_terminator_te1550.png
 #         :alt: ebeam_bdc_te1550.png
 #     """
 #     pins = ('n1',) #: The default pin names of the device
@@ -794,7 +802,7 @@ class ebeam_gc_te1550(siepic_ebeam_pdk_base):
     above the chip into the circuit. For the TE mode, the angle is -25 degrees 
     [needs citation].
 
-    .. image:: /libraries/images/ebeam_gc_te1550.png
+    .. image:: /user/libraries/images/ebeam_gc_te1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -868,7 +876,7 @@ class ebeam_wg_integral_1550(siepic_ebeam_pdk_base):
 
     A waveguide easily connects other optical components within a circuit.
 
-    .. image:: /libraries/images/ebeam_wg_integral_1550.png
+    .. image:: /user/libraries/images/ebeam_wg_integral_1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -1010,9 +1018,11 @@ class ebeam_wg_integral_1550(siepic_ebeam_pdk_base):
 
 class ebeam_y_1550(siepic_ebeam_pdk_base):
     """
-    The y-branch efficiently splits the input between the two outputs.
+    A y-branch efficiently splits the input 50/50 between the two outputs.
+    It can also be used as a combiner if used in the opposite direction,
+    combining and interfering the light from two inputs into the one output.
 
-    .. image:: /libraries/images/ebeam_y_1550.png
+    .. image:: /user/libraries/images/ebeam_y_1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -1063,4 +1073,17 @@ class ebeam_y_1550(siepic_ebeam_pdk_base):
         self.enable_autoupdate()
 
     def s_parameters(self, freq):
+        """
+        Returns scattering parameters for the y-branch based on its parameters.
+
+        Parameters
+        ----------
+        freq : np.ndarray
+            The frequency range to get scattering parameters for.
+
+        Returns
+        -------
+        s : np.ndarray
+            The scattering parameters corresponding to the frequency range.
+        """
         return interpolate(freq, self._f, self._s)

@@ -77,6 +77,7 @@ Learn the syntax and how to build useful circuits using our simple tutorials.
    user/tutorials/index
    Techniques <user/techniques/index>
    user/libraries/index
+   user/simulators/index
    Integrations <user/integrations/index>
 
 

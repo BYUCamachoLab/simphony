@@ -107,7 +107,7 @@ class ebeam_wg_integral_1550(Model):
 
     Notes
     -----
-    The `sigma_` values in the parameters are used for monte carlo simulations.
+    The ``sigma_`` values in the parameters are used for monte carlo simulations.
     """
     pins = ('n1', 'n2',) #: The default pin names of the device
     freq_range = (187370000000000.0, 199862000000000.0) #: The valid frequency range for this model.
@@ -139,8 +139,8 @@ class ebeam_wg_integral_1550(Model):
         Returns
         -------
         (frequency, s) : tuple
-            Returns a tuple containing the frequency array, `frequency`, 
-            corresponding to the calculated s-parameter matrix, `s`.
+            Returns a tuple containing the frequency array, ``frequency``, 
+            corresponding to the calculated s-parameter matrix, ``s``.
         """
         return self.cacl_s_params(freq, self.length, self.lam0, self.ne, self.ng, self.nd)
 

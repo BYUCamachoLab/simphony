@@ -56,7 +56,7 @@ circuit.connect_many([
 
 # At this point, your circuit is defined. This file can serve as a description
 # for a subcircuit that is used in a larger circuit, and can simply be imported
-# using the Python import system (`from <> import circuit`).
+# using the Python import system (``from mzi import circuit``).
 
 # Run a simulation on the netlist.
 simulation = SweepSimulation(circuit, 1500e-9, 1600e-9)

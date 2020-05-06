@@ -14,6 +14,8 @@ Code Walkthrough
     # Copyright © Simphony Project Contributors
     # Licensed under the terms of the MIT License
     # (see simphony/__init__.py for details)
+    #
+    # File: mzi.py
 
 For this tutorial, we will be using matplotlib and numpy to manipulate and
 view the results of our simulation.
@@ -93,7 +95,7 @@ Next we define the circuit's connections.
 
 At this point, your circuit is defined. This file can serve as a description
 for a subcircuit that is used in a larger circuit, and can simply be imported
-using the Python import system (`from <> import circuit`).
+using the Python import system (e.g., ``from mzi import circuit``).
 
 We can run a simulation on our fully-defined circuit.
 

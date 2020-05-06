@@ -13,7 +13,7 @@ libraries to a format that can be used by any simphony installation,
 regardless of whether the creating library is installed locally.
 
 Static models can be exported; that is to say, models that implement dynamic
-functions like `monte_carlo_s_parameters()` will have those functions ignored,
+functions like ``monte_carlo_s_parameters()`` will have those functions ignored,
 as they are highly model-dependent. Static information, however, such as the
 scattering parameters over a range of wavelengths, can be exported easily and
 models recreated when imported. Other model attributes, such as pin names and
@@ -58,8 +58,8 @@ def export_model(model, filename, wl=None, freq=None):
 
     Examples
     --------
-    We can write a model for a `ebeam_wg_integral_1550` instantiated with a 
-    length of 100 nanometers to a file  named `wg100nm.mdl`.
+    We can write a model for a ``ebeam_wg_integral_1550`` instantiated with a 
+    length of 100 nanometers to a file  named ``wg100nm.mdl``.
 
     >>> import numpy as np
     >>> from simphony.library.ebeam import ebeam_wg_integral_1550
@@ -112,7 +112,7 @@ def import_model(filename, force=False):
     """
     path, ext = os.path.splitext(filename)
     if ext != '.mdl' and force == False:
-        raise ValueError('Requested file {} is not a .mdl file, to force load set parameter `force=True`.'.format(filename))
+        raise ValueError('Requested file {} is not a .mdl file, to force load set parameter ``force=True``.'.format(filename))
 
     params = pickle.load(io.open(filename, 'rb'))
     klass = type(

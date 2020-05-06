@@ -48,7 +48,7 @@ Here's the short summary, complete TOC links are below:
       git pull upstream master
 
    * Create a branch for the feature you want to work on. Use a sensible,
-     "human-readable" name such as 'monte-carlo-simualations'::
+     "human-readable" name such as "monte-carlo-simualations"::
 
       git checkout -b monte-carlo-simualations
 

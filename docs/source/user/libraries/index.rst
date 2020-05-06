@@ -11,5 +11,6 @@ from those libraries and their usage is included below.
    :maxdepth: 2
 
    ebeam
+   siepic
    sipann
    
