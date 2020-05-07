@@ -4,23 +4,21 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
-
-import os
-import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+#
+# File: mzi.py
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from simphony.library import ebeam
+from simphony.library import siepic
 from simphony.netlist import Subcircuit
 from simphony.simulation import SweepSimulation, MonteCarloSweepSimulation
 
 # Declare the models used in the circuit
-gc = ebeam.ebeam_gc_te1550()
-y = ebeam.ebeam_y_1550()
-wg150 = ebeam.ebeam_wg_integral_1550(length=150e-6)
-wg50 = ebeam.ebeam_wg_integral_1550(length=50e-6)
+gc = siepic.ebeam_gc_te1550()
+y = siepic.ebeam_y_1550()
+wg150 = siepic.ebeam_wg_integral_1550(length=150e-6)
+wg50 = siepic.ebeam_wg_integral_1550(length=50e-6)
 
 # Create the circuit, add all individual instances
 circuit = Subcircuit('MZI')

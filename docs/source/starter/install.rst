@@ -24,6 +24,18 @@ If you wish to install outside of pip, you can find prebuilt wheels under
 .. _Github Releases: https://github.com/BYUCamachoLab/simphony/releases
 
 
+Recommended Libraries
+=====================
+
+Matplotlib
+----------
+
+The easiest way to visualize the results of simulations is using 
+`matplotlib`_. While not an explicit dependency of Simphony, the tutorials
+use matplotlib to display what's happening in a simulation.
+
+.. _matplotlib: https://matplotlib.org/
+
 .. _companion-libraries:
 
 Companion Libraries

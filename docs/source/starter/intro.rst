@@ -1,3 +1,5 @@
+.. _introduction-to-simphony:
+
 ========================
 Introduction to Simphony
 ========================
@@ -5,7 +7,7 @@ Introduction to Simphony
 :Author: Sequoia Ploeg
 :Date: |today|
 :Copyright:
-  This work is licensed under the `MIT License`__.
+   This work is licensed under the `MIT License`__.
 
 .. __: https://opensource.org/licenses/MIT
 
@@ -300,6 +302,14 @@ End result: ::
     [<Pin 'input' at <Element 'splitter' at 0x7f9e980a07b8>>, 
      <Pin 'output_top' at <Element 'splitter' at 0x7f9e980a07b8>>, 
      <Pin 'output_bottom' at <Element 'splitter' at 0x7f9e980a07b8>>]
+
+Caution should be taken in naming pins. Multiple pins in a circuit may have
+the same name, being named uniquely within individual elements. However,
+consider that when the circuit is fully connected you don't want any of the
+remaining external pins to have the same name; it makes identifying outputs
+unnecessarily difficult. In fact, if you try to access a pin by its string name
+but multiple pins share the same names, a ``LookupError`` is raised
+complaining that the name is ambiguous as it could match with multiple pins.
 
 
 Nets (and Netlists)
