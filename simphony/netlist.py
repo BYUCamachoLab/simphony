@@ -95,6 +95,11 @@ class PinList:
     -----
     If renaming pins, the assigned value must be a string.
 
+    .. note:: 
+       If a PinList contains two Pins with the same string name and access by 
+       string value is attempted, a ``LookupError`` is raised complaining that the
+       name is ambiguous.
+
     Warning
     -------
     Adding two PinLists together will change the pinlist reference of the pins
@@ -506,12 +511,19 @@ class Subcircuit:
 
         Parameters
         ----------
-        blocks : list of tuples
+        elements : list of tuples
             A list of elements to be added. Tuples are of the form 
             (``name``, ``block``), where ``name`` is a unique 
             string identifying the element in the subcircuit and 
             ``block`` can be an instance of some element (i.e. a subclass of
             ``simphony.elements.Element``) or another subcircuit.
+        
+        Returns
+        -------
+        added : list
+            A list of object references to elements added to the subcircuit.
+            Insertion order is preserved (order of the list is the same as the 
+            order elements were added).
         
         Raises
         ------
@@ -521,6 +533,7 @@ class Subcircuit:
         if type(elements) is not list:
             raise TypeError('list expected, received {}'.format(type(elements)))
         
+        added = []
         for item in elements:
             # TODO: Find some way to guarantee that the automatically generated
             # name does not already exist in the ElementList.
@@ -528,11 +541,15 @@ class Subcircuit:
                 model, name = item
             else:
                 model, name = item, None
+
             if issubclass(type(model), Subcircuit):
                 model.name = name if name else model.name
                 self.elements.append(model)
+                added.append(model)
             elif issubclass(type(model), Model):
                 self.elements.append(Element(model, name))
+                added.append(self.elements[-1])
+        return added
 
     def connect(self, element1, pin1, element2, pin2):
         """
@@ -592,7 +609,7 @@ class Subcircuit:
         ----------
         conns : list of tuple
             A list of tuples, each formed as a tuple of arguments in the same
-            order as that accepted by ``connect``.
+            order as that accepted by :py:func:`connect`.
         """
         for c in conns:
             self._logger.debug("Handling connection: {}".format(c))
