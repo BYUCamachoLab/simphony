@@ -28,7 +28,8 @@ To run all tests, simply execute
 pytest
 ```
 
-from the toplevel directory.
+from the toplevel directory. Note that pytest must be run under a Python 3
+environment.
 
 .. _pytest framework: https://docs.pytest.org/en/latest/
 

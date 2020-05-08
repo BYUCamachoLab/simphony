@@ -56,7 +56,8 @@ having to run a full, slow, FDTD simulation before a designed device
 can be used in a photonic integrated circuit (PIC) design software
 such as Simphony.
 
-See the `SiPANN`_ documentation for installation instructions.
+See the `SiPANN`_ documentation for installation instructions. Note that, 
+due to its large number of dependncies, it is a very large package.
 
 .. _SiPANN: https://sipann.readthedocs.io/en/latest/
 

@@ -13,6 +13,7 @@ Creating and Simulating Circuits
 
 .. toctree::
    :maxdepth: 2
+   :numbered:
 
    mzi
    filters
