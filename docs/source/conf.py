@@ -34,8 +34,7 @@ import re
 
 extensions = [
     'sphinx.ext.autodoc',
-    # 'numpydoc',
-    'sphinx.ext.napoleon', #
+    'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
     'sphinx.ext.coverage',
     'sphinx.ext.doctest',
@@ -43,8 +42,8 @@ extensions = [
     'sphinx.ext.graphviz',
     'sphinx.ext.ifconfig',
     # 'matplotlib.sphinxext.plot_directive',
-    'IPython.sphinxext.ipython_console_highlighting',
-    'IPython.sphinxext.ipython_directive',
+    # 'IPython.sphinxext.ipython_console_highlighting',
+    # 'IPython.sphinxext.ipython_directive',
     'sphinx.ext.imgmath',
     # 'sphinx.ext.todo', #
     # 'sphinx.ext.mathjax', #
@@ -152,11 +151,6 @@ pygments_style = 'sphinx'
 # If true, keep warnings as "system message" paragraphs in the built documents.
 #keep_warnings = False
 
-# def setup(app):
-#     # add a config value for `ifconfig` directives
-#     app.add_config_value('python_version_major', str(sys.version_info.major), 'env')
-#     app.add_lexer('NumPyC', NumPyLexer(stripnl=False))
-
 
 # -----------------------------------------------------------------------------
 # HTML output
@@ -164,7 +158,6 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#
 html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -238,9 +231,6 @@ html_sidebars = {
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
 #html_additional_pages = {}
-# html_additional_pages = {
-#     'index': 'index.html',
-# } # NumPy setting
 
 # If false, no module index is generated.
 #html_domain_indices = True
@@ -309,7 +299,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'Simphony.tex', 'Simphony Documentation',
-     'Sequoia Ploeg, Hyrum Gunther', 'manual'),
+     'Sequoia Ploeg', 'manual'),
 ]
 
 
@@ -330,7 +320,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'Simphony', 'Simphony Documentation',
-     author, 'Simphony', 'One line description of project.',
+     author, 'Simphony', 'A simulator for photonic circuits.',
      'Miscellaneous'),
 ]
 

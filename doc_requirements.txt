@@ -1,5 +1,1 @@
 sphinx>=2.2.0
-ipython
-scipy
-numpy
-matplotlib
