@@ -84,7 +84,7 @@ Learn the syntax and how to build useful circuits using our simple tutorials.
 Development
 -----------
 
-Simphony was developed by CamachoLab at Brigham Young University but also
+Simphony was developed by `CamachoLab at Brigham Young University <https://camacholab.byu.edu/>`_ but also
 strives to be an open-source project that welcomes the efforts of volunteers. 
 If there is anything you feel can be improved, functionally or in our documentation,
 we welcome your feedback -- let us know what the problem is or open a pull
@@ -110,10 +110,7 @@ The source for this documentation can be found in the master branch of the repos
    :hidden:
    :caption: Development
 
-   dev/docs/howto_document
-   dev/docs/howto_build_docs
    dev/index
-   dev/releasing
 
 
 Reference

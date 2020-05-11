@@ -2,7 +2,7 @@
 Releasing a Version
 ===================
 
-
+--------------
 For Developers
 --------------
 
@@ -19,6 +19,7 @@ python3 setup.py sdist bdist_wheel
 pip3 install dist/simphony-[VERSION].tar.gz
 ```
 
+---------------
 For Maintainers
 ---------------
 
