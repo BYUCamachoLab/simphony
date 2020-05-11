@@ -1,11 +1,3 @@
 numpy
 scipy
 parsimonious>=0.8.1
-<<<<<<< HEAD
-SiPANN
-numba
-xmltodict
-pre-commit
-hiyapyco
-=======
->>>>>>> doccy
