@@ -59,7 +59,7 @@ class SimulationResult:
     Attributes
     ----------
     pins : simphony.netlist.PinList
-        An ordered tuple of the nodes of the component.
+        An ordered tuple of the external pin names of the simulated component.
     """
     _logger = _module_logger.getChild('SimulationResult')
 
@@ -78,6 +78,10 @@ class SimulationResult:
             pinlist.element = self
             self._pinlist = pinlist
             assert self.pinlist.element == self
+
+    @property
+    def pins(self):
+        return tuple([pin.name for pin in self.pinlist])
 
 class SweepSimulationResult(SimulationResult):
     """
@@ -200,6 +204,14 @@ class SweepSimulation(Simulation):
         self.freq = np.linspace(start, stop, num)
 
     def simulate(self):
+        """
+        Runs the simulation on the object's circuit.
+
+        Returns
+        -------
+        sim : SweepSimulationResult
+            A loaded SweepSimulationResult object.
+        """
         models = self._collect_models(self.circuit)
         self.validate_models(models, self.freq)
         cache = self._cache_elements(models, self.freq)
