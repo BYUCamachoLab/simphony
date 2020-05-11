@@ -67,7 +67,7 @@ Learn the syntax and how to build useful circuits using our simple tutorials.
   :doc:`user/techniques/factory_subcircuits`
 
 * **Use models from the available libraries**:
-  :doc:`user/libraries/ebeam` | 
+  :doc:`user/libraries/siepic` | 
   :doc:`user/libraries/sipann`
 
 .. toctree::

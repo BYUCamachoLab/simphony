@@ -94,6 +94,8 @@ command ``source simphony-dev/bin/activate`` in the directory you created
 the virtual environment in, and ``deactivate`` to exit from the
 virtual environment back to your previous shell.
 
+.. _venv: https://docs.python.org/3/library/venv.html
+
 
 Running tests
 -------------
