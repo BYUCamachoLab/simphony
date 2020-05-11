@@ -53,6 +53,9 @@ extensions = [
     # 'IPython.sphinxext.ipython_console_highlighting',
     # 'IPython.sphinxext.ipython_directive',
     "sphinx.ext.imgmath",
+    'IPython.sphinxext.ipython_console_highlighting',
+    'IPython.sphinxext.ipython_directive',
+    'sphinx.ext.imgmath',
     # 'sphinx.ext.todo', #
     # 'sphinx.ext.mathjax', #
     # 'sphinx.ext.viewcode', #
@@ -62,7 +65,7 @@ extensions = [
 
 # # Napoleon settings
 # napoleon_google_docstring = False
-# napoleon_numpy_docstring = True
+napoleon_numpy_docstring = True
 # napoleon_include_init_with_doc = False
 # napoleon_include_private_with_doc = False
 # napoleon_include_special_with_doc = False
@@ -171,26 +174,27 @@ pygments_style = "sphinx"
 #
 html_theme = "alabaster"
 html_theme = "sphinx_rtd_theme"
+html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-# html_theme_options = {
-#     # 'canonical_url': '',
-#     # 'analytics_id': 'UA-XXXXXXX-1',  #  Provided by Google in your dashboard
-#     'logo_only': False,
-#     'display_version': True,
-#     'prev_next_buttons_location': 'bottom',
-#     'style_external_links': False,
-#     # 'vcs_pageview_mode': '',
-#     # 'style_nav_header_background': 'white',
-#     # Toc options
-#     'collapse_navigation': True,
-#     'sticky_navigation': True,
-#     'navigation_depth': 4,
-#     'includehidden': True,
-#     'titles_only': False
-# }
+html_theme_options = {
+    # 'canonical_url': '',
+    # 'analytics_id': 'UA-XXXXXXX-1',  #  Provided by Google in your dashboard
+    'logo_only': False,
+    'display_version': True,
+    'prev_next_buttons_location': 'bottom',
+    'style_external_links': False,
+    # 'vcs_pageview_mode': '',
+    # 'style_nav_header_background': 'white',
+    # Toc options
+    'collapse_navigation': True,
+    'sticky_navigation': True,
+    'navigation_depth': 4,
+    'includehidden': True,
+    'titles_only': False
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = []
@@ -244,7 +248,7 @@ html_sidebars = {
 # template names.
 # html_additional_pages = {}
 # html_additional_pages = {
-#     'index': 'indexcontent.html',
+#     'index': 'index.html',
 # } # NumPy setting
 
 # If false, no module index is generated.

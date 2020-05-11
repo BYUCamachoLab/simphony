@@ -5,15 +5,33 @@ Setting up and using your development environment
 
 .. _recommended-development-setup:
 
+
 Recommended development setup
 -----------------------------
 
-Having compiled code also means that importing NumPy from the development
-sources needs some additional steps, which are explained below.  For the rest
-of this chapter we assume that you have set up your git repo as described in
+For this chapter we assume that you have set up your git repo as described in
 :ref:`using-git`.
 
 .. _testing-builds:
+
+
+Testing code
+------------
+
+Any code that you have contributed should also have accompanying tests. The
+style we adhere to in Simphony is to include a `/tests` directory wherever
+you are developing your module and writing tests using the `pytest framework`_.
+
+To run all tests, simply execute
+
+```
+pytest
+```
+
+from the toplevel directory.
+
+.. _pytest framework: https://docs.pytest.org/en/latest/
+
 
 Testing builds
 --------------
@@ -21,7 +39,7 @@ Testing builds
 Before submitting any pull requests, however, you should 
 ensure that a pip installation of your updated package installs and functions 
 properly. To test this, try installing your package locally by removing all 
-installed versions of Simphony (by running ```pip3 uninstall simphony``` 
+installed versions of Simphony (by running `pip3 uninstall simphony` 
 repeatedly until no installations remain) and running the following commands 
 (from Simphony's toplevel directory):
 

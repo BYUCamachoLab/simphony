@@ -48,18 +48,16 @@ Here's the short summary, complete TOC links are below:
       git pull upstream master
 
    * Create a branch for the feature you want to work on. Use a sensible,
-     "human-readable" name such as 'monte-carlo-simualations'::
+     "human-readable" name such as "monte-carlo-simualations"::
 
       git checkout -b monte-carlo-simualations
 
    * Commit locally as you progress (``git add`` and ``git commit``)
-     Use a :ref:`properly formatted<writing-the-commit-message>` commit message,
+     Use a clear and meaningful commit message,
      write tests that fail before your change and pass afterward, run all the
      :ref:`tests locally<development-environment>`. Be sure to document any
      changed behavior in docstrings, keeping to the NumPy docstring
      :ref:`standard<howto-document>`.
-     
-    ..  FIXME: Update this section ^^
 
 3. To submit your contribution:
 
@@ -68,8 +66,7 @@ Here's the short summary, complete TOC links are below:
       git push origin monte-carlo-simualations
 
    * Enter your GitHub username and password (repeat contributors or advanced
-     users can remove this step by connecting to GitHub with
-     :ref:`SSH<set-up-and-configure-a-github-account>` .
+     users can remove this step by connecting to GitHub with SSH).
 
    * Go to GitHub. The new branch will show up with a green Pull Request
      button. Make sure the title and message are clear, concise, and self-
@@ -147,7 +144,7 @@ Divergence between ``upstream/master`` and your feature branch
 If GitHub indicates that the branch of your Pull Request can no longer
 be merged automatically, you have to incorporate changes that have been made
 since you started into your branch. Our recommended way to do this is to
-:ref:`rebase on master<rebasing-on-master>`.
+rebase on master.
 
 Guidelines
 ----------
@@ -242,13 +239,10 @@ Development process - details
 .. toctree::
    :maxdepth: 2
 
-   conduct/code_of_conduct
-   Git Basics <gitwash/index>
    development_environment
    development_workflow
-   ../benchmarking
-   style_guide
    releasing
+   bugs
 
 Our workflow, based strongly on the NumPy project, is in :ref:`development-workflow
 <development-workflow>`.

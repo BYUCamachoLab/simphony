@@ -24,23 +24,18 @@ class Model:
     parameters.
 
     Any class that inherits from Model or its subclasses must declare the
-    attributes of an element, see Attributes. Following the general EAFP coding
+    attributes of an element (see Attributes). Following the general EAFP coding
     style of Python, errors will only be raised when an unimplemented function
     is called, not when the class instance is created.
 
     Attributes
     ----------
     pins : tuple of str
-        A tuple of all the default pin names of the device.
+        A tuple of all the default pin names of the device. Length of default
+        tuple should be equal to the number of ports on the device.
     freq_range : tuple of float
         A tuple of the valid frequency bounds for the element in the order
         (lower, upper). Can be made (-infty, infty) be setting to (None, None).
-
-    Notes
-    -----
-    If you extended the element with attributes you don't want included
-    in an equality comparison, you can add the name of the attribute (as a 
-    string) to the base object's `_ignored_` list and it won't be used.
     """
     _logger = _module_logger.getChild('Model')
 
@@ -50,7 +45,7 @@ class Model:
     def s_parameters(self, freq):
         """
         Returns scattering parameters for the element with its given 
-        parameters.
+        parameters as declared in the optional ``__init__()``.
 
         Parameters
         ----------
@@ -61,11 +56,10 @@ class Model:
         -------
         s : np.ndarray
             The scattering parameters corresponding to the frequency range.
-            Its shape should be:
-                (the number of frequency point x ports x ports)
+            Its shape should be (the number of frequency points x ports x ports).
             If the scattering parameters are requested for only a single 
             frequency, for example, and the device has 4 ports, the shape
-            returned by `s_parameters` would be (1, 4, 4).
+            returned by ``s_parameters`` would be (1, 4, 4).
         
         Raises
         ------
@@ -78,8 +72,8 @@ class Model:
         """
         Implements the monte carlo routine for the given Model.
 
-        If no monte carlo routine is defined, ideal s-parameters for the given
-        frequency range are returned.
+        If no monte carlo routine is defined, the default behavior returns the
+        result of a call to ``s_parameters()``.
 
         Parameters
         ----------
@@ -90,11 +84,10 @@ class Model:
         -------
         s : np.ndarray
             The scattering parameters corresponding to the frequency range.
-            Its shape should be:
-                (the number of frequency points x ports x ports)
+            Its shape should be (the number of frequency points x ports x ports).
             If the scattering parameters are requested for only a single 
             frequency, for example, and the device has 4 ports, the shape
-            returned by `monte_carlo_s_parameters` would be (1, 4, 4).
+            returned by ``monte_carlo_s_parameters`` would be (1, 4, 4).
         """
         return self.s_parameters(freq)
     
@@ -111,7 +104,7 @@ class Model:
         circuit; they will be more or less consistent within a single small
         circuit.
 
-        The MonteCarloSweepSimulation calls this function once per run over
+        The ``MonteCarloSweepSimulation`` calls this function once per run over
         the circuit.
 
         Notes

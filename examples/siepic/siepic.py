@@ -20,7 +20,7 @@ filename = os.path.join(os.path.dirname(__file__), 'MZI4', 'MZI4_main.spi')
 # Loading the main file includes any other files linked to it internally.
 built = load(filename)
 
-# The file `MZI4_main.spi` declares one single-sweep simulation.
+# The file ``MZI4_main.spi`` declares one single-sweep simulation.
 analyses = built['analyses']
 sim = analyses[0]
 

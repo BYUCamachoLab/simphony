@@ -1,41 +1,5 @@
 This file gives an overview of what is necessary to build binary releases for
-NumPy.
-
-Current build and release info
-==============================
-The current info on building and releasing NumPy and SciPy is scattered in
-several places. It should be summarized in one place, updated, and where
-necessary described in more detail. The sections below list all places where
-useful info can be found.
-
-
-Source tree
------------
-- INSTALL.rst.txt
-- release.sh
-- pavement.py
-
-
-NumPy Docs
-----------
-- https://github.com/numpy/numpy/blob/master/doc/HOWTO_RELEASE.rst.txt
-- http://projects.scipy.org/numpy/wiki/MicrosoftToolchainSupport (dead link)
-
-
-SciPy.org wiki
---------------
-- https://www.scipy.org/Installing_SciPy and links on that page.
-- http://new.scipy.org/building/windows.html (dead link)
-
-
-Doc wiki
---------
-- http://docs.scipy.org/numpy/docs/numpy-docs/user/install.rst/ (dead link)
-
-
-Release Scripts
----------------
-- https://github.com/numpy/numpy-vendor
+Simphony.
 
 
 Supported platforms and versions
@@ -47,23 +11,21 @@ subset of these versions (see below).
 
 OS X
 ----
-OS X versions >= 10.9 are supported, for Python version support see `NEP 29`_.
-We build binary wheels for OSX that are compatible with Python.org Python,
-system Python, homebrew and macports - see this `OSX wheel building summary
-<https://github.com/MacPython/wiki/wiki/Spinning-wheels>`_ for details.
+We don't actively test Simphony on MacOS machines. However, since the code
+is relatively simple and based purely on Python and Python packages, we assume
+that a MacOS user can install Simphony from pip with relative ease.
 
 
 Windows
 -------
-We build 32- and 64-bit wheels on Windows. Windows 7, 8 and 10 are supported.
-We build NumPy using the `mingw-w64 toolchain`_ on Appveyor.
+We build 32- and 64-bit wheels on Windows. While installations may work on 
+other versions, only Windows 10 is supported and tested on.
 
 
 Linux
 -----
-We build and ship `manylinux1 <https://www.python.org/dev/peps/pep-0513>`_
-wheels for NumPy.  Many Linux distributions include their own binary builds
-of NumPy.
+We don't provide prebuilt versions of Simphony for Linux. Installation via 
+pip or from source is straightforward and reliable.
 
 
 BSD / Solaris
@@ -78,33 +40,6 @@ We build all our wheels on cloud infrastructure - so this list of compilers is
 for information and debugging builds locally.  See the ``.travis.yml`` and
 ``appveyor.yml`` scripts in the `numpy wheels`_ repo for the definitive source
 of the build recipes. Packages that are available using pip are noted.
-
-
-Compilers
----------
-The same gcc version is used as the one with which Python itself is built on
-each platform. At the moment this means:
-
-- OS X builds on travis currently use `clang`.  It appears that binary wheels
-  for OSX >= 10.6 can be safely built from the travis-ci OSX 10.9 VMs
-  when building against the Python from the Python.org installers;
-- Windows builds use the `mingw-w64 toolchain`_;
-- Manylinux1 wheels use the gcc provided on the Manylinux docker images.
-
-You will need Cython for building the binaries.  Cython compiles the ``.pyx``
-files in the NumPy distribution to ``.c`` files.
-
-.. _mingw-w64 toolchain : https://mingwpy.github.io
-.. _NEP 29 : https://numpy.org/neps/nep-0029-deprecation_policy.html
-
-OpenBLAS
-------------
-All the wheels link to a version of OpenBLAS_ supplied via the openblas-libs_ repo.
-The shared object (or DLL) is shipped with in the wheel, renamed to prevent name
-collisions with other OpenBLAS shared objects that may exist in the filesystem.
-
-.. _OpenBLAS: https://github.com/xianyi/OpenBLAS
-.. _openblas-libs: https://github.com/MacPython/openblas-libs
 
 
 Building source archives and wheels
@@ -122,13 +57,14 @@ builds.
 
 Building docs
 -------------
-Building the documents requires a number of latex ``.sty`` files. Install them
-all to avoid aggravation.
+Building the documents requires the items listed below and reproduced in a
+doc_requirements.txt file, all installable from pip.
 
-- Sphinx (pip)
-- numpydoc (pip)
+- Sphinx
+- NumPy
+- SciPy
 - Matplotlib
-- Texlive (or MikTeX on Windows)
+- IPython
 
 
 Uploading to PyPI
@@ -138,16 +74,6 @@ Uploading to PyPI
 - delocate (pip)
 - auditwheel (pip)
 - twine (pip)
-
-
-Generating author/pr lists
---------------------------
-You will need a personal access token
-`<https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/>`_
-so that scripts can access the github NumPy repository.
-
-- gitpython (pip)
-- pygithub (pip)
 
 
 Virtualenv
@@ -218,46 +144,6 @@ Before the release branch is made, it should be checked that all deprecated
 code that should be removed is actually removed, and all new deprecations say
 in the docstring or deprecation warning at what version the code will be
 removed.
-
-Check the C API version number
-------------------------------
-The C API version needs to be tracked in three places
-
-- numpy/core/setup_common.py
-- numpy/core/code_generators/cversions.txt
-- numpy/core/include/numpy/numpyconfig.h
-
-There are three steps to the process.
-
-1. If the API has changed, increment the C_API_VERSION in setup_common.py. The
-   API is unchanged only if any code compiled against the current API will be
-   backward compatible with the last released NumPy version. Any changes to
-   C structures or additions to the public interface will make the new API
-   not backward compatible.
-
-2. If the C_API_VERSION in the first step has changed, or if the hash of
-   the API has changed, the cversions.txt file needs to be updated. To check
-   the hash, run the script numpy/core/cversions.py and note the API hash that
-   is printed. If that hash does not match the last hash in
-   numpy/core/code_generators/cversions.txt the hash has changed. Using both
-   the appropriate C_API_VERSION and hash, add a new entry to cversions.txt.
-   If the API version was not changed, but the hash differs, you will need to
-   comment out the previous entry for that API version. For instance, in NumPy
-   1.9 annotations were added, which changed the hash, but the API was the
-   same as in 1.8. The hash serves as a check for API changes, but it is not
-   definitive.
-
-   If steps 1 and 2 are done correctly, compiling the release should not give
-   a warning "API mismatch detect at the beginning of the build".
-
-3. The numpy/core/include/numpy/numpyconfig.h will need a new
-   NPY_X_Y_API_VERSION macro, where X and Y are the major and minor version
-   numbers of the release. The value given to that macro only needs to be
-   increased from the previous version if some of the functions or macros in
-   the include files were deprecated.
-
-The C ABI version number in numpy/core/setup_common.py should only be
-updated for a major release.
 
 
 Check the release notes
@@ -459,39 +345,3 @@ you released you can push the tag and release commit up to github::
 
 where ``upstream`` points to the main https://github.com/numpy/numpy.git
 repository.
-
-
-Update scipy.org
-----------------
-A release announcement with a link to the download site should be placed in the
-sidebar of the front page of scipy.org.
-
-The scipy.org should be a PR at https://github.com/scipy/scipy.org. The file
-that needs modification is ``www/index.rst``. Search for ``News``.
-
-
-Announce to the lists
----------------------
-The release should be announced on the mailing lists of
-NumPy and SciPy, to python-announce, and possibly also those of
-Matplotlib, IPython and/or Pygame.
-
-During the beta/RC phase, an explicit request for testing the binaries with
-several other libraries (SciPy/Matplotlib/Pygame) should be posted on the
-mailing list.
-
-
-Announce to Linux Weekly News
------------------------------
-Email the editor of LWN to let them know of the release.  Directions at:
-https://lwn.net/op/FAQ.lwn#contact
-
-
-After the final release
------------------------
-After the final release is announced, a few administrative tasks are left to be
-done:
-
-  - Forward port changes in the release branch to release notes and release
-    scripts, if any, to master branch.
-  - Update the Milestones in Trac.

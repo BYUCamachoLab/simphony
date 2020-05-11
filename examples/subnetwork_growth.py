@@ -95,7 +95,7 @@ You can see that in the final network, our input port is port 3, our through
 port is port 2, and our drop port is port 0.
 
 To get the transmission from input to output in the s-matrix, the indexing is
-`s[out, in]`.
+``s[out, in]``.
 """
 
 import matplotlib.pyplot as plt
