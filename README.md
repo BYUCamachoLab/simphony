@@ -6,7 +6,7 @@
 
 A Simulator for Photonic circuits
 
-![Text](./docs/source/images/simphony_logo.jpg)
+![](./docs/source/images/simphony_logo.jpg)
 
 Simphony, a simulator for photonic circuits, is a fundamental package for designing and simulating photonic integrated circuits with Python.
 
