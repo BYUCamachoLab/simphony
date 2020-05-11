@@ -1,5 +1,3 @@
 numpy
 scipy
 parsimonious>=0.8.1
-SiPANN
-numba

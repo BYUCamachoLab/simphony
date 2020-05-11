@@ -48,18 +48,16 @@ Here's the short summary, complete TOC links are below:
       git pull upstream master
 
    * Create a branch for the feature you want to work on. Use a sensible,
-     "human-readable" name such as 'monte-carlo-simualations'::
+     "human-readable" name such as "monte-carlo-simualations"::
 
       git checkout -b monte-carlo-simualations
 
    * Commit locally as you progress (``git add`` and ``git commit``)
-     Use a :ref:`properly formatted<writing-the-commit-message>` commit message,
+     Use a clear and meaningful commit message,
      write tests that fail before your change and pass afterward, run all the
      :ref:`tests locally<development-environment>`. Be sure to document any
      changed behavior in docstrings, keeping to the NumPy docstring
      :ref:`standard<howto-document>`.
-     
-    ..  FIXME: Update this section ^^
 
 3. To submit your contribution:
 
@@ -68,18 +66,11 @@ Here's the short summary, complete TOC links are below:
       git push origin monte-carlo-simualations
 
    * Enter your GitHub username and password (repeat contributors or advanced
-     users can remove this step by connecting to GitHub with
-     :ref:`SSH<set-up-and-configure-a-github-account>` .
+     users can remove this step by connecting to GitHub with SSH).
 
    * Go to GitHub. The new branch will show up with a green Pull Request
      button. Make sure the title and message are clear, concise, and self-
      explanatory. Then click the button to submit it.
-
-  ..  * If your commit introduces a new feature or changes functionality, post on
-  ..    the `mailing list`_ to explain your changes. For bug fixes, documentation
-  ..    updates, etc., this is generally not necessary, though if you do not get
-  ..    any reaction, do feel free to ask for review.
-  ..  FIXME: Update this section
 
 4. Review process:
 
@@ -117,15 +108,11 @@ Here's the short summary, complete TOC links are below:
    Beyond changes to a functions docstring and possible description in the
    general documentation, if your change introduces any user-facing
    modifications they may need to be mentioned in the release notes.
-   To add your change to the release notes, you need to create a short file
-   with a summary and place it in ``doc/release/upcoming_changes``.
-   The file ``doc/release/upcoming_changes/README.rst`` details the format and
-   filename conventions.
+   To ensure your change gets added to the release notes, be sure to mention 
+   what is changing in your pull request.
 
-   If your change introduces a deprecation, make sure to discuss this first on
-   GitHub or the mailing list first. If agreement on the deprecation is
-   reached, follow `NEP 23 deprecation policy <http://www.numpy.org/neps/
-   nep-0023-backwards-compatibility.html>`_  to add the deprecation.
+   If your change introduces a deprecation, also make sure to include this 
+   fact in the pull request.
 
 6. Cross referencing issues
 
@@ -134,9 +121,6 @@ Here's the short summary, complete TOC links are below:
    solves an issue, replace the ``xref`` with ``closes``, ``fixes`` or any of
    the other flavors `github accepts <https://help.github.com/en/articles/
    closing-issues-using-keywords>`_.
-
-   In the source code, be sure to preface any issue or PR reference with
-   ``gh-xxxx``.
 
 For a more detailed discussion, read on and follow the links at the bottom of
 this page.
@@ -147,7 +131,7 @@ Divergence between ``upstream/master`` and your feature branch
 If GitHub indicates that the branch of your Pull Request can no longer
 be merged automatically, you have to incorporate changes that have been made
 since you started into your branch. Our recommended way to do this is to
-:ref:`rebase on master<rebasing-on-master>`.
+rebase on master.
 
 Guidelines
 ----------
@@ -176,37 +160,33 @@ Pull requests (PRs) that modify code should either have new tests, or modify exi
 tests to fail before the PR and pass afterwards. You should :ref:`run the tests
 <development-environment>` before pushing a PR.
 
-.. Running NumPy's test suite locally requires some additional packages, such as
-.. ``pytest`` and ``hypothesis``. The additional testing dependencies are listed
-.. in ``test_requirements.txt`` in the top-level directory, and can conveniently
-.. be installed with::
+Running Simphony's test suite locally requires some additional packages, such as
+``pytest``. The additional testing dependencies are listed
+in ``test_requirements.txt`` in the top-level directory, and can conveniently
+be installed with::
 
-..     pip install -r test_requirements.txt
+    pip install -r test_requirements.txt
 
-.. Tests for a module should ideally cover all code in that module,
-.. i.e., statement coverage should be at 100%.
+Tests for a module should ideally cover all code in that module,
+i.e., statement coverage should be at 100%.
 
-.. To measure the test coverage, install
-.. `pytest-cov <https://pytest-cov.readthedocs.io/en/latest/>`__
-.. and then run::
+To measure the test coverage, install
+`pytest-cov <https://pytest-cov.readthedocs.io/en/latest/>`__
+and then run::
 
-..   $ python runtests.py --coverage
-
-.. This will create a report in ``build/coverage``, which can be viewed with::
-
-..   $ firefox build/coverage/index.html
+  $ pytest --cov=simphony tests/
 
 Building docs
 -------------
 
-To build docs, run ``make`` from the ``doc`` directory. ``make help`` lists
+To build docs, run ``make`` from the ``docs`` directory. ``make help`` lists
 all targets. For example, to build the HTML documentation, you can run:
 
 .. code:: sh
 
     make html
 
-Then, all the HTML files will be generated in ``doc/build/html/``.
+Then, all the HTML files will be generated in ``docs/build/html/``.
 Since the documentation is based on docstrings, the appropriate version of
 Simphony must be installed in the host python used to run sphinx.
 
@@ -214,7 +194,7 @@ Requirements
 ~~~~~~~~~~~~
 
 `Sphinx <http://www.sphinx-doc.org/en/stable/>`__ is needed to build
-the documentation. Matplotlib, SciPy, and IPython are also required.
+the documentation.
 
 These additional dependencies for building the documentation are listed in
 ``doc_requirements.txt`` and can be conveniently installed with::
@@ -226,15 +206,6 @@ A working LaTeX document production system
 (e.g. `texlive <https://www.tug.org/texlive/>`__) is required for the
 proper rendering of the LaTeX math in the documentation.
 
-.. Fixing Warnings
-.. ~~~~~~~~~~~~~~~
-
-.. -  "citation not found: R###" There is probably an underscore after a
-..    reference in the first line of a docstring (e.g. [1]\_). Use this
-..    method to find the source file: $ cd doc/build; grep -rin R####
-
-.. -  "Duplicate citation R###, other instance in..."" There is probably a
-..    [2] without a [1] in one of the docstrings
 
 Development process - details
 =============================
@@ -242,13 +213,12 @@ Development process - details
 .. toctree::
    :maxdepth: 2
 
-   conduct/code_of_conduct
-   Git Basics <gitwash/index>
    development_environment
    development_workflow
-   ../benchmarking
-   style_guide
+   docs/howto_document
+   docs/howto_build_docs
    releasing
+   bugs
 
 Our workflow, based strongly on the NumPy project, is in :ref:`development-workflow
 <development-workflow>`.

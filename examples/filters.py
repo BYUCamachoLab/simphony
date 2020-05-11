@@ -4,25 +4,25 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
-
-import os
-import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+#
+# File: filters.py
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 
-from simphony.library import ebeam, sipann
+from SiPANN import scee
+from SiPANN.scee_int import SimphonyWrapper
+from simphony.library import siepic
 from simphony.netlist import Subcircuit
 from simphony.simulation import SweepSimulation
 from simphony.tools import freq2wl
 
 # Have a main data line where frequency multiplexed data enters the circuit.
-wg_data = ebeam.ebeam_wg_integral_1550(100e-6)
+wg_data = siepic.ebeam_wg_integral_1550(100e-6)
 
 # A terminator for dispersing unused light
-term = ebeam.ebeam_terminator_te1550()
+term = siepic.ebeam_terminator_te1550()
 
 def ring_factory(radius):
     """
@@ -41,10 +41,11 @@ def ring_factory(radius):
     Parameters
     ----------
     radius : float
-        The radius of the ring resonator, in microns.
+        The radius of the ring resonator, in nanometers.
     """
     # Have rings for selecting out frequencies from the data line.
-    half_ring = sipann.sipann_dc_halfring(radius=radius)
+    # See SiPANN's model API for argument order and units.
+    half_ring = SimphonyWrapper(scee.HalfRing(500, 220, radius, 100))
 
     circuit = Subcircuit()
     circuit.add([
@@ -65,7 +66,7 @@ def ring_factory(radius):
     return circuit
 
 # Behold, we can run a simulation on a single ring resonator.
-cir1 = ring_factory(10)
+cir1 = ring_factory(10000)
 sim1 = SweepSimulation(cir1, 1500e-9, 1600e-9)
 res1 = sim1.simulate()
 
@@ -82,23 +83,22 @@ plt.show()
 circuit = Subcircuit('Add-Drop Filter')
 e = circuit.add([
     (wg_data, 'input'),
-    (ring_factory(10), 'ring10'),
+    (ring_factory(10000), 'ring10'),
     (wg_data, 'out1'),
 
     (wg_data, 'connect1'),
-    (ring_factory(11), 'ring11'),
+    (ring_factory(11000), 'ring11'),
     (wg_data, 'out2'),
 
     (wg_data, 'connect2'),
-    (ring_factory(12), 'ring12'),
+    (ring_factory(12000), 'ring12'),
     (wg_data, 'out3'),
 
     (term, 'terminator')
 ])
 
 # You can set pin names individually (here I'm naming all the outputs that
-# I'll want to access before they get scrambled and associated with different
-# elements):
+# I'll want to access after the simulation has been run):
 circuit.elements['input'].pins['n1'] = 'input'
 circuit.elements['out1'].pins['n2'] = 'out1'
 circuit.elements['out2'].pins['n2'] = 'out2'
@@ -126,11 +126,11 @@ fig = plt.figure(tight_layout=True)
 gs = gridspec.GridSpec(1, 3)
 
 ax = fig.add_subplot(gs[0, :2])
-f, s = result.data(result.pinlist['input'], result.pinlist['out1'])
+f, s = result.data('input', 'out1')
 ax.plot(freq2wl(f)*1e9, s, label='Output 1', lw='0.7')
-f, s = result.data(result.pinlist['input'], result.pinlist['out2'])
+f, s = result.data('input', 'out2')
 ax.plot(freq2wl(f)*1e9, s, label='Output 2', lw='0.7')
-f, s = result.data(result.pinlist['input'], result.pinlist['out3'])
+f, s = result.data('input', 'out3')
 ax.plot(freq2wl(f)*1e9, s, label='Output 3', lw='0.7')
 
 ax.set_ylabel("Fractional Optical Power")
@@ -138,11 +138,11 @@ ax.set_xlabel("Wavelength (nm)")
 plt.legend(loc='upper right')
 
 ax = fig.add_subplot(gs[0, 2])
-f, s = result.data(result.pinlist['input'], result.pinlist['out1'])
+f, s = result.data('input', 'out1')
 ax.plot(freq2wl(f)*1e9, s, label='Output 1', lw='0.7')
-f, s = result.data(result.pinlist['input'], result.pinlist['out2'])
+f, s = result.data('input', 'out2')
 ax.plot(freq2wl(f)*1e9, s, label='Output 2', lw='0.7')
-f, s = result.data(result.pinlist['input'], result.pinlist['out3'])
+f, s = result.data('input', 'out3')
 ax.plot(freq2wl(f)*1e9, s, label='Output 3', lw='0.7')
 
 ax.set_xlim(1543,1545)

@@ -59,7 +59,7 @@ class SimulationResult:
     Attributes
     ----------
     pins : simphony.netlist.PinList
-        An ordered tuple of the nodes of the component.
+        An ordered tuple of the external pin names of the simulated component.
     """
     _logger = _module_logger.getChild('SimulationResult')
 
@@ -78,6 +78,10 @@ class SimulationResult:
             pinlist.element = self
             self._pinlist = pinlist
             assert self.pinlist.element == self
+
+    @property
+    def pins(self):
+        return tuple([pin.name for pin in self.pinlist])
 
 class SweepSimulationResult(SimulationResult):
     """
@@ -200,6 +204,14 @@ class SweepSimulation(Simulation):
         self.freq = np.linspace(start, stop, num)
 
     def simulate(self):
+        """
+        Runs the simulation on the object's circuit.
+
+        Returns
+        -------
+        sim : SweepSimulationResult
+            A loaded SweepSimulationResult object.
+        """
         models = self._collect_models(self.circuit)
         self.validate_models(models, self.freq)
         cache = self._cache_elements(models, self.freq)
@@ -256,7 +268,7 @@ class SweepSimulation(Simulation):
         Raises
         ------
         NotImplementedError
-            If a model does not have a class attribute `freq_range` defining
+            If a model does not have a class attribute ``freq_range`` defining
             the valid frequency range for the model.
         ValueError
             If the simulation frequencies are outside of the range of the valid
@@ -335,12 +347,12 @@ class SweepSimulation(Simulation):
 
         Notes
         -----
-        This function doesn't actually store `combined` on each iteration 
+        This function doesn't actually store ``combined`` on each iteration 
         through the netlist. That's because the Pin objects can only reference
         one PinList at a time, which in turn can only reference one Element.
         Since we transferring the actual Pin objects between lists, keeping
-        a reference to the Pin also keeps a reference to the `combined` 
-        Element alive. Hence, we track pins but not the `SimulationResult`.
+        a reference to the Pin also keeps a reference to the ``combined`` 
+        Element alive. Hence, we track pins but not the ``SimulationResult``.
         """
         _logger = _module_logger.getChild('SweepSimulation.connect_circuit')
 

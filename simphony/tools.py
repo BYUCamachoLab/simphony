@@ -60,7 +60,7 @@ def str2float(num):
     >>> str2float('2.53')
     2.53
 
-    If an unrecognized suffix is present, a `ValueError` is raised.
+    If an unrecognized suffix is present, a ``ValueError`` is raised.
 
     >>> str2float('17.3o')
     ValueError: Suffix 'o' in '17.3o' not recognized.
@@ -133,7 +133,7 @@ def interpolate(resampled, sampled, s_parameters):
     -------
     result : np.array
         The values of the interpolated function (fitted to the input 
-        s-parameters) evaluated at the `output_freq` frequencies.
+        s-parameters) evaluated at the ``output_freq`` frequencies.
     """
     func = interp1d(sampled, s_parameters, kind='cubic', axis=0)
     return func(resampled)
