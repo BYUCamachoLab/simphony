@@ -49,6 +49,8 @@ python3 -m twine upload dist/*
 Eventually, as the project grows, we will work up to using the methods 
 detailed below, retained for future reference.
 
+.. _howto_release:
+
 ------------------------
 How to Prepare a Release
 ------------------------
