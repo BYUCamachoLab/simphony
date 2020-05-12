@@ -83,7 +83,6 @@ setup_args = dict(
         # 'Operating System :: OS Independent',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3 :: Only',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
@@ -104,6 +103,10 @@ install_requires = [
 extras_require = {
     'test': [
         'pytest',
+    ],
+    'docs': [
+        'sphinx>=2.2.0',
+        'sphinx_rtd_theme>=0.4.3',
     ],
 }
 
