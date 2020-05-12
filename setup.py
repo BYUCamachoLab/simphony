@@ -81,15 +81,17 @@ setup_args = dict(
         'Operating System :: Microsoft :: Windows',
         'Operating System :: POSIX :: Linux',
         # 'Operating System :: OS Independent',
-        # 'Programming Language :: Python :: 3',
-        # 'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Education',
         'Intended Audience :: Science/Research',
-        'Topic :: Scientific/Engineering'],
+        'Topic :: Scientific/Engineering'
+    ],
+    python_requires='>=3.5',
 )
 
 install_requires = [
@@ -98,9 +100,19 @@ install_requires = [
     'parsimonious>=0.8.1',
 ]
 
+extras_require = {
+    'test': [
+        'pytest',
+    ],
+    'docs': [
+        'sphinx>=2.2.0',
+        'sphinx_rtd_theme>=0.4.3',
+    ],
+}
+
 if 'setuptools' in sys.modules:
     setup_args['install_requires'] = install_requires
-    # setup_args['extras_require'] = extras_require
+    setup_args['extras_require'] = extras_require
 
     # setup_args['entry_points'] = {
     #     # 'gui_scripts': [

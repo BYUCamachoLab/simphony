@@ -1,5 +1,6 @@
 # Simphony
 [![PyPI Version](https://img.shields.io/pypi/v/simphony.svg)](https://pypi.python.org/pypi/simphony)
+[![Build Status](https://travis-ci.org/BYUCamachoLab/simphony.svg?branch=master)](https://travis-ci.org/BYUCamachoLab/simphony.svg?branch=master)
 [![Documentation Status](https://readthedocs.org/projects/simphonyphotonics/badge/?version=latest)](https://simphonyphotonics.readthedocs.io/en/latest/?badge=latest)
 [![License](https://img.shields.io/pypi/l/simphony.svg)](https://pypi.python.org/pypi/simphony/)
 [![Latest Commit](https://img.shields.io/github/last-commit/BYUCamachoLab/simphony.svg)](https://github.com/BYUCamachoLab/simphony/commits/master)
