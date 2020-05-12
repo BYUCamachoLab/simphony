@@ -139,10 +139,7 @@ Guidelines
 * All code should have tests (see `test coverage`_ below for more details).
 * All code should be `documented <https://numpydoc.readthedocs.io/
   en/latest/format.html#docstring-standard>`_.
-
-.. * No changes are ever committed without review and approval by a core
-..   team member. Please ask politely on the PR or on the `mailing list`_ if you
-..   get no response to your pull request within a week.
+  
 
 Stylistic Guidelines
 --------------------

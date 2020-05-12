@@ -11,27 +11,8 @@ Recommended development setup
 
 For this chapter we assume that you have already set up your git repo.
 
+
 .. _testing-builds:
-
-
-Testing code
-------------
-
-Any code that you have contributed should also have accompanying tests. The
-style we adhere to in Simphony is to include a `/tests` directory wherever
-you are developing your module and writing tests using the `pytest framework`_.
-
-To run all tests, simply execute
-
-```
-pytest
-```
-
-from the toplevel directory. Note that pytest must be run under a Python 3
-environment.
-
-.. _pytest framework: https://docs.pytest.org/en/latest/
-
 
 Testing builds
 --------------
@@ -52,7 +33,7 @@ pip3 install dist/simphony-[VERSION].tar.gz
 
     Remember that all tests of Simphony should pass before committing your changes.
 
-Using ``pytest`` is the recommended approach to running tests.
+Using ``pytest`` is the recommended approach to running tests (see :ref:`running-tests`).
 
 
 .. _building-in-place:
@@ -97,18 +78,33 @@ virtual environment back to your previous shell.
 .. _venv: https://docs.python.org/3/library/venv.html
 
 
+.. _running-tests:
+
 Running tests
 -------------
 
-Tests can be run with ``pytest``.
+Any code that you have contributed should also have accompanying tests. The
+style we adhere to in Simphony is to include a `/tests` directory wherever
+you are developing your module and writing tests using the `pytest framework`_.
+
+To install testing dependencies, run::
+
+    $ pip install .[test]
+
+To run all tests, simply execute::
+
+    $ pytest
+
+from the toplevel directory. Note that pytest must be run under a Python 3
+environment.
+
+.. _pytest framework: https://docs.pytest.org/en/latest/
 
 Running individual test files can be useful; it can be much faster than running the
 whole test suite.
 This can be done with::
 
     $ pytest path_to_testfile/test_file.py
-
-Note that pytest must be running within a Python 3 environment.
 
 
 Rebuilding & cleaning the workspace
