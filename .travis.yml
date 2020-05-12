@@ -2,9 +2,6 @@ language: python
 
 matrix:
   include:
-    - name: "Python 3.5 on Xenial Linux"
-      python: 3.5
-
     - name: "Python 3.6 on Xenial Linux"
       python: 3.6
 
