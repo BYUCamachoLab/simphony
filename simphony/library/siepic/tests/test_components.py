@@ -13,7 +13,7 @@ from simphony.tools import wl2freq
 f = np.linspace(wl2freq(1600e-9), wl2freq(1500e-9))
 
 def is_equal(c1, c2):
-    return np.array_equal(c1.s_parameters(f), c2.s_parameters(f))
+    return np.allclose(c1.s_parameters(f), c2.s_parameters(f))
 
 class TestReimplementedComponents:
     def test_ebeam_y_1550(self):
@@ -27,7 +27,7 @@ class TestReimplementedComponents:
         d2 = ebeam.ebeam_dc_halfring_te1550()
         s1 = d1.s_parameters(f)
         s2 = np.transpose(d2.s_parameters(f), (0,2,1))
-        assert np.array_equal(s1, s2)
+        assert np.allclose(s1, s2)
 
     def test_ebeam_dc_te1550(self):
         assert is_equal(siepic.ebeam_dc_te1550(), ebeam.ebeam_dc_te1550())
