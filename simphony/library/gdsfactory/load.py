@@ -32,7 +32,7 @@ def load(component, **kwargs):
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    c = load(pp.c.mzi())
+    c = load(pp.c.mmi1x2())
     wav = np.linspace(1520, 1570, 1024) * 1e-9
     f = 3e8 / wav
     s = c.s_parameters(freq=f)

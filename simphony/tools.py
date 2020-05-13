@@ -18,17 +18,18 @@ from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import interp1d
 
 MATH_SUFFIXES = {
-    'f' : 'e-15',
-    'p' : 'e-12',
-    'n' : 'e-9',
-    'u' : 'e-6',
-    'm' : 'e-3',
-    'c' : 'e-2',
-    'k' : 'e3',
-    'M' : 'e6',
-    'G' : 'e9',
-    'T' : 'e12',
+    "f": "e-15",
+    "p": "e-12",
+    "n": "e-9",
+    "u": "e-6",
+    "m": "e-3",
+    "c": "e-2",
+    "k": "e3",
+    "M": "e6",
+    "G": "e9",
+    "T": "e12",
 }
+
 
 def str2float(num):
     """
@@ -39,7 +40,7 @@ def str2float(num):
     ----------
     num : str
         A string representing a number, optionally with a suffix.
-    
+
     Returns
     -------
     float
@@ -54,7 +55,7 @@ def str2float(num):
     --------
     >>> str2float('14.5c')
     0.145
-    
+
     Values without suffixes get converted to floats normally.
 
     >>> str2float('2.53')
@@ -75,17 +76,20 @@ def str2float(num):
     >>> str2float('0.4E6')
     400000.0
     """
-    matches = re.findall(r'([-+]?[0-9]+(?:[.][0-9]+)?)((?:[eE][-+]?[0-9]+)|(?:[a-zA-Z]))?', num)
+    matches = re.findall(
+        r"([-+]?[0-9]+(?:[.][0-9]+)?)((?:[eE][-+]?[0-9]+)|(?:[a-zA-Z]))?", num
+    )
     if len(matches) > 1:
         raise ValueError("'{}' is malformed".format(num))
     num, suffix = matches[0]
     try:
-        if suffix.startswith('e') or suffix.startswith('E'):
+        if suffix.startswith("e") or suffix.startswith("E"):
             return float(num + suffix)
-        else: 
-            return float(num + (MATH_SUFFIXES[suffix] if suffix != '' else ''))
+        else:
+            return float(num + (MATH_SUFFIXES[suffix] if suffix != "" else ""))
     except KeyError as e:
         raise ValueError("Suffix {} in '{}' not recognized.".format(str(e), matches[0]))
+
 
 def freq2wl(freq):
     """Convenience function for converting from frequency to wavelength.
@@ -100,7 +104,8 @@ def freq2wl(freq):
     wl : float
         The wavelength in SI units (m).
     """
-    return SPEED_OF_LIGHT/freq
+    return SPEED_OF_LIGHT / freq
+
 
 def wl2freq(wl):
     """Convenience function for converting from wavelength to frequency.
@@ -115,7 +120,8 @@ def wl2freq(wl):
     freq : float
         The frequency in SI units (Hz).
     """
-    return SPEED_OF_LIGHT/wl
+    return SPEED_OF_LIGHT / wl
+
 
 def interpolate(resampled, sampled, s_parameters):
     """Returns the result of a cubic interpolation for a given frequency range.
@@ -132,15 +138,16 @@ def interpolate(resampled, sampled, s_parameters):
     Returns
     -------
     result : np.array
-        The values of the interpolated function (fitted to the input 
+        The values of the interpolated function (fitted to the input
         s-parameters) evaluated at the ``output_freq`` frequencies.
     """
-    func = interp1d(sampled, s_parameters, kind='cubic', axis=0)
+    func = interp1d(sampled, s_parameters, kind="cubic", axis=0)
     return func(resampled)
+
 
 def get_subclasses(cls):
     """
-    Recursively gets all subclasses for a given class, even the subclasses of 
+    Recursively gets all subclasses for a given class, even the subclasses of
     subclasses.
 
     If a subclass resides in a model not imported by default by Simphony, those
@@ -166,4 +173,3 @@ def get_subclasses(cls):
     for subclass in cls.__subclasses__():
         yield from get_subclasses(subclass)
         yield subclass
-        
