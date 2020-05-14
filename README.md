@@ -57,12 +57,21 @@ a simulation in Simphony:
 1. Define connection points.
 1. Run a simulation.
 
+![MZI circuit diagram](./docs/source/user/tutorials/images/mzi.png)
+*Caption: A Mach-Zehnder Interferometer (MZI) implemented as a photonic integrated circuit.*
+
+The following script models the MZI circuit shown above:
+
 ```
+from simphony.library import siepic
+from simphony.netlist import Subcircuit
+from simphony.simulation import SweepSimulation
+
 # Declare the models used in the circuit
-gc = siepic.ebeam_gc_te1550()
-y = siepic.ebeam_y_1550()
-wg150 = siepic.ebeam_wg_integral_1550(length=150e-6)
-wg50 = siepic.ebeam_wg_integral_1550(length=50e-6)
+gc = siepic.ebeam_gc_te1550()                           # grating coupler
+y = siepic.ebeam_y_1550()                               # y-branch
+wg150 = siepic.ebeam_wg_integral_1550(length=150e-6)    # 150 micron waveguide
+wg50 = siepic.ebeam_wg_integral_1550(length=50e-6)      # 50 micron waveguide
 
 # Create the circuit, add all individual instances
 circuit = Subcircuit('MZI')
