@@ -1,7 +1,5 @@
 import os
-
 import numpy as np
-
 
 def _read_s_parameters():
     """Returns the s-parameters across some frequency range for the ebeam_y_1550 model
