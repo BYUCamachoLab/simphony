@@ -12,18 +12,6 @@ if you have not forked the repository but simply cloned it locally. You can
 also edit ``.git/config`` and add ``upstream`` if it isn't already present.
 
 
-.. Double check release versions
-.. -----------------------------
-
-.. Edit the ``.travis.yml`` and ``.appveyor.yml`` files to make sure they have the
-.. correct version, and put in the commit hash for the ``REL`` commit created
-.. above for ``BUILD_COMMIT``, see the _example from `v1.14.3`::
-
-..     $ gvim .travis.yml .appveyor.yml
-..     $ git commit -a
-..     $ git push upstream HEAD
-
-
 Update Release documentation
 ----------------------------
 
@@ -68,6 +56,11 @@ requires write permission to the Simphony repository::
 Build source releases and wheels
 --------------------------------
 
+.. note:: 
+   Simphony gets published automatically to PyPI when a new version is tagged
+   in GitHub. The following is the process followed by the GitHub Actions workflow
+   to publish to PyPI, and does NOT need to be performed manually.
+
 We use ``setuptools`` and ``wheel`` to package Simphony. Make sure you have
 the latest version installed: ::
 
@@ -92,14 +85,12 @@ Tag the release
 
 .. _Write access: https://help.github.com/en/github/administering-a-repository/managing-releases-in-a-repository
 
-Once the wheels have been built without errors, go
-to `<https://github.com/BYUCamachoLab/simphony/releases>`_, the main
+Go to `<https://github.com/BYUCamachoLab/simphony/releases>`_, the main
 Simphony repository in GitHub, and draft a new release. The name of the release
-should be the version number: ::
+should be the version number, which you should have verified is the version 
+number defined throughout the package. ::
 
     v0.3.0
-
-Ensure that the files in ``dist`` have the correct, matching versions.
 
 
 Upload files to github
