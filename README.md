@@ -7,7 +7,9 @@
 
 A Simulator for Photonic circuits
 
-![](./docs/source/images/simphony_logo.jpg)
+<p align="center">
+<img src="./docs/source/images/simphony_logo.jpg" width="60%">
+</p>
 
 Simphony, a simulator for photonic circuits, is a fundamental package for designing and simulating photonic integrated circuits with Python.
 
@@ -57,12 +59,13 @@ a simulation in Simphony:
 1. Define connection points.
 1. Run a simulation.
 
-![MZI circuit diagram](./docs/source/user/tutorials/images/mzi.png)
-*Caption: A Mach-Zehnder Interferometer (MZI) implemented as a photonic integrated circuit.*
+<p align="center">
+<img src="./docs/source/user/tutorials/images/mzi.png" width="50%">
+</p>
 
 The following script models the MZI circuit shown above:
 
-```
+```python
 from simphony.library import siepic
 from simphony.netlist import Subcircuit
 from simphony.simulation import SweepSimulation
@@ -113,7 +116,9 @@ plt.tight_layout()
 plt.show()
 ```
 
-![MZI simulation result (plot)](./docs/source/user/tutorials/images/plot_mzi.png)
+<p align="center">
+<img src="./docs/source/user/tutorials/images/plot_mzi.png" width="50%">
+</p>
 
 More examples can be found in the 
 [online documentation](https://simphonyphotonics.readthedocs.io/en/latest/user/tutorials/index.html).
