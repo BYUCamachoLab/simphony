@@ -2,7 +2,7 @@ import pp
 from simphony.library.gdsfactory import load
 
 
-def mmi1x2(c=pp.c.mmi1x2, **kwargs):
+def mmi1x2(c=pp.c.mmi1x2):
     m = load(c)
     return m
 

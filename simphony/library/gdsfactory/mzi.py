@@ -7,7 +7,7 @@ from simphony.netlist import Subcircuit
 
 @pp.autoname
 def mzi(L0=1, L1=100, L2=10, y_model_factory=mmi1x2):
-    """ Mzi with grating couplers
+    """ Mzi
 
     Args:
         L0: vertical length for both and top arms
