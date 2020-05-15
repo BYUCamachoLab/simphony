@@ -6,6 +6,7 @@ This package contains parameterized circuit models for https://github.com/gdsfac
 
 """
 
+from simphony.library.gdsfactory.add_gc import add_gc
 from simphony.library.gdsfactory.coupler_ring import coupler_ring
 from simphony.library.gdsfactory.load import load
 from simphony.library.gdsfactory.mmi1x2 import mmi1x2
@@ -18,10 +19,14 @@ from simphony.library.gdsfactory.sweep_simulation_montecarlo import (
 
 __all__ = [
     "load",
+    "coupler_ring",
     "mmi1x2",
     "mzi",
-    "coupler_ring",
+    "add_gc",
     "plot_sparameters",
     "sweep_simulation",
     "sweep_simulation_montecarlo",
 ]
+
+
+_elements = ["mmi1x2", "mmi1x2", "coupler_ring"]

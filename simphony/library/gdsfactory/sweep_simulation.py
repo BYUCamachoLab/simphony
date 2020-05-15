@@ -1,11 +1,18 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import pp
 from simphony.simulation import SweepSimulation
 from simphony.tools import freq2wl
 
 
 def sweep_simulation(
-    circuit, iport="input", oport="output", start=1500e-9, stop=1600e-9, **kwargs
+    circuit,
+    iport="input",
+    oport="output",
+    start=1500e-9,
+    stop=1600e-9,
+    logscale=True,
+    **kwargs
 ):
     """ Run a simulation on the circuit
     """
@@ -16,6 +23,8 @@ def sweep_simulation(
 
     f, s = result.data(iport, oport)
     w = freq2wl(f) * 1e9
+    if logscale:
+        s = 20 * np.log10(abs(s))
     plt.plot(w, s)
     plt.title(circuit.name)
     plt.tight_layout()

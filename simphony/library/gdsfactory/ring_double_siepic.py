@@ -5,7 +5,7 @@ from simphony.netlist import Subcircuit
 
 
 @pp.autoname
-def ring_double(
+def ring_double_siepic(
     wg_width=0.5,
     gap=0.2,
     length_x=4,
@@ -70,5 +70,5 @@ def ring_double(
 
 
 if __name__ == "__main__":
-    c = ring_double()
+    c = ring_double_siepic()
     sweep_simulation(c)
