@@ -24,13 +24,14 @@ jobs:
       env:
         VERSION: "0.3.0"
       run: |
-        echo "::set-env name=BODY::$(cat ./docs/changelog/${{ env.VERSION }}-changelog.md)"
+        BODY::$(cat ./docs/changelog/${{ env.VERSION }}-changelog.md)
         BODY="${BODY//'%'/'%25'}"
         BODY="${BODY//$'\n'/'%0A'}"
         BODY="${BODY//$'\r'/'%0D'}"
+        echo "::set-env name=BODY::$BODY"
     - name: Display Changelog Text
       run: |
-        echo "$BODY"
+        echo ${{ env.BODY }}
     - name: Build
       run: |
         python setup.py sdist bdist_wheel
