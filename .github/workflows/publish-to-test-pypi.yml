@@ -33,6 +33,6 @@ jobs:
       env:
         VERSION: "0.3.0"
       run: |
-        echo "::set-env BODY=$(cat ${{ VERSION }}-changelog.md)"
+        echo "::set-env BODY=$(cat ${{ env.VERSION }}-changelog.md)"
         echo "$BODY"
 
