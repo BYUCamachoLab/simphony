@@ -20,6 +20,12 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install --upgrade setuptools wheel twine
+    - name: Release Workflow Sample
+      env:
+        VERSION: "0.3.0"
+      run: |
+        echo "::set-env BODY=$(cat ${{ env.VERSION }}-changelog.md)"
+        echo "$BODY"
     - name: Build
       run: |
         python setup.py sdist bdist_wheel
@@ -29,10 +35,3 @@ jobs:
         user: __token__
         password: ${{ secrets.TEST_PYPI_PASSWORD }}
         repository_url: https://test.pypi.org/legacy/
-    - name: Release Workflow Sample
-      env:
-        VERSION: "0.3.0"
-      run: |
-        echo "::set-env BODY=$(cat ${{ env.VERSION }}-changelog.md)"
-        echo "$BODY"
-
