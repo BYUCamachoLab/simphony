@@ -1,14 +1,16 @@
-# Simphony
-[![PyPI Version](https://img.shields.io/pypi/v/simphony.svg)](https://pypi.python.org/pypi/simphony)
-[![Build Status](https://travis-ci.org/BYUCamachoLab/simphony.svg?branch=master)](https://travis-ci.org/BYUCamachoLab/simphony.svg?branch=master)
-[![Documentation Status](https://readthedocs.org/projects/simphonyphotonics/badge/?version=latest)](https://simphonyphotonics.readthedocs.io/en/latest/?badge=latest)
-[![License](https://img.shields.io/pypi/l/simphony.svg)](https://pypi.python.org/pypi/simphony/)
-[![Latest Commit](https://img.shields.io/github/last-commit/BYUCamachoLab/simphony.svg)](https://github.com/BYUCamachoLab/simphony/commits/master)
-
-A Simulator for Photonic circuits
+# Simphony: A Simulator for Photonic circuits
 
 <p align="center">
-<img src="./docs/source/images/simphony_logo.jpg" width="60%">
+<a href="https://pypi.python.org/pypi/simphony"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/simphony.svg"></a>
+<a href="https://travis-ci.org/BYUCamachoLab/simphony.svg?branch=master"><img alt="Build Status" src="https://travis-ci.org/BYUCamachoLab/simphony.svg?branch=master"></a>
+<a href="https://simphonyphotonics.readthedocs.io/"><img alt="Documentation Status" src="https://readthedocs.org/projects/simphonyphotonics/badge/?version=latest"></a>
+<a href="https://pypi.python.org/pypi/simphony/"><img alt="License" src="https://img.shields.io/pypi/l/simphony.svg"></a>
+<a href="https://github.com/BYUCamachoLab/simphony/commits/master"><img alt="Latest Commit" src="https://img.shields.io/github/last-commit/BYUCamachoLab/simphony.svg"></a>
+</p>
+
+
+<p align="center">
+<img src="https://raw.githubusercontent.com/BYUCamachoLab/simphony/master/docs/source/images/simphony_logo.jpg" width="60%">
 </p>
 
 Simphony, a simulator for photonic circuits, is a fundamental package for designing and simulating photonic integrated circuits with Python.
@@ -60,7 +62,7 @@ a simulation in Simphony:
 1. Run a simulation.
 
 <p align="center">
-<img src="./docs/source/user/tutorials/images/mzi.png" width="50%">
+<img src="https://raw.githubusercontent.com/BYUCamachoLab/simphony/master/docs/source/user/tutorials/images/mzi.png" width="50%">
 </p>
 
 The following script models the MZI circuit shown above:
@@ -117,7 +119,7 @@ plt.show()
 ```
 
 <p align="center">
-<img src="./docs/source/user/tutorials/images/plot_mzi.png" width="50%">
+<img src="https://raw.githubusercontent.com/BYUCamachoLab/simphony/master/docs/source/user/tutorials/images/plot_mzi.png" width="50%">
 </p>
 
 More examples can be found in the 
