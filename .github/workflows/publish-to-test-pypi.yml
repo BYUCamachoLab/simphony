@@ -31,7 +31,7 @@ jobs:
         echo "::set-env name=BODY::$BODY"
     - name: Display Changelog Text
       run: |
-        echo ${{ env.BODY }}
+        echo "${{ env.BODY }}"
     - name: Build
       run: |
         python setup.py sdist bdist_wheel
