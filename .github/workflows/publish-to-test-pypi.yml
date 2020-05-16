@@ -24,7 +24,7 @@ jobs:
       env:
         VERSION: "0.3.0"
       run: |
-        echo "::set-env BODY=$(cat ${{ env.VERSION }}-changelog.md)"
+        echo "::set-env BODY=$(cat ./docs/changelog/${{ env.VERSION }}-changelog.md)"
         echo "$BODY"
     - name: Build
       run: |
