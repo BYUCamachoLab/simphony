@@ -27,7 +27,7 @@ jobs:
         echo "::set-env name=BODY::$(cat ./docs/changelog/${{ env.VERSION }}-changelog.md)"
     - name: Display Changelog Text
       run: |
-        echo ${{ env.BODY }}
+        echo "$BODY"
     - name: Build
       run: |
         python setup.py sdist bdist_wheel
