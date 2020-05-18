@@ -30,6 +30,46 @@ This way of working helps to keep work well organized and the history
 as clear as possible.
 
 
+For Developers
+##############
+
+This package is available on PyPI and updates are regularly pushed as "minor" 
+or "micro" (patch) versions. Before submitting any pull requests, however, you should 
+ensure that a pip installation of your updated package installs and functions 
+properly. To test this, try installing your package locally by removing all 
+installed versions of Simphony (by running ```pip3 uninstall simphony``` 
+repeatedly until no installations remain) and running the following commands 
+(from Simphony's toplevel directory):
+
+```
+python3 setup.py sdist bdist_wheel  
+pip3 install dist/simphony-[VERSION].tar.gz
+```
+
+Also be sure to include tests for all the code you add, making certain the tests are
+thorough and always pass.
+
+For Maintainers
+###############
+
+Remember that all changes are to be integrated through pull requests. Development
+work should be done in branches or forks of the repository. Once implemented 
+(and tested on their own), these pull requests should be merged into the 
+"master" branch for full testing with the whole program. 
+
+- master (integration and final testing)
+- feature-name (feature development and bug fixes)
+
+Even if you are the lone developer, follow the methodology 
+[here](https://softwareengineering.stackexchange.com/a/294048).
+
+Be sure to update the version number manually before pushing each new version 
+to PyPI. Also be sure to update the changelog.
+
+Eventually, as the project grows, we will work up to using the methods 
+detailed below, retained for future reference.
+
+
 .. _making-a-new-feature-branch:
 
 Making a new feature branch
