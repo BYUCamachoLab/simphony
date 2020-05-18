@@ -11,11 +11,11 @@ simphony.netlist
 This package contains the base classes for defining circuits.
 """
 
-from collections import OrderedDict
 import copy
 import itertools
 import logging
 import uuid
+from collections import OrderedDict
 
 from simphony.elements import Model
 
@@ -24,7 +24,7 @@ _module_logger = logging.getLogger(__name__)
 
 class Pin:
     """
-    A class representing a pin on a unique element instance. 
+    A class representing a pin on a unique element instance.
 
     Note that these are not the pins defined in Models, but are created from
     the names defined there.
@@ -42,8 +42,9 @@ class Pin:
     PinList will result in the automatic and silent change of the ``pinlist``
     reference.
     """
-    _logger = _module_logger.getChild('Pin')
-    
+
+    _logger = _module_logger.getChild("Pin")
+
     def __init__(self, pinlist, name):
         self.pinlist = pinlist
         self.name = name
@@ -65,6 +66,7 @@ class Pin:
     @property
     def index(self):
         return self.pinlist.index(self)
+
 
 class PinList:
     """
@@ -103,7 +105,7 @@ class PinList:
     Warning
     -------
     Adding two PinLists together will change the pinlist reference of the pins
-    they contain to point to the new result. This is because Pins can only 
+    they contain to point to the new result. This is because Pins can only
     be referenced by one PinList at a time. Inserting them into a new PinList
     automatically and silently changes their references.
 
@@ -118,7 +120,8 @@ class PinList:
     >>> pinlist.pins = ('out', 'in', 'mix')
     >>> pinlist.pins = ('n1')
     """
-    _logger = _module_logger.getChild('PinList')
+
+    _logger = _module_logger.getChild("PinList")
 
     def __init__(self, element, *pins):
         self.element = element
@@ -133,9 +136,13 @@ class PinList:
             for pin in self.pins:
                 if pin.name == item:
                     if ret is None:
-                        ret = pin 
+                        ret = pin
                     else:
-                        raise LookupError("Name '{}' is ambiguous; multiple pins with that name exist!".format(item))
+                        raise LookupError(
+                            "Name '{}' is ambiguous; multiple pins with that name exist!".format(
+                                item
+                            )
+                        )
             return ret
         elif type(item) is int:
             return self.pins[item]
@@ -186,10 +193,10 @@ class PinList:
         ----------
         pin : str or Pin
             The pin to verify is in the list.
-            
+
         Returns
         -------
-        bool 
+        bool
             True if the pin is in the list.
         """
         if type(pin) is str:
@@ -199,7 +206,7 @@ class PinList:
             if pin in self.pins:
                 return True
         return False
-    
+
     def append(self, pin):
         """
         Takes a pin argument (string or Pin) and creates a ``Pin`` object.
@@ -210,7 +217,8 @@ class PinList:
             The pin to be normalized to a ``Pin``.
         """
         pin = self._normalize(pin)
-        if self.contains(pin): raise ValueError("name '{}' is not unique in PinList")
+        if self.contains(pin):
+            raise ValueError("name '{}' is not unique in PinList")
         self.pins.append(pin)
 
     def remove(self, *pins):
@@ -220,7 +228,7 @@ class PinList:
         Parameters
         ----------
         pins : str or Pin
-            Variable length argument list; the pins to be removed from the 
+            Variable length argument list; the pins to be removed from the
             circuit.
         """
         for pin in pins:
@@ -244,7 +252,9 @@ class PinList:
 
     def rename_pins(self, *names):
         if len(names) != len(self.pins):
-            err = "number of new pins does not match number of existing pins ({} != {})".format(len(names), len(self.pins))
+            err = "number of new pins does not match number of existing pins ({} != {})".format(
+                len(names), len(self.pins)
+            )
             raise ValueError(err)
         for pin, name in zip(self.pins, names):
             pin.name = name
@@ -311,6 +321,7 @@ class Element:
     and comparison time), when this object is deep copied, the ``model`` 
     attribute remains as a reference to the same former model object. 
     """
+
     # FIXME: Do we want `name` to be read-only/
 
     def __init__(self, model, name=None):
@@ -323,7 +334,7 @@ class Element:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if k == 'model':
+            if k == "model":
                 setattr(result, k, v)
             else:
                 setattr(result, k, copy.deepcopy(v, memo))
@@ -357,9 +368,10 @@ class Element:
         """
         return self.model.__class__.__name__ + "_" + str(uuid.uuid4())[:8]
 
+
 class ElementList:
     """
-    Maintains an ordered dict. If an update to an existing key is attempted, 
+    Maintains an ordered dict. If an update to an existing key is attempted,
     the update fails. Keys must be deleted before being used.
 
     Dictionary is a mapping of names (type: ``str``) to elements or blocks (type:
@@ -424,6 +436,7 @@ class Netlist:
     nets : list of list
         Nets is a list of connections, stored as a list of two ``Pins``.
     """
+
     def __init__(self):
         self.nets = []
 
@@ -476,12 +489,14 @@ class Subcircuit:
     pins : the new pins to use as the pins of the subcircuit
     nets
     """
-    _logger = _module_logger.getChild('Subcircuit')
+
+    _logger = _module_logger.getChild("Subcircuit")
 
     def __init__(self, name=None):
         self.name = name if name else str(uuid.uuid4())
         self.elements = ElementList()
         self.netlist = Netlist()
+        self.settings = {}
 
     @property
     def pins(self):
@@ -501,8 +516,10 @@ class Subcircuit:
             minn, maxx = element.wl_bounds
             # min_wl.append(element.wl_bounds[0])
             # max_wl.append(element.wl_bounds[1])
-            if minn is not None: min_wl.append(minn)
-            if maxx is not None: max_wl.append(maxx)
+            if minn is not None:
+                min_wl.append(minn)
+            if maxx is not None:
+                max_wl.append(maxx)
         return (min(min_wl), max(max_wl))
 
     def add(self, elements):
@@ -555,16 +572,16 @@ class Subcircuit:
         """
         Connect two elements with a net.
 
-        Netlists are unique to and stored by a Subcircuit object. This means 
+        Netlists are unique to and stored by a Subcircuit object. This means
         net identifiers (numbers, by default) can be reused between separate
         subcircuits but must be unique within each.
 
         Parameters
         ----------
-        element1 : 
-        node1 : 
+        element1 :
+        node1 :
         element2 :
-        node2 : 
+        node2 :
         """
         e1 = self._get_element(element1)
         p1 = self._get_pin(e1, pin1)
@@ -578,7 +595,9 @@ class Subcircuit:
         elif type(element) is str:
             return self.elements[element]
         else:
-            raise TypeError('element should be string or Element, not "{}"'.format(type(element)))
+            raise TypeError(
+                'element should be string or Element, not "{}"'.format(type(element))
+            )
 
     def _get_pin(self, element, pin):
         """
@@ -623,27 +642,29 @@ class Subcircuit:
         """
         out = ""
         for item in self._blocks.keys():
-            out += str(type(self._blocks[item])) + '\n'
+            out += str(type(self._blocks[item])) + "\n"
         return out
 
     @property
     def model(self):
         wl_bounds = None
         pins = None
+
         def s_parameters(self, a, b):
             return a + b
-        
+
         klass = type(self.name, (Model,), {})
         klass.wl_bounds = wl_bounds
         klass.pins = pins
         klass.s_parameters = s_parameters
 
+
 # class Circuit:
 #     """
 #     This class implements a cicuit netlist.
-    
+
 #     To get the corresponding Spice netlist use:
-       
+
 #        ```
 #        circuit = Circuit()
 #        ...

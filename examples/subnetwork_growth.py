@@ -12,7 +12,7 @@ subnetwork_growth.py
 Author: Sequoia Ploeg
 Modified: April 2, 2020
 
-A simple, non-abstracted script that demonstrates the process of subnetwork 
+A simple, non-abstracted script that demonstrates the process of subnetwork
 growth using the base functions in simphony. In this example, we construct
 a 10-micron ring resonator with an input port, a through-port, and a drop-port.
 
@@ -28,7 +28,7 @@ library) has ports that, corresponding to its s-matrix, are ordered like so
 0           2
 
 A ring resonator is simply two half-rings cascaded together. Our configuration
-will look like two of the above half-rings, rotated and placed next to each 
+will look like two of the above half-rings, rotated and placed next to each
 other:
 
 Ring (L)   Ring (R)
@@ -42,16 +42,16 @@ Ring (L)   Ring (R)
 0
 | <- Terminator
 
-A description of subnetwork growth can be found in the paper introducing 
+A description of subnetwork growth can be found in the paper introducing
 Simphony. But briefly, cascading networks involves placing them into a large
-matrix and performing operations that depend on whether its an internal 
+matrix and performing operations that depend on whether its an internal
 connection (same network, two ports connected) or an external connection. By
 the end of the subnetwork growth process, the entire network is unified.
-Connecting two independenet networks creates one new network with all the 
+Connecting two independenet networks creates one new network with all the
 leftover, unconnected ports of the original two networks.
 
-One cascading order is shown below. Two cascading orders are demonstrated in 
-the code, with their results plotted on top of each other, showing their 
+One cascading order is shown below. Two cascading orders are demonstrated in
+the code, with their results plotted on top of each other, showing their
 equivalence.
 
 In this example, intermediary networks are numbered 'n_i'.
@@ -100,10 +100,9 @@ To get the transmission from input to output in the s-matrix, the indexing is
 
 import matplotlib.pyplot as plt
 import numpy as np
-
+from simphony.connect import connect_s, innerconnect_s
 from simphony.library import ebeam, sipann
-from simphony.connect import innerconnect_s, connect_s
-from simphony.simulation import freq2wl, wl2freq
+from simphony.tools import freq2wl, wl2freq
 
 # First, we'll set up the frequency range we wish to perform the simulation on.
 freq = np.linspace(wl2freq(1600e-9), wl2freq(1500e-9), 2000)
@@ -123,7 +122,7 @@ m1 = connect_s(half_ring_right, 1, half_ring_left, 3)
 m2 = innerconnect_s(m1, 2, 4)
 m3 = connect_s(term, 0, m2, 3)
 
-plt.plot(freq, np.abs(n3[:,1,2])**2, 'b.')
-plt.plot(freq, np.abs(m3[:,0,1])**2, 'r--')
+plt.plot(freq, np.abs(n3[:, 1, 2]) ** 2, "b.")
+plt.plot(freq, np.abs(m3[:, 0, 1]) ** 2, "r--")
 plt.tight_layout()
 plt.show()

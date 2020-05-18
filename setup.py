@@ -8,7 +8,7 @@
 Simphony Photonic Simulator
 
 This module implements a free and open source
-photonic integrated circuit (PIC) simulation engine. 
+photonic integrated circuit (PIC) simulation engine.
 It is speedy and easily extensible.
 """
 
@@ -18,63 +18,64 @@ import sys
 
 import setuptools
 
-#==============================================================================
-# Constants
-#==============================================================================
-NAME = 'simphony'
-LIBNAME = 'simphony'
-from simphony import __version__, __website_url__  #analysis:ignore
+from simphony import __version__, __website_url__  # analysis:ignore
 
-#==============================================================================
+# ==============================================================================
+# Constants
+# ==============================================================================
+NAME = "simphony"
+LIBNAME = "simphony"
+
+# ==============================================================================
 # Auxiliary functions
-#==============================================================================
+# ==============================================================================
 extra_files = []
 data_files_ext = [
-    '.sparam',
-    '.dat',
-    '.txt',
-    '.npy',
-    '.npz',
+    ".sparam",
+    ".dat",
+    ".txt",
+    ".npy",
+    ".npz",
 ]
 
+
 def package_data_files(directory):
-    paths =[]
+    paths = []
     for (path, directories, filenames) in os.walk(directory):
         for filename in filenames:
             name, ext = os.path.splitext(filename)
             if ext in data_files_ext:
-                paths.append(os.path.join('..', path, filename))
+                paths.append(os.path.join("..", path, filename))
     return paths
 
-extra_files += package_data_files('simphony/library')
-extra_files += ['*.ini']
 
-#==============================================================================
+extra_files += package_data_files("simphony/library")
+extra_files += ["*.ini"]
+
+# ==============================================================================
 # Use README for long description
-#==============================================================================
-with io.open('README.md', encoding='utf-8') as f:
+# ==============================================================================
+with io.open("README.md", encoding="utf-8") as f:
     LONG_DESCRIPTION = f.read()
 
-#==============================================================================
+# ==============================================================================
 # Setup arguments
-#==============================================================================
+# ==============================================================================
 setup_args = dict(
     name=NAME,
     version=__version__,
-    description='Simphony: A Simulator for Photonic circuits',
+    description="Simphony: A Simulator for Photonic circuits",
     long_description=LONG_DESCRIPTION,
     long_description_content_type="text/markdown",
     # download_url=__website_url__ + "",
-    author='Sequoia Ploeg',
-    author_email='sequoia.ploeg@ieee.org',
+    author="Sequoia Ploeg",
+    author_email="sequoia.ploeg@ieee.org",
     url=__website_url__,
     license='MIT',
     keywords='photonics simulation circuits science',
     platforms=["Windows", "Linux", "Mac OS-X"],
     packages=setuptools.find_packages(),
-    package_data={
-        '': extra_files,
-    },
+    package_data={"": extra_files},
     classifiers=[
         'License :: OSI Approved :: MIT License',
         'Operating System :: MacOS',
@@ -95,9 +96,9 @@ setup_args = dict(
 )
 
 install_requires = [
-    'scipy>=1.2.1',
-    'numpy',
-    'parsimonious>=0.8.1',
+    "scipy>=1.2.1",
+    "numpy",
+    "parsimonious>=0.8.1",
 ]
 
 extras_require = {
@@ -117,7 +118,7 @@ if 'setuptools' in sys.modules:
     # setup_args.pop('scripts', None)
 
 
-#==============================================================================
+# ==============================================================================
 # Main setup
-#==============================================================================
+# ==============================================================================
 setuptools.setup(**setup_args)
