@@ -16,11 +16,10 @@ import logging
 import uuid
 
 import numpy as np
-
 from simphony.connect import connect_s, innerconnect_s
 from simphony.elements import Model
-from simphony.netlist import Subcircuit, ElementList, Element, PinList
-from simphony.tools import wl2freq
+from simphony.netlist import Element, ElementList, PinList, Subcircuit
+from simphony.tools import freq2wl, wl2freq
 
 _module_logger = logging.getLogger(__name__)
 
@@ -42,6 +41,7 @@ class ScatteringMatrix:
             pinlist.element = self
             self._pinlist = pinlist
 
+
 class SimulationResult:
     """
     A simulated block of a circuit; can represent either elements or entire
@@ -61,7 +61,8 @@ class SimulationResult:
     pins : simphony.netlist.PinList
         An ordered tuple of the external pin names of the simulated component.
     """
-    _logger = _module_logger.getChild('SimulationResult')
+
+    _logger = _module_logger.getChild("SimulationResult")
 
     def __init__(self, pinlist=None):
         self._pinlist = None
@@ -73,7 +74,7 @@ class SimulationResult:
 
     @pinlist.setter
     def pinlist(self, pinlist):
-        self._logger.debug('pinlist property set')
+        self._logger.debug("pinlist property set")
         if pinlist:
             pinlist.element = self
             self._pinlist = pinlist
@@ -94,6 +95,7 @@ class SweepSimulationResult(SimulationResult):
     smat : ScatteringMatrix
         A numpy array of the s-parameter matrix for the given frequency range.
     """
+
     def __init__(self, freq, smat):
         super().__init__(smat.pinlist)
         self.f = freq
@@ -109,10 +111,11 @@ class SweepSimulationResult(SimulationResult):
             Output pin.
         """
         freq = self.f
-        s = abs(self.s[:, self.pinlist[outp].index, self.pinlist[inp].index])**2
+        s = abs(self.s[:, self.pinlist[outp].index, self.pinlist[inp].index]) ** 2
         if dB:
             s = np.log10(s)
         return freq, s
+
 
 class MonteCarloSimulationResult(SimulationResult):
     """
@@ -122,6 +125,7 @@ class MonteCarloSimulationResult(SimulationResult):
     smat : simphony.simulation.ScatteringMatrix
     runs : int
     """
+
     def __init__(self, freq, smat, runs):
         super().__init__(smat.pinlist)
         self.f = freq
@@ -142,14 +146,15 @@ class MonteCarloSimulationResult(SimulationResult):
         """
         res = self.results[run]
         freq = self.f
-        s = abs(res.s[:, self.pinlist[outp].index, self.pinlist[inp].index])**2
+        s = abs(res.s[:, self.pinlist[outp].index, self.pinlist[inp].index]) ** 2
         if dB:
             s = np.log10(s)
         return freq, s
 
+
 class Simulation:
     """
-    Once a simulation is run, it is completely decoupled from the circuit 
+    Once a simulation is run, it is completely decoupled from the circuit
     which created it. Its pins, while bearing the same name, are unique
     objects.
 
@@ -158,6 +163,7 @@ class Simulation:
     circuit : simphony.netlist.Subcircuit
         A simulation is instantiated with a completed circuit.
     """
+
     def __init__(self, circuit: Subcircuit):
         self.circuit = copy.deepcopy(circuit)
 
@@ -177,7 +183,7 @@ class SweepSimulation(Simulation):
     num : int, optional
         The number of sampled points.
     mode : str, optional
-        Defines sweep range mode; either 'wl' for wavelength (m) or 
+        Defines sweep range mode; either 'wl' for wavelength (m) or
         'freq' for frequency (Hz).
 
     Attributes
@@ -185,23 +191,34 @@ class SweepSimulation(Simulation):
     freq : np.ndarray
         The frequency array over which the simulation is performed.
     """
-    def __init__(self, circuit: Subcircuit, start: float=1.5e-6, stop: float=1.6e-6, num: int=2000, mode='wl'):
+
+    def __init__(
+        self,
+        circuit: Subcircuit,
+        start: float = 1.5e-6,
+        stop: float = 1.6e-6,
+        num: int = 2000,
+        mode="wl",
+    ):
         super().__init__(circuit)
         if start > stop:
             raise ValueError("simulation 'start' value must be less than 'stop' value.")
-        if mode == 'wl':
+        if mode == "wl":
             tmp_start = start
             tmp_stop = stop
             start = wl2freq(tmp_stop)
             stop = wl2freq(tmp_start)
-        elif mode == 'freq':
+        elif mode == "freq":
             pass
         else:
             err = "mode '{}' is not one of 'freq' or 'wl'".format(mode)
             raise ValueError(err)
         if start > stop:
-            raise ValueError('starting frequency cannot be greater than stopping frequency')
+            raise ValueError(
+                "starting frequency cannot be greater than stopping frequency"
+            )
         self.freq = np.linspace(start, stop, num)
+        self.wl = freq2wl(self.freq)
 
     def simulate(self):
         """
@@ -242,15 +259,17 @@ class SweepSimulation(Simulation):
             # If it's an Element type, cache it.
             if issubclass(type(item), Element):
                 collection.add(item.model)
-            
+
             # If it's a subcircuit, recursively call this function.
             elif type(item) is Subcircuit:
                 SweepSimulation._collect_models(item, collection)
-            
+
             # If it's something else--
             # well, ya got trouble, right here in River City.
             else:
-                raise TypeError('Invalid object in circuit (type "{}")'.format(type(item)))
+                raise TypeError(
+                    'Invalid object in circuit (type "{}")'.format(type(item))
+                )
 
         return collection
 
@@ -279,11 +298,19 @@ class SweepSimulation(Simulation):
             try:
                 lower, upper = model.freq_range
             except TypeError:
-                raise NotImplementedError('Does the model "{}" define a valid frequency range?'.format(type(model).__name__))
-            
+                raise NotImplementedError(
+                    'Does the model "{}" define a valid frequency range?'.format(
+                        type(model).__name__
+                    )
+                )
+
             # Ensure that models are valid with current simulation parameters.
             if lower > freq[0] or upper < freq[-1]:
-                raise ValueError('Simulation frequencies ({} - {}) out of valid bounds for "{}"'.format(freq[0], freq[-1], type(model).__name__))
+                raise ValueError(
+                    'Simulation frequencies ({} - {}) out of valid bounds for "{}"'.format(
+                        freq[0], freq[-1], type(model).__name__
+                    )
+                )
 
     @staticmethod
     def _cache_elements(collection, freq):
@@ -302,11 +329,11 @@ class SweepSimulation(Simulation):
             # If it's an Element type, simulate it.
             if issubclass(type(item), Element):
                 SweepSimulation._create_simulated_result(item, cache)
-            
+
             # If it's a subcircuit, recursively call this function.
             elif type(item) is Subcircuit:
                 SweepSimulation._simulate_helper(item, cache)
-            
+
             # If it's something else--
             # well, ya got trouble, right here in River City.
             else:
@@ -314,7 +341,7 @@ class SweepSimulation(Simulation):
                 raise TypeError(err)
 
         # Connect all the elements together and return a super element.
-        built = SweepSimulation.connect_circuit(netlist) 
+        built = SweepSimulation.connect_circuit(netlist)
         return built
 
     @staticmethod
@@ -328,7 +355,7 @@ class SweepSimulation(Simulation):
         """
         Connects the s-matrices of a photonic circuit given its Netlist
         and returns a single 'SimulatedComponent' object containing the frequency
-        array, the assembled s-matrix, and a list of the external nets (negative 
+        array, the assembled s-matrix, and a list of the external nets (negative
         integers).
 
         Parameters
@@ -341,8 +368,8 @@ class SweepSimulation(Simulation):
         Returns
         -------
         combined : ScatteringMatrix
-            After the circuit has been fully connected, the result is a single 
-            ComponentSimulation with fields f (frequency), s (s-matrix), and nets 
+            After the circuit has been fully connected, the result is a single
+            ComponentSimulation with fields f (frequency), s (s-matrix), and nets
             (external ports: negative numbers, as strings).
 
         Notes
@@ -354,21 +381,21 @@ class SweepSimulation(Simulation):
         a reference to the Pin also keeps a reference to the ``combined`` 
         Element alive. Hence, we track pins but not the ``SimulationResult``.
         """
-        _logger = _module_logger.getChild('SweepSimulation.connect_circuit')
+        _logger = _module_logger.getChild("SweepSimulation.connect_circuit")
 
         # FIXME: What if there are no items in the netlist (only one element
         # in the circuit)?
         for net in netlist:
             p1, p2 = net
             if p1.element == p2.element:
-                _logger.debug('Internal connection')
+                _logger.debug("Internal connection")
                 combined = ScatteringMatrix()
                 combined.s = innerconnect_s(p1.element.s, p1.index, p2.index)
                 pinlist = p1.pinlist
                 pinlist.remove(p1, p2)
                 combined.pinlist = pinlist
             else:
-                _logger.debug('External connection')
+                _logger.debug("External connection")
                 combined = ScatteringMatrix()
                 combined.s = connect_s(p1.element.s, p1.index, p2.element.s, p2.index)
                 pinlist = p1.pinlist + p2.pinlist
@@ -397,10 +424,18 @@ class MonteCarloSweepSimulation(SweepSimulation):
     num : int
         The number of sampled points.
     mode : str
-        Defines sweep range mode; either 'wl' for wavelength (m) or 
+        Defines sweep range mode; either 'wl' for wavelength (m) or
         'freq' for frequency (Hz).
     """
-    def __init__(self, circuit: Subcircuit, start: float=1.5e-6, stop: float=1.6e-6, num: int=2000, mode='wl'):
+
+    def __init__(
+        self,
+        circuit: Subcircuit,
+        start: float = 1.5e-6,
+        stop: float = 1.6e-6,
+        num: int = 2000,
+        mode="wl",
+    ):
         super().__init__(circuit, start, stop, num, mode)
 
     def simulate(self, runs=10):
@@ -435,12 +470,14 @@ class MonteCarloSweepSimulation(SweepSimulation):
 
 class MultiInputSweepSimulation(SweepSimulation):
     pass
-#     """A simulator that models sweeping multiple inputs simultaneously by 
+
+
+#     """A simulator that models sweeping multiple inputs simultaneously by
 #     performing algebraic operations on the simulated, cascaded s-parameter
 #     matrix.
 #     """
 #     def __init__(self, netlist):
-#         """Initializes the MultiInputSimulation with a Netlist and runs a 
+#         """Initializes the MultiInputSimulation with a Netlist and runs a
 #         single simulation for the "ideal," pre-modified model.
 
 #         Parameters
@@ -472,8 +509,8 @@ class MultiInputSweepSimulation(SweepSimulation):
 #         Parameters
 #         ----------
 #         inputs : list
-#             A list with length equal to the number of rows/columns of the 
-#             s-parameter matrix (corresponds to the number of external ports). 
+#             A list with length equal to the number of rows/columns of the
+#             s-parameter matrix (corresponds to the number of external ports).
 #             Port indices with a '0' are considered "off," where ports indices
 #             that store a '1' correspond to an active laser input.
 #         """

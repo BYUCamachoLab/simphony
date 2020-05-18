@@ -14,6 +14,25 @@ For this chapter we assume that you have already set up your git repo.
 
 .. _testing-builds:
 
+
+Testing code
+------------
+
+Any code that you have contributed should also have accompanying tests. The
+style we adhere to in Simphony is to include a `/tests` directory wherever
+you are developing your module and writing tests using the `pytest framework`_.
+
+To run all tests, simply execute
+
+```
+pytest
+```
+
+from the toplevel directory.
+
+.. _pytest framework: https://docs.pytest.org/en/latest/
+
+
 Testing builds
 --------------
 
