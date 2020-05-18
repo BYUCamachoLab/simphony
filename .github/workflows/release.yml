@@ -17,16 +17,6 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.x'
-      - name: Get version number
-        id: get_version
-        run: echo ::set-env name=VERSION::${GITHUB_REF/refs\/tags\/v/}
-      - name: Load Release text
-        run: |
-          BODY=$(cat ./docs/changelog/${{ env.VERSION }}-changelog.md)
-          BODY="${BODY//'%'/'%25'}"
-          BODY="${BODY//$'\n'/'%0A'}"
-          BODY="${BODY//$'\r'/'%0D'}"
-          echo "::set-env name=BODY::$BODY"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -34,6 +24,16 @@ jobs:
       - name: Build
         run: |
           python setup.py sdist bdist_wheel
+      - name: Get version number
+        id: get_version
+        run: echo ::set-env name=VERSION::$(python3 -c "import simphony; print(simphony.__version__)")
+      - name: Load Release text
+        run: |
+          BODY=$(cat ./docs/changelog/${{ env.VERSION }}-changelog.md)
+          BODY="${BODY//'%'/'%25'}"
+          BODY="${BODY//$'\n'/'%0A'}"
+          BODY="${BODY//$'\r'/'%0D'}"
+          echo "::set-env name=BODY::$BODY"
       # - name: Publish to PyPI
       #   uses: pypa/gh-action-pypi-publish@v1.1.0
       #   with:
