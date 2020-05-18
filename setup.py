@@ -70,28 +70,28 @@ setup_args = dict(
     url=__website_url__,
     license='MIT',
     keywords='photonics simulation circuits science',
-    platforms=["Windows", "Linux"], #["Mac OS-X"] support coming
+    platforms=["Windows", "Linux", "Mac OS-X"],
     packages=setuptools.find_packages(),
     package_data={
         '': extra_files,
     },
     classifiers=[
         'License :: OSI Approved :: MIT License',
-        # 'Operating System :: MacOS',
+        'Operating System :: MacOS',
         'Operating System :: Microsoft :: Windows',
         'Operating System :: POSIX :: Linux',
-        # 'Operating System :: OS Independent',
+        'Operating System :: OS Independent',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Education',
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering'
     ],
-    python_requires='>=3.5',
+    python_requires='>=3.6',
 )
 
 install_requires = [
@@ -113,15 +113,6 @@ extras_require = {
 if 'setuptools' in sys.modules:
     setup_args['install_requires'] = install_requires
     setup_args['extras_require'] = extras_require
-
-    # setup_args['entry_points'] = {
-    #     # 'gui_scripts': [
-    #     #     'simphony = simphony.app.start:main'
-    #     # ], 
-    #     'console_scripts': [
-    #         'simphony = simphony.app.cli_start:main'
-    #     ]
-    # }
 
     # setup_args.pop('scripts', None)
 
