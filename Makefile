@@ -8,7 +8,7 @@ lint:
 	flake8 .
 
 test:
-	pytest
+	tox -e py
 
 test-force:
 	pytest --force-regen
