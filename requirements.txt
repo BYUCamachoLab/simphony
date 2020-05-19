@@ -1,3 +1,10 @@
-numpy
-scipy
-parsimonious>=0.8.1
+numpy==1.18.4
+scipy==1.4.1
+parsimonious==0.8.1
+sphinx==3.0.3
+sphinx_rtd_theme==0.4.3
+pytest==5.3.5
+flake8==3.8.1
+black==19.10b0
+bump2version==1.0.0
+pre-commit==2.4.0

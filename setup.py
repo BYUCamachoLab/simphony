@@ -101,19 +101,13 @@ install_requires = [
     "parsimonious>=0.8.1",
 ]
 
-extras_require = {
-    'test': [
-        'pytest',
-    ],
-    'docs': [
-        'sphinx>=2.2.0',
-        'sphinx_rtd_theme>=0.4.3',
-    ],
-}
+# extras_require = {
+#     '': [],
+# }
 
 if 'setuptools' in sys.modules:
     setup_args['install_requires'] = install_requires
-    setup_args['extras_require'] = extras_require
+    # setup_args['extras_require'] = extras_require
 
     # setup_args.pop('scripts', None)
 

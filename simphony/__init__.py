@@ -38,9 +38,7 @@ import platform
 if sys.version_info < (3,0,0):
     raise Exception('Simphony requires Python 3 (version ' + platform.python_version() + ' detected).')
 
-version_info = (0, 3, 0)
-
-__version__ = '.'.join(map(str, version_info))
+__version__ = "0.3.0"
 __license__ = __doc__
 __project_url__ = 'https://github.com/BYUCamachoLab/simphony'
 __forum_url__   = 'https://github.com/BYUCamachoLab/simphony/issues'
