@@ -8,3 +8,5 @@ flake8==3.8.1
 black==19.10b0
 bump2version==1.0.0
 pre-commit==2.4.0
+rstcheck==3.3.1
+matplotlib==3.2.1
