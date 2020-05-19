@@ -1,4 +1,8 @@
-The Simphony Project Contributors is composed of:
+Copyright (c) 2019-2020 Simphony Project Contributors.
+
+Simphony was originally created by Sequoia Ploeg.
+
+The Simphony Project Contributors are composed of:
 
 * Sequoia Ploeg <sequoia.ploeg@ieee.org> (Main Simphony author)
 * Hyrum Gunther (Main Simphony author)
@@ -13,5 +17,5 @@ authors or projects, including:
 
 For information about the sources and authors of other third-party code
 and other resources used, please see the NOTICE.txt file, located in the
-root of the spyder repository or online at:
-<https://github.com/spyder-ide/spyder/blob/master/NOTICE.txt>
+root of the Simphony repository or online at:
+<https://github.com/BYUCamachoLab/simphony/blob/master/NOTICE.txt>
