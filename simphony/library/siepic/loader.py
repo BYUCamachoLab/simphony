@@ -1,15 +1,16 @@
-from bisect import bisect_left
 import xml.etree.ElementTree as ET
+from bisect import bisect_left
 
-tree = ET.parse('dc_map.xml')
+tree = ET.parse("dc_map.xml")
 root = tree.getroot()
 
 associations = {}
 
 for association in root:
-    Lc = float(association.find('design/value').text)
-    filename = str(association.find('extracted/value').text)
+    Lc = float(association.find("design/value").text)
+    filename = str(association.find("extracted/value").text)
     associations[Lc] = filename
+
 
 def take_closest(sorted_list, value):
     """
@@ -29,8 +30,9 @@ def take_closest(sorted_list, value):
     before = associations[pos - 1]
     after = associations[pos]
     if after - Lc < Lc - before:
-       return after
+        return after
     else:
-       return before
+        return before
+
 
 associations[take_closest(list(associations.keys()), 1.35e-5)]

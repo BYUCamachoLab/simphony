@@ -37,14 +37,15 @@ class Model:
         A tuple of the valid frequency bounds for the element in the order
         (lower, upper). Can be made (-infty, infty) be setting to (None, None).
     """
-    _logger = _module_logger.getChild('Model')
+
+    _logger = _module_logger.getChild("Model")
 
     pins = None
     freq_range = (None, None)
 
     def s_parameters(self, freq):
         """
-        Returns scattering parameters for the element with its given 
+        Returns scattering parameters for the element with its given
         parameters as declared in the optional ``__init__()``.
 
         Parameters
@@ -57,10 +58,10 @@ class Model:
         s : np.ndarray
             The scattering parameters corresponding to the frequency range.
             Its shape should be (the number of frequency points x ports x ports).
-            If the scattering parameters are requested for only a single 
+            If the scattering parameters are requested for only a single
             frequency, for example, and the device has 4 ports, the shape
             returned by ``s_parameters`` would be (1, 4, 4).
-        
+
         Raises
         ------
         NotImplementedError
@@ -85,12 +86,12 @@ class Model:
         s : np.ndarray
             The scattering parameters corresponding to the frequency range.
             Its shape should be (the number of frequency points x ports x ports).
-            If the scattering parameters are requested for only a single 
+            If the scattering parameters are requested for only a single
             frequency, for example, and the device has 4 ports, the shape
             returned by ``monte_carlo_s_parameters`` would be (1, 4, 4).
         """
         return self.s_parameters(freq)
-    
+
     def regenerate_monte_carlo_parameters(self):
         """
         Regenerates parameters used to generate monte carlo s-matrices.
@@ -98,9 +99,9 @@ class Model:
         If a monte carlo method is not implemented for a given model, this
         method does nothing. However, it can optionally be implemented so that
         parameters are regenerated once per circuit simulation. This ensures
-        correlation between all components of the same type that reference 
-        this model in a circuit. For example, the effective index of a 
-        waveguide should not be different for each waveguide in a small 
+        correlation between all components of the same type that reference
+        this model in a circuit. For example, the effective index of a
+        waveguide should not be different for each waveguide in a small
         circuit; they will be more or less consistent within a single small
         circuit.
 
@@ -114,6 +115,7 @@ class Model:
         """
         pass
 
+
 # class PModel(Model):
 #     """
 #     Parameterized Elements have scattering parameters that are calculated on
@@ -123,7 +125,7 @@ class Model:
 
 # class SModel(Model):
 #     """
-#     Static Elements have pre-simulated scattering parameters, often loaded 
+#     Static Elements have pre-simulated scattering parameters, often loaded
 #     from a file and independent of instance attributes.
 #     """
 #     pass

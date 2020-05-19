@@ -16,6 +16,7 @@ import logging
 import uuid
 
 import numpy as np
+
 from simphony.connect import connect_s, innerconnect_s
 from simphony.elements import Model
 from simphony.netlist import Element, ElementList, PinList, Subcircuit
@@ -83,6 +84,7 @@ class SimulationResult:
     @property
     def pins(self):
         return tuple([pin.name for pin in self.pinlist])
+
 
 class SweepSimulationResult(SimulationResult):
     """
@@ -374,11 +376,11 @@ class SweepSimulation(Simulation):
 
         Notes
         -----
-        This function doesn't actually store ``combined`` on each iteration 
+        This function doesn't actually store ``combined`` on each iteration
         through the netlist. That's because the Pin objects can only reference
         one PinList at a time, which in turn can only reference one Element.
         Since we transferring the actual Pin objects between lists, keeping
-        a reference to the Pin also keeps a reference to the ``combined`` 
+        a reference to the Pin also keeps a reference to the ``combined``
         Element alive. Hence, we track pins but not the ``SimulationResult``.
         """
         _logger = _module_logger.getChild("SweepSimulation.connect_circuit")

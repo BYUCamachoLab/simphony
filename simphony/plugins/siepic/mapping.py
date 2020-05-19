@@ -4,6 +4,7 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
+
 def rearg(component, parameters):
     """
     Maps arguments from spice files to the keyword dictionaries accepted
@@ -25,20 +26,18 @@ def rearg(component, parameters):
             results[mapping[k]] = v
     return results
 
+
 components = {
-    'ebeam_bdc_te1550': {},
+    "ebeam_bdc_te1550": {},
     # 'contra_directional_coupler': {},
-    'ebeam_dc_halfring_straight': {},
-    'ebeam_dc_te1550': {},
+    "ebeam_dc_halfring_straight": {},
+    "ebeam_dc_te1550": {},
     # 'ebeam_disconnected_te1550': {},
     # 'ebeam_disconnected_tm1550': {},
     # 'ebeam_taper_te1550': {},
-    'ebeam_terminator_te1550': {},
+    "ebeam_terminator_te1550": {},
     # 'ebeam_terminator_tm1550': {},
-    'ebeam_gc_te1550': {},
-    'ebeam_wg_integral_1550' : {
-        'wg_length': 'length',
-        'wg_width': 'width',
-    },
-    'ebeam_y_1550': {},
+    "ebeam_gc_te1550": {},
+    "ebeam_wg_integral_1550": {"wg_length": "length", "wg_width": "width",},
+    "ebeam_y_1550": {},
 }

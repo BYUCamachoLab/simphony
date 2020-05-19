@@ -33,14 +33,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import sys
 import platform
-if sys.version_info < (3,0,0):
-    raise Exception('Simphony requires Python 3 (version ' + platform.python_version() + ' detected).')
+import sys
+
+if sys.version_info < (3, 0, 0):
+    raise Exception(
+        "Simphony requires Python 3 (version "
+        + platform.python_version()
+        + " detected)."
+    )
 
 __version__ = "0.3.0"
 __license__ = __doc__
-__project_url__ = 'https://github.com/BYUCamachoLab/simphony'
-__forum_url__   = 'https://github.com/BYUCamachoLab/simphony/issues'
-__trouble_url__ = __project_url__ + '/wiki/Troubleshooting-Guide'
-__website_url__ = 'https://camacholab.byu.edu/'
+__project_url__ = "https://github.com/BYUCamachoLab/simphony"
+__forum_url__ = "https://github.com/BYUCamachoLab/simphony/issues"
+__trouble_url__ = __project_url__ + "/wiki/Troubleshooting-Guide"
+__website_url__ = "https://camacholab.byu.edu/"

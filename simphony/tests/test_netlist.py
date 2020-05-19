@@ -9,6 +9,7 @@ import pytest
 import simphony.library.ebeam as ebeam
 from simphony.netlist import Pin, PinList
 
+
 class TestPin:
     class TestCreate:
         def test_noargs(self):
@@ -19,21 +20,22 @@ class TestPin:
                 p1.index
 
         def test_args(self):
-            name = 'n1'
+            name = "n1"
             p1 = Pin(None, name)
             assert p1.name == name
 
     def test_rename(self):
-        name = 'oldname'
+        name = "oldname"
         p1 = Pin(None, name)
-        name = 'newname'
+        name = "newname"
         p1.name = name
         assert p1.name == name
+
 
 class TestPinlist:
     class TestInstantiate:
         def test_create_with_strings(self):
-            pinnames = ['n1', 'n2', 'n3']
+            pinnames = ["n1", "n2", "n3"]
             pinlist = PinList(None, *pinnames)
             assert len(pinlist) == 3
 
@@ -44,7 +46,7 @@ class TestPinlist:
 
         def test_create_with_pins(self):
             length = 4
-            pins = [Pin(None, 'n' + str(i)) for i in range(length)]
+            pins = [Pin(None, "n" + str(i)) for i in range(length)]
             pinlist = PinList(None, *pins)
             assert len(pinlist) == length
 
@@ -54,7 +56,7 @@ class TestPinlist:
                 assert pin is next(npin)
 
         def test_create_with_mixed_args(self):
-            scrambled = ['n1', 'n2', Pin(None, 'n3'), Pin(None, 'n4'), 'n5']
+            scrambled = ["n1", "n2", Pin(None, "n3"), Pin(None, "n4"), "n5"]
             pinlist = PinList(None, *scrambled)
             assert len(pinlist) == 5
 
@@ -64,7 +66,7 @@ class TestPinlist:
     class TestGet:
         def setup_method(self):
             self.length = 4
-            self.pins = [Pin(None, 'n' + str(i)) for i in range(self.length)]
+            self.pins = [Pin(None, "n" + str(i)) for i in range(self.length)]
             self.pinlist = PinList(None, *self.pins)
 
         def test_get_with_int(self):
@@ -85,8 +87,8 @@ class TestPinlist:
                 assert self.pinlist[pin] is pin
 
     class TestSet:
-            # pinlist.pins = ('out', 'in', 'mix')
-            # pinlist.pins = ('n1')
+        # pinlist.pins = ('out', 'in', 'mix')
+        # pinlist.pins = ('n1')
         pass
 
     class TestSwitchPin:
@@ -95,9 +97,9 @@ class TestPinlist:
     class TestOperators:
         def setup_method(self):
             self.length = 8
-            self.pins = [Pin(None, 'n' + str(i)) for i in range(self.length)]
-            self.pinlist1 = PinList(None, *self.pins[:int(self.length/2)])
-            self.pinlist2 = PinList(None, *self.pins[int(self.length/2):])
+            self.pins = [Pin(None, "n" + str(i)) for i in range(self.length)]
+            self.pinlist1 = PinList(None, *self.pins[: int(self.length / 2)])
+            self.pinlist2 = PinList(None, *self.pins[int(self.length / 2) :])
 
         def test_add(self):
             self.pinlist_new = self.pinlist1 + self.pinlist2
@@ -117,7 +119,7 @@ class TestPinlist:
 
         def test_remove(self):
             self.test_add()
-            self.pinlist_new.remove('n1')
-            assert self.pinlist_new['n7'].index == 6
-            self.pinlist_new.remove('n4')
-            assert self.pinlist_new['n7'].index == 5
+            self.pinlist_new.remove("n1")
+            assert self.pinlist_new["n7"].index == 6
+            self.pinlist_new.remove("n4")
+            assert self.pinlist_new["n7"].index == 5

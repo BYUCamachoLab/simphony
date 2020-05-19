@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 from scipy.constants import c as SPEED_OF_LIGHT
+
 from simphony.elements import Model
 from simphony.tools import freq2wl, interpolate, wl2freq
 
@@ -202,7 +203,7 @@ class ebeam_wg_integral_1550(Model):
         Returns
         -------
         (frequency, s) : tuple
-            Returns a tuple containing the frequency array, ``frequency``, 
+            Returns a tuple containing the frequency array, ``frequency``,
             corresponding to the calculated s-parameter matrix, ``s``.
         """
         return self.cacl_s_params(

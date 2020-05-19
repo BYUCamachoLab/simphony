@@ -138,7 +138,7 @@ def interpolate(resampled, sampled, s_parameters):
     Returns
     -------
     result : np.array
-        The values of the interpolated function (fitted to the input 
+        The values of the interpolated function (fitted to the input
         s-parameters) evaluated at the ``output_freq`` frequencies.
     """
     func = interp1d(sampled, s_parameters, kind="cubic", axis=0)
