@@ -13,10 +13,8 @@ from simphony.tools import wl2freq
 
 
 def test_ebeam_wg_integral_1550(tmpdir):
-    """
-    Tests whether the results of `s_parameters()` for the same frequency on
-    an exported and reloaded model are (close) to the same.
-    """
+    """Tests whether the results of `s_parameters()` for the same frequency on
+    an exported and reloaded model are (close) to the same."""
     p = tmpdir.mkdir("persist").join("export")
     wg1 = ebeam_wg_integral_1550(100e-9)
     export_model(wg1, p, wl=np.linspace(1520e-9, 1580e-9, 51))
@@ -28,10 +26,8 @@ def test_ebeam_wg_integral_1550(tmpdir):
 
 
 def test_load_wrong_ext(tmpdir):
-    """
-    Tests whether the results of `s_parameters()` for the same frequency on
-    an exported and reloaded model are (close) to the same.
-    """
+    """Tests whether the results of `s_parameters()` for the same frequency on
+    an exported and reloaded model are (close) to the same."""
     p = tmpdir.mkdir("persist").join("export")
     with pytest.raises(ValueError):
         import_model(p)

@@ -86,9 +86,10 @@ spi_grammar = Grammar(
 
 
 class SpiceVisitor(NodeVisitor):
-    """
-    NodeVisitor object for internal program use only. If you're using this in
-    one of your scripts, you're probably using Simphony wrong.
+    """NodeVisitor object for internal program use only.
+
+    If you're using this in one of your scripts, you're probably using
+    Simphony wrong.
     """
 
     def visit_file(self, node, visited_children):
@@ -356,14 +357,13 @@ class SpiceVisitor(NodeVisitor):
         pass
 
     def generic_visit(self, node, visited_children):
-        """ The generic visit method. """
+        """The generic visit method."""
         return visited_children or node
 
 
 def load_spi(path):
-    """
-    Parses a spice file and returns the data as a dictionary in a form accepted
-    by `build_circuit()`.
+    """Parses a spice file and returns the data as a dictionary in a form
+    accepted by `build_circuit()`.
 
     Parameters
     ----------

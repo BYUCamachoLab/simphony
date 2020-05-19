@@ -19,9 +19,8 @@ _module_logger = logging.getLogger(__name__)
 
 
 class Model:
-    """
-    The basic element type describing the model for a component with scattering
-    parameters.
+    """The basic element type describing the model for a component with
+    scattering parameters.
 
     Any class that inherits from Model or its subclasses must declare the
     attributes of an element (see Attributes). Following the general EAFP coding
@@ -44,8 +43,7 @@ class Model:
     freq_range = (None, None)
 
     def s_parameters(self, freq):
-        """
-        Returns scattering parameters for the element with its given
+        """Returns scattering parameters for the element with its given
         parameters as declared in the optional ``__init__()``.
 
         Parameters
@@ -70,8 +68,7 @@ class Model:
         raise NotImplementedError
 
     def monte_carlo_s_parameters(self, freq):
-        """
-        Implements the monte carlo routine for the given Model.
+        """Implements the monte carlo routine for the given Model.
 
         If no monte carlo routine is defined, the default behavior returns the
         result of a call to ``s_parameters()``.
@@ -93,8 +90,7 @@ class Model:
         return self.s_parameters(freq)
 
     def regenerate_monte_carlo_parameters(self):
-        """
-        Regenerates parameters used to generate monte carlo s-matrices.
+        """Regenerates parameters used to generate monte carlo s-matrices.
 
         If a monte carlo method is not implemented for a given model, this
         method does nothing. However, it can optionally be implemented so that

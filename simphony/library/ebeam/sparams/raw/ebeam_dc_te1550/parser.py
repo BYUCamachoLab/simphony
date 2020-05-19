@@ -4,14 +4,14 @@ import numpy as np
 
 
 def _read_s_parameters():
-    """Returns the s-parameters across some frequency range for the ebeam_dc_halfring_te1550 model
-        in the form [frequency, s-parameters].
+    """Returns the s-parameters across some frequency range for the
+    ebeam_dc_halfring_te1550 model in the form [frequency, s-parameters].
 
-        Parameters
-        ----------
-        numports : int
-            The number of ports the photonic component has.
-        """
+    Parameters
+    ----------
+    numports : int
+        The number of ports the photonic component has.
+    """
     numports = 4
     filename = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "dc_gap=200nm_Lc=10um.sparam"

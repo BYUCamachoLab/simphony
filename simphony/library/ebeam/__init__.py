@@ -8,8 +8,8 @@ from simphony.tools import freq2wl, interpolate, wl2freq
 
 
 class ebeam_bdc_te1550(Model):
-    """
-    A bidirectional coupler optimized for TE polarized light at 1550 nanometers.
+    """A bidirectional coupler optimized for TE polarized light at 1550
+    nanometers.
 
     The bidirectional coupler has 4 ports, labeled as pictured. Its efficiently
     splits light that is input from one port into the two outputs on the opposite
@@ -62,8 +62,7 @@ class ebeam_dc_halfring_te1550(Model):
 
 
 class ebeam_gc_te1550(Model):
-    """
-    A grating coupler optimized for TE polarized light at 1550 nanometers.
+    """A grating coupler optimized for TE polarized light at 1550 nanometers.
 
     The grating coupler efficiently couples light from a fiber array positioned
     above the chip into the circuit. For the TE mode, the angle is -25 degrees
@@ -95,9 +94,8 @@ class ebeam_gc_te1550(Model):
 
 
 class ebeam_terminator_te1550(Model):
-    """
-    A terminator component that dissipates light into free space optimized for
-    TE polarized light at 1550 nanometers.
+    """A terminator component that dissipates light into free space optimized
+    for TE polarized light at 1550 nanometers.
 
     The terminator dissipates excess light into free space. If you have a path
     where the light doesn't need to be measured but you don't want it reflecting
@@ -126,8 +124,8 @@ class ebeam_terminator_te1550(Model):
 
 
 class ebeam_wg_integral_1550(Model):
-    """
-    Model for an waveguide optimized for TE polarized light at 1550 nanometers.
+    """Model for an waveguide optimized for TE polarized light at 1550
+    nanometers.
 
     A waveguide easily connects other optical components within a circuit.
 
@@ -211,15 +209,15 @@ class ebeam_wg_integral_1550(Model):
         )
 
     def monte_carlo_s_parameters(self, freq):
-        """
-        Returns a monte carlo (randomized) set of s-parameters.
+        """Returns a monte carlo (randomized) set of s-parameters.
 
-        In this implementation of the monte carlo routine, random values are
-        generated for ne, ng, and nd for each run through of the monte carlo
-        simulation. This means that all waveguide elements throughout a single
-        circuit will have the same (random) ne, ng, and nd values. Hence, there
-        is correlated randomness in the monte carlo parameters but they are
-        consistent within a single circuit.
+        In this implementation of the monte carlo routine, random values
+        are generated for ne, ng, and nd for each run through of the
+        monte carlo simulation. This means that all waveguide elements
+        throughout a single circuit will have the same (random) ne, ng,
+        and nd values. Hence, there is correlated randomness in the
+        monte carlo parameters but they are consistent within a single
+        circuit.
         """
         return self.cacl_s_params(
             freq, self.length, self.lam0, self.rand_ne, self.rand_ng, self.rand_nd
@@ -256,8 +254,7 @@ class ebeam_wg_integral_1550(Model):
 
 
 class ebeam_y_1550(Model):
-    """
-    The y-branch efficiently splits the input between the two outputs.
+    """The y-branch efficiently splits the input between the two outputs.
 
     .. image:: /user/libraries/images/ebeam_y_1550.png
         :alt: ebeam_bdc_te1550.png
@@ -280,8 +277,8 @@ class ebeam_y_1550(Model):
 
 
 class ebeam_dc_te1550(Model):
-    """
-    A directional coupler optimized for TE polarized light at 1550 nanometers.
+    """A directional coupler optimized for TE polarized light at 1550
+    nanometers.
 
     The directional coupler has 4 ports, labeled as pictured. Its efficiently
     splits light that is input from one port into the two outputs on the opposite

@@ -4,12 +4,10 @@
 # Licensed under the terms of the MIT License
 # (see spyder/__init__.py for details)
 
-"""
-Simphony Photonic Simulator
+"""Simphony Photonic Simulator.
 
-This module implements a free and open source
-photonic integrated circuit (PIC) simulation engine.
-It is speedy and easily extensible.
+This module implements a free and open source photonic integrated
+circuit (PIC) simulation engine. It is speedy and easily extensible.
 """
 
 import io

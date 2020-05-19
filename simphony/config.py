@@ -1,10 +1,8 @@
-"""
-loads a configuration from 3 files, high priority overwrites low priority:
+"""loads a configuration from 3 files, high priority overwrites low priority:
 
 1. A config.yml found in the current working directory (high priority)
 2. ~/.config/simphony.yml specific for the machine
 3. the default config is in this file (lowest priority)
-
 """
 
 __all__ = ["CONFIG"]

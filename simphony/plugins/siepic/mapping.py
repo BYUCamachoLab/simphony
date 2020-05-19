@@ -6,9 +6,8 @@
 
 
 def rearg(component, parameters):
-    """
-    Maps arguments from spice files to the keyword dictionaries accepted
-    by the built-in model libraries, discarding unused parameters.
+    """Maps arguments from spice files to the keyword dictionaries accepted by
+    the built-in model libraries, discarding unused parameters.
 
     Parameters
     ----------

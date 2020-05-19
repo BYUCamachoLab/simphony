@@ -23,8 +23,7 @@ _module_logger = logging.getLogger(__name__)
 
 
 class Pin:
-    """
-    A class representing a pin on a unique element instance.
+    """A class representing a pin on a unique element instance.
 
     Note that these are not the pins defined in Models, but are created from
     the names defined there.
@@ -57,10 +56,8 @@ class Pin:
 
     @property
     def element(self):
-        """
-        Returns the element to which this pin belongs by tracing the path to
-        PinList, which ought to hold a reference to an ``Element``.
-        """
+        """Returns the element to which this pin belongs by tracing the path to
+        PinList, which ought to hold a reference to an ``Element``."""
         return self.pinlist.element
 
     @property
@@ -69,8 +66,7 @@ class Pin:
 
 
 class PinList:
-    """
-    A list of pins belonging to an ``Element``, indexed the same way the
+    """A list of pins belonging to an ``Element``, indexed the same way the
     s-parameters of a ``Model`` are indexed.
 
     ``PinList`` maintains unique ``Pin`` names within its list. Pins can also be
@@ -208,8 +204,7 @@ class PinList:
         return False
 
     def append(self, pin):
-        """
-        Takes a pin argument (string or Pin) and creates a ``Pin`` object.
+        """Takes a pin argument (string or Pin) and creates a ``Pin`` object.
 
         Parameters
         ----------
@@ -222,8 +217,7 @@ class PinList:
         self.pins.append(pin)
 
     def remove(self, *pins):
-        """
-        Removes a pin from the pinlist by name or value.
+        """Removes a pin from the pinlist by name or value.
 
         Parameters
         ----------
@@ -235,9 +229,8 @@ class PinList:
             self.pins.remove(self[pin])
 
     def pop(self, idx=-1):
-        """
-        Removes a pin from the pinlist by index (or, the last inserted pin by
-        default).
+        """Removes a pin from the pinlist by index (or, the last inserted pin
+        by default).
 
         Parameters
         ----------
@@ -260,8 +253,8 @@ class PinList:
             pin.name = name
 
     def index(self, pin):
-        """
-        Given a ``Pin`` object, returns its index or position in the ``PinList``.
+        """Given a ``Pin`` object, returns its index or position in the
+        ``PinList``.
 
         Parameters
         ----------
@@ -277,8 +270,7 @@ class PinList:
 
     @property
     def pinnames(self):
-        """
-        Get the names of the pins in the ``PinList``, in order.
+        """Get the names of the pins in the ``PinList``, in order.
 
         Returns
         -------
@@ -289,8 +281,7 @@ class PinList:
 
 
 class Element:
-    """
-    Represents an instantiation of some model in a circuit.
+    """Represents an instantiation of some model in a circuit.
 
     Unites a ``Model`` with a ``PinList`` to allow unique instances to be
     instantiated within a ``Subcircuit``.
@@ -357,9 +348,8 @@ class Element:
         return self.model.wl_bounds
 
     def _generate_name(self) -> str:
-        """
-        Generates a new name for the ``Element`` based on the ``Model`` class name
-        and a randomly generated string.
+        """Generates a new name for the ``Element`` based on the ``Model``
+        class name and a randomly generated string.
 
         Returns
         -------
@@ -370,8 +360,7 @@ class Element:
 
 
 class ElementList:
-    """
-    Maintains an ordered dict. If an update to an existing key is attempted,
+    """Maintains an ordered dict. If an update to an existing key is attempted,
     the update fails. Keys must be deleted before being used.
 
     Dictionary is a mapping of names (type: ``str``) to elements or blocks (type:
@@ -416,8 +405,7 @@ class ElementList:
         return self.elements.pop(idx)
 
     def keys(self):
-        """
-        Returns the keys of the ``ElementList`` as a list of strings.
+        """Returns the keys of the ``ElementList`` as a list of strings.
 
         Returns
         -------
@@ -428,8 +416,7 @@ class ElementList:
 
 
 class Netlist:
-    """
-    Maintains a list of all connections, or "nets", in a circuit.
+    """Maintains a list of all connections, or "nets", in a circuit.
 
     Attributes
     ----------
@@ -471,9 +458,8 @@ class Netlist:
 
 
 class Subcircuit:
-    """
-    This implements a subcircuit that can be constructed and reused throughout
-    the circuit.
+    """This implements a subcircuit that can be constructed and reused
+    throughout the circuit.
 
     Parameters
     ----------
@@ -507,9 +493,7 @@ class Subcircuit:
 
     @property
     def wl_bounds(self):
-        """
-        Returns a tuple of the valid wavelength range.
-        """
+        """Returns a tuple of the valid wavelength range."""
         min_wl = []
         max_wl = []
         for element in self.elements:
@@ -523,8 +507,7 @@ class Subcircuit:
         return (min(min_wl), max(max_wl))
 
     def add(self, elements):
-        """
-        Adds elements to a subcircuit.
+        """Adds elements to a subcircuit.
 
         Parameters
         ----------
@@ -569,8 +552,7 @@ class Subcircuit:
         return added
 
     def connect(self, element1, pin1, element2, pin2):
-        """
-        Connect two elements with a net.
+        """Connect two elements with a net.
 
         Netlists are unique to and stored by a Subcircuit object. This means
         net identifiers (numbers, by default) can be reused between separate
@@ -621,8 +603,7 @@ class Subcircuit:
             raise TypeError(err)
 
     def connect_many(self, conns):
-        """
-        A convenience function for connecting many nets at once.
+        """A convenience function for connecting many nets at once.
 
         Parameters
         ----------
@@ -635,11 +616,9 @@ class Subcircuit:
             self.connect(*c)
 
     def to_spice(self):
-        """
-        Perhaps this shouldn't be built into Subcircuit, maybe an adapter
+        """Perhaps this shouldn't be built into Subcircuit, maybe an adapter
         class or some translator instantiated with a Subcircuit that iterates
-        through and creates a netlist.
-        """
+        through and creates a netlist."""
         out = ""
         for item in self._blocks.keys():
             out += str(type(self._blocks[item])) + "\n"

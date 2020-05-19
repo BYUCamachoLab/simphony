@@ -37,9 +37,8 @@ from simphony.tools import interpolate, wl2freq
 
 
 def export_model(model, filename, wl=None, freq=None):
-    """
-    Exports a simphony model (using pickle) for the given frequency/wavelength
-    range to a '.mdl' file.
+    """Exports a simphony model (using pickle) for the given
+    frequency/wavelength range to a '.mdl' file.
 
     Must include either the wavelength or frequency argument. If both are
     included, defaults to frequency argument.
@@ -100,8 +99,7 @@ def export_model(model, filename, wl=None, freq=None):
 
 
 def import_model(filename, force=False):
-    """
-    Imports a model from file
+    """Imports a model from file.
 
     Parameters
     ----------

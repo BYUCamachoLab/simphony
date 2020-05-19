@@ -26,8 +26,7 @@ term = siepic.ebeam_terminator_te1550()
 
 
 def ring_factory(radius):
-    """
-    Creates a full ring (with terminator) from a half ring.
+    """Creates a full ring (with terminator) from a half ring.
 
     Ports of a half ring are ordered like so:
     2           4

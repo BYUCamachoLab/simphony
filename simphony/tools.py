@@ -32,9 +32,8 @@ MATH_SUFFIXES = {
 
 
 def str2float(num):
-    """
-    Converts a number represented as a string to a float. Can include suffixes
-    (such as 'u' for micro, 'k' for kilo, etc.).
+    """Converts a number represented as a string to a float. Can include
+    suffixes (such as 'u' for micro, 'k' for kilo, etc.).
 
     Parameters
     ----------
@@ -146,9 +145,8 @@ def interpolate(resampled, sampled, s_parameters):
 
 
 def get_subclasses(cls):
-    """
-    Recursively gets all subclasses for a given class, even the subclasses of
-    subclasses.
+    """Recursively gets all subclasses for a given class, even the subclasses
+    of subclasses.
 
     If a subclass resides in a model not imported by default by Simphony, those
     classes will not be returned. Libraries must be imported first for this

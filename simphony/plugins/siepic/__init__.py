@@ -14,8 +14,7 @@ from simphony.plugins.siepic.parser import load_spi
 
 
 def load(filename, libraries=["simphony.library.siepic"]):
-    """
-    Loads a spice file as exported by SiEPIC Tools in KLayout.
+    """Loads a spice file as exported by SiEPIC Tools in KLayout.
 
     Parameters
     ----------

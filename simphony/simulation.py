@@ -44,8 +44,7 @@ class ScatteringMatrix:
 
 
 class SimulationResult:
-    """
-    A simulated block of a circuit; can represent either elements or entire
+    """A simulated block of a circuit; can represent either elements or entire
     subcircuits.
 
     It is used by Simulation in order to store s-parameters of recursively
@@ -87,8 +86,7 @@ class SimulationResult:
 
 
 class SweepSimulationResult(SimulationResult):
-    """
-    A simulation result for a swept simulation.
+    """A simulation result for a swept simulation.
 
     Parameters
     ----------
@@ -155,8 +153,7 @@ class MonteCarloSimulationResult(SimulationResult):
 
 
 class Simulation:
-    """
-    Once a simulation is run, it is completely decoupled from the circuit
+    """Once a simulation is run, it is completely decoupled from the circuit
     which created it. Its pins, while bearing the same name, are unique
     objects.
 
@@ -171,8 +168,7 @@ class Simulation:
 
 
 class SweepSimulation(Simulation):
-    """
-    A swept simulation.
+    """A swept simulation.
 
     Parameters
     ----------
@@ -223,8 +219,7 @@ class SweepSimulation(Simulation):
         self.wl = freq2wl(self.freq)
 
     def simulate(self):
-        """
-        Runs the simulation on the object's circuit.
+        """Runs the simulation on the object's circuit.
 
         Returns
         -------
@@ -354,11 +349,10 @@ class SweepSimulation(Simulation):
 
     @staticmethod
     def connect_circuit(netlist):
-        """
-        Connects the s-matrices of a photonic circuit given its Netlist
-        and returns a single 'SimulatedComponent' object containing the frequency
-        array, the assembled s-matrix, and a list of the external nets (negative
-        integers).
+        """Connects the s-matrices of a photonic circuit given its Netlist and
+        returns a single 'SimulatedComponent' object containing the frequency
+        array, the assembled s-matrix, and a list of the external nets
+        (negative integers).
 
         Parameters
         ----------
@@ -412,8 +406,7 @@ class SinglePortSweepSimulation(SweepSimulation):
 
 
 class MonteCarloSweepSimulation(SweepSimulation):
-    """
-    A monte carlo sweep simulation.
+    """A monte carlo sweep simulation.
 
     Parameters
     ----------

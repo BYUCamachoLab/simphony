@@ -4,9 +4,8 @@ import numpy as np
 
 
 def _read_s_parameters():
-    """Returns the s-parameters across some frequency range for the ebeam_bdc_te1550 model
-    in the form [frequency, s-parameters].
-    """
+    """Returns the s-parameters across some frequency range for the
+    ebeam_bdc_te1550 model in the form [frequency, s-parameters]."""
     numports = 4
     filename = os.path.join(
         os.path.dirname(os.path.realpath(__file__)),

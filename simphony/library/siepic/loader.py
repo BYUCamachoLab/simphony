@@ -13,8 +13,7 @@ for association in root:
 
 
 def take_closest(sorted_list, value):
-    """
-    Assumes ``sorted_list`` is sorted. Returns closest value to ``value``.
+    """Assumes ``sorted_list`` is sorted. Returns closest value to ``value``.
 
     If two numbers are equally close, return the smallest number.
 

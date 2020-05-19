@@ -92,8 +92,7 @@ from simphony.tools import freq2wl, interpolate, str2float, wl2freq
 
 
 def closest(sorted_list, value):
-    """
-    Assumes `sorted_list` is sorted. Returns closest value to `value`.
+    """Assumes `sorted_list` is sorted. Returns closest value to `value`.
 
     If two numbers are equally close, return the smallest number.
 
@@ -124,8 +123,7 @@ def closest(sorted_list, value):
 
 
 def get_files_from_dir(path):
-    """
-    Gets the string name of every file in a given directory.
+    """Gets the string name of every file in a given directory.
 
     Parameters
     ----------
@@ -169,8 +167,7 @@ def extract_args(strings, regex, args):
 
 
 def percent_diff(ideal, actual):
-    """
-    Calculates the percent error.
+    """Calculates the percent error.
 
     Ideally the parameters are of a numeric nature. However, if they are of
     other types (say, string) a simple value of "1.0" is returned, representing
@@ -200,9 +197,8 @@ def percent_diff(ideal, actual):
 
 
 class siepic_ebeam_pdk_base(Model):
-    """
-    A base model that includes pre-implemented functions for reading, building,
-    and selecting appropriate .sparam files.
+    """A base model that includes pre-implemented functions for reading,
+    building, and selecting appropriate .sparam files.
 
     This class is a template to be subclassed and is not supposed to be
     initialized on its own. Note that the `__init__()` function of subclasses
@@ -280,10 +276,9 @@ class siepic_ebeam_pdk_base(Model):
         self.on_args_changed()
 
     def __setattr__(self, name, value):
-        """
-        If the autoupdate mechanism is enabled, callback to `on_args_changed()`
-        is performed when an attribute also found in `_args_keys` is set.
-        """
+        """If the autoupdate mechanism is enabled, callback to
+        `on_args_changed()` is performed when an attribute also found in
+        `_args_keys` is set."""
         super().__setattr__(name, value)
         if self._autoupdate and (
             (name in self._args_keys) or (name in self._args_trigger_update)
@@ -292,8 +287,7 @@ class siepic_ebeam_pdk_base(Model):
 
     @property
     def args(self):
-        """
-        A mapping of args (as found in `_args_keys`) to the stored attribute
+        """A mapping of args (as found in `_args_keys`) to the stored attribute
         values.
 
         Returns
@@ -305,8 +299,7 @@ class siepic_ebeam_pdk_base(Model):
         return {k: getattr(self, k) for k in self._args_keys}
 
     def on_args_changed(self):
-        """
-        Callback for when model attributes are changed; updates the stored
+        """Callback for when model attributes are changed; updates the stored
         s-parameters based on current model attributes.
 
         This function is triggered any time an attribute that is in the model's
@@ -357,21 +350,18 @@ class siepic_ebeam_pdk_base(Model):
         raise NotImplementedError
 
     def suspend_autoupdate(self):
-        """
-        Prevents the autoupdate of models when object attributes are modified.
-        """
+        """Prevents the autoupdate of models when object attributes are
+        modified."""
         self._autoupdate = False
 
     def enable_autoupdate(self):
-        """
-        Enables the autoupdate of models when object attributes are modified.
-        """
+        """Enables the autoupdate of models when object attributes are
+        modified."""
         self._autoupdate = True
 
     @classmethod
     def _source_argsets(cls):
-        """
-        Generates the argsets that match .sparam filename conventions, based
+        """Generates the argsets that match .sparam filename conventions, based
         on class attributes.
 
         Return
@@ -389,8 +379,8 @@ class siepic_ebeam_pdk_base(Model):
 
     @classmethod
     def _get_file(cls, argset):
-        """
-        Given the selected argset, get the path to the appropriate data file.
+        """Given the selected argset, get the path to the appropriate data
+        file.
 
         Parameters
         ----------
@@ -407,9 +397,8 @@ class siepic_ebeam_pdk_base(Model):
 
     @classmethod
     def _get_matched_args(cls, norm_args, req_args):
-        """
-        Finds the argset from a set of normalized argsets most similar to the
-        requested argset.
+        """Finds the argset from a set of normalized argsets most similar to
+        the requested argset.
 
         Parameters
         ----------
@@ -446,8 +435,7 @@ class siepic_ebeam_pdk_base(Model):
 
     @staticmethod
     def _find_closest(normalized, args):
-        """
-        General function for selecting a device with the most similar
+        """General function for selecting a device with the most similar
         parameters.
 
         First, the parameter sets with the fewest mismatched parameters are
@@ -485,8 +473,8 @@ class siepic_ebeam_pdk_base(Model):
 
 
 class ebeam_bdc_te1550(siepic_ebeam_pdk_base):
-    """
-    A bidirectional coupler optimized for TE polarized light at 1550 nanometers.
+    """A bidirectional coupler optimized for TE polarized light at 1550
+    nanometers.
 
     The bidirectional coupler has 4 ports, labeled as pictured. Its efficiently
     splits light that is input from one port into the two outputs on the opposite
@@ -576,8 +564,8 @@ class ebeam_bdc_te1550(siepic_ebeam_pdk_base):
 
 
 class ebeam_dc_halfring_straight(siepic_ebeam_pdk_base):
-    """
-    A bidirectional coupler optimized for TE polarized light at 1550 nanometers.
+    """A bidirectional coupler optimized for TE polarized light at 1550
+    nanometers.
 
     The bidirectional coupler has 4 ports, labeled as pictured. Its efficiently
     splits light that is input from one port into the two outputs on the opposite
@@ -660,8 +648,8 @@ class ebeam_dc_halfring_straight(siepic_ebeam_pdk_base):
 
 
 class ebeam_dc_te1550(siepic_ebeam_pdk_base):
-    """
-    A directional coupler optimized for TE polarized light at 1550 nanometers.
+    """A directional coupler optimized for TE polarized light at 1550
+    nanometers.
 
     The directional coupler has 4 ports, labeled as pictured. Its efficiently
     splits light that is input from one port into the two outputs on the opposite
@@ -739,9 +727,8 @@ class ebeam_dc_te1550(siepic_ebeam_pdk_base):
 
 
 class ebeam_terminator_te1550(siepic_ebeam_pdk_base):
-    """
-    A terminator component that dissipates light into free space optimized for
-    TE polarized light at 1550 nanometers.
+    """A terminator component that dissipates light into free space optimized
+    for TE polarized light at 1550 nanometers.
 
     The terminator dissipates excess light into free space. If you have a path
     where the light doesn't need to be measured but you don't want it reflecting
@@ -831,8 +818,7 @@ class ebeam_terminator_te1550(siepic_ebeam_pdk_base):
 
 
 class ebeam_gc_te1550(siepic_ebeam_pdk_base):
-    """
-    A grating coupler optimized for TE polarized light at 1550 nanometers.
+    """A grating coupler optimized for TE polarized light at 1550 nanometers.
 
     The grating coupler efficiently couples light from a fiber array positioned
     above the chip into the circuit. For the TE mode, the angle is -25 degrees
@@ -915,8 +901,8 @@ class ebeam_gc_te1550(siepic_ebeam_pdk_base):
 # FIXME: Do we do monte carlo simulations by varying (ne, ng, nd) or by varying
 # (width, height)?
 class ebeam_wg_integral_1550(siepic_ebeam_pdk_base):
-    """
-    Model for an waveguide optimized for TE polarized light at 1550 nanometers.
+    """Model for an waveguide optimized for TE polarized light at 1550
+    nanometers.
 
     A waveguide easily connects other optical components within a circuit.
 
@@ -1051,15 +1037,15 @@ class ebeam_wg_integral_1550(siepic_ebeam_pdk_base):
         )
 
     def monte_carlo_s_parameters(self, freq):
-        """
-        Returns a monte carlo (randomized) set of s-parameters.
+        """Returns a monte carlo (randomized) set of s-parameters.
 
-        In this implementation of the monte carlo routine, random values are
-        generated for ne, ng, and nd for each run through of the monte carlo
-        simulation. This means that all waveguide elements throughout a single
-        circuit will have the same (random) ne, ng, and nd values. Hence, there
-        is correlated randomness in the monte carlo parameters but they are
-        consistent within a single circuit.
+        In this implementation of the monte carlo routine, random values
+        are generated for ne, ng, and nd for each run through of the
+        monte carlo simulation. This means that all waveguide elements
+        throughout a single circuit will have the same (random) ne, ng,
+        and nd values. Hence, there is correlated randomness in the
+        monte carlo parameters but they are consistent within a single
+        circuit.
         """
         return self.cacl_s_params(
             freq, self.length, self.lam0, self.rand_ne, self.rand_ng, self.rand_nd
@@ -1096,8 +1082,7 @@ class ebeam_wg_integral_1550(siepic_ebeam_pdk_base):
 
 
 class ebeam_y_1550(siepic_ebeam_pdk_base):
-    """
-    A y-branch efficiently splits the input 50/50 between the two outputs.
+    """A y-branch efficiently splits the input 50/50 between the two outputs.
     It can also be used as a combiner if used in the opposite direction,
     combining and interfering the light from two inputs into the one output.
 
@@ -1165,8 +1150,8 @@ class ebeam_y_1550(siepic_ebeam_pdk_base):
         self.enable_autoupdate()
 
     def s_parameters(self, freq):
-        """
-        Returns scattering parameters for the y-branch based on its parameters.
+        """Returns scattering parameters for the y-branch based on its
+        parameters.
 
         Parameters
         ----------
