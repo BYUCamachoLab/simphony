@@ -1,8 +1,7 @@
 
 install:
-	pip install -r requirements.txt --upgrade
+	pip install -r requirements-dev.txt --upgrade
 	pip install -e .
-	pip install pre-commit
 	pre-commit install
 
 lint:

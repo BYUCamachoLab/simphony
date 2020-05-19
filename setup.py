@@ -69,13 +69,13 @@ setup_args = dict(
     author="Sequoia Ploeg",
     author_email="sequoia.ploeg@ieee.org",
     url=__website_url__,
-    license="MIT",
+    license="GPLv3+",
     keywords="photonics simulation circuits science",
     platforms=["Windows", "Linux", "Mac OS-X"],
     packages=setuptools.find_packages(),
     package_data={"": extra_files},
     classifiers=[
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
         "Operating System :: MacOS",
         "Operating System :: Microsoft :: Windows",
         "Operating System :: POSIX :: Linux",
@@ -88,6 +88,7 @@ setup_args = dict(
         "Development Status :: 4 - Beta",
         "Intended Audience :: Education",
         "Intended Audience :: Science/Research",
+        "Intended Audience :: Developers",
         "Topic :: Scientific/Engineering",
     ],
     python_requires=">=3.6",
@@ -99,13 +100,13 @@ install_requires = [
     "parsimonious>=0.8.1",
 ]
 
-# extras_require = {
-#     '': [],
-# }
+extras_require = {
+    "test": ["pytest",],
+}
 
 if "setuptools" in sys.modules:
     setup_args["install_requires"] = install_requires
-    # setup_args['extras_require'] = extras_require
+    setup_args["extras_require"] = extras_require
 
     # setup_args.pop('scripts', None)
 
