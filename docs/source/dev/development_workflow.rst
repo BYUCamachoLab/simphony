@@ -6,12 +6,12 @@ Development workflow
 
 **Prerequisites**:
 You already have your own forked copy of the Simphony_ repository, you have 
-configured git, and have linked the upstream repository.
+configured git, and have `linked the upstream repository`_.
 
 What is described below is a recommended workflow with Git.
 
 .. _Simphony: https://github.com/BYUCamachoLab/simphony
-
+.. _linked the upstream repository: https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/configuring-a-remote-for-a-fork
 
 Basic workflow
 ##############
@@ -39,12 +39,10 @@ ensure that a pip installation of your updated package installs and functions
 properly. To test this, try installing your package locally by removing all 
 installed versions of Simphony (by running ```pip3 uninstall simphony``` 
 repeatedly until no installations remain) and running the following commands 
-(from Simphony's toplevel directory):
+(from Simphony's toplevel directory): ::
 
-```
-python3 setup.py sdist bdist_wheel  
-pip3 install dist/simphony-[VERSION].tar.gz
-```
+   $ python3 setup.py sdist bdist_wheel  
+   $ pip3 install dist/simphony-[VERSION].tar.gz
 
 Also be sure to include tests for all the code you add, making certain the tests are
 thorough and always pass.

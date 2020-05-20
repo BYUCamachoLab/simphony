@@ -2,15 +2,15 @@
 Contributing to Simphony
 ########################
 
-Not a coder? Not a problem! Simphony is still a developing project, 
+Not a developer? Not a problem! Simphony is still a developing project, 
 and we could use a lot of help.
 These are all activities we'd like to get help with (they're all important, so
 we list them in alphabetical order):
 
 - Code maintenance and development (architecture input welcome)
-- Fundraising
-- Marketing
-- Writing technical documentation and examples
+- Marketing, getting the word out and increasing usage
+- Writing technical documentation and examples (particularly if you're just a 
+  user but have found the project useful)
 
 Development process - summary
 =============================
@@ -69,8 +69,8 @@ Here's the short summary, complete TOC links are below:
      users can remove this step by connecting to GitHub with SSH).
 
    * Go to GitHub. The new branch will show up with a green Pull Request
-     button. Make sure the title and message are clear, concise, and self-
-     explanatory. Then click the button to submit it.
+     button. Make sure the title and message are clear, concise, and 
+     self-explanatory. Then click the button to submit it.
 
 4. Review process:
 
@@ -146,8 +146,10 @@ Stylistic Guidelines
 
 * Set up your editor to follow `PEP 8 <https://www.python.org/dev/peps/
   pep-0008/>`_ (remove trailing white space, no tabs, etc.).  Check code with
-  pyflakes / flake8.
-  .. FIXME: Do we want to use `black` instead?
+  flake8, and be aware that a pre-commit hook will run the autoformatter
+  Black_ over all of your committed code.
+
+.. _Black: https://black.readthedocs.io/
 
 
 Test coverage

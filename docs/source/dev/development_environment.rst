@@ -14,9 +14,8 @@ creating a :ref:`virtual environment <virtual-environments>` to isolate the
 development dependencies from your system's python packages.
 
 Once that is set up, simply clone the repository into a directory of your 
-choosing, and after making sure your virtual environment is activated, run::
-
-    $ make install
+choosing, and after making sure your virtual environment is activated, follow
+the instructions for :ref:`building-in-place`.
 
 
 .. _testing-builds:
@@ -39,7 +38,8 @@ repeatedly until no installations remain) and running the following commands
 
     Remember that all tests of Simphony should pass before committing your changes.
 
-Using ``pytest`` is the recommended approach to running tests (see :ref:`running-tests`).
+Using ``pytest`` (through tox) is the recommended approach to running tests 
+(see :ref:`running-tests`).
 
 
 .. _building-in-place:
@@ -50,11 +50,12 @@ Building in-place
 For development, you can set up an in-place build so that changes made to
 ``.py`` files have effect without rebuild. First, run::
 
-    $ pip install -e .
+    $ make install
 
 This allows you to import the in-place built Simphony *from any location the
 Python environment used to install it is activated*. If this is your system
-Python, you will be able to use the Simphony package from any directory.
+Python, you will be able to use the Simphony package from any directory, 
+although installing a development version in your system Python is not recommended.
 
 Now editing a Python source file in Simphony allows you to immediately
 test and use your changes (in ``.py`` files), without even restarting the
@@ -65,9 +66,6 @@ interpreter.
 
 Using virtual environments
 --------------------------
-
-A frequently asked question is "How do I set up a development version of NumPy
-in parallel to a released version that I use to do my job/research?".
 
 One simple way to set up a development version of Simphony in parallel with a
 regular install is to install the released version in
