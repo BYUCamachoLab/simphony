@@ -1,8 +1,21 @@
 # -*- coding: utf-8 -*-
+# Copyright © 2019-2020 Simphony Project Contributors and others (see AUTHORS.txt).
+# The resources, libraries, and some source files under other terms (see NOTICE.txt).
 #
-# Copyright © Simphony Project Contributors
-# Licensed under the terms of the MIT License
-# (see simphony/__init__.py for details)
+# This file is part of Simphony.
+#
+# Simphony is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Simphony is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Simphony. If not, see <https://www.gnu.org/licenses/>.
 
 """
 simphony.elements
@@ -19,9 +32,8 @@ _module_logger = logging.getLogger(__name__)
 
 
 class Model:
-    """
-    The basic element type describing the model for a component with scattering
-    parameters.
+    """The basic element type describing the model for a component with
+    scattering parameters.
 
     Any class that inherits from Model or its subclasses must declare the
     attributes of an element (see Attributes). Following the general EAFP coding
@@ -37,14 +49,14 @@ class Model:
         A tuple of the valid frequency bounds for the element in the order
         (lower, upper). Can be made (-infty, infty) be setting to (None, None).
     """
-    _logger = _module_logger.getChild('Model')
+
+    _logger = _module_logger.getChild("Model")
 
     pins = None
     freq_range = (None, None)
 
     def s_parameters(self, freq):
-        """
-        Returns scattering parameters for the element with its given 
+        """Returns scattering parameters for the element with its given
         parameters as declared in the optional ``__init__()``.
 
         Parameters
@@ -57,10 +69,10 @@ class Model:
         s : np.ndarray
             The scattering parameters corresponding to the frequency range.
             Its shape should be (the number of frequency points x ports x ports).
-            If the scattering parameters are requested for only a single 
+            If the scattering parameters are requested for only a single
             frequency, for example, and the device has 4 ports, the shape
             returned by ``s_parameters`` would be (1, 4, 4).
-        
+
         Raises
         ------
         NotImplementedError
@@ -69,8 +81,7 @@ class Model:
         raise NotImplementedError
 
     def monte_carlo_s_parameters(self, freq):
-        """
-        Implements the monte carlo routine for the given Model.
+        """Implements the monte carlo routine for the given Model.
 
         If no monte carlo routine is defined, the default behavior returns the
         result of a call to ``s_parameters()``.
@@ -85,22 +96,21 @@ class Model:
         s : np.ndarray
             The scattering parameters corresponding to the frequency range.
             Its shape should be (the number of frequency points x ports x ports).
-            If the scattering parameters are requested for only a single 
+            If the scattering parameters are requested for only a single
             frequency, for example, and the device has 4 ports, the shape
             returned by ``monte_carlo_s_parameters`` would be (1, 4, 4).
         """
         return self.s_parameters(freq)
-    
+
     def regenerate_monte_carlo_parameters(self):
-        """
-        Regenerates parameters used to generate monte carlo s-matrices.
+        """Regenerates parameters used to generate monte carlo s-matrices.
 
         If a monte carlo method is not implemented for a given model, this
         method does nothing. However, it can optionally be implemented so that
         parameters are regenerated once per circuit simulation. This ensures
-        correlation between all components of the same type that reference 
-        this model in a circuit. For example, the effective index of a 
-        waveguide should not be different for each waveguide in a small 
+        correlation between all components of the same type that reference
+        this model in a circuit. For example, the effective index of a
+        waveguide should not be different for each waveguide in a small
         circuit; they will be more or less consistent within a single small
         circuit.
 
@@ -114,6 +124,7 @@ class Model:
         """
         pass
 
+
 # class PModel(Model):
 #     """
 #     Parameterized Elements have scattering parameters that are calculated on
@@ -123,7 +134,7 @@ class Model:
 
 # class SModel(Model):
 #     """
-#     Static Elements have pre-simulated scattering parameters, often loaded 
+#     Static Elements have pre-simulated scattering parameters, often loaded
 #     from a file and independent of instance attributes.
 #     """
 #     pass

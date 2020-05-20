@@ -1,3 +1,0 @@
-numpy
-scipy
-parsimonious>=0.8.1

@@ -1,10 +1,23 @@
 # -*- coding: utf-8 -*-
+# Copyright © 2019-2020 Simphony Project Contributors and others (see AUTHORS.txt).
+# The resources, libraries, and some source files under other terms (see NOTICE.txt).
 #
-# Copyright © Simphony Project Contributors
-# Licensed under the terms of the MIT License
-# (see simphony/__init__.py for details)
+# This file is part of Simphony.
+#
+# Simphony is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Simphony is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Simphony. If not, see <https://www.gnu.org/licenses/>.
 
-# FIXME: No need for multiple files to all claim the simphony.library.siepic 
+# FIXME: No need for multiple files to all claim the simphony.library.siepic
 # header.
 """
 simphony.library.siepic
@@ -17,10 +30,8 @@ rest of the SiEPIC library.
 # See here: https://github.com/erikrose/parsimonious
 
 import numpy as np
-
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
-
 
 sparam_grammar = Grammar(
     r"""
@@ -48,12 +59,13 @@ sparam_grammar = Grammar(
     """
 )
 
+
 class ParamVisitor(NodeVisitor):
     def visit_file(self, node, visited_children):
         """
         Handles the grammar:
             file        = paramset* ws*
-        
+
         Collects all paramsets from the file and returns them as a list.
 
         Returns:
@@ -68,7 +80,7 @@ class ParamVisitor(NodeVisitor):
         """
         Handles the grammar:
             paramset    = header shape datapoint* ws*
-        
+
         Example:
             ('port 1','TE',1,'port 1',1,"transmission")
             (51,3)
@@ -84,15 +96,15 @@ class ParamVisitor(NodeVisitor):
         for child in datapoints:
             f.append(child[0])
             s.append(child[1])
-        header['f'] = f
-        header['s'] = s
+        header["f"] = f
+        header["s"] = s
         return header
 
     def visit_header(self, node, visited_children):
         """
         Handles the grammar:
             header      = lpar port comma mode comma number comma port comma number comma type rpar ws*
-        
+
         Example:
             ("port 1","mode 1",1,"port 1",1,"transmission")
                 ^                   ^
@@ -103,14 +115,30 @@ class ParamVisitor(NodeVisitor):
         """
         # FIXME: Investigate the order of output_port, input_port to make sure
         # this is correct.
-        _, output_port, _, mode, _, number, _, input_port, _, number, _, type_, *_ = visited_children
-        return dict(input_port=input_port, output_port=output_port, mode=mode, type_=type_)
+        (
+            _,
+            output_port,
+            _,
+            mode,
+            _,
+            number,
+            _,
+            input_port,
+            _,
+            number,
+            _,
+            type_,
+            *_,
+        ) = visited_children
+        return dict(
+            input_port=input_port, output_port=output_port, mode=mode, type_=type_
+        )
 
     def visit_datapoint(self, node, visited_children):
-        """ 
+        """
         Handles the grammar:
             datapoint   = number ws+ number ws+ number ws*
-        
+
         Example:
             1.8737028625000000e+14 8.8032014721294136e-04 -4.9073858469422826e-01
 
@@ -119,7 +147,7 @@ class ParamVisitor(NodeVisitor):
         """
         freq, _, real, _, imag, *_ = node.children
         freq, real, imag = float(freq.text), float(real.text), float(imag.text)
-        return (freq, real * np.exp(1j*imag))
+        return (freq, real * np.exp(1j * imag))
 
     def visit_port(self, node, visited_children):
         """
@@ -167,7 +195,7 @@ class ParamVisitor(NodeVisitor):
         """
         Handles the grammar:
             number      = ~r"[-+]?[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?"
-        
+
         Example:
             1.8737028625000000e+14
 
@@ -178,8 +206,9 @@ class ParamVisitor(NodeVisitor):
         return value
 
     def generic_visit(self, node, visited_children):
-        """ The generic visit method. """
+        """The generic visit method."""
         return visited_children or node
+
 
 def read_params(filename):
     """
@@ -187,29 +216,29 @@ def read_params(filename):
     ----------
     filename : str
         Absolute path to file to be parsed.
-    
+
     Returns
     -------
     list of dict
-        Returns a list of dictionaries as constructed by ParamVisitor. 
-        Dictionary contains frequency array, s-parameters, and other 
+        Returns a list of dictionaries as constructed by ParamVisitor.
+        Dictionary contains frequency array, s-parameters, and other
         information on a port-by-port basis.
     """
-    with open(filename, 'r') as f:
+    with open(filename, "r") as f:
         tree = sparam_grammar.parse(f.read())
     pv = ParamVisitor()
     return pv.visit(tree)
 
+
 def build_matrix(dicts):
-    """
-    Builds an s-parameter matrix and frequency array from a list of 
+    """Builds an s-parameter matrix and frequency array from a list of
     dictionaries generated by the parser.
 
     Parameters
     ----------
     dicts : list of dict
         The list of dictionaries that comprise one (and only one) model and
-        its corresponding s-matrix. The dictionaries contain port and 
+        its corresponding s-matrix. The dictionaries contain port and
         s-parameter information.
 
     Returns
@@ -219,11 +248,13 @@ def build_matrix(dicts):
         second value is a 3-dimensional matrix with the s-parameters for port-
         to-port interactions indexed by frequency.
     """
-    f = dicts[0]['f']
+    f = dicts[0]["f"]
     shape = int(np.sqrt(len(dicts)))
-    s = np.zeros((len(f), shape, shape), dtype='complex128')
+    s = np.zeros((len(f), shape, shape), dtype="complex128")
     for d in dicts:
-        if not np.array_equal(f, d['f']):
-            raise ValueError('Frequency arrays for the same model do not match (invalid model)!')
-        s[:,d['output_port']-1, d['input_port']-1] = d['s']
+        if not np.array_equal(f, d["f"]):
+            raise ValueError(
+                "Frequency arrays for the same model do not match (invalid model)!"
+            )
+        s[:, d["output_port"] - 1, d["input_port"] - 1] = d["s"]
     return f, s

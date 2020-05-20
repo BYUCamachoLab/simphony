@@ -1,15 +1,28 @@
 # -*- coding: utf-8 -*-
+# Copyright © 2019-2020 Simphony Project Contributors and others (see AUTHORS.txt).
+# The resources, libraries, and some source files under other terms (see NOTICE.txt).
 #
-# Copyright © Simphony Project Contributors
-# Licensed under the terms of the MIT License
-# (see simphony/__init__.py for details)
+# This file is part of Simphony.
+#
+# Simphony is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Simphony is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Simphony. If not, see <https://www.gnu.org/licenses/>.
 
 """
 simphony.persist
 ================
 
 This package contains handy functions for exporting models created by other
-libraries to a format that can be used by any simphony installation, 
+libraries to a format that can be used by any simphony installation,
 regardless of whether the creating library is installed locally.
 
 Static models can be exported; that is to say, models that implement dynamic
@@ -20,7 +33,7 @@ models recreated when imported. Other model attributes, such as pin names and
 the valid frequency range, are also exported.
 
 .. warning::
-    Models are pickled files with a '.mdl' extension. Note that pickle has an 
+    Models are pickled files with a '.mdl' extension. Note that pickle has an
     inherent `security risk`_, so if you do not trust the source of the data, do
     not load the file!
 
@@ -33,17 +46,16 @@ import os
 import pickle
 
 from simphony.elements import Model
-from simphony.tools import wl2freq, interpolate
+from simphony.tools import interpolate, wl2freq
 
 
 def export_model(model, filename, wl=None, freq=None):
-    """
-    Exports a simphony model (using pickle) for the given frequency/wavelength 
-    range to a '.mdl' file.
-    
-    Must include either the wavelength or frequency argument. If both are 
+    """Exports a simphony model (using pickle) for the given
+    frequency/wavelength range to a '.mdl' file.
+
+    Must include either the wavelength or frequency argument. If both are
     included, defaults to frequency argument.
-    
+
     Parameters
     -----------
     model : Model
@@ -58,7 +70,7 @@ def export_model(model, filename, wl=None, freq=None):
 
     Examples
     --------
-    We can write a model for a ``ebeam_wg_integral_1550`` instantiated with a 
+    We can write a model for a ``ebeam_wg_integral_1550`` instantiated with a
     length of 100 nanometers to a file  named ``wg100nm.mdl``.
 
     >>> import numpy as np
@@ -67,18 +79,25 @@ def export_model(model, filename, wl=None, freq=None):
     >>> export_model(wg1, 'wg100nm', wl=np.linspace(1520e-9, 1580e-9, 51))
     """
     if not issubclass(model.__class__, Model):
-        raise ValueError('{} does not extend {}'.format(model, Model))
+        raise ValueError("{} does not extend {}".format(model, Model))
 
     if wl is None and freq is None:
-        raise ValueError('Frequency or wavelength range not defined.')
+        raise ValueError("Frequency or wavelength range not defined.")
 
     # Convert wavelength to frequency
     if freq is None:
-        freq = wl2freq(wl)[::-1] 
+        freq = wl2freq(wl)[::-1]
 
     # Load all data into a dictionary.
-    attributes = inspect.getmembers(model, lambda a:not(inspect.isroutine(a)))
-    attributes = dict([a for a in attributes if not(a[0].startswith('__') and a[0].endswith('__')) and not a[0].startswith('_')])
+    attributes = inspect.getmembers(model, lambda a: not (inspect.isroutine(a)))
+    attributes = dict(
+        [
+            a
+            for a in attributes
+            if not (a[0].startswith("__") and a[0].endswith("__"))
+            and not a[0].startswith("_")
+        ]
+    )
 
     params = dict()
     params["model"] = model.__class__.__name__
@@ -87,11 +106,13 @@ def export_model(model, filename, wl=None, freq=None):
     params["s"] = model.s_parameters(freq)
 
     # Dump to pickle.
-    pickle.dump(params, io.open(filename + '.mdl', 'wb'), protocol=pickle.HIGHEST_PROTOCOL)
+    pickle.dump(
+        params, io.open(filename + ".mdl", "wb"), protocol=pickle.HIGHEST_PROTOCOL
+    )
+
 
 def import_model(filename, force=False):
-    """
-    Imports a model from file
+    """Imports a model from file.
 
     Parameters
     ----------
@@ -101,7 +122,7 @@ def import_model(filename, force=False):
     Returns
     -------
     model : class
-        A class that inherits from simphony.elements.Model that is the 
+        A class that inherits from simphony.elements.Model that is the
         reconstructed model.
 
     Examples
@@ -111,15 +132,15 @@ def import_model(filename, force=False):
     >>> s = wg.s_parameters(np.linspace(wl2freq(1540e-9), wl2freq(1560e-9), 51))
     """
     path, ext = os.path.splitext(filename)
-    if ext != '.mdl' and force == False:
-        raise ValueError('Requested file {} is not a .mdl file, to force load set parameter ``force=True``.'.format(filename))
+    if ext != ".mdl" and force == False:
+        raise ValueError(
+            "Requested file {} is not a .mdl file, to force load set parameter ``force=True``.".format(
+                filename
+            )
+        )
 
-    params = pickle.load(io.open(filename, 'rb'))
-    klass = type(
-        params['model'],
-        (Model, ),
-        params['attributes']
-    )
+    params = pickle.load(io.open(filename, "rb"))
+    klass = type(params["model"], (Model,), params["attributes"])
 
     def s_parameters(self, freq):
         """
@@ -135,8 +156,8 @@ def import_model(filename, force=False):
         """
         return interpolate(freq, self._f, self._s)
 
-    setattr(klass, '_f', params['f'])
-    setattr(klass, '_s', params['s'])
-    setattr(klass, 's_parameters', s_parameters)
+    setattr(klass, "_f", params["f"])
+    setattr(klass, "_s", params["s"])
+    setattr(klass, "s_parameters", s_parameters)
 
     return klass

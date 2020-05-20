@@ -127,6 +127,36 @@ Increment the version number anywhere that needs it.
 Release candidates should have "rc1"
 (or "rc2", "rcN") appended to the X.Y.Z format.
 
+We use bump2version_ to manage the version number throughout the project.
+This provides 4 useful commands for managing the version number from the 
+command line (``build``, ``patch``, ``minor``, ``major``, and ``release``) ::
+
+    $ python -c "import simphony; print(simphony.__version__)"
+    1.3.1
+
+    $ bumpversion major; python -c "import simphony; print(simphony.__version__)"
+    2.0.0-dev0
+
+    $ bumpversion minor; python -c "import simphony; print(simphony.__version__)"
+    2.1.0-dev0
+
+    $ bumpversion patch; python -c "import simphony; print(simphony.__version__)"
+    2.1.1-dev0
+    
+    $ bumpversion build; python -c "import simphony; print(simphony.__version__)"
+    2.1.1-dev1
+
+    $ bumpversion build; python -c "import simphony; print(simphony.__version__)"
+    2.1.1-dev2
+
+    $ bumpversion release; python -c "import simphony; print(simphony.__version__)"
+    2.1.1
+
+    $ bumpversion minor; python -c "import simphony; print(simphony.__version__)"
+    2.2.0-dev0
+
+.. _bump2version: https://github.com/c4urself/bump2version
+
 
 Build and archive documentation
 -------------------------------
