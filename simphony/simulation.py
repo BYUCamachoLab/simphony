@@ -114,20 +114,56 @@ class SweepSimulationResult(SimulationResult):
         self.f = freq
         self.s = smat.s
 
-    def data(self, inp, outp, dB=False):
+    def data(self, inp, outp, invals=None, dB=False):
         """
         Parameters
         ----------
-        inp : str or Pin
-            Input pin.
+        inp : str, Pin, list
+            Input pin. Can also be a list of input pins in the case of multi-port input
         outp : str or Pin
             Output pin.
+        invals : float, list
+            Input values to apply to inp, can be complex. If None, applies 1 each. Defaults to None.
+        db : bool
+            Whether to return results in dB. Defaults to False.
+
+        Returns
+        --------
+        output : Requested output of circuit
         """
-        freq = self.f
-        s = abs(self.s[:, self.pinlist[outp].index, self.pinlist[inp].index]) ** 2
+        # single port input
+        if not (
+            isinstance(inp, list)
+            or isinstance(inp, np.ndarray)
+            or isinstance(inp, tuple)
+        ):
+            inp = [inp]
+
+        # make values if necessary
+        if invals is None:
+            invals = np.ones_like(inp)
+        elif isinstance(invals, int):
+            invals = np.array([invals])
+        elif isinstance(invals, list) or isinstance(invals, tuple):
+            invals = np.array(invals)
+
+        # make sure things line up
+        if len(inp) != len(invals):
+            raise ValueError("Given different # of inputs and magnitudes")
+
+        # put all inputs together in large array
+        idx = [self.pinlist[i].index for i in inp]
+        inputs = np.zeros(len(self.pinlist), dtype="complex64")
+        inputs[idx] = invals
+
+        # do conversion
+        s = np.abs(self.s[:, self.pinlist[outp].index, :] @ inputs) ** 2
+
+        # apply decibels
         if dB:
             s = np.log10(s)
-        return freq, s
+
+        return self.f, s
 
 
 class MonteCarloSimulationResult(SimulationResult):
@@ -148,21 +184,59 @@ class MonteCarloSimulationResult(SimulationResult):
     def add_result(self, result):
         self.results.append(result)
 
-    def data(self, inp, outp, run, dB=False):
+    def data(self, inp, outp, run, invals=None, dB=False):
         """
         Parameters
         ----------
-        inp : str or Pin
-            Input pin.
+        inp : str, Pin, list
+            Input pin. Can also be a list of input pins in the case of multi-port input
         outp : str or Pin
             Output pin.
+        run : int
+            Number of monte-carlo run to return
+        invals : float, list
+            Input values to apply to inp, can be complex. If None, applies 1 each. Defaults to None.
+        db : bool
+            Whether to return results in dB. Defaults to False.
+
+        Returns
+        --------
+        output : Requested output of circuit
         """
+        # single port input
+        if not (
+            isinstance(inp, list)
+            or isinstance(inp, np.ndarray)
+            or isinstance(inp, tuple)
+        ):
+            inp = [inp]
+
+        # make values if necessary
+        if invals is None:
+            invals = np.ones_like(inp)
+        elif isinstance(invals, int):
+            invals = np.array([invals])
+        elif isinstance(invals, list) or isinstance(invals, tuple):
+            invals = np.array(invals)
+
+        # make sure things line up
+        if len(inp) != len(invals):
+            raise ValueError("Given different # of inputs and magnitudes")
+
+        # put all inputs together in large array
+        idx = [self.pinlist[i].index for i in inp]
+        inputs = np.zeros(len(self.pinlist), dtype="complex64")
+        inputs[idx] = invals
+
+        # do conversion
         res = self.results[run]
-        freq = self.f
-        s = abs(res.s[:, self.pinlist[outp].index, self.pinlist[inp].index]) ** 2
+        s = np.abs(res.s[:, self.pinlist[outp].index, :] @ inputs) ** 2
+
+        # apply decibels
         if dB:
             s = np.log10(s)
-        return freq, s
+
+        return self.f, s
 
 
 class Simulation:
@@ -413,11 +487,6 @@ class SweepSimulation(Simulation):
         return combined
 
 
-class SinglePortSweepSimulation(SweepSimulation):
-    def __init__(self, circuit, start=1.5e-6, stop=1.6e-6, num=2000):
-        super().__init__(circuit, start, stop, num)
-
-
 class MonteCarloSweepSimulation(SweepSimulation):
     """A monte carlo sweep simulation.
 
@@ -452,6 +521,11 @@ class MonteCarloSweepSimulation(SweepSimulation):
         ----------
         runs : int, optional
             The number of monte carlo iterations to run (default 10).
+
+        Returns
+        -------
+        sim : MonteCarloSimulationResult
+            A loaded MonteCarloSimulationResult object.
         """
         models = SweepSimulation._collect_models(self.circuit)
         SweepSimulation.validate_models(models, self.freq)
@@ -474,66 +548,3 @@ class MonteCarloSweepSimulation(SweepSimulation):
         for model in collection:
             cache[model] = model.monte_carlo_s_parameters(freq)
         return cache
-
-
-class MultiInputSweepSimulation(SweepSimulation):
-    pass
-
-
-#     """A simulator that models sweeping multiple inputs simultaneously by
-#     performing algebraic operations on the simulated, cascaded s-parameter
-#     matrix.
-#     """
-#     def __init__(self, netlist):
-#         """Initializes the MultiInputSimulation with a Netlist and runs a
-#         single simulation for the "ideal," pre-modified model.
-
-#         Parameters
-#         ----------
-#         netlist : Netlist
-#             The netlist to be simulated.
-#         """
-#         super().__init__(netlist)
-
-#     def multi_input_simulation(self, inputs: list=[]):
-#         """Given a list of ports to use as inputs, calculates the response
-#         of the circuit for all ports. Results are stored as an attribute and
-#         can be accessed by retrieving `.simulated_matrix` from the simulation
-#         object.
-
-#         Parameters
-#         ----------
-#         inputs : list
-#             A 0-indexed list of the ports to be used as inputs.
-#         """
-#         active = [0] * len(self.external_ports)
-#         for val in inputs:
-#             active[val] = 1
-#         self.simulated_matrix = self._measure_s_matrix(active)
-
-#     def _measure_s_matrix(self, inputs):
-#         """Performs the algebra for simulating multiple inputs.
-
-#         Parameters
-#         ----------
-#         inputs : list
-#             A list with length equal to the number of rows/columns of the
-#             s-parameter matrix (corresponds to the number of external ports).
-#             Port indices with a '0' are considered "off," where ports indices
-#             that store a '1' correspond to an active laser input.
-#         """
-#         num_ports = len(inputs)
-#         inputs = np.array(inputs)
-#         out = np.zeros([len(self.freq_array), num_ports], dtype='complex128')
-#         for i in range(len(self.freq_array)):
-#             out[i, :] = np.dot(np.reshape(self.s_parameters()[i, :, :], [num_ports, num_ports]), inputs.T)
-#         return out
-
-#     def export_s_matrix(self):
-#         """Returns the matrix result of the multi-input simulation.
-
-#         Returns
-#         -------
-#         frequency, matrix: np.array, np.ndarray
-#         """
-#         return self.freq_array, self.simulated_matrix
