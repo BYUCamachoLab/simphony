@@ -74,7 +74,7 @@ def model(request):
         return circuit
 
 
-def test_interconnect_export(model):
+def test_export(model):
     # set things up
     num_pts = 2
     wl = np.linspace(1500, 1600, num_pts) * 1e-9
@@ -120,8 +120,9 @@ def file(request):
     return request.param
 
 
-def test_interconnect_load(file):
-    interconnect.load(file)
+def test_load(file):
+    filename = os.path.join(os.path.dirname(__file__), file)
+    interconnect.load(filename)
 
 
 #### Couldn't get this test to work, no easy way to get order of lines exactly the same

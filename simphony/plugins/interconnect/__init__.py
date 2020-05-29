@@ -26,7 +26,6 @@ by Lumerical Interconnect
 
 """
 
-import io
 import os
 
 import numpy as np
