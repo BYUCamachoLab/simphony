@@ -166,8 +166,8 @@ def load(filename):
                 continue
 
             # get ports
-            port1 = values[0]
-            port2 = values[3]
+            out = values[0]
+            in_ = values[3]
 
             # get next header and size of sparams
             i += 1
@@ -185,7 +185,7 @@ def load(filename):
 
                 # save if we've hit the last frequency point
                 if freq_i == freq_num:
-                    sparams_final[(port1, port2)] = sparams
+                    sparams_final[(out, in_)] = sparams
                     if freq_final is None:
                         freq_final = freq
                     else:
@@ -199,8 +199,8 @@ def load(filename):
     # put into final smatrix
     pins = list(set(pin for value in sparams_final.keys() for pin in value))
     sparams = np.zeros((freq_num, len(pins), len(pins)), dtype="complex64")
-    for ports, values in sparams_final.items():
-        sparams[:, pins.index(ports[0]), pins.index(ports[1])] = values
+    for (out, in_), values in sparams_final.items():
+        sparams[:, pins.index(out), pins.index(in_)] = values
 
     # make class for it
     klass = type("InterconnectImport", (Model,), {"pins": pins})
