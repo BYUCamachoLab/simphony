@@ -48,7 +48,7 @@ def _parse_numbers(line):
 
 def export(model, filename, wl=None, freq=None, clear=True):
     """Exports a simphony model (using pickle) for the given
-    frequency/wavelength range to a '.mdl' file.
+    frequency/wavelength range to a '.txt' file, with suffix of your choosing.
 
     Must include either the wavelength or frequency argument. If both are
     included, defaults to frequency argument.
@@ -59,7 +59,7 @@ def export(model, filename, wl=None, freq=None, clear=True):
         Any class inheriting from simphony.elements.Model
     filename : str
         The filename (may include path to directory) to save the model to.
-        Note that the suffix '.mdl' will be appended to the filename.
+        Make sure to include a suffix.
     wl : ndarray, optional
         Wavelengths you want to save sparameters for (in meters).
     freq : ndarray, optional
