@@ -20,7 +20,7 @@ Simphony, a simulator for photonic circuits, is a fundamental package for design
 
 **Key Features:**
 
-- Free and open-source software provided under the MIT License
+- Free and open-source software provided under the GPLv3+ License
 - Completely scriptable using Python 3.
 - Cross-platform: runs on Windows, MacOS, and Linux.
 - Subnetwork growth routines
