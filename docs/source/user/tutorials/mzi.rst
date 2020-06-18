@@ -56,7 +56,7 @@ We'll need the following modules and objects from simphony:
 
 ::
     
-    from simphony.library import ebeam
+    from simphony.library import siepic
     from simphony.netlist import Subcircuit
     from simphony.simulation import SweepSimulation, MonteCarloSweepSimulation
 
