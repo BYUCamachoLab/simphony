@@ -9,7 +9,7 @@ designing and simulating photonic integrated circuits with Python.
 
 **Key Features:**
 
-- Free and open-source software provided under the MIT License
+- Free and open-source software provided under the GPLv3+ License
 - Completely scriptable using Python 3.
 - Cross-platform: runs on Windows, MacOS, and Linux.
 - Subnetwork growth routines
