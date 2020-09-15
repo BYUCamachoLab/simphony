@@ -47,7 +47,7 @@ class Model:
         tuple should be equal to the number of ports on the device.
     freq_range : tuple of float
         A tuple of the valid frequency bounds for the element in the order
-        (lower, upper). Can be made (-infty, infty) be setting to (None, None).
+        (lower, upper). Can be made (-infty, infty) by setting to (None, None).
     """
 
     _logger = _module_logger.getChild("Model")
