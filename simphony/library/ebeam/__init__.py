@@ -24,6 +24,7 @@ from scipy.constants import c as SPEED_OF_LIGHT
 
 from simphony.elements import Model
 from simphony.tools import freq2wl, interpolate, wl2freq
+from numpy import ndarray
 
 
 class ebeam_bdc_te1550(Model):
@@ -54,7 +55,7 @@ class ebeam_bdc_te1550(Model):
         s_params[0][-1],
     )  #: The valid frequency range for this model.
 
-    def s_parameters(self, freq):
+    def s_parameters(self, freq: ndarray) -> ndarray:
         return interpolate(freq, self.s_params[0], self.s_params[1])
 
 
@@ -76,7 +77,7 @@ class ebeam_dc_halfring_te1550(Model):
         s_params[0][-1],
     )  #: The valid frequency range for this model.
 
-    def s_parameters(self, freq):
+    def s_parameters(self, freq: ndarray) -> ndarray:
         return interpolate(freq, self.s_params[0], self.s_params[1])
 
 
@@ -108,7 +109,7 @@ class ebeam_gc_te1550(Model):
         s_params[0][-1],
     )  #: The valid frequency range for this model.
 
-    def s_parameters(self, freq):
+    def s_parameters(self, freq: ndarray) -> ndarray:
         return interpolate(freq, self.s_params[0], self.s_params[1])
 
 
@@ -138,7 +139,7 @@ class ebeam_terminator_te1550(Model):
         s_params[0][-1],
     )  #: The valid frequency range for this model.
 
-    def s_parameters(self, freq):
+    def s_parameters(self, freq: ndarray) -> ndarray:
         return interpolate(freq, self.s_params[0], self.s_params[1])
 
 
@@ -186,15 +187,15 @@ class ebeam_wg_integral_1550(Model):
 
     def __init__(
         self,
-        length,
-        lam0=1.55e-06,
-        ne=2.44553,
-        ng=4.19088,
-        nd=0.000354275,
-        sigma_ne=0.05,
-        sigma_ng=0.05,
-        sigma_nd=0.0001,
-    ):
+        length: float,
+        lam0: float=1.55e-06,
+        ne: float=2.44553,
+        ng: float=4.19088,
+        nd: float=0.000354275,
+        sigma_ne: float=0.05,
+        sigma_ng: float=0.05,
+        sigma_nd: float=0.0001,
+    ) -> None:
         self.length = length
         self.lam0 = lam0
         self.ne = ne
@@ -205,7 +206,7 @@ class ebeam_wg_integral_1550(Model):
         self.sigma_nd = sigma_nd
         self.regenerate_monte_carlo_parameters()
 
-    def s_parameters(self, freq):
+    def s_parameters(self, freq: ndarray) -> ndarray:
         """Get the s-parameters of a waveguide.
 
         Parameters
@@ -242,13 +243,13 @@ class ebeam_wg_integral_1550(Model):
             freq, self.length, self.lam0, self.rand_ne, self.rand_ng, self.rand_nd
         )
 
-    def regenerate_monte_carlo_parameters(self):
+    def regenerate_monte_carlo_parameters(self) -> None:
         self.rand_ne = np.random.normal(self.ne, self.sigma_ne)
         self.rand_ng = np.random.normal(self.ng, self.sigma_ng)
         self.rand_nd = np.random.normal(self.nd, self.sigma_nd)
 
     @staticmethod
-    def cacl_s_params(frequency, length, lam0, ne, ng, nd):
+    def cacl_s_params(frequency: ndarray, length: float, lam0: float, ne: float, ng: float, nd: float) -> ndarray:
         # Initialize array to hold s-params
         s = np.zeros((len(frequency), 2, 2), dtype=complex)
 
@@ -291,7 +292,7 @@ class ebeam_y_1550(Model):
         s_params[0][-1],
     )  #: The valid frequency range for this model.
 
-    def s_parameters(self, freq):
+    def s_parameters(self, freq: ndarray) -> ndarray:
         return interpolate(freq, self.s_params[0], self.s_params[1])
 
 
@@ -323,7 +324,7 @@ class ebeam_dc_te1550(Model):
         s_params[0][-1],
     )  #: The valid frequency range for this model.
 
-    def s_parameters(self, freq):
+    def s_parameters(self, freq: ndarray) -> ndarray:
         return interpolate(freq, self.s_params[0], self.s_params[1])
 
 

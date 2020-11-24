@@ -25,10 +25,12 @@ This package contains handy functions useful across simphony submodules
 and to the average user.
 """
 
+from typing import List, Union
 import re
 
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import interp1d
+from numpy import ndarray
 
 MATH_SUFFIXES = {
     "f": "e-15",
@@ -44,7 +46,7 @@ MATH_SUFFIXES = {
 }
 
 
-def str2float(num):
+def str2float(num: str) -> float:
     """Converts a number represented as a string to a float. Can include
     suffixes (such as 'u' for micro, 'k' for kilo, etc.).
 
@@ -119,7 +121,7 @@ def freq2wl(freq):
     return SPEED_OF_LIGHT / freq
 
 
-def wl2freq(wl):
+def wl2freq(wl: Union[float, ndarray]) -> Union[float, ndarray]:
     """Convenience function for converting from wavelength to frequency.
 
     Parameters
@@ -135,7 +137,7 @@ def wl2freq(wl):
     return SPEED_OF_LIGHT / wl
 
 
-def interpolate(resampled, sampled, s_parameters):
+def interpolate(resampled: ndarray, sampled: Union[ndarray, List[float]], s_parameters: ndarray) -> ndarray:
     """Returns the result of a cubic interpolation for a given frequency range.
 
     Parameters

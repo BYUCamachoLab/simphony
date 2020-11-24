@@ -34,6 +34,8 @@ from simphony.connect import connect_s, innerconnect_s
 from simphony.elements import Model
 from simphony.netlist import Element, ElementList, PinList, Subcircuit
 from simphony.tools import freq2wl, wl2freq
+from numpy import ndarray
+from typing import List, Optional, Tuple, Union
 
 _module_logger = logging.getLogger(__name__)
 
@@ -114,7 +116,7 @@ class SweepSimulationResult(SimulationResult):
         self.f = freq
         self.s = smat.s
 
-    def data(self, inp, outp, invals=None, dB=False):
+    def data(self, inp: Union[str, List[int], List[str], int], outp: Union[str, int], invals: Optional[Union[int, List[int]]]=None, dB: bool=False) -> Tuple[ndarray, ndarray]:
         """
         Parameters
         ----------
@@ -184,7 +186,7 @@ class MonteCarloSimulationResult(SimulationResult):
     def add_result(self, result):
         self.results.append(result)
 
-    def data(self, inp, outp, run, invals=None, dB=False):
+    def data(self, inp: Union[str, List[int], List[str], int], outp: Union[str, int], run: int, invals: Optional[Union[int, List[int]]]=None, dB: bool=False) -> Tuple[ndarray, ndarray]:
         """
         Parameters
         ----------

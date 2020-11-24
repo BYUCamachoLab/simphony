@@ -5,6 +5,8 @@ __pycache__/
 
 # C extensions
 *.so
+*.sqlite3
+*.fish
 
 # Distribution / packaging
 .Python

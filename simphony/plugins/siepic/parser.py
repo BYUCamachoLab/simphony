@@ -17,18 +17,19 @@
 # You should have received a copy of the GNU General Public License
 # along with Simphony. If not, see <https://www.gnu.org/licenses/>.
 
+from typing import Any, Dict, List, Optional, Tuple, Union
 import os
 from enum import Enum
 
 from parsimonious.grammar import Grammar
-from parsimonious.nodes import NodeVisitor
+from parsimonious.nodes import Node, RegexNode, NodeVisitor
 
 from simphony.tools import str2float
 
 
 # The "dynamic list" isn't it's own class, but a regular
 # list that uses these functions to perform operations.
-def _dlist_insert(dlist, index, element):
+def _dlist_insert(dlist: List[str], index: int, element: str) -> List[str]:
     try:
         dlist[index] = element
         return dlist
@@ -105,7 +106,7 @@ class SpiceVisitor(NodeVisitor):
     Simphony wrong.
     """
 
-    def visit_file(self, node, visited_children):
+    def visit_file(self, node: Node, visited_children: Union[List[Union[List[None], List[Tuple[Directives, Dict[str, Union[str, List[str], List[Dict[str, Union[str, List[str], Dict[str, Union[str, float]]]]], Dict[str, float]]]]], List[Tuple[SpiceObjects, Dict[str, Union[str, List[str], List[Dict[str, Union[str, float]]]]]]]]], List[Union[List[None], List[Tuple[Directives, Dict[str, Union[Dict[str, str], Dict[str, Union[float, str, List[str]]]]]]], List[Tuple[Directives, Dict[str, Union[List[Dict[str, Union[str, List[str], List[Dict[str, Union[str, float]]]]]], List[Dict[str, Union[str, List[str], List[Dict[str, Union[str, List[str], Dict[str, Union[str, float]]]]], Dict[str, float]]]]]]]]]]]) -> Dict[str, Union[List[Dict[str, Union[str, List[str], List[Dict[str, Union[str, float]]]]]], List[Dict[str, Union[str, List[str], List[Dict[str, Union[str, List[str], Dict[str, Union[str, float]]]]], Dict[str, float]]]], List[Dict[str, Union[Dict[str, str], Dict[str, Union[float, str, List[str]]]]]]]]:
         """
         Grammar:
         file        = (directive / circuit / comment / emptyline)*
@@ -145,11 +146,11 @@ class SpiceVisitor(NodeVisitor):
             sort_items(contents, typ, payload)
         return contents
 
-    def visit_directive(self, node, visited_children):
+    def visit_directive(self, node: Node, visited_children: Union[List[Tuple[Directives, Dict[str, Union[List[Dict[str, Union[str, List[str], List[Dict[str, Union[str, float]]]]]], List[Dict[str, Union[str, List[str], List[Dict[str, Union[str, List[str], Dict[str, Union[str, float]]]]], Dict[str, float]]]]]]]], List[Tuple[Directives, Dict[str, Union[str, List[str], List[Dict[str, Union[str, List[str], Dict[str, Union[str, float]]]]], Dict[str, float]]]]], List[Tuple[Directives, Dict[str, Union[Dict[str, str], Dict[str, Union[float, str, List[str]]]]]]]]) -> Union[Tuple[Directives, Dict[str, Union[List[Dict[str, Union[str, List[str], List[Dict[str, Union[str, float]]]]]], List[Dict[str, Union[str, List[str], List[Dict[str, Union[str, List[str], Dict[str, Union[str, float]]]]], Dict[str, float]]]]]]], Tuple[Directives, Dict[str, Union[Dict[str, str], Dict[str, Union[float, str, List[str]]]]]], Tuple[Directives, Dict[str, Union[str, List[str], List[Dict[str, Union[str, List[str], Dict[str, Union[str, float]]]]], Dict[str, float]]]]]:
         # directive   = (ona / include / subckt)
         return visited_children[0]
 
-    def visit_ona(self, node, visited_children):
+    def visit_ona(self, node: Node, visited_children: List[Optional[Union[Node, List[None], List[Dict[str, str]], List[Union[List[Optional[List[Dict[str, Union[str, float]]]]], List[Optional[List[Dict[str, str]]]], List[Optional[List[Union[Dict[str, str], Dict[str, Union[str, float]]]]]], List[Optional[List[Dict[str, Union[int, str]]]]]]]]]]) -> Tuple[Directives, Dict[str, Dict[str, Union[float, str, List[str]]]]]:
         """
         Grammar:
         ona         = ".ona" ws+ pair* newline (options newline)*
@@ -194,17 +195,17 @@ class SpiceVisitor(NodeVisitor):
                     ona["params"][option["name"]] = option["value"]
         return Directives.ONA, ona
 
-    def visit_options(self, node, visited_children):
+    def visit_options(self, node: Node, visited_children: Union[List[Union[List[None], Node, List[Dict[str, Union[str, float]]]]], List[Union[List[None], Node, List[Union[Dict[str, str], Dict[str, Union[str, float]]]]]], List[Union[List[None], Node, List[Dict[str, str]]]], List[Union[List[None], Node, List[Dict[str, Union[int, str]]]]]]) -> Union[List[Union[Dict[str, str], Dict[str, Union[str, float]]]], List[Dict[str, str]], List[Dict[str, Union[int, str]]], List[Dict[str, Union[str, float]]]]:
         # options     = ws? "+" ws* pair*
         _, _, _, pair = visited_children
         return pair
 
-    def visit_include(self, node, visited_children):
+    def visit_include(self, node: Node, visited_children: List[Optional[Union[Node, List[None], str]]]) -> Tuple[Directives, Dict[str, Union[List[Dict[str, Union[str, List[str], List[Dict[str, Union[str, float]]]]]], List[Dict[str, Union[str, List[str], List[Dict[str, Union[str, List[str], Dict[str, Union[str, float]]]]], Dict[str, float]]]]]]]:
         # include     = ".INCLUDE" ws+ quoted newline
         _, _, quoted, _ = visited_children
         return Directives.INCLUDE, load_spi(quoted)
 
-    def visit_subckt(self, node, visited_children):
+    def visit_subckt(self, node: Node, visited_children: List[Any]) -> Tuple[Directives, Dict[str, Union[str, List[str], List[Dict[str, Union[str, List[str], Dict[str, Union[str, float]]]]], Dict[str, float]]]]:
         """
         Grammar:
         subckt      = ".subckt" ws+ header param* component* footer
@@ -230,18 +231,18 @@ class SpiceVisitor(NodeVisitor):
             {"name": name, "ports": ports, "components": components, "params": params},
         )
 
-    def visit_header(self, node, visited_children):
+    def visit_header(self, node: Node, visited_children: List[Optional[Union[str, List[None], List[Union[List[Union[str, List[None]]], List[Union[str, Node]]]]]]]) -> Dict[str, Union[str, List[str]]]:
         # header      = word ws+ (word ws*)* newline
         name, _, externals, _ = visited_children
         externals = [ext[0] for ext in externals]
         return {"name": name, "externals": externals}
 
-    def visit_param(self, node, visited_children):
+    def visit_param(self, node: Node, visited_children: List[Optional[Union[Node, List[None], Dict[str, Union[str, float]]]]]) -> Dict[str, Union[str, float]]:
         # param       = ".param" ws+ pair newline
         _, _, param, _ = visited_children
         return param
 
-    def visit_component(self, node, visited_children):
+    def visit_component(self, node: Node, visited_children: List[Optional[Union[List[None], str, List[str], List[Union[Dict[str, str], Dict[str, Union[str, float]]]]]]]) -> Dict[str, Union[str, List[str], Dict[str, Union[str, float]]]]:
         """
         Grammar:
         component   = ws* word ws+ ports word ws+ pair* newline
@@ -256,27 +257,27 @@ class SpiceVisitor(NodeVisitor):
         params = {p["name"]: p["value"] for p in params}
         return {"name": name, "model": model, "ports": ports, "params": params}
 
-    def visit_ports(self, node, visited_children):
+    def visit_ports(self, node: Node, visited_children: List[List[Union[List[str], List[None]]]]) -> List[str]:
         # ports       = ((external / internal) ws?)+
         ports = []
         for port in visited_children:
             ports.append(port[0][0])
         return ports
 
-    def visit_external(self, node, visited_children):
+    def visit_external(self, node: RegexNode, visited_children: List[Any]) -> str:
         # external    = ~r"([-\w]+(detector|laser)[\d]?)"
         return node.text
 
-    def visit_internal(self, node, visited_children):
+    def visit_internal(self, node: RegexNode, visited_children: List[Any]) -> str:
         # internal    = ~r"N\$[-\d]+"
         return node.text
 
-    def visit_footer(self, node, visited_children):
+    def visit_footer(self, node: Node, visited_children: List[Optional[Union[Node, List[None], str]]]) -> Dict[str, str]:
         # footer      = ".ends" ws+ word ws? newline
         _, _, name, *_ = visited_children
         return {"name": name}
 
-    def visit_circuit(self, node, visited_children):
+    def visit_circuit(self, node: Node, visited_children: List[Optional[Union[str, List[None], List[str], List[Dict[str, Union[str, float]]]]]]) -> Tuple[SpiceObjects, Dict[str, Union[str, List[str], List[Dict[str, Union[str, float]]]]]]:
         """
         Grammar:
         circuit     = word ws+ ports word ws* pair* newline
@@ -303,7 +304,7 @@ class SpiceVisitor(NodeVisitor):
             },
         )
 
-    def visit_pair(self, node, visited_children):
+    def visit_pair(self, node: Node, visited_children: Union[List[Optional[Union[Dict[str, str], Dict[str, float], List[None]]]], List[Optional[Union[Dict[str, str], List[None]]]], List[Optional[Union[Dict[str, Union[int, str]], Dict[str, str], Node]]], List[Optional[Union[Dict[str, str], Dict[str, float], Node]]], List[Optional[Union[Dict[str, str], Node]]]]) -> Dict[str, Union[str, float, int]]:
         # pair        = key equal value ws?
         key, _, value, _ = visited_children
         pair = {}
@@ -311,7 +312,7 @@ class SpiceVisitor(NodeVisitor):
         pair.update(value)
         return pair
 
-    def visit_key(self, node, visited_children):
+    def visit_key(self, node: Node, visited_children: Union[List[str], List[Dict[str, Union[int, str]]]]) -> Dict[str, Union[int, str]]:
         # key         = list / word
         name = visited_children[0]
         if type(name) == dict:
@@ -319,62 +320,62 @@ class SpiceVisitor(NodeVisitor):
         else:
             return {"name": name}
 
-    def visit_value(self, node, visited_children):
+    def visit_value(self, node: Node, visited_children: Union[List[str], List[float]]) -> Dict[str, Union[str, float]]:
         # value       = quoted / number / word
         value = visited_children
         return {"value": value[0]}
 
-    def visit_list(self, node, visited_children):
+    def visit_list(self, node: Node, visited_children: List[Optional[Union[str, float]]]) -> Dict[str, Union[int, str]]:
         # list        = word lpar number rpar
         name, _, pos, _, = visited_children
         return {"name": name, "order": int(pos)}
 
-    def visit_quoted(self, node, visited_children):
+    def visit_quoted(self, node: RegexNode, visited_children: List[Any]) -> str:
         # quoted      = ~r'"[^\"]+"'
         return node.text[1:-1]
 
-    def visit_number(self, node, visited_children):
+    def visit_number(self, node: RegexNode, visited_children: List[Any]) -> float:
         # number      = ~r"([-+]?[0-9]+[.]?[0-9]*((?:[eE][-+]?[0-9]+)|[a-zA-Z])?)"
         return str2float(node.text)
 
-    def visit_word(self, node, visited_children):
+    def visit_word(self, node: RegexNode, visited_children: List[Any]) -> str:
         # word        = ~r"[-\w,$]+"
         return node.text
 
-    def visit_comment(self, node, visited_children):
+    def visit_comment(self, node: RegexNode, visited_children: List[Any]) -> None:
         # comment     = ~r"\*.*"
         pass
 
-    def visit_equal(self, node, visited_children):
+    def visit_equal(self, node: Node, visited_children: List[Node]) -> None:
         # equal       = ws? "=" ws?
         pass
 
-    def visit_lpar(self, node, visited_children):
+    def visit_lpar(self, node: Node, visited_children: List[Any]) -> None:
         # lpar        = "("
         pass
 
-    def visit_rpar(self, node, visited_children):
+    def visit_rpar(self, node: Node, visited_children: List[Any]) -> None:
         # rpar        = ")"
         pass
 
-    def visit_ws(self, node, visited_children):
+    def visit_ws(self, node: RegexNode, visited_children: List[Any]) -> None:
         # ws          = ~r"(?:(?![\n\r])\s)+"
         pass
 
-    def visit_emptyline(self, node, visited_children):
+    def visit_emptyline(self, node: Node, visited_children: List[Optional[Node]]) -> None:
         # emptyline   = ws* newline
         pass
 
-    def visit_newline(self, node, visited_children):
+    def visit_newline(self, node: RegexNode, visited_children: List[Any]) -> None:
         # newline     = ~r"\n"
         pass
 
-    def generic_visit(self, node, visited_children):
+    def generic_visit(self, node: Node, visited_children: Any) -> Any:
         """The generic visit method."""
         return visited_children or node
 
 
-def load_spi(path):
+def load_spi(path: str) -> Dict[str, Union[List[Dict[str, Union[str, List[str], List[Dict[str, Union[str, float]]]]]], List[Dict[str, Union[str, List[str], List[Dict[str, Union[str, List[str], Dict[str, Union[str, float]]]]], Dict[str, float]]]], List[Dict[str, Union[Dict[str, str], Dict[str, Union[float, str, List[str]]]]]]]]:
     """Parses a spice file and returns the data as a dictionary in a form
     accepted by `build_circuit()`.
 

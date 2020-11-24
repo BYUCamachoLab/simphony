@@ -47,9 +47,13 @@ import pickle
 
 from simphony.elements import Model
 from simphony.tools import interpolate, wl2freq
+from numpy import ndarray
+from py._path.local import LocalPath
+from simphony.library.ebeam import ebeam_wg_integral_1550
+from typing import Optional
 
 
-def export_model(model, filename, wl=None, freq=None):
+def export_model(model: ebeam_wg_integral_1550, filename: LocalPath, wl: Optional[ndarray]=None, freq: None=None) -> None:
     """Exports a simphony model (using pickle) for the given
     frequency/wavelength range to a '.mdl' file.
 
