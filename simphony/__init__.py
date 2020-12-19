@@ -41,7 +41,7 @@ if sys.version_info < (3, 0, 0):
     )
 
 __version__ = "0.3.1dev0"
-__license__ = __doc__
+__license__ = "MIT"
 __project_url__ = "https://github.com/BYUCamachoLab/simphony"
 __forum_url__ = "https://github.com/BYUCamachoLab/simphony/issues"
 __trouble_url__ = __project_url__ + "/wiki/Troubleshooting-Guide"
