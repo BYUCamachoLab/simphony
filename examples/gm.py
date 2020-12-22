@@ -4,9 +4,6 @@
 # (see simphony/__init__.py for details)
 
 import os
-import sys
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,6 +12,11 @@ from simphony.library import ebeam, sipann
 from simphony.netlist import Subcircuit
 from simphony.simulation import SweepSimulation
 from simphony.tools import freq2wl, wl2freq
+
+
+
+# FIXME
+
 
 # We can rename the pins attribute on the class before we instantiate them;
 # then we don't have to rename the pins on each element individually later.
