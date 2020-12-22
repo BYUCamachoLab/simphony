@@ -1,4 +1,4 @@
-Simphony is licensed under the GNU GPLv3 or later.
+Simphony is licensed under the MIT License.
 However, it contains some resources, libraries, and some source files 
 under other terms, as listed in this file.
 
