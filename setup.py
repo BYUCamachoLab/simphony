@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
@@ -69,13 +67,13 @@ setup_args = dict(
     author="Sequoia Ploeg",
     author_email="sequoia.ploeg@ieee.org",
     url=__website_url__,
-    license="GPLv3+",
+    license="MIT",
     keywords="photonics simulation circuits science",
     platforms=["Windows", "Linux", "Mac OS-X"],
     packages=setuptools.find_packages(),
     package_data={"": extra_files},
     classifiers=[
-        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+        "License :: OSI Approved :: MIT License",
         "Operating System :: MacOS",
         "Operating System :: Microsoft :: Windows",
         "Operating System :: POSIX :: Linux",
