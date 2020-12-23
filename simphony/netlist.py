@@ -8,18 +8,17 @@ simphony.netlist
 
 This package contains the base classes for defining circuits.
 """
-from __future__ import annotations
 
 import copy
 import itertools
 import logging
 import uuid
-from collections import OrderedDict
 
-from simphony.elements import Model
 from typing import Optional, Union
+from simphony.elements import Model
 
 _module_logger = logging.getLogger(__name__)
+
 
 class Pin:
     """A class representing a pin on a unique element instance.
@@ -43,7 +42,7 @@ class Pin:
 
     _logger = _module_logger.getChild("Pin")
 
-    def __init__(self, pinlist: Optional[PinList], name: Optional[str]) -> None:
+    def __init__(self, pinlist, name: Optional[str]) -> None:
         self.pinlist = pinlist
         self.name = name
 
@@ -62,6 +61,7 @@ class Pin:
     @property
     def index(self) -> int:
         return self.pinlist.index(self)
+
 
 class PinList:
     """A list of pins belonging to an ``Element``, indexed the same way the
@@ -162,7 +162,7 @@ class PinList:
     def __len__(self) -> int:
         return len(self.pins)
 
-    def __add__(self, other: PinList) -> PinList:
+    def __add__(self, other):
         pinlist = PinList(self.element)
         pinlist.pins = self.pins + other.pins
         for pin in pinlist:
