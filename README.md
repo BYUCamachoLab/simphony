@@ -74,6 +74,7 @@ The following script models the MZI circuit shown above:
 from simphony.library import siepic
 from simphony.netlist import Subcircuit
 from simphony.simulation import SweepSimulation
+import matplotlib.pyplot as plt
 
 # Declare the models used in the circuit
 gc = siepic.ebeam_gc_te1550()                           # grating coupler
