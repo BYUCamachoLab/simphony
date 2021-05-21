@@ -4,9 +4,9 @@
 
 from typing import TYPE_CHECKING
 
-from numpy import ndarray
-
 if TYPE_CHECKING:
+    from numpy import ndarray
+
     from simphony import Model
     from simphony.models import Subcircuit
 
@@ -67,7 +67,7 @@ class Circuit(list):
 
         return result
 
-    def s_parameters(self, freq: ndarray) -> ndarray:
+    def s_parameters(self, freq: "ndarray") -> "ndarray":
         """Returns the scattering parameters for the circuit."""
         return self.to_subcircuit(rename_pins=True).s_parameters(freq)
 

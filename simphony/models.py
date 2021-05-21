@@ -2,12 +2,13 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-from typing import ClassVar, List, Optional, Tuple, Union
-
-from numpy import ndarray
+from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple, Union
 
 from simphony.layout import Circuit
 from simphony.pins import Pin, PinList
+
+if TYPE_CHECKING:
+    from numpy import ndarray
 
 
 class Model:
@@ -259,7 +260,7 @@ class Model:
         """
         self.pins.rename(*names)
 
-    def s_parameters(self, freq: ndarray) -> ndarray:
+    def s_parameters(self, freq: "ndarray") -> "ndarray":
         """Returns scattering parameters for the element with its given
         parameters as declared in the optional ``__init__()``.
 
@@ -362,7 +363,7 @@ class Subcircuit(Model):
 
         super().__init__(**kwargs, name=name, pins=pins)
 
-    def s_parameters(self, freq: ndarray) -> ndarray:
+    def s_parameters(self, freq: "ndarray") -> "ndarray":
         """Returns the scattering parameters for the subcircuit.
 
         This method will combine the s-matrices of the underlying
