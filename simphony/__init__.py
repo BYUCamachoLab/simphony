@@ -33,6 +33,9 @@ A Simulator for Photonic circuits
 import platform
 import sys
 
+from .models import Model
+from .simulators import SweepSimulator
+
 if sys.version_info < (3, 0, 0):
     raise Exception(
         "Simphony requires Python 3 (version "
