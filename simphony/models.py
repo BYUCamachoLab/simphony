@@ -159,7 +159,7 @@ class Model:
         self._on_disconnect_recursive(circuit1)
         component._on_disconnect_recursive(circuit2)
 
-        if circuit1 != circuit2:
+        if len(circuit1) != len(circuit2):
             # we have two separate circuits, but the recursive construction of
             # the circuits destroys the component ordering, so we need to
             # reconstruct the separate circuits in a way that preserves order
