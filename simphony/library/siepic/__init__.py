@@ -73,7 +73,6 @@ called, instead of each time when values are changed. If 2+ attributes are
 changed, that turns into a lot of extra (needless) file loading.
 """
 
-import math
 import os
 import re
 import string
@@ -84,9 +83,9 @@ from collections import namedtuple
 import numpy as np
 from scipy.constants import c as SPEED_OF_LIGHT
 
-from simphony.elements import Model
+from simphony import Model
 from simphony.library.siepic import parser
-from simphony.tools import freq2wl, interpolate, str2float, wl2freq
+from simphony.tools import interpolate, str2float
 
 
 def closest(sorted_list, value):
@@ -268,6 +267,8 @@ class siepic_ebeam_pdk_base(Model):
     # -------------------------------------------------------------------------
 
     def __init__(self, **kwargs):
+        super().__init__()
+
         for key, value in kwargs.items():
             setattr(self, key, value)
         self.enable_autoupdate()
@@ -527,8 +528,8 @@ class ebeam_bdc_te1550(siepic_ebeam_pdk_base):
 
         self.enable_autoupdate()
 
-    def s_parameters(self, freq):
-        return interpolate(freq, self._f, self._s)
+    def s_parameters(self, freqs):
+        return interpolate(freqs, self._f, self._s)
 
 
 # class contra_directional_coupler(Model):
@@ -641,8 +642,8 @@ class ebeam_dc_halfring_straight(siepic_ebeam_pdk_base):
 
         self.enable_autoupdate()
 
-    def s_parameters(self, freq):
-        return interpolate(freq, self._f, self._s)
+    def s_parameters(self, freqs):
+        return interpolate(freqs, self._f, self._s)
 
 
 class ebeam_dc_te1550(siepic_ebeam_pdk_base):
@@ -702,8 +703,8 @@ class ebeam_dc_te1550(siepic_ebeam_pdk_base):
 
         self.enable_autoupdate()
 
-    def s_parameters(self, freq):
-        return interpolate(freq, self._f, self._s)
+    def s_parameters(self, freqs):
+        return interpolate(freqs, self._f, self._s)
 
 
 # class ebeam_disconnected_te1550(Model):
@@ -790,8 +791,8 @@ class ebeam_terminator_te1550(siepic_ebeam_pdk_base):
 
         self.enable_autoupdate()
 
-    def s_parameters(self, freq):
-        return interpolate(freq, self._f, self._s)
+    def s_parameters(self, freqs):
+        return interpolate(freqs, self._f, self._s)
 
 
 # class ebeam_terminator_tm1550(Model):
@@ -811,8 +812,8 @@ class ebeam_terminator_te1550(siepic_ebeam_pdk_base):
 #     s_params = (loaded['f'], loaded['s'])
 #     freq_range = (s_params[0][0], s_params[0][-1]) #: The valid frequency range for this model.
 
-#     def s_parameters(self, freq):
-#         return interpolate(freq, self.s_params[0], self.s_params[1])
+#     def s_parameters(self, freqs):
+#         return interpolate(freqs, self.s_params[0], self.s_params[1])
 
 
 class ebeam_gc_te1550(siepic_ebeam_pdk_base):
@@ -892,8 +893,8 @@ class ebeam_gc_te1550(siepic_ebeam_pdk_base):
 
         self.enable_autoupdate()
 
-    def s_parameters(self, freq):
-        return interpolate(freq, self._f, self._s)
+    def s_parameters(self, freqs):
+        return interpolate(freqs, self._f, self._s)
 
 
 # FIXME: Do we do monte carlo simulations by varying (ne, ng, nd) or by varying
@@ -1012,29 +1013,25 @@ class ebeam_wg_integral_1550(siepic_ebeam_pdk_base):
 
         self.enable_autoupdate()
 
-    def s_parameters(self, freq):
+    def s_parameters(self, freqs):
         """Get the s-parameters of a waveguide.
 
         Parameters
         ----------
-        start : float
-            The starting frequency to obtain s-parameters for (in Hz).
-        stop : float
-            The ending frequency to obtain s-parameters for (in Hz).
-        num : int
-            The number of points to use between start_freq and stop_freq.
+        freqs : float
+            The array of frequencies to get s parameters for.
 
         Returns
         -------
-        (frequency, s) : tuple
-            Returns a tuple containing the frequency array, `frequency`,
+        (freqs, s) : tuple
+            Returns a tuple containing the frequency array, `freqs`,
             corresponding to the calculated s-parameter matrix, `s`.
         """
         return self.cacl_s_params(
-            freq, self.length, self.lam0, self.ne, self.ng, self.nd
+            freqs, self.length, self.lam0, self.ne, self.ng, self.nd
         )
 
-    def monte_carlo_s_parameters(self, freq):
+    def monte_carlo_s_parameters(self, freqs):
         """Returns a monte carlo (randomized) set of s-parameters.
 
         In this implementation of the monte carlo routine, random values
@@ -1046,7 +1043,7 @@ class ebeam_wg_integral_1550(siepic_ebeam_pdk_base):
         circuit.
         """
         return self.cacl_s_params(
-            freq, self.length, self.lam0, self.rand_ne, self.rand_ng, self.rand_nd
+            freqs, self.length, self.lam0, self.rand_ne, self.rand_ng, self.rand_nd
         )
 
     def regenerate_monte_carlo_parameters(self):
@@ -1055,16 +1052,16 @@ class ebeam_wg_integral_1550(siepic_ebeam_pdk_base):
         self.rand_nd = np.random.normal(self.nd, self.sigma_nd)
 
     @staticmethod
-    def cacl_s_params(frequency, length, lam0, ne, ng, nd):
+    def cacl_s_params(freqs, length, lam0, ne, ng, nd):
         # Initialize array to hold s-params
-        s = np.zeros((len(frequency), 2, 2), dtype=complex)
+        s = np.zeros((len(freqs), 2, 2), dtype=complex)
 
         # Loss calculation
         TE_loss = 700  # dB/m for width 500nm
         alpha = TE_loss / (20 * np.log10(np.exp(1)))
 
-        w = np.asarray(frequency) * 2 * np.pi  # get angular frequency from frequency
-        w0 = (2 * np.pi * SPEED_OF_LIGHT) / lam0  # center frequency (angular)
+        w = np.asarray(freqs) * 2 * np.pi  # get angular freqs from freqs
+        w0 = (2 * np.pi * SPEED_OF_LIGHT) / lam0  # center freqs (angular)
 
         # calculation of K
         K = (
@@ -1073,7 +1070,7 @@ class ebeam_wg_integral_1550(siepic_ebeam_pdk_base):
             - (nd * lam0 ** 2 / (4 * np.pi * SPEED_OF_LIGHT)) * ((w - w0) ** 2)
         )
 
-        for x in range(0, len(frequency)):  # build s-matrix from K and waveguide length
+        for x in range(0, len(freqs)):  # build s-matrix from K and waveguide length
             s[x, 0, 1] = s[x, 1, 0] = np.exp(-alpha * length + (K[x] * length * 1j))
 
         return s
@@ -1147,13 +1144,13 @@ class ebeam_y_1550(siepic_ebeam_pdk_base):
 
         self.enable_autoupdate()
 
-    def s_parameters(self, freq):
+    def s_parameters(self, freqs):
         """Returns scattering parameters for the y-branch based on its
         parameters.
 
         Parameters
         ----------
-        freq : np.ndarray
+        freqs : np.ndarray
             The frequency range to get scattering parameters for.
 
         Returns
@@ -1161,4 +1158,4 @@ class ebeam_y_1550(siepic_ebeam_pdk_base):
         s : np.ndarray
             The scattering parameters corresponding to the frequency range.
         """
-        return interpolate(freq, self._f, self._s)
+        return interpolate(freqs, self._f, self._s)

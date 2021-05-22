@@ -4,11 +4,12 @@
 
 from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple, Union
 
+from simphony.connect import create_block_diagonal, innerconnect_s
 from simphony.layout import Circuit
 from simphony.pins import Pin, PinList
 
 if TYPE_CHECKING:
-    from numpy import ndarray
+    import numpy as np
 
 
 class Model:
@@ -260,13 +261,13 @@ class Model:
         """
         self.pins.rename(*names)
 
-    def s_parameters(self, freq: "ndarray") -> "ndarray":
+    def s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns scattering parameters for the element with its given
         parameters as declared in the optional ``__init__()``.
 
         Parameters
         ----------
-        freq : np.ndarray
+        freqs : np.array
             The frequency range to get scattering parameters for.
 
         Returns
@@ -326,10 +327,7 @@ class Subcircuit(Model):
         ValueError
             when no unconnected pins exist.
         """
-        if len(circuit) == 0:
-            raise ValueError(
-                "A circuit needs to contain at least one component to be a subcircuit."
-            )
+        from simphony.simulators import Simulator
 
         pins = []
         pin_names = {}
@@ -338,7 +336,10 @@ class Subcircuit(Model):
         # figure out which pins to re-expose
         for component in circuit:
             for pin in component.pins:
-                if not pin._isconnected():
+                # re-expose unconnected pins or pins connected to simulators
+                if not pin._isconnected() or isinstance(
+                    pin._connection._component, Simulator
+                ):
                     if rename_pins:
                         pin.rename(f"pin{pin_number}")
                         pin_number += 1
@@ -363,12 +364,53 @@ class Subcircuit(Model):
 
         super().__init__(**kwargs, name=name, pins=pins)
 
-    def s_parameters(self, freq: "ndarray") -> "ndarray":
+    def s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns the scattering parameters for the subcircuit.
 
         This method will combine the s-matrices of the underlying
         components using the subnetwork growth algorithm.
         """
+        from simphony.simulators import Simulator
+
+        all_pins = []
+        available_pins = []
+        s_params = None
+
+        # merge all of the s_params into one giant block diagonal matrix
+        # and get two lists of all the pins in the circuit
         for component in self._wrapped_circuit:
-            # TODO: combine s_parameters from components into one
-            pass
+            # simulators don't have scattering parameters
+            if isinstance(component, Simulator):
+                continue
+
+            if s_params is None:
+                s_params = component.s_parameters(freqs)
+            else:
+                s_params = create_block_diagonal(
+                    s_params, component.s_parameters(freqs)
+                )
+
+            all_pins += component.pins
+            available_pins += component.pins
+
+        # use the subnetwork growth algorithm for each connection
+        for pin in all_pins:
+            # make sure pins only get connected once
+            # and pins connected to simulators get skipped
+            if (
+                pin._isconnected()
+                and pin in available_pins
+                and not isinstance(pin._connection._component, Simulator)
+            ):
+                # the pin indices in available_pins lines up with the row/column
+                # indices in the matrix. as the matrix shrinks, we remove pins
+                # from available_pins so the indices always line up
+                k = available_pins.index(pin)
+                l = available_pins.index(pin._connection)
+
+                s_params = innerconnect_s(s_params, k, l)
+
+                available_pins.remove(pin)
+                available_pins.remove(pin._connection)
+
+        return s_params
