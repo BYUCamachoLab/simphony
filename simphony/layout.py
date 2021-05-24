@@ -69,7 +69,7 @@ class Circuit(list):
 
     def s_parameters(self, freqs: "ndarray") -> "ndarray":
         """Returns the scattering parameters for the circuit."""
-        return self.to_subcircuit(rename_pins=True).s_parameters(freqs)
+        return self.to_subcircuit(permanent=False).s_parameters(freqs)
 
     def to_subcircuit(self, name: str = "", **kwargs) -> "Subcircuit":
         """Converts this circuit into a subcircuit component for easy re-use in

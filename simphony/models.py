@@ -2,7 +2,7 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, ClassVar, List, Literal, Optional, Tuple, Union
 
 from simphony.connect import create_block_diagonal, innerconnect_s
 from simphony.layout import Circuit
@@ -221,6 +221,28 @@ class Model:
                 if selfpin.name == componentpin.name:
                     selfpin.connect(componentpin)
 
+    def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
+        """Implements the monte carlo routine for the given Model.
+
+        If no monte carlo routine is defined, the default behavior returns the
+        result of a call to ``s_parameters()``.
+
+        Parameters
+        ----------
+        freq : np.ndarray
+            The frequency range to generate monte carlo s-parameters over.
+
+        Returns
+        -------
+        s : np.ndarray
+            The scattering parameters corresponding to the frequency range.
+            Its shape should be (the number of frequency points x ports x ports).
+            If the scattering parameters are requested for only a single
+            frequency, for example, and the device has 4 ports, the shape
+            returned by ``monte_carlo_s_parameters`` would be (1, 4, 4).
+        """
+        return self.s_parameters(freqs)
+
     def multiconnect(self, *connections: Union["Model", Pin, None]) -> None:
         """Connects this component to the specified connections by looping
         through each connection and connecting it with the corresponding pin.
@@ -309,7 +331,7 @@ class Subcircuit(Model):
     """
 
     def __init__(
-        self, circuit: Circuit, name: str = "", *, rename_pins: bool = False, **kwargs
+        self, circuit: Circuit, name: str = "", *, permanent: bool = True, **kwargs,
     ) -> None:
         """Initializes a subcircuit from the given circuit.
 
@@ -319,9 +341,12 @@ class Subcircuit(Model):
             The circuit to turn into a subcircuit.
         name :
             An optional name for the subcircuit.
-        rename_pins :
-            Whether or not to rename the re-exposed unconnected pins to prevent
-            naming collisions.
+        permanent :
+            Whether or not this subcircuit should be considered permanent.
+
+            If you intend to make connections to a subcircuit, it is considered
+            a permanent subcircuit. Permanet subcircuits require that pin names
+            be unique.
 
         Raises
         ------
@@ -336,7 +361,6 @@ class Subcircuit(Model):
 
         pins = []
         pin_names = {}
-        pin_number = 1
 
         # figure out which pins to re-expose
         for component in circuit:
@@ -345,20 +369,18 @@ class Subcircuit(Model):
                 if not pin._isconnected() or isinstance(
                     pin._connection._component, Simulator
                 ):
-                    if rename_pins:
-                        pin.rename(f"pin{pin_number}")
-                        pin_number += 1
-
-                    if pin.name in pin_names:
+                    if permanent and pin.name in pin_names:
                         raise ValueError(
                             f"Multiple pins named '{pin.name}' cannot exist in a subcircuit."
                         )
                     else:
                         # keep track of the pin to re-expose
-                        # and set the subcircuit as the pin's component
                         pins.append(pin)
-                        pin._component = self
-                        pin_names[pin.name] = True
+
+                        # make the pin's owner this component if permanent
+                        if permanent:
+                            pin_names[pin.name] = True
+                            pin._component = self
 
         if len(pins) == 0:
             raise ValueError(
@@ -369,11 +391,24 @@ class Subcircuit(Model):
 
         super().__init__(**kwargs, name=name, pins=pins)
 
-    def s_parameters(self, freqs: "np.array") -> "np.ndarray":
+    def _s_parameters(
+        self,
+        freqs: "np.array",
+        s_parameters_method: Literal[
+            "monte_carlo_s_parameters", "s_parameters"
+        ] = "s_parameters",
+    ) -> "np.ndarray":
         """Returns the scattering parameters for the subcircuit.
 
         This method will combine the s-matrices of the underlying
         components using the subnetwork growth algorithm.
+
+        Parameters
+        ----------
+        freqs :
+            The list of frequencies to get scattering parameters for.
+        s_parameters_method :
+            The method name to call to get the scattering parameters.
         """
         from simphony.simulators import Simulator
 
@@ -388,12 +423,11 @@ class Subcircuit(Model):
             if isinstance(component, Simulator):
                 continue
 
+            s_parameters = getattr(component, s_parameters_method)
             if s_params is None:
-                s_params = component.s_parameters(freqs)
+                s_params = s_parameters(freqs)
             else:
-                s_params = create_block_diagonal(
-                    s_params, component.s_parameters(freqs)
-                )
+                s_params = create_block_diagonal(s_params, s_parameters(freqs))
 
             all_pins += component.pins
             available_pins += component.pins
@@ -419,3 +453,16 @@ class Subcircuit(Model):
                 available_pins.remove(pin._connection)
 
         return s_params
+
+    def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
+        """Returns the Monte Carlo scattering parameters for the subcircuit."""
+        return self._s_parameters(freqs, "monte_carlo_s_parameters")
+
+    def regenerate_monte_carlo_parameters(self) -> None:
+        """Regenerates parameters used to generate Monte Carlo s-matrices."""
+        for component in self._wrapped_circuit:
+            component.regenerate_monte_carlo_parameters()
+
+    def s_parameters(self, freqs: "np.array") -> "np.ndarray":
+        """Returns the scattering parameters for the subcircuit."""
+        return self._s_parameters(freqs)

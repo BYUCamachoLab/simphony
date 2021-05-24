@@ -2,11 +2,12 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-from typing import Optional, Tuple
+from typing import Literal, Optional, Tuple
 
 import numpy as np
 
 from simphony import Model
+from simphony.models import Subcircuit
 from simphony.pins import PinList
 from simphony.tools import freq2wl, wl2freq
 
@@ -14,8 +15,14 @@ from simphony.tools import freq2wl, wl2freq
 class Simulator(Model):
     pins = ("input", "output")
 
-    def _prepare_simulation(self, freqs: np.array) -> Tuple[np.ndarray, PinList]:
-        """Prepare the circuit to be simulated.
+    def _generate(
+        self,
+        freqs: np.array,
+        s_parameters_method: Literal[
+            "monte_carlo_s_parameters", "s_parameters"
+        ] = "s_parameters",
+    ) -> Tuple[np.ndarray, PinList]:
+        """Generates the scattering parameters for the circuit.
 
         This method gets the scattering parameters for the circuit and
         returns them with the list of corresponding pins.
@@ -26,50 +33,60 @@ class Simulator(Model):
         ):
             raise RuntimeError("Simulator must be connected before simulating.")
 
-        subcircuit = self.circuit.to_subcircuit(rename_pins=True)
-        s_params = subcircuit.s_parameters(freqs)
+        subcircuit = self.circuit.to_subcircuit(permanent=False)
+        s_params = getattr(subcircuit, s_parameters_method)(freqs)
 
         return (s_params, subcircuit.pins)
 
     def simulate(
-        self, *, freqs: Optional[np.array] = None, freq: float = 0, dB: bool = False
+        self,
+        *,
+        dB: bool = False,
+        freq: float = 0,
+        freqs: Optional[np.array] = None,
+        s_parameters_method: Literal[
+            "monte_carlo_s_parameters", "s_parameters"
+        ] = "s_parameters"
     ) -> Tuple[np.array, np.array]:
         """Simulates the circuit.
 
-        Returns the list of frequencies with its corresponding scattering
-        parameter.
+        Returns the power ratio at each specified frequency.
 
         Parameters
         ----------
+        dB :
+            Returns the power ratios in deciBels when True.
         freq :
             The single frequency to run the simulation for. Must be set if freqs
             is not.
         freqs :
             The list of frequencies to run simulations for. Must be set if freq
             is not.
-        dB :
-            Returns the scattering parameters in deciBels when True.
+        s_parameters_method :
+            The method name to call to get the scattering parameters.
         """
         if freq:
             freqs = np.array(freq)
 
-        s_params, pins = self._prepare_simulation(freqs)
-        s_params = np.abs(s_params) ** 2
+        s_params, pins = self._generate(freqs, s_parameters_method)
+        power_ratios = np.abs(s_params.copy()) ** 2
 
         if dB:
-            s_params = np.log10(s_params)
+            power_ratios = np.log10(power_ratios)
 
         input = pins.index(self.pins["input"]._connection)
         output = pins.index(self.pins["output"]._connection)
 
-        return (freqs, s_params[:, input, output])
+        return (freqs, power_ratios[:, input, output])
 
 
 class SweepSimulator(Simulator):
     """Wrapper simulator to make it easier to simulate over a range of
     frequencies."""
 
-    def __init__(self, start: float = 1.5e-6, stop: float = 1.6e-6, num: int = 2000):
+    def __init__(
+        self, start: float = 1.5e-6, stop: float = 1.6e-6, num: int = 2000
+    ) -> None:
         """Initializes the SweepSimulator instance.
 
         The start and stop values can be given in either wavelength or
@@ -96,11 +113,35 @@ class SweepSimulator(Simulator):
 
         self.freqs = np.linspace(start, stop, num)
 
-    def simulate(self, **kwargs):
+    def simulate(self, **kwargs) -> Tuple[np.array, np.array]:
         """Runs the sweep simulation for the circuit."""
-        freqs, s_params = super().simulate(**kwargs, freqs=self.freqs)
+        freqs, power_ratios = super().simulate(**kwargs, freqs=self.freqs)
 
         if self.mode == "wl":
-            return (freq2wl(freqs), s_params)
+            return (freq2wl(freqs), np.flip(power_ratios))
 
-        return (freqs, s_params)
+        return (freqs, power_ratios)
+
+
+class MonteCarloSweepSimulator(SweepSimulator):
+    def simulate(self, runs: int = 10, **kwargs) -> Tuple[np.array, np.array]:
+        """Runs the Monte Carlo sweep simulation for the circuit.
+
+        Parameters
+        ----------
+        runs :
+            The number of Monte Carlo iterations to run (default 10).
+        """
+        results = []
+
+        for i in range(runs):
+            # use s_parameters for the first run, then monte_carlo_* for the rest
+            s_parameters_method = "monte_carlo_s_parameters" if i else "s_parameters"
+            results.append(
+                super().simulate(**kwargs, s_parameters_method=s_parameters_method)
+            )
+
+            for component in self.circuit:
+                component.regenerate_monte_carlo_parameters()
+
+        return results
