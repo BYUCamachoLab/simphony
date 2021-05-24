@@ -221,15 +221,20 @@ class Model:
                 if selfpin.name == componentpin.name:
                     selfpin.connect(componentpin)
 
-    def multiconnect(self, *connections: Union["Model", Pin]) -> None:
+    def multiconnect(self, *connections: Union["Model", Pin, None]) -> None:
         """Connects this component to the specified connections by looping
-        through each connection and connecting it with the next available
-        (unconnected) pin from this component.
+        through each connection and connecting it with the corresponding pin.
 
-        See the ``connect`` method for more information.
+        The first connection is connected to the first pin, the second
+        connection to the second pin, etc. If the connection is set to None,
+        that pin is skipped.
+
+        See the ``connect`` method for more information if the connection is
+        a component or a pin.
         """
-        for connection in connections:
-            self.connect(connection)
+        for index, connection in enumerate(connections):
+            if connection is not None:
+                self.pins[index].connect(connection)
 
     def regenerate_monte_carlo_parameters(self) -> None:
         """Regenerates parameters used to generate monte carlo s-matrices.
