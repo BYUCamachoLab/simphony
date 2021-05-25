@@ -7,13 +7,19 @@ from typing import Literal, Optional, Tuple
 import numpy as np
 
 from simphony import Model
-from simphony.models import Subcircuit
 from simphony.pins import PinList
 from simphony.tools import freq2wl, wl2freq
 
 
 class Simulator(Model):
-    pins = ("input", "output")
+    """Simulator model that can be used to instantiate a simulator.
+
+    The first pin of the simulator should be attached to the input of
+    the circuit that you want to simulate. The second pin should be
+    attached to the output.
+    """
+
+    pins = ("to_input", "to_output")
 
     def _generate(
         self,
@@ -28,8 +34,8 @@ class Simulator(Model):
         returns them with the list of corresponding pins.
         """
         if (
-            not self.pins["input"]._isconnected()
-            or not self.pins["output"]._isconnected()
+            not self.pins["to_input"]._isconnected()
+            or not self.pins["to_output"]._isconnected()
         ):
             raise RuntimeError("Simulator must be connected before simulating.")
 
@@ -74,8 +80,8 @@ class Simulator(Model):
         if dB:
             power_ratios = np.log10(power_ratios)
 
-        input = pins.index(self.pins["input"]._connection)
-        output = pins.index(self.pins["output"]._connection)
+        input = pins.index(self.pins["to_input"]._connection)
+        output = pins.index(self.pins["to_output"]._connection)
 
         return (freqs, power_ratios[:, input, output])
 
@@ -124,6 +130,9 @@ class SweepSimulator(Simulator):
 
 
 class MonteCarloSweepSimulator(SweepSimulator):
+    """Wrapper simulator to make it easier to simulate over a range of
+    frequencies while performing Monte Carlo experimentation."""
+
     def simulate(self, runs: int = 10, **kwargs) -> Tuple[np.array, np.array]:
         """Runs the Monte Carlo sweep simulation for the circuit.
 

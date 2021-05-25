@@ -213,7 +213,7 @@ class Model:
         """
         self._get_next_unconnected_pin().connect(component_or_pin)
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         """Disconnects this component from all other components."""
         for pin in self.pins:
             pin.disconnect()
