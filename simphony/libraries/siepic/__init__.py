@@ -35,7 +35,7 @@ It is the responsibility of the model processing argsets to convert this to the
 normalized form used by the model for comparing its parameters to available
 data files. For example, the y-branch takes the following parameters::
 
-    class ebeam_y_1550(siepic_ebeam_pdk_base):
+    class YBranch(SiEPIC_PDK_Base):
         def __init__(self, thickness=220e-9, width=500e-9, polarization='TE'):
             ...
 
@@ -193,7 +193,7 @@ def percent_diff(ideal, actual):
         return 1.0
 
 
-class siepic_ebeam_pdk_base(Model):
+class SiEPIC_PDK_Base(Model):
     """A base model that includes pre-implemented functions for reading,
     building, and selecting appropriate .sparam files.
 
@@ -209,7 +209,7 @@ class siepic_ebeam_pdk_base(Model):
     modified. To suspend or enable autoupdating, see the functions
     `enable_autoupdate()` and `suspend_autoupdate()`.
 
-    To define a fully working model that subclasses `siepic_ebeam_pdk_base`,
+    To define a fully working model that subclasses `SiEPIC_PDK_Base`,
     only `__init__()`, `on_args_changed()`, `s_parameters()`, and the class
     attributes need to be redefined. A subclass' `__init__()` function should
     call `super().__init__()` and pass in all parameters that will be saved
@@ -253,7 +253,6 @@ class siepic_ebeam_pdk_base(Model):
     They should all be passed to `super`.
     """
 
-    pins = None
     _base_path = os.path.join(os.path.dirname(__file__), "source_data")
     _base_file = string.Template("filepattern.sparam")
     _args_keys = []
@@ -471,7 +470,7 @@ class siepic_ebeam_pdk_base(Model):
         return candidates[idx].argset
 
 
-class ebeam_bdc_te1550(siepic_ebeam_pdk_base):
+class BidirectionalCoupler(SiEPIC_PDK_Base):
     """A bidirectional coupler optimized for TE polarized light at 1550
     nanometers.
 
@@ -494,7 +493,7 @@ class ebeam_bdc_te1550(siepic_ebeam_pdk_base):
         480, 500, or 520 nanometers.
     """
 
-    pins = ("n1", "n2", "n3", "n4")  #: The default pin names of the device
+    pin_count = 4
     _base_path = os.path.join(os.path.dirname(__file__), "source_data", "bdc_TE_source")
     _base_file = string.Template("bdc_Thickness =${thickness} width=${width}.sparam")
     _args_keys = ["thickness", "width"]
@@ -532,37 +531,7 @@ class ebeam_bdc_te1550(siepic_ebeam_pdk_base):
         return interpolate(freqs, self._f, self._s)
 
 
-# class contra_directional_coupler(Model):
-#     """
-#     Parameters
-#     ----------
-#     w1 : float
-#         Waveguide width 1 in meters (default 0.45 microns).
-#     w2 : float
-#         Waveguide width 2 in meters (default 0.55 microns).
-#     dW1 : float
-#         Waveguide 1 corrogation width in meters (default 0.03 microns).
-#     dW2 : float
-#         Waveguide 2 corrogation width in meters (default 0.04 microns).
-#     gap : float
-#         Waveguide gap in meters (default 0.15 microns).
-#     p : float
-#         Grating period in meters (default 0.317 microns).
-#     N : int
-#         Number of grating periods (default 300).
-#     s : bool
-#         Simulation accuracy (True = high, False = fast).
-#     a : float
-#         Gaussian apodization index (default 2.8).
-#     """
-#     def __init__(self, w1, w2, dW1, dW2, gap, p, N, s, a):
-#         l1 = 1500   # starting wavelength
-#         l2 = 1600   # ending wavelength
-#         ln = None   # number of sampled points
-#         super().__init__()
-
-
-class ebeam_dc_halfring_straight(siepic_ebeam_pdk_base):
+class HalfRing(SiEPIC_PDK_Base):
     """A bidirectional coupler optimized for TE polarized light at 1550
     nanometers.
 
@@ -590,7 +559,7 @@ class ebeam_dc_halfring_straight(siepic_ebeam_pdk_base):
         Length of the coupling edge, squares out ring; in meters (default 0).
     """
 
-    pins = ("n1", "n2", "n3", "n4")  #: The default pin names of the device
+    pin_count = 4
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "ebeam_dc_halfring_straight"
     )
@@ -646,7 +615,7 @@ class ebeam_dc_halfring_straight(siepic_ebeam_pdk_base):
         return interpolate(freqs, self._f, self._s)
 
 
-class ebeam_dc_te1550(siepic_ebeam_pdk_base):
+class DirectionalCoupler(SiEPIC_PDK_Base):
     """A directional coupler optimized for TE polarized light at 1550
     nanometers.
 
@@ -667,7 +636,7 @@ class ebeam_dc_te1550(siepic_ebeam_pdk_base):
         Length of coupler, in meters (default 10 microns).
     """
 
-    pins = ("n1", "n2", "n3", "n4")  #: The default pin names of the device
+    pin_count = 4
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "ebeam_dc_te1550"
     )
@@ -707,25 +676,7 @@ class ebeam_dc_te1550(siepic_ebeam_pdk_base):
         return interpolate(freqs, self._f, self._s)
 
 
-# class ebeam_disconnected_te1550(Model):
-#     pass
-
-# class ebeam_disconnected_tm1550(Model):
-#     pass
-
-# class ebeam_taper_te1550(Model):
-#     """
-#     Parameters
-#     ----------
-#     w1
-#     w2
-#     length
-#     """
-#     def __init__(self, w1, w2, length):
-#         super().__init__()
-
-
-class ebeam_terminator_te1550(siepic_ebeam_pdk_base):
+class Terminator(SiEPIC_PDK_Base):
     """A terminator component that dissipates light into free space optimized
     for TE polarized light at 1550 nanometers.
 
@@ -746,7 +697,7 @@ class ebeam_terminator_te1550(siepic_ebeam_pdk_base):
         Length of terminator, in meters (default 10 microns).
     """
 
-    pins = ("n1",)  #: The default pin names of the device
+    pin_count = 1
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "ebeam_terminator_te1550"
     )
@@ -795,28 +746,7 @@ class ebeam_terminator_te1550(siepic_ebeam_pdk_base):
         return interpolate(freqs, self._f, self._s)
 
 
-# class ebeam_terminator_tm1550(Model):
-#     """
-#     A terminator component that dissipates light into free space optimized for
-#     TE polarized light at 1550 nanometers.
-
-#     The terminator dissipates excess light into free space. If you have a path
-#     where the light doesn't need to be measured but you don't want it reflecting
-#     back into the circuit, you can use a terminator to release it from the circuit.
-
-#     .. image:: /user/libraries/images/ebeam_terminator_te1550.png
-#         :alt: ebeam_bdc_te1550.png
-#     """
-#     pins = ('n1',) #: The default pin names of the device
-#     loaded = np.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sparams', 'ebeam_terminator_te1550.npz'))
-#     s_params = (loaded['f'], loaded['s'])
-#     freq_range = (s_params[0][0], s_params[0][-1]) #: The valid frequency range for this model.
-
-#     def s_parameters(self, freqs):
-#         return interpolate(freqs, self.s_params[0], self.s_params[1])
-
-
-class ebeam_gc_te1550(siepic_ebeam_pdk_base):
+class GratingCoupler(SiEPIC_PDK_Base):
     """A grating coupler optimized for TE polarized light at 1550 nanometers.
 
     The grating coupler efficiently couples light from a fiber array positioned
@@ -837,7 +767,7 @@ class ebeam_gc_te1550(siepic_ebeam_pdk_base):
         The polarization of light in the circuit. One of 'TE' (default) or 'TM'.
     """
 
-    pins = ("n1", "n2")  #: The default pin names of the device
+    pin_count = 2
     _base_path = os.path.join(os.path.dirname(__file__), "source_data", "gc_source")
     _base_file = string.Template(
         "GC_${polarization}1550_thickness=${thickness} deltaw=${deltaw}.txt"
@@ -897,9 +827,7 @@ class ebeam_gc_te1550(siepic_ebeam_pdk_base):
         return interpolate(freqs, self._f, self._s)
 
 
-# FIXME: Do we do monte carlo simulations by varying (ne, ng, nd) or by varying
-# (width, height)?
-class ebeam_wg_integral_1550(siepic_ebeam_pdk_base):
+class Waveguide(SiEPIC_PDK_Base):
     """Model for an waveguide optimized for TE polarized light at 1550
     nanometers.
 
@@ -933,7 +861,7 @@ class ebeam_wg_integral_1550(siepic_ebeam_pdk_base):
     The `sigma_` values in the parameters are used for monte carlo simulations.
     """
 
-    pins = ("n1", "n2")  #: The default pin names of the device
+    pin_count = 2
     freq_range = (
         187370000000000.0,
         199862000000000.0,
@@ -1076,7 +1004,7 @@ class ebeam_wg_integral_1550(siepic_ebeam_pdk_base):
         return s
 
 
-class ebeam_y_1550(siepic_ebeam_pdk_base):
+class YBranch(SiEPIC_PDK_Base):
     """A y-branch efficiently splits the input 50/50 between the two outputs.
     It can also be used as a combiner if used in the opposite direction,
     combining and interfering the light from two inputs into the one output.
@@ -1096,7 +1024,7 @@ class ebeam_y_1550(siepic_ebeam_pdk_base):
         Polarization of light in the circuit, either 'TE' (default) or 'TM'.
     """
 
-    pins = ("n1", "n2", "n3")  #: The default pin names of the device
+    pin_count = 3
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "y_branch_source"
     )
