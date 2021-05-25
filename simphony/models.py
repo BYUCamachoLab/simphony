@@ -213,6 +213,11 @@ class Model:
         """
         self._get_next_unconnected_pin().connect(component_or_pin)
 
+    def disconnect(self):
+        """Disconnects this component from all other components."""
+        for pin in self.pins:
+            pin.disconnect()
+
     def interface(self, component: "Model") -> None:
         """Interfaces this component to the component passed in by connecting
         pins with the same names."""
