@@ -3,7 +3,7 @@
 # (see simphony/__init__.py for details)
 
 """
-simphony.library.siepic
+simphony.libraries.siepic
 =======================
 
 This package contains parameterized models of PIC components from the SiEPIC
@@ -84,7 +84,7 @@ import numpy as np
 from scipy.constants import c as SPEED_OF_LIGHT
 
 from simphony import Model
-from simphony.library.siepic import parser
+from simphony.libraries.siepic import parser
 from simphony.tools import interpolate, str2float
 
 

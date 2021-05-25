@@ -8,7 +8,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from simphony.library import siepic
+from simphony.libraries import siepic
 from simphony.netlist import Subcircuit
 from simphony.simulation import SweepSimulation, MonteCarloSweepSimulation
 

@@ -59,7 +59,7 @@ def export_model(model, filename, wl=None, freq=None):
     length of 100 nanometers to a file  named ``wg100nm.mdl``.
 
     >>> import numpy as np
-    >>> from simphony.library.ebeam import ebeam_wg_integral_1550
+    >>> from simphony.libraries.ebeam import ebeam_wg_integral_1550
     >>> wg1 = ebeam_wg_integral_1550(100e-9)
     >>> export_model(wg1, 'wg100nm', wl=np.linspace(1520e-9, 1580e-9, 51))
     """

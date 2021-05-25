@@ -2,10 +2,10 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-# FIXME: No need for multiple files to all claim the simphony.library.siepic
+# FIXME: No need for multiple files to all claim the simphony.libraries.siepic
 # header.
 """
-simphony.library.siepic
+simphony.libraries.siepic
 =======================
 
 The terminology `paramset` in this module is different from its use in the

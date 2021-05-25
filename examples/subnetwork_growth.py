@@ -99,7 +99,7 @@ To get the transmission from input to output in the s-matrix, the indexing is
 import matplotlib.pyplot as plt
 import numpy as np
 from simphony.connect import connect_s, innerconnect_s
-from simphony.library import ebeam, sipann
+from simphony.libraries import ebeam, sipann
 from simphony.tools import freq2wl, wl2freq
 
 # First, we'll set up the frequency range we wish to perform the simulation on.

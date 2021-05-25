@@ -5,7 +5,7 @@
 import numpy as np
 import pytest
 
-from simphony.library import siepic
+from simphony.libraries import siepic
 from simphony.netlist import Subcircuit
 from simphony.simulation import MonteCarloSweepSimulation, SweepSimulation
 

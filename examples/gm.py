@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from simphony.library import ebeam
+from simphony.libraries import ebeam
 from simphony.netlist import Subcircuit
 from simphony.simulation import SweepSimulation
 from simphony.tools import freq2wl, wl2freq
@@ -27,12 +27,12 @@ ebeam.ebeam_wg_integral_1550.pins = ("in", "out")
 # Get all the models we're going to need for the green machine circuit:
 gc = ebeam.ebeam_gc_te1550()
 wg100 = ebeam.ebeam_wg_integral_1550(length=100e-6)
-dc = SimphonyWrapper( premade_coupler(50)[0] )
-crossover = SimphonyWrapper( premade_coupler(100)[0] )
+dc = SimphonyWrapper(premade_coupler(50)[0])
+crossover = SimphonyWrapper(premade_coupler(100)[0])
 wgin2 = ebeam.ebeam_wg_integral_1550(length=102.125e-6)
 wg300 = ebeam.ebeam_wg_integral_1550(length=300e-6)
 
-#we rename the coupler pins
+# we rename the coupler pins
 dc.pins = ("in1", "in2", "out1", "out2")
 crossover.pins = ("in1", "in2", "out1", "out2")
 
@@ -95,44 +95,39 @@ circuit.elements["out4"].pins["n2"] = "out4"
 # work on the circuit connnections.
 circuit.connect_many(
     [
-        #connect in grating couplers with waveguides
+        # connect in grating couplers with waveguides
         ("in1", "n2", "wg1", "in"),
         ("in2", "n2", "wg2", "in"),
         ("in3", "n2", "wg3", "in"),
         ("in4", "n2", "wg4", "in"),
-
-        #connect waveguides to input of directional couplers
+        # connect waveguides to input of directional couplers
         ("wg1", "out", "dc1", "in1"),
         ("wg2", "out", "dc1", "in2"),
         ("wg3", "out", "dc2", "in1"),
         ("wg4", "out", "dc2", "in2"),
-
-        #connect top dc to out waveguides
+        # connect top dc to out waveguides
         ("dc1", "out1", "wg_pass1", "in"),
         ("dc1", "out2", "wg_in1", "in"),
-        #connect waveguides to crossing
+        # connect waveguides to crossing
         ("wg_in1", "out", "crossing", "in1"),
         ("crossing", "out1", "wg_out1", "in"),
-        #connect bottom dc to out waveguides
+        # connect bottom dc to out waveguides
         ("dc2", "out1", "wg_in2", "in"),
         ("wg_in2", "out", "crossing", "in2"),
-        #connect waveguides to crossing
+        # connect waveguides to crossing
         ("crossing", "out2", "wg_out2", "in"),
         ("dc2", "out2", "wg_pass2", "in"),
-
-        #connect waveguides to final step of directional couplers
+        # connect waveguides to final step of directional couplers
         ("wg_pass1", "out", "dc3", "in1"),
         ("wg_out1", "out", "dc3", "in2"),
         ("wg_out2", "out", "dc4", "in1"),
         ("wg_pass2", "out", "dc4", "in2"),
-
-        #then directional couplers to waveguides
+        # then directional couplers to waveguides
         ("dc3", "out1", "wg5", "in"),
         ("dc3", "out2", "wg6", "in"),
         ("dc4", "out1", "wg7", "in"),
         ("dc4", "out2", "wg8", "in"),
-
-        #and finally waveguides to grating couplers
+        # and finally waveguides to grating couplers
         ("wg5", "out", "out1", "n1"),
         ("wg6", "out", "out2", "n1"),
         ("wg7", "out", "out3", "n1"),

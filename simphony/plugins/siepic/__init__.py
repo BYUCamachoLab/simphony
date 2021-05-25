@@ -11,7 +11,7 @@ from simphony.plugins.siepic.builders import build_circuit
 from simphony.plugins.siepic.parser import load_spi
 
 
-def load(filename, libraries=["simphony.library.siepic"]):
+def load(filename, libraries=["simphony.libraries.siepic"]):
     """Loads a spice file as exported by SiEPIC Tools in KLayout.
 
     Parameters
@@ -38,5 +38,5 @@ def load(filename, libraries=["simphony.library.siepic"]):
 
     # Building the circuit returns the subcircuits, the circuits, and the
     # simulation objects.
-    built = build_circuit(data, "simphony.library.siepic")
+    built = build_circuit(data, "simphony.libraries.siepic")
     return built

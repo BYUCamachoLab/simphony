@@ -18,11 +18,11 @@ Note that for documentation within Simphony, it is not necessary to do
 sub-modules, such as ``library``, are not imported by default, and you have to
 include them explicitly::
 
-  import simphony.library.ebeam
+  import simphony.libraries.ebeam
 
 after which you may use it::
 
-  simphony.library.ebeam.ebeam_wg_integral_1550(...)
+  simphony.libraries.ebeam.ebeam_wg_integral_1550(...)
 
 .. rubric::
     **All inline documentation should adhere to the numpydoc** `formatting standard`_.

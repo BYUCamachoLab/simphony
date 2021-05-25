@@ -38,7 +38,7 @@ view the results of our simulation.
 
 We'll need the following modules and objects from simphony:
 
-* **simphony.library.siepic**:
+* **simphony.libraries.siepic**:
   The SiEPIC EBeam PDK model library.
 
 * **simphony.netlist.Subcircuit**:
@@ -54,7 +54,7 @@ We'll need the following modules and objects from simphony:
 
 ::
     
-    from simphony.library import siepic
+    from simphony.libraries import siepic
     from simphony.netlist import Subcircuit
     from simphony.simulation import SweepSimulation, MonteCarloSweepSimulation
 

@@ -45,7 +45,7 @@ def package_data_files(directory):
     return paths
 
 
-extra_files += package_data_files("simphony/library")
+extra_files += package_data_files("simphony.libraries")
 extra_files += ["*.ini"]
 
 # ==============================================================================

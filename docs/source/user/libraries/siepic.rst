@@ -8,7 +8,7 @@ This package contains parameterized models of PIC components from the SiEPIC
 Electron Beam Lithography Process Development Kit (PDK), which is licensed 
 under the terms of the MIT License.
 
-.. currentmodule:: simphony.library.siepic
+.. currentmodule:: simphony.libraries.siepic
 
 .. autoclass:: ebeam_bdc_te1550
    :members: pins

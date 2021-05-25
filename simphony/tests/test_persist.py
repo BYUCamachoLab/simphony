@@ -5,7 +5,7 @@
 import numpy as np
 import pytest
 
-from simphony.library.ebeam import ebeam_wg_integral_1550
+from simphony.libraries.ebeam import ebeam_wg_integral_1550
 from simphony.persist import export_model, import_model
 from simphony.tools import wl2freq
 

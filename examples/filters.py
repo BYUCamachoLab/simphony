@@ -11,7 +11,7 @@ import numpy as np
 
 from SiPANN import scee
 from SiPANN.scee_int import SimphonyWrapper
-from simphony.library import siepic
+from simphony.libraries import siepic
 from simphony.netlist import Subcircuit
 from simphony.simulation import SweepSimulation
 from simphony.tools import freq2wl

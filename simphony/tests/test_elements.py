@@ -4,7 +4,7 @@
 
 import pytest
 
-import simphony.library.ebeam as ebeam
+import simphony.libraries.ebeam as ebeam
 
 
 class TestNodes:

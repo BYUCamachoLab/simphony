@@ -573,4 +573,4 @@ def test_top():
 # filename = os.path.join('tests', 'spice', 'top', 'top_main.spi')
 # data = load_spi(filename)
 # from simphony.plugins.siepic.builders import build_circuit
-# build_circuit(data, 'simphony.library.siepic')
+# build_circuit(data, 'simphony.libraries.siepic')
