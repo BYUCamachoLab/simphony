@@ -125,11 +125,24 @@ class SweepSimulator(Simulator):
 
         self.freqs = np.linspace(start, stop, num)
 
-    def simulate(self, **kwargs) -> Tuple[np.array, np.array]:
-        """Runs the sweep simulation for the circuit."""
+    def simulate(
+        self, mode: Optional[Literal["freq", "wl"]] = None, **kwargs
+    ) -> Tuple[np.array, np.array]:
+        """Runs the sweep simulation for the circuit.
+
+        Parameters
+        ----------
+        dB :
+            Returns the power ratios in deciBels when True.
+        mode :
+            Whether to return frequencies or wavelengths for the corresponding
+            power ratios. Defaults to whatever values were passed in upon
+            instantiation.
+        """
         freqs, power_ratios = super().simulate(**kwargs, freqs=self.freqs)
 
-        if self.mode == "wl":
+        mode = mode if mode else self.mode
+        if mode == "wl":
             return (freq2wl(freqs), power_ratios)
 
         return (freqs, power_ratios)
@@ -144,6 +157,12 @@ class MonteCarloSweepSimulator(SweepSimulator):
 
         Parameters
         ----------
+        dB :
+            Returns the power ratios in deciBels when True.
+        mode :
+            Whether to return frequencies or wavelengths for the corresponding
+            power ratios. Defaults to whatever values were passed in upon
+            instantiation.
         runs :
             The number of Monte Carlo iterations to run (default 10).
         """
