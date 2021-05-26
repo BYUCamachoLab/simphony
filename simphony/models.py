@@ -2,7 +2,7 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-from typing import TYPE_CHECKING, ClassVar, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, ClassVar, Dict, List, Literal, Optional, Tuple, Union
 
 from simphony.connect import create_block_diagonal, innerconnect_s
 from simphony.layout import Circuit
@@ -343,6 +343,8 @@ class Subcircuit(Model):
     This requires that unconnected pins have unique names.
     """
 
+    scache: Dict[Model, "np.ndarray"] = {}
+
     def __init__(
         self, circuit: Circuit, name: str = "", *, permanent: bool = True, **kwargs,
     ) -> None:
@@ -427,21 +429,32 @@ class Subcircuit(Model):
 
         all_pins = []
         available_pins = []
-        s_params = None
+        s_block = None
 
         # merge all of the s_params into one giant block diagonal matrix
-        # and get two lists of all the pins in the circuit
         for component in self._wrapped_circuit:
             # simulators don't have scattering parameters
             if isinstance(component, Simulator):
                 continue
 
-            s_parameters = getattr(component, s_parameters_method)
-            if s_params is None:
-                s_params = s_parameters(freqs)
-            else:
-                s_params = create_block_diagonal(s_params, s_parameters(freqs))
+            # get the s_params from the cache if possible
+            if s_parameters_method == "s_parameters":
+                try:
+                    s_params = self.__class__.scache[component]
+                except KeyError:
+                    s_params = getattr(component, s_parameters_method)(freqs)
+                    self.__class__.scache[component] = s_params
+            elif s_parameters_method == "monte_carlo_s_parameters":
+                # don't cache Monte Carlo scattering parameters
+                s_params = getattr(component, s_parameters_method)(freqs)
 
+            # merge the s_params into the block diagonal matrix
+            if s_block is None:
+                s_block = s_params
+            else:
+                s_block = create_block_diagonal(s_block, s_params)
+
+            # keep track of all of the pins (in order) in the circuit
             all_pins += component.pins
             available_pins += component.pins
 
@@ -461,12 +474,12 @@ class Subcircuit(Model):
                 k = available_pins.index(pin)
                 l = available_pins.index(pin._connection)
 
-                s_params = innerconnect_s(s_params, k, l)
+                s_block = innerconnect_s(s_block, k, l)
 
                 available_pins.remove(pin)
                 available_pins.remove(pin._connection)
 
-        return s_params
+        return s_block
 
     def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns the Monte Carlo scattering parameters for the subcircuit."""
@@ -480,3 +493,8 @@ class Subcircuit(Model):
     def s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns the scattering parameters for the subcircuit."""
         return self._s_parameters(freqs)
+
+    @classmethod
+    def clear_scache(cls) -> None:
+        """Clears the scattering parameters cache."""
+        cls.scache = {}
