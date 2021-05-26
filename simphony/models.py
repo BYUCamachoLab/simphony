@@ -452,6 +452,7 @@ class Subcircuit(Model):
             if (
                 pin._isconnected()
                 and pin in available_pins
+                and pin._connection in available_pins
                 and not isinstance(pin._connection._component, Simulator)
             ):
                 # the pin indices in available_pins lines up with the row/column
