@@ -114,8 +114,14 @@ class SweepSimulator(Simulator):
 
         # if mode is wavelength, convert to frequencies
         if self.mode == "wl":
-            start = wl2freq(start)
-            stop = wl2freq(stop)
+            temp_start = start
+            start = wl2freq(stop)
+            stop = wl2freq(temp_start)
+
+        if start > stop:
+            raise ValueError(
+                "Starting frequency cannot be greater than stopping frequency."
+            )
 
         self.freqs = np.linspace(start, stop, num)
 
@@ -124,7 +130,7 @@ class SweepSimulator(Simulator):
         freqs, power_ratios = super().simulate(**kwargs, freqs=self.freqs)
 
         if self.mode == "wl":
-            return (freq2wl(freqs), np.flip(power_ratios))
+            return (freq2wl(freqs), power_ratios)
 
         return (freqs, power_ratios)
 
