@@ -8,19 +8,102 @@
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
-
 from SiPANN import scee
 from SiPANN.scee_int import SimphonyWrapper
+
+from simphony import Model
 from simphony.libraries import siepic
-from simphony.netlist import Subcircuit
-from simphony.simulation import SweepSimulation
+from simphony.simulators import SweepSimulator
 from simphony.tools import freq2wl
 
-# Have a main data line where frequency multiplexed data enters the circuit.
-wg_data = siepic.ebeam_wg_integral_1550(100e-6)
 
-# A terminator for dispersing unused light
-term = siepic.ebeam_terminator_te1550()
+class SimphonyWrapper(Model):
+    """Class that wraps SCEE models for use in simphony.
+    Model passed into class CANNOT have varying geometries, as a device such as this
+    can't be cascaded properly.
+    Parameters
+    -----------
+    model : DC
+        Chosen compact model from ``SiPANN.scee`` module. Can be any model that inherits from
+        the DC abstract class
+    sigmas : dict, optional
+        Dictionary mapping parameters to sigma values for use in monte_carlo simulations. Note sigmas should
+        be in values of nm. Defaults to an empty dictionary.
+    """
+
+    pin_count = 4
+    freq_range = (
+        182800279268292.0,
+        205337300000000.0,
+    )  #: The valid frequency range for this model.
+
+    def __init__(self, model, sigmas=dict()):
+        super().__init__()
+
+        self.model = model
+        self.sigmas = sigmas
+
+        # save actual parameters for switching back from monte_carlo
+        self.og_params = self.model.__dict__.copy()
+        self.rand_params = dict()
+
+        # make sure there's no varying geometries
+        args = self.model._clean_args(None)
+        if len(args[0]) != 1:
+            raise ValueError(
+                "You have changing geometries, use in simphony doesn't make sense!"
+            )
+
+        self.regenerate_monte_carlo_parameters()
+
+    def s_parameters(self, freq):
+        """Get the s-parameters of SCEE Model.
+        Parameters
+        ----------
+        freq : np.ndarray
+            A frequency array to calculate s-parameters over (in Hz).
+        Returns
+        -------
+        s : np.ndarray
+            Returns the calculated s-parameter matrix.
+        """
+        # convert wavelength to frequency
+        wl = freq2wl(freq) * 1e9
+
+        return self.model.sparams(wl)
+
+    def monte_carlo_s_parameters(self, freq):
+        """Get the s-parameters of SCEE Model with slightly changed parameters.
+        Parameters
+        ----------
+        freq : np.ndarray
+            A frequency array to calculate s-parameters over (in Hz).
+        Returns
+        -------
+        s : np.ndarray
+            Returns the calculated s-parameter matrix.
+        """
+        wl = freq2wl(freq) * 1e9
+
+        # perturb params and get sparams
+        self.model.update(**self.rand_params)
+        sparams = self.model.sparams(wl)
+
+        # restore parameters to originals
+        self.model.update(**self.og_params)
+
+        return sparams
+
+    def regenerate_monte_carlo_parameters(self):
+        """Varies parameters based on passed in sigma dictionary.
+
+        Iterates through sigma dictionary to change each of those
+        parameters, with the mean being the original values found in
+        model.
+        """
+        # iterate through all params that should be tweaked
+        for param, sigma in self.sigmas.items():
+            self.rand_params[param] = np.random.normal(self.og_params[param], sigma)
 
 
 def ring_factory(radius):
@@ -34,7 +117,7 @@ def ring_factory(radius):
      ---=====---
     1           3
 
-    Resulting pins are ('in', 'out', 'pass').
+    Resulting pins are ('pass', 'in', 'out').
 
     Parameters
     ----------
@@ -43,106 +126,105 @@ def ring_factory(radius):
     """
     # Have rings for selecting out frequencies from the data line.
     # See SiPANN's model API for argument order and units.
-    half_ring = SimphonyWrapper(scee.HalfRing(500, 220, radius, 100))
+    halfring1 = SimphonyWrapper(scee.HalfRing(500, 220, radius, 100))
+    halfring2 = SimphonyWrapper(scee.HalfRing(500, 220, radius, 100))
+    terminator = siepic.Terminator()
 
-    circuit = Subcircuit()
-    circuit.add([(half_ring, "input"), (half_ring, "output"), (term, "terminator")])
+    halfring1.rename_pins("pass", "midb", "in", "midt")
+    halfring2.rename_pins("out", "midt", "term", "midb")
 
-    circuit.elements["input"].pins = ("pass", "midb", "in", "midt")
-    circuit.elements["output"].pins = ("out", "midt", "term", "midb")
+    # the interface method will connect all of the pins with matching names
+    # between the two components together
+    halfring1.interface(halfring2)
+    halfring2["term"].connect(terminator)
 
-    circuit.connect_many(
-        [
-            ("input", "midb", "output", "midb"),
-            ("input", "midt", "output", "midt"),
-            ("terminator", "n1", "output", "term"),
-        ]
-    )
-
-    return circuit
+    # bundling the circuit as a Subcircuit allows us to interact with it
+    # as if it were a component
+    return halfring1.circuit.to_subcircuit()
 
 
 # Behold, we can run a simulation on a single ring resonator.
-cir1 = ring_factory(10000)
-sim1 = SweepSimulation(cir1, 1500e-9, 1600e-9)
-res1 = sim1.simulate()
+ring1 = ring_factory(10000)
 
-f1, s = res1.data(res1.pinlist["in"], res1.pinlist["pass"])
-plt.plot(f1, s)
+simulator = SweepSimulator(1500e-9, 1600e-9)
+simulator.multiconnect(ring1["in"], ring1["pass"])
+
+f, t = simulator.simulate(mode="freq")
+plt.plot(f, t)
 plt.title("10-micron Ring Resonator")
 plt.tight_layout()
 plt.show()
 
+simulator.disconnect()
 
 # Now, we'll create the circuit (using several ring resonator subcircuits)
-# and add all individual instances.
-circuit = Subcircuit("Add-Drop Filter")
-e = circuit.add(
-    [
-        (wg_data, "input"),
-        (ring_factory(10000), "ring10"),
-        (wg_data, "out1"),
-        (wg_data, "connect1"),
-        (ring_factory(11000), "ring11"),
-        (wg_data, "out2"),
-        (wg_data, "connect2"),
-        (ring_factory(12000), "ring12"),
-        (wg_data, "out3"),
-        (term, "terminator"),
-    ]
-)
+# instantiate the basic components
+wg_input = siepic.Waveguide(100e-6)
+wg_out1 = siepic.Waveguide(100e-6)
+wg_connect1 = siepic.Waveguide(100e-6)
+wg_out2 = siepic.Waveguide(100e-6)
+wg_connect2 = siepic.Waveguide(100e-6)
+wg_out3 = siepic.Waveguide(100e-6)
+terminator = siepic.Terminator()
 
-# You can set pin names individually (here I'm naming all the outputs that
-# I'll want to access after the simulation has been run):
-circuit.elements["input"].pins["n1"] = "input"
-circuit.elements["out1"].pins["n2"] = "out1"
-circuit.elements["out2"].pins["n2"] = "out2"
-circuit.elements["out3"].pins["n2"] = "out3"
+# instantiate the rings with varying radii
+ring1 = ring_factory(10000)
+ring2 = ring_factory(11000)
+ring3 = ring_factory(12000)
 
-circuit.connect_many(
-    [
-        ("input", "n2", "ring10", "in"),
-        ("out1", "n1", "ring10", "out"),
-        ("connect1", "n1", "ring10", "pass"),
-        ("connect1", "n2", "ring11", "in"),
-        ("out2", "n1", "ring11", "out"),
-        ("connect2", "n1", "ring11", "pass"),
-        ("connect2", "n2", "ring12", "in"),
-        ("out3", "n1", "ring12", "out"),
-        ("terminator", "n1", "ring12", "pass"),
-    ]
-)
+# connect the circuit together
+ring1.multiconnect(wg_connect1, wg_input["pin2"], wg_out1)
+ring2.multiconnect(wg_connect2, wg_connect1, wg_out2)
+ring3.multiconnect(terminator, wg_connect2, wg_out3)
 
-# Run a simulation on the netlist.
-simulation = SweepSimulation(circuit, 1524.5e-9, 1551.15e-9)
-result = simulation.simulate()
-
+# prepare the plots
 fig = plt.figure(tight_layout=True)
 gs = gridspec.GridSpec(1, 3)
-
 ax = fig.add_subplot(gs[0, :2])
-f, s = result.data("input", "out1")
-ax.plot(freq2wl(f) * 1e9, s, label="Output 1", lw="0.7")
-f, s = result.data("input", "out2")
-ax.plot(freq2wl(f) * 1e9, s, label="Output 2", lw="0.7")
-f, s = result.data("input", "out3")
-ax.plot(freq2wl(f) * 1e9, s, label="Output 3", lw="0.7")
 
+# prepare the simulator
+simulator = SweepSimulator(1524.5e-9, 1551.15e-9)
+simulator.connect(wg_input)
+
+# get the results for output 1
+simulator.multiconnect(None, wg_out1)
+wl, t = simulator.simulate()
+ax.plot(wl * 1e9, t, label="Output 1", lw="0.7")
+
+# get the results for output 2
+simulator.multiconnect(None, wg_out2)
+wl, t = simulator.simulate()
+ax.plot(wl * 1e9, t, label="Output 2", lw="0.7")
+
+# get the results for output 3
+simulator.multiconnect(None, wg_out3)
+wl, t = simulator.simulate()
+ax.plot(wl * 1e9, t, label="Output 3", lw="0.7")
+
+# finish first subplot and move to next
 ax.set_ylabel("Fractional Optical Power")
 ax.set_xlabel("Wavelength (nm)")
 plt.legend(loc="upper right")
-
 ax = fig.add_subplot(gs[0, 2])
-f, s = result.data("input", "out1")
-ax.plot(freq2wl(f) * 1e9, s, label="Output 1", lw="0.7")
-f, s = result.data("input", "out2")
-ax.plot(freq2wl(f) * 1e9, s, label="Output 2", lw="0.7")
-f, s = result.data("input", "out3")
-ax.plot(freq2wl(f) * 1e9, s, label="Output 3", lw="0.7")
 
+# get the results for output 1
+simulator.multiconnect(None, wg_out1)
+wl, t = simulator.simulate()
+ax.plot(wl * 1e9, t, label="Output 1", lw="0.7")
+
+# get the results for output 2
+simulator.multiconnect(None, wg_out2)
+wl, t = simulator.simulate()
+ax.plot(wl * 1e9, t, label="Output 2", lw="0.7")
+
+# get the results for output 3
+simulator.multiconnect(None, wg_out3)
+wl, t = simulator.simulate()
+ax.plot(wl * 1e9, t, label="Output 3", lw="0.7")
+
+# plot the results
 ax.set_xlim(1543, 1545)
 ax.set_ylabel("Fractional Optical Power")
 ax.set_xlabel("Wavelength (nm)")
-
 fig.align_labels()
 plt.show()
