@@ -55,38 +55,39 @@ class Model:
         freq_range :
             The frequency range for the model. If not specified,
             it will inherit from cls.freq_range. If that is not specified,
-            then it will default to (-infty, infty).
+            then it will default to (0, inf).
         pins :
             The pins for the model. If not specified, the pins will be
             be initialized from cls.pins. If that is not specified,
-            cls.pin_count number of pins will be initialized. If pins is not
-            passed in, cls.pin_count or cls.pins must be defined.
+            cls.pin_count number of pins will be initialized.
 
         Raises
         ------
         NotImplementedError
-            when cls.pin_count and cls.pins are both undefined.
+            when cls.freq_range is undefined.
+        NotImplementedError
+            when pins is None and cls.pin_count and cls.pins are undefined.
         """
         self.circuit = Circuit(self)
 
-        # set the frequency range for the instnace. resolution order:
-        # 1. freq_range being passed in to __init__
+        # set the frequency range for the instance. resolution order:
+        # 1. freq_range
         # 2. cls.freq_range
-        # 3. default value
+        # 3. default value (0, inf)
         if freq_range:
-            self.freq_range = freq_range
+            self.freq_range = (freq_range[0], freq_range[1])
         else:
             try:
                 self.freq_range = self.__class__.freq_range
             except AttributeError:
-                self.freq_range = (None, None)
+                self.freq_range = (0, float("inf"))
 
         self.name = name
 
         # initiate the Pin objects for the instance. resolution order:
-        # 1. list of pins being passed in to __init__
-        # 2. cls.pins initializes and renames pins
-        # 3. cls.pin_count initializes pins
+        # 1. pins (list of Pin objects)
+        # 2. cls.pins (tuple of pin names)
+        # 3. cls.pin_count
         if pins:
             self.pins = PinList(pins)
         else:
@@ -242,7 +243,7 @@ class Model:
 
         Parameters
         ----------
-        freq : np.ndarray
+        freqs : np.array
             The frequency range to generate monte carlo s-parameters over.
 
         Returns
@@ -374,11 +375,18 @@ class Subcircuit(Model):
         """
         from simphony.simulators import Simulator
 
+        freq_range = [0, float("inf")]
         pins = []
         pin_names = {}
 
-        # figure out which pins to re-expose
         for component in circuit:
+            # calculate the frequency range for the subcircuit
+            if component.freq_range[0] > freq_range[0]:
+                freq_range[0] = component.freq_range[0]
+            if component.freq_range[1] < freq_range[1]:
+                freq_range[1] = component.freq_range[1]
+
+            # figure out which pins to re-expose
             for pin in component.pins:
                 # re-expose unconnected pins or pins connected to simulators
                 if not pin._isconnected() or isinstance(
@@ -404,7 +412,7 @@ class Subcircuit(Model):
 
         self._wrapped_circuit = circuit
 
-        super().__init__(**kwargs, name=name, pins=pins)
+        super().__init__(**kwargs, freq_range=freq_range, name=name, pins=pins)
 
     def _s_parameters(
         self,

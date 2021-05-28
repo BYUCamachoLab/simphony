@@ -33,13 +33,14 @@ class Simulator(Model):
         This method gets the scattering parameters for the circuit and
         returns them with the list of corresponding pins.
         """
-        if (
-            not self.pins["to_input"]._isconnected()
-            or not self.pins["to_output"]._isconnected()
-        ):
-            raise RuntimeError("Simulator must be connected before simulating.")
-
         subcircuit = self.circuit.to_subcircuit(permanent=False)
+
+        lower, upper = subcircuit.freq_range
+        if lower > freqs[0] or upper < freqs[-1]:
+            raise ValueError(
+                f"Cannot simulate the range ({freqs[0], freqs[1]}) over the valid range ({lower}, {upper})"
+            )
+
         s_params = getattr(subcircuit, s_parameters_method)(freqs)
 
         return (s_params, subcircuit.pins)
@@ -52,7 +53,7 @@ class Simulator(Model):
         freqs: Optional[np.array] = None,
         s_parameters_method: Literal[
             "monte_carlo_s_parameters", "s_parameters"
-        ] = "s_parameters"
+        ] = "s_parameters",
     ) -> Tuple[np.array, np.array]:
         """Simulates the circuit.
 
@@ -71,6 +72,12 @@ class Simulator(Model):
         s_parameters_method :
             The method name to call to get the scattering parameters.
         """
+        if (
+            not self.pins["to_input"]._isconnected()
+            or not self.pins["to_output"]._isconnected()
+        ):
+            raise RuntimeError("Simulator must be connected before simulating.")
+
         if freq:
             freqs = np.array(freq)
 
