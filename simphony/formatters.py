@@ -3,7 +3,7 @@
 # (see simphony/__init__.py for details)
 
 import json
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Tuple
 
 import numpy as np
 
@@ -18,18 +18,37 @@ class ModelFormatter:
     """Base model formatter class that is extended to provide functionality for
     converting a component (model instance) to a string and vice-versa."""
 
-    def _to_component(
-        self, name: str, pins: List[str], freqs: np.array, s_params: np.ndarray
-    ) -> "Model":
-        """Returns a component that is defined by the frequencies and
-        scattering parameters provided.
+    def _from_component(
+        self, component: "Model", freqs: np.array
+    ) -> Tuple[str, List[str], np.array, np.ndarray]:
+        """Gets the component's information that needs to be formatted.
 
         Parameters
         ----------
-        name :
-            The name of the component.
+        component :
+            The component to get the information from.
+        freqs :
+            The list of frequencies to get information about.
+        """
+        name = component.name or f"{component.__class__.__name__} component"
+        pins = [pin.name for pin in component.pins]
+        s_params = component.s_parameters(freqs)
+
+        return (name, pins, s_params)
+
+    def _to_component(
+        self, freqs: np.array, name: str, pins: List[str], s_params: np.ndarray
+    ) -> "Model":
+        """Returns a component that is defined by the given parameters.
+
+        Parameters
+        ----------
         freqs :
             The list of valid frequencies for the model.
+        name :
+            The name of the component.
+        pins :
+            The pins names for the component.
         s_params :
             The scattering parameters for each frequency.
         """
@@ -55,18 +74,16 @@ class ModelFormatter:
 
         return component
 
-    def format(self, name: str, freqs: np.array, s_params: np.ndarray) -> str:
+    def format(self, component: "Model", freqs: np.array) -> str:
         """Returns a string representation of the component's scattering
         parameters.
 
         Parameters
         ----------
-        name :
-            The name of the component that is being formatted.
+        component :
+            The component to format.
         freqs :
             The frequencies to get scattering parameters for.
-        s_params :
-            The scattering parameters for the corresponding frequencies.
         """
         raise NotImplementedError
 
@@ -111,9 +128,8 @@ class JSONDecoder(json.JSONDecoder):
 class ModelJSONFormatter(ModelFormatter):
     """The ModelJSONFormatter class formats the model data in a JSON format."""
 
-    def format(
-        self, name: str, pins: List[str], freqs: np.array, s_params: np.ndarray
-    ) -> str:
+    def format(self, component: "Model", freqs: np.array) -> str:
+        name, pins, s_params = self._from_component(component, freqs)
         return json.dumps(
             {"freqs": freqs, "name": name, "pins": pins, "s_params": s_params},
             cls=JSONEncoder,
@@ -122,9 +138,9 @@ class ModelJSONFormatter(ModelFormatter):
     def parse(self, string: str) -> "Model":
         data = json.loads(string, cls=JSONDecoder)
         return self._to_component(
+            np.array(data["freqs"]),
             data["name"],
             data["pins"],
-            np.array(data["freqs"]),
             np.array(data["s_params"]),
         )
 
@@ -155,8 +171,7 @@ class CircuitFormatter:
 
 
 class CircuitJSONFormatter:
-    """This class handles converting circuits to JSON and JSON to
-    components."""
+    """This class handles converting a circuit to JSON and vice-versa."""
 
     def format(self, circuit: "Circuit", freqs: np.array) -> str:
         from simphony.simulators import Simulator

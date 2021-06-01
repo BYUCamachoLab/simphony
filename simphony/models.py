@@ -374,10 +374,7 @@ class Model:
         Formatter :
             The class of the formatter to use.
         """
-        name = self.name or f"{self.__class__.__name__} component"
-        return Formatter().format(
-            name, [pin.name for pin in self.pins], freqs, self.s_parameters(freqs)
-        )
+        return Formatter().format(self, freqs)
 
     @staticmethod
     def from_file(
