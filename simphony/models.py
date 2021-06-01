@@ -374,7 +374,8 @@ class Model:
         Formatter :
             The class of the formatter to use.
         """
-        return Formatter().format(freqs, self.s_parameters(freqs))
+        name = self.name or f"{self.__class__.__name__} component"
+        return Formatter().format(name, freqs, self.s_parameters(freqs))
 
     @staticmethod
     def from_file(
@@ -422,12 +423,7 @@ class Subcircuit(Model):
     scache: Dict[Model, "np.ndarray"] = {}
 
     def __init__(
-        self,
-        circuit: Circuit,
-        name: str = "",
-        *,
-        permanent: bool = True,
-        **kwargs,
+        self, circuit: Circuit, name: str = "", *, permanent: bool = True, **kwargs,
     ) -> None:
         """Initializes a subcircuit from the given circuit.
 

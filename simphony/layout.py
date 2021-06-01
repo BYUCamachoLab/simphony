@@ -2,10 +2,12 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Type
+
+from simphony.formatters import CircuitFormatter, CircuitJSONFormatter
 
 if TYPE_CHECKING:
-    from numpy import ndarray
+    import numpy as np
 
     from simphony import Model
     from simphony.models import Subcircuit
@@ -67,9 +69,31 @@ class Circuit(list):
 
         return result
 
-    def s_parameters(self, freqs: "ndarray") -> "ndarray":
+    def s_parameters(self, freqs: "np.ndarray") -> "np.ndarray":
         """Returns the scattering parameters for the circuit."""
         return self.to_subcircuit(permanent=False).s_parameters(freqs)
+
+    def to_file(
+        self,
+        filename: str,
+        freqs: "np.array",
+        *,
+        Formatter: Type[CircuitFormatter] = CircuitJSONFormatter,
+    ) -> None:
+        """Writes a string representation of this circuit to a file.
+
+        Parameters
+        ----------
+        filename :
+            The name of the file to write to.
+        freqs :
+            The list of frequencies to save data for.
+        Formatter :
+            The class of the formatter to use.
+        """
+        with open(filename, "w") as file:
+            file.write(Formatter().format(self, freqs))
+            file.close()
 
     def to_subcircuit(self, name: str = "", **kwargs) -> "Subcircuit":
         """Converts this circuit into a subcircuit component for easy re-use in
@@ -77,3 +101,22 @@ class Circuit(list):
         from simphony.models import Subcircuit
 
         return Subcircuit(self, **kwargs, name=name)
+
+    @staticmethod
+    def from_file(
+        filename: str, *, Formatter: Type[CircuitFormatter] = CircuitJSONFormatter
+    ) -> "Circuit":
+        """Creates a circuit from a file using the specified formatter.
+
+        Parameters
+        ----------
+        filename :
+            The filename to read from.
+        Formatter :
+            The class of the formatter to use.
+        """
+        with open(filename, "r") as file:
+            circuit = Formatter().parse(file.read())
+            file.close()
+
+        return circuit
