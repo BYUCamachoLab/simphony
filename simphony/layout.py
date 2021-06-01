@@ -2,7 +2,7 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-from typing import TYPE_CHECKING, Type
+from typing import TYPE_CHECKING, List, Type
 
 from simphony.formatters import CircuitFormatter, CircuitJSONFormatter
 
@@ -31,7 +31,7 @@ class Circuit(list):
         super().__init__([component])
 
     def __str__(self) -> str:
-        return self._str_recursive().rstrip()
+        return self._str_recursive(components=self._get_components()).rstrip()
 
     def _add(self, component: "Model") -> bool:
         """Adds the specified component to the circuit if it isn't already
@@ -45,6 +45,19 @@ class Circuit(list):
 
         return False
 
+    def _get_components(self) -> List["Model"]:
+        """Gets a list of all components contained in this circuit.
+
+        This includes any components in any subcircuits.
+        """
+        components = []
+        for component in self:
+            components.append(component)
+            if hasattr(component, "_wrapped_circuit"):
+                components += component._wrapped_circuit._get_components()
+
+        return components
+
     def _merge(self, other: "Circuit") -> None:
         """Merges the other circuit into this circuit.
 
@@ -55,19 +68,42 @@ class Circuit(list):
             if self._add(component):
                 component.circuit = self
 
-    def _str_recursive(self, indent: int = 0) -> str:
+    def _str_recursive(self, indent: int = 0, components: List["Model"] = []) -> str:
         """A recursive function to generate a string representation of the
         circuit."""
-        result = ""
+        spacing = 3
+        output = ""
         for component in self:
-            result += f"{' ' * indent * 2} {component}\n"
+            # add this component to the output
+            output += f"{' ' * indent * spacing}"
+            output += f"[{components.index(component)}] {component}\n"
 
+            # if the component is a subcircuit, recurse into it
             if hasattr(component, "_wrapped_circuit"):
                 indent += 1
-                result += component._wrapped_circuit._str_recursive(indent)
+                output += component._wrapped_circuit._str_recursive(indent, components)
                 indent -= 1
+            else:
+                # list all of the pin information
+                for pin in component.pins:
+                    output += f"{' ' * (indent + 1) * spacing}"
 
-        return result
+                    # indicate when multiple components reference the same pin
+                    # this happens with subcircuit components
+                    if pin._component != component:
+                        output += "*"
+
+                    # add the pin info to the output
+                    output += f"[{components.index(pin._component)}][{pin.name}]"
+
+                    # if the pin is connected, add the connection info
+                    if pin._isconnected(include_simulators=False):
+                        i = components.index(pin._connection._component)
+                        output += f" - [{i}][{pin._connection.name}]"
+
+                    output += "\n"
+
+        return output
 
     def s_parameters(self, freqs: "np.ndarray") -> "np.ndarray":
         """Returns the scattering parameters for the circuit."""
