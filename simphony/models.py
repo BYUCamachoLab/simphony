@@ -453,8 +453,6 @@ class Subcircuit(Model):
         ValueError
             when no unconnected pins exist.
         """
-        from simphony.simulators import Simulator
-
         freq_range = [0, float("inf")]
         pins = []
         pin_names = {}
@@ -469,9 +467,7 @@ class Subcircuit(Model):
             # figure out which pins to re-expose
             for pin in component.pins:
                 # re-expose unconnected pins or pins connected to simulators
-                if not pin._isconnected() or isinstance(
-                    pin._connection._component, Simulator
-                ):
+                if not pin._isconnected(include_simulators=False):
                     if permanent and pin.name in pin_names:
                         raise ValueError(
                             f"Multiple pins named '{pin.name}' cannot exist in a subcircuit."
@@ -551,10 +547,9 @@ class Subcircuit(Model):
             # make sure pins only get connected once
             # and pins connected to simulators get skipped
             if (
-                pin._isconnected()
+                pin._isconnected(include_simulators=False)
                 and pin in available_pins
                 and pin._connection in available_pins
-                and not isinstance(pin._connection._component, Simulator)
             ):
                 # the pin indices in available_pins lines up with the row/column
                 # indices in the matrix. as the matrix shrinks, we remove pins

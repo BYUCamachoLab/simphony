@@ -29,9 +29,24 @@ class Pin:
         self._connection = None
         self.name = name
 
-    def _isconnected(self) -> bool:
-        """Returns whether or not this pin is connected to another pin."""
-        return self._connection != None
+    def _isconnected(self, *, include_simulators: bool = True) -> bool:
+        """Returns whether or not this pin is connected to another pin.
+
+        Parameters
+        ----------
+        include_simulators :
+            When true, connections to simulators are counted as connections.
+            When false, they are not counted as connections.
+        """
+        if self._connection is None:
+            return False
+
+        if include_simulators:
+            return True
+
+        from simphony.simulators import Simulator
+
+        return not isinstance(self._connection._component, Simulator)
 
     def connect(self, pin_or_component: Union["Pin", "Model"]) -> None:
         """Connects this pin to the pin/component that is passed in.
