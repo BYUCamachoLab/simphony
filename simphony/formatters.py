@@ -3,7 +3,7 @@
 # (see simphony/__init__.py for details)
 
 import json
-from typing import TYPE_CHECKING, Type
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -11,30 +11,28 @@ from simphony.tools import interpolate
 
 if TYPE_CHECKING:
     from simphony import Model
+    from simphony.layout import Circuit
 
 
 class ModelFormatter:
     """Base model formatter class that is extended to provide functionality for
     converting a component (model instance) to a string and vice-versa."""
 
-    def _to_component(
-        self, cls: Type["Model"], freqs: np.array, s_params: np.ndarray
-    ) -> "Model":
-        """Returns a component that extends from the specified class and is
-        defined by the frequencies and scattering parameters provided.
+    def _to_component(self, freqs: np.array, s_params: np.ndarray) -> "Model":
+        """Returns a component that is defined by the frequencies and
+        scattering parameters provided.
 
         Parameters
         ----------
-        cls :
-            The class to extend from (must extend from simphony.Model).
         freqs :
             The list of valid frequencies for the model.
         s_params :
             The scattering parameters for each frequency.
         """
+        from simphony import Model
 
         # create a temporary class that extends from the passed in class
-        class Model(cls):
+        class StaticModel(Model):
             freq_range = (freqs.min(), freqs.max())
             pin_count = len(s_params[0])
 
@@ -46,7 +44,7 @@ class ModelFormatter:
                         f"Frequencies must be between {freqs.min(), freqs.max()}."
                     )
 
-        return Model()
+        return StaticModel()
 
     def format(self, freqs: np.array, s_params: np.ndarray) -> str:
         """Returns a string representation of the component's scattering
@@ -59,13 +57,11 @@ class ModelFormatter:
         """
         raise NotImplementedError
 
-    def parse(self, cls: Type["Model"], string: str) -> "Model":
+    def parse(self, string: str) -> "Model":
         """Returns a component from the given string.
 
         Parameters
         ----------
-        cls :
-            The class type to create an instance of.
         string :
             The string to parse.
         """
@@ -105,8 +101,6 @@ class ModelJSONFormatter(ModelFormatter):
     def format(self, freqs: np.array, s_params: np.ndarray) -> str:
         return json.dumps({"freqs": freqs, "s_params": s_params}, cls=JSONEncoder)
 
-    def parse(self, cls: Type["Model"], string: str) -> "Model":
+    def parse(self, string: str) -> "Model":
         data = json.loads(string, cls=JSONDecoder)
-        return self._to_component(
-            cls, np.array(data["freqs"]), np.array(data["s_params"])
-        )
+        return self._to_component(np.array(data["freqs"]), np.array(data["s_params"]))

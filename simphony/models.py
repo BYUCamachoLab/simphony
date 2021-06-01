@@ -2,10 +2,20 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-from typing import TYPE_CHECKING, ClassVar, Dict, List, Literal, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    ClassVar,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 from simphony.connect import create_block_diagonal, innerconnect_s
-from simphony.formatters import ModelJSONFormatter
+from simphony.formatters import ModelFormatter, ModelJSONFormatter
 from simphony.layout import Circuit
 from simphony.pins import Pin, PinList
 
@@ -329,7 +339,11 @@ class Model:
         raise NotImplementedError
 
     def to_file(
-        self, filename: str, freqs: "np.array", *, Formatter=ModelJSONFormatter
+        self,
+        filename: str,
+        freqs: "np.array",
+        *,
+        Formatter: Type[ModelFormatter] = ModelJSONFormatter,
     ) -> None:
         """Writes this component's scattering parameters to the specified file
         using the specified formatter.
@@ -347,7 +361,9 @@ class Model:
             file.write(self.to_string(freqs, Formatter=Formatter))
             file.close()
 
-    def to_string(self, freqs: "np.array", *, Formatter=ModelJSONFormatter) -> str:
+    def to_string(
+        self, freqs: "np.array", *, Formatter: Type[ModelFormatter] = ModelJSONFormatter
+    ) -> str:
         """Returns this component's scattering parameters as a formatted
         string.
 
@@ -360,8 +376,10 @@ class Model:
         """
         return Formatter().format(freqs, self.s_parameters(freqs))
 
-    @classmethod
-    def from_file(cls, filename: str, *, Formatter=ModelJSONFormatter) -> "Model":
+    @staticmethod
+    def from_file(
+        filename: str, *, Formatter: Type[ModelFormatter] = ModelJSONFormatter
+    ) -> "Model":
         """Creates a component from a file using the specified formatter.
 
         Parameters
@@ -372,13 +390,15 @@ class Model:
             The class of the formatter to use.
         """
         with open(filename, "r") as file:
-            component = cls.from_string(file.read(), Formatter=Formatter)
+            component = Model.from_string(file.read(), Formatter=Formatter)
             file.close()
 
         return component
 
-    @classmethod
-    def from_string(cls, text: str, *, Formatter=ModelJSONFormatter) -> "Model":
+    @staticmethod
+    def from_string(
+        text: str, *, Formatter: Type[ModelFormatter] = ModelJSONFormatter
+    ) -> "Model":
         """Creates a component from a string using the specified formatter.
 
         Parameters
@@ -388,7 +408,7 @@ class Model:
         Formatter :
             The class of the formatter to use.
         """
-        return Formatter().parse(cls, text)
+        return Formatter().parse(text)
 
 
 class Subcircuit(Model):
@@ -402,7 +422,12 @@ class Subcircuit(Model):
     scache: Dict[Model, "np.ndarray"] = {}
 
     def __init__(
-        self, circuit: Circuit, name: str = "", *, permanent: bool = True, **kwargs,
+        self,
+        circuit: Circuit,
+        name: str = "",
+        *,
+        permanent: bool = True,
+        **kwargs,
     ) -> None:
         """Initializes a subcircuit from the given circuit.
 
