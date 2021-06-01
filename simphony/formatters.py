@@ -3,7 +3,7 @@
 # (see simphony/__init__.py for details)
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 import numpy as np
 
@@ -19,7 +19,7 @@ class ModelFormatter:
     converting a component (model instance) to a string and vice-versa."""
 
     def _to_component(
-        self, name: str, freqs: np.array, s_params: np.ndarray
+        self, name: str, pins: List[str], freqs: np.array, s_params: np.ndarray
     ) -> "Model":
         """Returns a component that is defined by the frequencies and
         scattering parameters provided.
@@ -49,7 +49,9 @@ class ModelFormatter:
                     )
 
         component = StaticModel()
+
         component.name = name
+        component.rename_pins(*pins)
 
         return component
 
@@ -109,15 +111,21 @@ class JSONDecoder(json.JSONDecoder):
 class ModelJSONFormatter(ModelFormatter):
     """The ModelJSONFormatter class formats the model data in a JSON format."""
 
-    def format(self, name: str, freqs: np.array, s_params: np.ndarray) -> str:
+    def format(
+        self, name: str, pins: List[str], freqs: np.array, s_params: np.ndarray
+    ) -> str:
         return json.dumps(
-            {"freqs": freqs, "name": name, "s_params": s_params}, cls=JSONEncoder
+            {"freqs": freqs, "name": name, "pins": pins, "s_params": s_params},
+            cls=JSONEncoder,
         )
 
     def parse(self, string: str) -> "Model":
         data = json.loads(string, cls=JSONDecoder)
         return self._to_component(
-            data["name"], np.array(data["freqs"]), np.array(data["s_params"])
+            data["name"],
+            data["pins"],
+            np.array(data["freqs"]),
+            np.array(data["s_params"]),
         )
 
 

@@ -375,7 +375,9 @@ class Model:
             The class of the formatter to use.
         """
         name = self.name or f"{self.__class__.__name__} component"
-        return Formatter().format(name, freqs, self.s_parameters(freqs))
+        return Formatter().format(
+            name, [pin.name for pin in self.pins], freqs, self.s_parameters(freqs)
+        )
 
     @staticmethod
     def from_file(
@@ -398,18 +400,18 @@ class Model:
 
     @staticmethod
     def from_string(
-        text: str, *, Formatter: Type[ModelFormatter] = ModelJSONFormatter
+        string: str, *, Formatter: Type[ModelFormatter] = ModelJSONFormatter
     ) -> "Model":
         """Creates a component from a string using the specified formatter.
 
         Parameters
         ----------
-        text :
-            The text to load the component from.
+        string :
+            The string to load the component from.
         Formatter :
             The class of the formatter to use.
         """
-        return Formatter().parse(text)
+        return Formatter().parse(string)
 
 
 class Subcircuit(Model):
