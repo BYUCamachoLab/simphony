@@ -3,7 +3,7 @@
 # (see simphony/__init__.py for details)
 
 import json
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -253,3 +253,99 @@ class CircuitJSONFormatter:
             components[i].pins[j].connect(components[k].pins[l])
 
         return components[0].circuit
+
+
+class CircuitSiEPICFormatter(CircuitFormatter):
+    """This class saves/loads circuits in the SiEPIC SPICE format."""
+
+    mappings = {
+        "simphony.libraries.siepic": {
+            "ebeam_bdc_te1550": {"name": "BidirectionalCoupler", "parameters": {}},
+            "ebeam_dc_halfring_straight": {"name": "HalfRing", "parameters": {}},
+            "ebeam_dc_te1550": {"name": "DirectionalCoupler", "parameters": {}},
+            "ebeam_gc_te1550": {"name": "GratingCoupler", "parameters": {}},
+            "ebeam_terminator_te1550": {"name": "Terminator", "parameters": {}},
+            "ebeam_wg_integral_1550": {
+                "name": "Waveguide",
+                "parameters": {"wg_length": "length", "wg_width": "width",},
+            },
+            "ebeam_y_1550": {"name": "YBranch", "parameters": {}},
+        },
+        # TODO: setup SiPANN mapping
+        "simphony.libraries.sipann": {},
+    }
+
+    def __init__(self, pdk=None) -> None:
+        """Initializes a new formatter.
+
+        Parameters
+        ----------
+        pdk :
+            The PDK to use to instantiate components. Defaults to SiEPIC.
+        """
+        from simphony.libraries import siepic
+
+        self.pdk = pdk if pdk is not None else siepic
+
+    def _instantiate_component(self, component: Dict[str, Any]) -> "Model":
+        """Instantiates a component from the given component data."""
+        # get the mapping information
+        mapping = self.__class__.mappings[self.pdk.__name__][component["model"]]
+
+        # remap the parameter values so they match the components' API
+        parameters = {}
+        for k, v in component["params"].items():
+            if k in mapping["parameters"]:
+                parameters[mapping["parameters"][k]] = v
+
+        # instantiate the model and pass in the corrected parameters
+        return getattr(self.pdk, mapping["name"])(**parameters)
+
+    def parse(self, string: str) -> "Circuit":
+        from simphony.models import Subcircuit
+        from simphony.plugins.siepic import load_spi_from_string
+        from simphony.simulators import SweepSimulator
+
+        data = load_spi_from_string(string)
+
+        # for now, circuits only ever contain one subcircuit
+        # if that ever changes, we will need to update this
+        for sub in data["subcircuits"]:
+            # instantiate components in the subcircuit
+            components = []
+            for c in sub["components"]:
+                component = self._instantiate_component(c)
+                component.rename_pins(*c["ports"])
+                components.append(component)
+
+            # connect the netlists
+            # compare indices so we only connect components once
+            for i, comp1 in enumerate(components):
+                for j, comp2 in enumerate(components):
+                    if comp1 != comp2 and i <= j:
+                        comp1.interface(comp2)
+
+            # create a subcircuit instance
+            # not permanent because we end up returning the wrapped circuit
+            subcircuit = Subcircuit(components[0].circuit, sub["name"], permanent=False)
+            subcircuit.rename_pins(*sub["ports"])
+
+        # setup a SweepSimulator if one is active
+        for analysis in data["analyses"]:
+            if analysis["definition"]["input_parameter"] == "start_and_stop":
+                _, output = analysis["params"]["output"].split(",")
+                start = analysis["params"]["start"]
+                stop = analysis["params"]["stop"]
+                points = int(analysis["params"]["number_of_points"])
+                mode = (
+                    "wl"
+                    if analysis["definition"]["input_unit"] == "wavelength"
+                    else "freq"
+                )
+
+                simulator = SweepSimulator(start, stop, points)
+                simulator.mode = mode
+                simulator.multiconnect(None, subcircuit[output])
+
+        # no reason to include the subcircuit component for now
+        return subcircuit._wrapped_circuit
