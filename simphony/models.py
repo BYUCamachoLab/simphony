@@ -2,6 +2,22 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
+"""
+simphony.models
+==============
+
+This module contains the ``Model`` and ``Subcircuit`` classes. The ``Model``
+class is the base class for all models. The ``Subcircuit`` class is where
+the subnetwork growth algorithm takes place.
+
+Instances of models are components. As components are connected to each other,
+they form a circuit. There are three ways to connect components:
+
+1. ``comp1_or_pin.connect(comp2_or_pin)``
+2. ``comp1.multiconnect(comp_or_pin, comp_or_pin, ...)``
+3. ``comp1.interface(comp2)``
+"""
+
 from typing import TYPE_CHECKING, ClassVar, Dict, List, Literal, Optional, Tuple, Union
 
 from simphony.connect import create_block_diagonal, innerconnect_s

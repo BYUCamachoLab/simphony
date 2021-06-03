@@ -2,6 +2,15 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
+"""
+simphony.simulators
+==============
+
+This module contains the simulator components. Simulators must be connected to
+components before simulating. This can be done using the same connection methods
+that exist on a component.
+"""
+
 from typing import Literal, Optional, Tuple
 
 import numpy as np

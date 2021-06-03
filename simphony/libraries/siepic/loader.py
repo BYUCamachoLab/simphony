@@ -2,6 +2,13 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
+"""
+simphony.libraries.siepic.loader
+=======================
+
+
+"""
+
 import xml.etree.ElementTree as ET
 from bisect import bisect_left
 

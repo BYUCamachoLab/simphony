@@ -2,6 +2,18 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
+"""
+simphony.formatters
+==============
+
+This module contains two types of classes: ``ModelFormatters`` and
+``CircuitFormatters``. These classes are used to serialize / unseralize models
+and circuits.
+
+Specifically, instances of these classes should be used in the ``to_file`` and
+``from_file`` methods on ``Model`` and ``Circuit``.
+"""
+
 import json
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 

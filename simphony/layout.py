@@ -2,6 +2,15 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
+"""
+simphony.layout
+==============
+
+This module contains the ``Circuit`` object. The ``Circuit`` object acts as
+a sorted set that contains components. As components connect/disconnect to each
+other, they will make sure that they belong to the same ``Circuit`` instance.
+"""
+
 from typing import TYPE_CHECKING, List, Optional
 
 from simphony.formatters import CircuitFormatter, CircuitJSONFormatter
