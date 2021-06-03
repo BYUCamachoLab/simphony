@@ -2,17 +2,7 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-from typing import (
-    TYPE_CHECKING,
-    ClassVar,
-    Dict,
-    List,
-    Literal,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import TYPE_CHECKING, ClassVar, Dict, List, Literal, Optional, Tuple, Union
 
 from simphony.connect import create_block_diagonal, innerconnect_s
 from simphony.formatters import ModelFormatter, ModelJSONFormatter
@@ -346,7 +336,7 @@ class Model:
         filename: str,
         freqs: "np.array",
         *,
-        Formatter: Type[ModelFormatter] = ModelJSONFormatter,
+        formatter: Optional[ModelFormatter] = None,
     ) -> None:
         """Writes this component's scattering parameters to the specified file
         using the specified formatter.
@@ -357,15 +347,15 @@ class Model:
             The name of the file to write to.
         freqs :
             The list of frequencies to save data for.
-        Formatter :
-            The class of the formatter to use.
+        formatter :
+            The formatter instance to use.
         """
         with open(filename, "w") as file:
-            file.write(self.to_string(freqs, Formatter=Formatter))
+            file.write(self.to_string(freqs, formatter=formatter))
             file.close()
 
     def to_string(
-        self, freqs: "np.array", *, Formatter: Type[ModelFormatter] = ModelJSONFormatter
+        self, freqs: "np.array", *, formatter: Optional[ModelFormatter] = None
     ) -> str:
         """Returns this component's scattering parameters as a formatted
         string.
@@ -374,14 +364,15 @@ class Model:
         ----------
         freqs :
             The list of frequencies to save data for.
-        Formatter :
-            The class of the formatter to use.
+        formatter :
+            The formatter instance to use.
         """
-        return Formatter().format(self, freqs)
+        formatter = formatter if formatter is not None else ModelJSONFormatter()
+        return formatter.format(self, freqs)
 
     @staticmethod
     def from_file(
-        filename: str, *, Formatter: Type[ModelFormatter] = ModelJSONFormatter
+        filename: str, *, formatter: Optional[ModelFormatter] = None
     ) -> "Model":
         """Creates a component from a file using the specified formatter.
 
@@ -389,18 +380,18 @@ class Model:
         ----------
         filename :
             The filename to read from.
-        Formatter :
-            The class of the formatter to use.
+        formatter :
+            The formatter instance to use.
         """
         with open(filename, "r") as file:
-            component = Model.from_string(file.read(), Formatter=Formatter)
+            component = Model.from_string(file.read(), formatter=formatter)
             file.close()
 
         return component
 
     @staticmethod
     def from_string(
-        string: str, *, Formatter: Type[ModelFormatter] = ModelJSONFormatter
+        string: str, *, formatter: Optional[ModelFormatter] = None
     ) -> "Model":
         """Creates a component from a string using the specified formatter.
 
@@ -408,10 +399,11 @@ class Model:
         ----------
         string :
             The string to load the component from.
-        Formatter :
-            The class of the formatter to use.
+        formatter :
+            The formatter instance to use.
         """
-        return Formatter().parse(string)
+        formatter = formatter if formatter is not None else ModelJSONFormatter()
+        return formatter.parse(string)
 
 
 class Subcircuit(Model):
