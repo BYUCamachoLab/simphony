@@ -99,10 +99,7 @@ class TestCircuitJSONFormatter:
         json = os.path.join(os.path.dirname(__file__), "mzi.json")
         mzi2 = Circuit.from_file(json, formatter=CircuitJSONFormatter())
 
-        assert (
-            np.around(mzi.s_parameters(freqs), decimals=13)
-            == np.around(mzi2.s_parameters(freqs), decimals=13)
-        ).all()
+        assert np.allclose(mzi.s_parameters(freqs), mzi2.s_parameters(freqs))
 
 
 class TestCircuitSiEPICFormatter:
@@ -120,7 +117,4 @@ class TestCircuitSiEPICFormatter:
 
         mzi42 = Circuit.from_file(spi, formatter=CircuitSiEPICFormatter())
 
-        assert (
-            np.around(mzi4.s_parameters(freqs), decimals=13)
-            == np.around(mzi42.s_parameters(freqs), decimals=13)
-        ).all()
+        assert np.allclose(mzi4.s_parameters(freqs), mzi42.s_parameters(freqs))

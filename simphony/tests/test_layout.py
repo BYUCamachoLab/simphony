@@ -441,16 +441,10 @@ def mzi():
 
 class TestCircuit:
     def test_s_parameters(self, freqs, mzi):
-        assert (
-            np.around(mzi_s_parameters, decimals=5)
-            == np.around(mzi.s_parameters(freqs), decimals=5)
-        ).all()
+        assert np.allclose(mzi_s_parameters, mzi.s_parameters(freqs))
 
     def test_monte_carlo_s_parameters(self, freqs, mzi):
-        assert (
-            np.around(mzi_monte_carlo_s_parameters, decimals=5)
-            != np.around(
-                mzi.to_subcircuit(permanent=False).monte_carlo_s_parameters(freqs),
-                decimals=5,
-            )
-        ).all()
+        assert not np.allclose(
+            mzi_monte_carlo_s_parameters,
+            mzi.to_subcircuit(permanent=False).monte_carlo_s_parameters(freqs),
+        )
