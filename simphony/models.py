@@ -18,6 +18,7 @@ they form a circuit. There are three ways to connect components:
 3. ``comp1.interface(comp2)``
 """
 
+import os
 from typing import TYPE_CHECKING, ClassVar, Dict, List, Literal, Optional, Tuple, Union
 
 from simphony.connect import create_block_diagonal, innerconnect_s
@@ -366,9 +367,19 @@ class Model:
         formatter :
             The formatter instance to use.
         """
+        # change the cwd to the the directory containing the file
+        filename = os.path.abspath(filename)
+        cwd = os.getcwd()
+        dir, _ = os.path.split(filename)
+        os.chdir(dir)
+
+        # format the file
         with open(filename, "w") as file:
             file.write(self.to_string(freqs, formatter=formatter))
             file.close()
+
+        # restore the cwd
+        os.chdir(cwd)
 
     def to_string(
         self, freqs: "np.array", *, formatter: Optional[ModelFormatter] = None
@@ -399,9 +410,19 @@ class Model:
         formatter :
             The formatter instance to use.
         """
+        # change the cwd to the the directory containing the file
+        filename = os.path.abspath(filename)
+        cwd = os.getcwd()
+        dir, _ = os.path.split(filename)
+        os.chdir(dir)
+
+        # parse the file
         with open(filename, "r") as file:
             component = Model.from_string(file.read(), formatter=formatter)
             file.close()
+
+        # restore the cwd
+        os.chdir(cwd)
 
         return component
 

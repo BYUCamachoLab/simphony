@@ -11,6 +11,7 @@ a sorted set that contains components. As components connect/disconnect to each
 other, they will make sure that they belong to the same ``Circuit`` instance.
 """
 
+import os
 from typing import TYPE_CHECKING, List, Optional
 
 from simphony.formatters import CircuitFormatter, CircuitJSONFormatter
@@ -137,9 +138,20 @@ class Circuit(list):
             The formatter instance to use.
         """
         formatter = formatter if formatter is not None else CircuitJSONFormatter()
+
+        # change the cwd to the the directory containing the file
+        filename = os.path.abspath(filename)
+        cwd = os.getcwd()
+        dir, _ = os.path.split(filename)
+        os.chdir(dir)
+
+        # format the file
         with open(filename, "w") as file:
             file.write(formatter.format(self, freqs))
             file.close()
+
+        # restore the cwd
+        os.chdir(cwd)
 
     def to_subcircuit(self, name: str = "", **kwargs) -> "Subcircuit":
         """Converts this circuit into a subcircuit component for easy re-use in
@@ -162,8 +174,19 @@ class Circuit(list):
             The formatter instance to use.
         """
         formatter = formatter if formatter is not None else CircuitJSONFormatter()
+
+        # change the cwd to the the directory containing the file
+        filename = os.path.abspath(filename)
+        cwd = os.getcwd()
+        dir, _ = os.path.split(filename)
+        os.chdir(dir)
+
+        # parse the file
         with open(filename, "r") as file:
             circuit = formatter.parse(file.read())
             file.close()
+
+        # restore the cwd
+        os.chdir(cwd)
 
         return circuit
