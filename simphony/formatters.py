@@ -230,7 +230,7 @@ class CircuitJSONFormatter:
 
             # get a representation for each component
             data["components"].append(
-                component.to_string(freqs, Formatter=ModelJSONFormatter)
+                component.to_string(freqs, formatter=ModelJSONFormatter())
             )
 
             # get all of the connections between components
@@ -258,7 +258,7 @@ class CircuitJSONFormatter:
         # load all of the components
         components = []
         for string in data["components"]:
-            components.append(Model.from_string(string, Formatter=ModelJSONFormatter))
+            components.append(Model.from_string(string, formatter=ModelJSONFormatter()))
 
         # connect the components to each other
         for i, j, k, l in data["connections"]:
