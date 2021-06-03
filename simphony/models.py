@@ -240,10 +240,13 @@ class Model:
 
     def interface(self, component: "Model") -> None:
         """Interfaces this component to the component passed in by connecting
-        pins with the same names."""
+        pins with the same names.
+
+        Only pins that have been renamed will be connected.
+        """
         for selfpin in self.pins:
             for componentpin in component.pins:
-                if selfpin.name == componentpin.name:
+                if selfpin.name[0:3] != "pin" and selfpin.name == componentpin.name:
                     selfpin.connect(componentpin)
 
     def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
