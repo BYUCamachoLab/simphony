@@ -2,7 +2,7 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-from typing import TYPE_CHECKING, List, Type
+from typing import TYPE_CHECKING, List, Optional
 
 from simphony.formatters import CircuitFormatter, CircuitJSONFormatter
 
@@ -114,7 +114,7 @@ class Circuit(list):
         filename: str,
         freqs: "np.array",
         *,
-        Formatter: Type[CircuitFormatter] = CircuitJSONFormatter,
+        formatter: Optional[CircuitFormatter] = None,
     ) -> None:
         """Writes a string representation of this circuit to a file.
 
@@ -124,11 +124,12 @@ class Circuit(list):
             The name of the file to write to.
         freqs :
             The list of frequencies to save data for.
-        Formatter :
-            The class of the formatter to use.
+        formatter :
+            The formatter instance to use.
         """
+        formatter = formatter if formatter is not None else CircuitJSONFormatter()
         with open(filename, "w") as file:
-            file.write(Formatter().format(self, freqs))
+            file.write(formatter.format(self, freqs))
             file.close()
 
     def to_subcircuit(self, name: str = "", **kwargs) -> "Subcircuit":
@@ -140,7 +141,7 @@ class Circuit(list):
 
     @staticmethod
     def from_file(
-        filename: str, *, Formatter: Type[CircuitFormatter] = CircuitJSONFormatter
+        filename: str, *, formatter: Optional[CircuitFormatter] = None
     ) -> "Circuit":
         """Creates a circuit from a file using the specified formatter.
 
@@ -148,11 +149,12 @@ class Circuit(list):
         ----------
         filename :
             The filename to read from.
-        Formatter :
-            The class of the formatter to use.
+        formatter :
+            The formatter instance to use.
         """
+        formatter = formatter if formatter is not None else CircuitJSONFormatter()
         with open(filename, "r") as file:
-            circuit = Formatter().parse(file.read())
+            circuit = formatter.parse(file.read())
             file.close()
 
         return circuit

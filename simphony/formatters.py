@@ -3,7 +3,7 @@
 # (see simphony/__init__.py for details)
 
 import json
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 import numpy as np
 
@@ -18,9 +18,11 @@ class ModelFormatter:
     """Base model formatter class that is extended to provide functionality for
     converting a component (model instance) to a string and vice-versa."""
 
+    flatten_subcircuits = False
+
     def _from_component(
         self, component: "Model", freqs: np.array
-    ) -> Tuple[str, List[str], np.array, np.ndarray]:
+    ) -> Tuple[str, List[str], Optional[np.ndarray], Optional[str]]:
         """Gets the component's information that needs to be formatted.
 
         Parameters
@@ -32,14 +34,33 @@ class ModelFormatter:
         """
         name = component.name or f"{component.__class__.__name__} component"
         pins = [pin.name for pin in component.pins]
-        s_params = component.s_parameters(freqs)
 
-        return (name, pins, s_params)
+        # if the component is a subcircuit, save the underyling circuit unless
+        # we have been asked to flatten it
+        if hasattr(component, "_wrapped_circuit") and not self.flatten_subcircuits:
+            s_params = None
+            subcircuit = CircuitJSONFormatter().format(
+                component._wrapped_circuit, freqs
+            )
+        else:
+            s_params = component.s_parameters(freqs)
+            subcircuit = None
+
+        return (name, pins, s_params, subcircuit)
 
     def _to_component(
-        self, freqs: np.array, name: str, pins: List[str], s_params: np.ndarray
+        self,
+        freqs: np.array,
+        name: str,
+        pins: List[str],
+        s_params: Optional[np.ndarray] = None,
+        subcircuit: Optional[str] = None,
     ) -> "Model":
         """Returns a component that is defined by the given parameters.
+
+        If the component is a subcircuit, s_params will be None and subcircuit
+        will not be None. Otherwise, s_params will be populated and subcircuit
+        will be None.
 
         Parameters
         ----------
@@ -51,23 +72,29 @@ class ModelFormatter:
             The pins names for the component.
         s_params :
             The scattering parameters for each frequency.
+        subcircuit :
+            If the component is a subcircuit, this contains the circuit information.
         """
-        from simphony import Model
+        from simphony.models import Model, Subcircuit
 
-        # create a temporary class that extends from the passed in class
-        class StaticModel(Model):
-            freq_range = (freqs.min(), freqs.max())
-            pin_count = len(s_params[0])
+        if subcircuit is not None:
+            # instantiate a subcircuit if there is subcircuit information
+            component = Subcircuit(CircuitJSONFormatter().parse(subcircuit))
+        else:
+            # instantiate a static model instance if s_params is given
+            class StaticModel(Model):
+                freq_range = (freqs.min(), freqs.max())
+                pin_count = len(s_params[0])
 
-            def s_parameters(self, _freqs: np.array) -> np.ndarray:
-                try:
-                    return interpolate(_freqs, freqs, s_params)
-                except ValueError:
-                    raise ValueError(
-                        f"Frequencies must be between {freqs.min(), freqs.max()}."
-                    )
+                def s_parameters(self, _freqs: np.array) -> np.ndarray:
+                    try:
+                        return interpolate(_freqs, freqs, s_params)
+                    except ValueError:
+                        raise ValueError(
+                            f"Frequencies must be between {freqs.min(), freqs.max()}."
+                        )
 
-        component = StaticModel()
+            component = StaticModel()
 
         component.name = name
         component.rename_pins(*pins)
@@ -129,9 +156,15 @@ class ModelJSONFormatter(ModelFormatter):
     """The ModelJSONFormatter class formats the model data in a JSON format."""
 
     def format(self, component: "Model", freqs: np.array) -> str:
-        name, pins, s_params = self._from_component(component, freqs)
+        name, pins, s_params, subcircuit = self._from_component(component, freqs)
         return json.dumps(
-            {"freqs": freqs, "name": name, "pins": pins, "s_params": s_params},
+            {
+                "freqs": freqs,
+                "name": name,
+                "pins": pins,
+                "s_params": s_params,
+                "subcircuit": subcircuit,
+            },
             cls=JSONEncoder,
         )
 
@@ -142,6 +175,7 @@ class ModelJSONFormatter(ModelFormatter):
             data["name"],
             data["pins"],
             np.array(data["s_params"]),
+            data["subcircuit"],
         )
 
 
@@ -190,12 +224,17 @@ class CircuitJSONFormatter:
             # get all of the connections between components
             for j, pin in enumerate(component.pins):
                 if pin._isconnected(include_simulators=False):
-                    k = circuit.index(pin._connection._component)
-                    l = circuit[k].pins.index(pin._connection)
+                    try:
+                        # we only care about saving connections within this
+                        # circuit. if the index does not exist, just ignore it
+                        k = circuit.index(pin._connection._component)
+                        l = circuit[k].pins.index(pin._connection)
 
-                    # only store connections one time
-                    if i < k or (i == k and j < l):
-                        data["connections"].append((i, j, k, l))
+                        # only store connections one time
+                        if i < k or (i == k and j < l):
+                            data["connections"].append((i, j, k, l))
+                    except ValueError:
+                        pass
 
         return json.dumps(data)
 
