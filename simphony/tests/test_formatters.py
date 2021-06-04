@@ -2,7 +2,7 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-import filecmp
+import json
 import os
 
 import numpy as np
@@ -11,6 +11,7 @@ import pytest
 from simphony.formatters import (
     CircuitJSONFormatter,
     CircuitSiEPICFormatter,
+    JSONDecoder,
     ModelJSONFormatter,
 )
 from simphony.layout import Circuit
@@ -77,9 +78,17 @@ def waveguide():
 
 class TestModelJSONFormatter:
     def test_format(self, freqs, waveguide):
-        assert waveguide_150_json == waveguide.to_string(
-            freqs, formatter=ModelJSONFormatter()
+        data1 = json.loads(
+            waveguide.to_string(freqs, formatter=ModelJSONFormatter()), cls=JSONDecoder
         )
+        data2 = json.loads(waveguide_150_json, cls=JSONDecoder)
+
+        # we can't check that they're exactly equal because macs and linux
+        # generate slightly different floats (off by 1 bit)
+        assert np.allclose(np.array(data1["freqs"]), np.array(data2["freqs"]))
+        assert np.allclose(np.array(data1["s_params"]), np.array(data2["s_params"]))
+        assert data1["name"] == data2["name"]
+        assert data1["pins"] == data2["pins"]
 
     def test_parse(self, freqs, waveguide):
         waveguide2 = Model.from_string(waveguide_150_json)
@@ -90,12 +99,30 @@ class TestModelJSONFormatter:
 
 class TestCircuitJSONFormatter:
     def test_format(self, freqs, mzi):
-        json = os.path.join(os.path.dirname(__file__), "mzi.json")
+        mzijson = os.path.join(os.path.dirname(__file__), "mzi.json")
         temp = os.path.join(os.path.dirname(__file__), "mzi.temp.json")
 
         mzi.to_file(temp, freqs, formatter=CircuitJSONFormatter())
 
-        assert filecmp.cmp(json, temp)
+        with open(mzijson) as file:
+            data1 = json.load(file, cls=JSONDecoder)
+
+        with open(temp) as file:
+            data2 = json.load(file, cls=JSONDecoder)
+
+        for i, _ in enumerate(data1["components"]):
+            comp1 = json.loads(data1["components"][i], cls=JSONDecoder)
+            comp2 = json.loads(data2["components"][i], cls=JSONDecoder)
+
+            # we can't check that they're exactly equal because macs and linux
+            # generate slightly different floats (off by 1 bit)
+            assert np.allclose(np.array(comp1["freqs"]), np.array(comp2["freqs"]))
+            assert np.allclose(np.array(comp1["s_params"]), np.array(comp2["s_params"]))
+            assert comp1["name"] == comp2["name"]
+            assert comp1["pins"] == comp2["pins"]
+
+        assert data1["connections"] == data2["connections"]
+
         os.unlink(temp)
 
     def test_parse(self, freqs, mzi):
