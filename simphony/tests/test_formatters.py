@@ -8,7 +8,11 @@ import os
 import numpy as np
 import pytest
 
-from simphony.formatters import *
+from simphony.formatters import (
+    CircuitJSONFormatter,
+    CircuitSiEPICFormatter,
+    ModelJSONFormatter,
+)
 from simphony.layout import Circuit
 from simphony.libraries import siepic
 from simphony.models import Model

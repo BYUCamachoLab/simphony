@@ -76,7 +76,7 @@ install_requires = [
 ]
 
 extras_require = {
-    "test": ["pytest",],
+    "test": ["pytest"],
 }
 
 if "setuptools" in sys.modules:

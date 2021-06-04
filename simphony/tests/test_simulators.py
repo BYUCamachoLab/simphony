@@ -7,7 +7,7 @@ import pytest
 
 from simphony.libraries import siepic
 from simphony.simulators import MonteCarloSweepSimulator, SweepSimulator
-from simphony.tools import freq2wl, wl2freq
+from simphony.tools import wl2freq
 
 sweep_freqs = np.array(
     [

@@ -4,8 +4,6 @@
 
 import os
 
-import pytest
-
 from simphony.plugins.siepic import load_spi_from_file
 
 # ==============================================================================

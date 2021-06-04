@@ -45,7 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import numpy as npy
 
 
-## Functions operating on s-parameter matrices
+# Functions operating on s-parameter matrices
 def connect_s(A, k, B, l):
     """
     connect two n-port networks' s-matrices together.

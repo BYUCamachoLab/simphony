@@ -5,7 +5,7 @@
 import pytest
 
 from simphony import Model
-from simphony.pins import *
+from simphony.pins import Pin, PinList
 
 
 @pytest.fixture
