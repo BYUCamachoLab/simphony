@@ -79,10 +79,9 @@ class TestModelJSONFormatter:
 
     def test_parse(self, freqs, waveguide):
         waveguide2 = Model.from_string(waveguide_150_json)
-        assert (
-            np.around(waveguide.s_parameters(freqs), decimals=13)
-            == np.around(waveguide2.s_parameters(freqs), decimals=13)
-        ).all()
+        assert np.allclose(
+            waveguide.s_parameters(freqs), waveguide2.s_parameters(freqs)
+        )
 
 
 class TestCircuitJSONFormatter:
