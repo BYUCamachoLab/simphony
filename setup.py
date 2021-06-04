@@ -9,7 +9,6 @@ circuit (PIC) simulation engine. It is speedy and easily extensible.
 """
 
 import io
-import os
 import sys
 
 import setuptools
@@ -21,32 +20,6 @@ from simphony import __version__, __website_url__  # analysis:ignore
 # ==============================================================================
 NAME = "simphony"
 LIBNAME = "simphony"
-
-# ==============================================================================
-# Auxiliary functions
-# ==============================================================================
-extra_files = []
-data_files_ext = [
-    ".sparam",
-    ".dat",
-    ".txt",
-    ".npy",
-    ".npz",
-]
-
-
-def package_data_files(directory):
-    paths = []
-    for (path, directories, filenames) in os.walk(directory):
-        for filename in filenames:
-            name, ext = os.path.splitext(filename)
-            if ext in data_files_ext:
-                paths.append(os.path.join("..", path, filename))
-    return paths
-
-
-extra_files += package_data_files("simphony.libraries")
-extra_files += ["*.ini"]
 
 # ==============================================================================
 # Use README for long description
@@ -71,7 +44,11 @@ setup_args = dict(
     keywords="photonics simulation circuits science",
     platforms=["Windows", "Linux", "Mac OS-X"],
     packages=setuptools.find_packages(),
-    package_data={"": extra_files},
+    package_data={
+        "": ["*.ini"],
+        "simphony.libraries.siepic": ["source_data/*", "source_data/*/*"],
+        "simphony.tests": ["mzi.json"],
+    },
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Operating System :: MacOS",
@@ -93,8 +70,8 @@ setup_args = dict(
 )
 
 install_requires = [
-    "scipy>=1.2.1",
-    "numpy",
+    "scipy>=1.5.4",
+    "numpy>=1.19.5",
     "parsimonious>=0.8.1",
 ]
 
