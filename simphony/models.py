@@ -19,7 +19,7 @@ they form a circuit. There are three ways to connect components:
 """
 
 import os
-from typing import TYPE_CHECKING, ClassVar, Dict, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING, ClassVar, Dict, List, Optional, Tuple, Union
 
 from simphony.connect import create_block_diagonal, innerconnect_s
 from simphony.formatters import ModelFormatter, ModelJSONFormatter
@@ -518,11 +518,7 @@ class Subcircuit(Model):
         super().__init__(**kwargs, freq_range=freq_range, name=name, pins=pins)
 
     def _s_parameters(
-        self,
-        freqs: "np.array",
-        s_parameters_method: Literal[
-            "monte_carlo_s_parameters", "s_parameters"
-        ] = "s_parameters",
+        self, freqs: "np.array", s_parameters_method: str = "s_parameters",
     ) -> "np.ndarray":
         """Returns the scattering parameters for the subcircuit.
 
@@ -535,6 +531,7 @@ class Subcircuit(Model):
             The list of frequencies to get scattering parameters for.
         s_parameters_method :
             The method name to call to get the scattering parameters.
+            Either 's_parameters' or 'monte_carlo_s_parameters'
         """
         from simphony.simulators import Simulator
 

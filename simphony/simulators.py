@@ -11,7 +11,7 @@ components before simulating. This can be done using the same connection methods
 that exist on a component.
 """
 
-from typing import Literal, Optional, Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -31,11 +31,7 @@ class Simulator(Model):
     pins = ("to_input", "to_output")
 
     def _generate(
-        self,
-        freqs: np.array,
-        s_parameters_method: Literal[
-            "monte_carlo_s_parameters", "s_parameters"
-        ] = "s_parameters",
+        self, freqs: np.array, s_parameters_method: str = "s_parameters",
     ) -> Tuple[np.ndarray, PinList]:
         """Generates the scattering parameters for the circuit.
 
@@ -60,9 +56,7 @@ class Simulator(Model):
         dB: bool = False,
         freq: float = 0,
         freqs: Optional[np.array] = None,
-        s_parameters_method: Literal[
-            "monte_carlo_s_parameters", "s_parameters"
-        ] = "s_parameters",
+        s_parameters_method: str = "s_parameters",
     ) -> Tuple[np.array, np.array]:
         """Simulates the circuit.
 
@@ -142,7 +136,7 @@ class SweepSimulator(Simulator):
         self.freqs = np.linspace(start, stop, num)
 
     def simulate(
-        self, mode: Optional[Literal["freq", "wl"]] = None, **kwargs
+        self, mode: Optional[str] = None, **kwargs
     ) -> Tuple[np.array, np.array]:
         """Runs the sweep simulation for the circuit.
 
@@ -153,7 +147,7 @@ class SweepSimulator(Simulator):
         mode :
             Whether to return frequencies or wavelengths for the corresponding
             power ratios. Defaults to whatever values were passed in upon
-            instantiation.
+            instantiation. Either 'freq' or 'wl'.
         """
         freqs, power_ratios = super().simulate(**kwargs, freqs=self.freqs)
 
