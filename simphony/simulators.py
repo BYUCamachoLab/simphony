@@ -31,7 +31,9 @@ class Simulator(Model):
     pins = ("to_input", "to_output")
 
     def _generate(
-        self, freqs: np.array, s_parameters_method: str = "s_parameters",
+        self,
+        freqs: np.array,
+        s_parameters_method: str = "s_parameters",
     ) -> Tuple[np.ndarray, PinList]:
         """Generates the scattering parameters for the circuit.
 

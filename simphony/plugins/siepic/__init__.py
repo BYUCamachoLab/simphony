@@ -314,7 +314,12 @@ class SpiceVisitor(NodeVisitor):
 
     def visit_list(self, node, visited_children):
         # list        = word lpar number rpar
-        (name, _, pos, _,) = visited_children
+        (
+            name,
+            _,
+            pos,
+            _,
+        ) = visited_children
         return {"name": name, "order": int(pos)}
 
     def visit_quoted(self, node, visited_children):

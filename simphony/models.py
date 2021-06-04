@@ -454,7 +454,12 @@ class Subcircuit(Model):
     scache: Dict[Model, "np.ndarray"] = {}
 
     def __init__(
-        self, circuit: Circuit, name: str = "", *, permanent: bool = True, **kwargs,
+        self,
+        circuit: Circuit,
+        name: str = "",
+        *,
+        permanent: bool = True,
+        **kwargs,
     ) -> None:
         """Initializes a subcircuit from the given circuit.
 
@@ -518,7 +523,9 @@ class Subcircuit(Model):
         super().__init__(**kwargs, freq_range=freq_range, name=name, pins=pins)
 
     def _s_parameters(
-        self, freqs: "np.array", s_parameters_method: str = "s_parameters",
+        self,
+        freqs: "np.array",
+        s_parameters_method: str = "s_parameters",
     ) -> "np.ndarray":
         """Returns the scattering parameters for the subcircuit.
 

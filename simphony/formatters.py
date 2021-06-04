@@ -279,7 +279,10 @@ class CircuitSiEPICFormatter(CircuitFormatter):
             "ebeam_terminator_te1550": {"name": "Terminator", "parameters": {}},
             "ebeam_wg_integral_1550": {
                 "name": "Waveguide",
-                "parameters": {"wg_length": "length", "wg_width": "width",},
+                "parameters": {
+                    "wg_length": "length",
+                    "wg_width": "width",
+                },
             },
             "ebeam_y_1550": {"name": "YBranch", "parameters": {}},
         },
