@@ -145,9 +145,13 @@ class JSONEncoder(json.JSONEncoder):
         # if it's an ndarray or complex object, we encode it
         # otherwise, we use the default encoder
         if isinstance(object, np.ndarray):
-            return object.tolist()
+            return self.default(object.tolist())
         elif isinstance(object, complex):
-            return {"r": object.real, "i": object.imag}
+            return {"r": self.default(object.real), "i": self.default(object.imag)}
+        elif isinstance(object, float):
+            return {"h": object.hex()}
+        elif isinstance(object, list):
+            return [self.default(item) for item in object]
         else:
             return super().default(object)
 
@@ -160,8 +164,14 @@ class JSONDecoder(json.JSONDecoder):
 
     def object_hook(self, dict):
         # the object_hook method gets called whenever an object is found
-        # if the object represents a complex number, we decode to that
-        return complex(dict["r"], dict["i"]) if "r" in dict else dict
+        # if the object represents a float in hex format or a complex number,
+        # return the representation
+        if "h" in dict:
+            return float.fromhex(dict["h"])
+        elif "r" in dict:
+            return complex(dict["r"], dict["i"])
+        else:
+            return dict
 
 
 class ModelJSONFormatter(ModelFormatter):
