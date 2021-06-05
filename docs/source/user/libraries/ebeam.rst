@@ -3,7 +3,7 @@
 EBeam model library
 -------------------
 
-.. automodule:: simphony.library.ebeam
+.. automodule:: simphony.libraries.ebeam
    :members: pins
    :inherited-members:
    :exclude-members: s_params, loaded

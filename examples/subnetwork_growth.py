@@ -99,8 +99,8 @@ To get the transmission from input to output in the s-matrix, the indexing is
 import matplotlib.pyplot as plt
 import numpy as np
 from simphony.connect import connect_s, innerconnect_s
-from simphony.library import ebeam, sipann
-from simphony.tools import freq2wl, wl2freq
+from simphony.libraries import ebeam, sipann
+from simphony.tools import wl2freq
 
 # First, we'll set up the frequency range we wish to perform the simulation on.
 freq = np.linspace(wl2freq(1600e-9), wl2freq(1500e-9), 2000)
@@ -110,12 +110,12 @@ half_ring_left = sipann.sipann_dc_halfring(radius=10).s_parameters(freq)
 half_ring_right = sipann.sipann_dc_halfring(radius=10).s_parameters(freq)
 term = ebeam.ebeam_terminator_te1550().s_parameters(freq)
 
-### CONFIGURATION 1 ###
+# CONFIGURATION 1
 n1 = connect_s(half_ring_left, 1, half_ring_right, 3)
 n2 = innerconnect_s(n1, 2, 4)
 n3 = connect_s(n2, 1, term, 0)
 
-### CONFIGURATION 2 ###
+# CONFIGURATION 2
 m1 = connect_s(half_ring_right, 1, half_ring_left, 3)
 m2 = innerconnect_s(m1, 2, 4)
 m3 = connect_s(term, 0, m2, 3)

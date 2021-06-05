@@ -71,7 +71,7 @@ a simulation in Simphony:
 The following script models the MZI circuit shown above:
 
 ```python
-from simphony.library import siepic
+from simphony.libraries import siepic
 from simphony.netlist import Subcircuit
 from simphony.simulation import SweepSimulation
 import matplotlib.pyplot as plt

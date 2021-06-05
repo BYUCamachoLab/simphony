@@ -3,8 +3,7 @@
 # (see simphony/__init__.py for details)
 
 """
-
-simphony.connects
+simphony.connect
 =================
 
 Code for s-parameter matrix cascading uses the scikit-rf implementation. Per
@@ -46,7 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import numpy as npy
 
 
-## Functions operating on s-parameter matrices
+# Functions operating on s-parameter matrices
 def connect_s(A, k, B, l):
     """
     connect two n-port networks' s-matrices together.
@@ -83,6 +82,16 @@ def connect_s(A, k, B, l):
     if k > A.shape[-1] - 1 or l > B.shape[-1] - 1:
         raise (ValueError("port indices are out of range"))
 
+    C = create_block_diagonal(A, B)
+    nA = A.shape[1]  # num ports on A
+
+    # call innerconnect_s() on composit matrix C
+    return innerconnect_s(C, k, nA + l)
+
+
+def create_block_diagonal(A, B):
+    """merges an fxnxn matrix with an fxmxm matrix to form a fx(n+m)x(n+m)
+    block diagonal matrix."""
     nf = A.shape[0]  # num frequency points
     nA = A.shape[1]  # num ports on A
     nB = B.shape[1]  # num ports on B
@@ -93,8 +102,7 @@ def connect_s(A, k, B, l):
     C[:, :nA, :nA] = A.copy()
     C[:, nA:, nA:] = B.copy()
 
-    # call innerconnect_s() on composit matrix C
-    return innerconnect_s(C, k, nA + l)
+    return C
 
 
 def innerconnect_s(A, k, l):

@@ -170,7 +170,7 @@ Simphony includes a default model library from the
 at the University of British Columbia. Let's examine one of the models to 
 learn about how they work: 
 
-.. autoclass:: simphony.library.siepic.ebeam_y_1550
+.. autoclass:: simphony.libraries.siepic.ebeam_y_1550
     :noindex:
     :members: pins, s_parameters
 
@@ -193,7 +193,7 @@ To use a model in a circuit, we would first instantiate a model with the
 desired parameters. If we want to use the same model a second time but with 
 different parameters, we'd simply create a second object. ::
 
-    from simphony.library import siepic
+    from simphony.libraries import siepic
     y_te = siepic.ebeam_y_1550(thickness=220e-9, width=500e-9, polarization='TE')
     y_tm = siepic.ebeam_y_1550(thickness=220e-9, width=500e-9, polarization='TM')
 
@@ -268,7 +268,7 @@ You can, however, rename pins for ease of use in making connections.
 Suppose for example, that you use the same y-branch from earlier to split 
 incoming light between two outputs.
 
-.. autoclass:: simphony.library.siepic.ebeam_y_1550
+.. autoclass:: simphony.libraries.siepic.ebeam_y_1550
     :noindex:
     :members: pins
 
@@ -276,7 +276,7 @@ If we've created an Element from the ``ebeam_y_1550`` model, it'll have
 pins as follows: ::
 
     >>> from simphony.netlist import Element
-    >>> from simphony.library.siepic import ebeam_y_1550
+    >>> from simphony.libraries.siepic import ebeam_y_1550
     >>> y = ebeam_y_1550()
     >>> e = Element(y, name='splitter')
     >>> e.pins
@@ -374,7 +374,7 @@ it.
 First, we declare the model we want to use for the y-branches. We'll use the
 same model for both Element instances. ::
 
-    from simphony.library.siepic import ebeam_y_1550
+    from simphony.libraries.siepic import ebeam_y_1550
 
     y_model = ebeam_y_1550()
 

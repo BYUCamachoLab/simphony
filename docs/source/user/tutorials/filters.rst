@@ -59,7 +59,7 @@ We'll need the following modules and objects from simphony:
   not limited to specific parameterized devices for which simulations have
   already been performed.
 
-* **simphony.library.siepic**:
+* **simphony.libraries.siepic**:
   We use waveguide and terminator models from the ``siepic`` library.
 
 * **simphony.netlist.Subcircuit**:
@@ -77,7 +77,7 @@ We'll need the following modules and objects from simphony:
 
     from SiPANN import scee
     from SiPANN.scee_int import SimphonyWrapper
-    from simphony.library import siepic
+    from simphony.libraries import siepic
     from simphony.netlist import Subcircuit
     from simphony.simulation import SweepSimulation
     from simphony.tools import freq2wl
