@@ -156,8 +156,8 @@ def extract_args(strings, regex, args):
         values extracted from the string.
     """
     argsets = []
-    for string in strings:
-        matches = re.findall(regex, string)
+    for str in strings:
+        matches = re.findall(regex, str)
         if len(matches):
             argsets.append(dict(zip(args, matches[0])))
     return argsets

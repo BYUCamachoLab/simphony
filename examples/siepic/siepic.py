@@ -3,6 +3,8 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
+# flake8: noqa
+
 import os
 
 import matplotlib.pyplot as plt

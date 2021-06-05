@@ -3,8 +3,7 @@
 # (see simphony/__init__.py for details)
 
 """
-
-simphony.connects
+simphony.connect
 =================
 
 Code for s-parameter matrix cascading uses the scikit-rf implementation. Per
@@ -46,23 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import numpy as npy
 
 
-## Functions operating on s-parameter matrices
-def create_block_diagonal(A, B):
-    """merges an fxnxn matrix with an fxmxm matrix to form a fx(n+m)x(n+m)
-    block diagonal matrix."""
-    nf = A.shape[0]  # num frequency points
-    nA = A.shape[1]  # num ports on A
-    nB = B.shape[1]  # num ports on B
-    nC = nA + nB  # num ports on C
-
-    # create composite matrix, appending each sub-matrix diagonally
-    C = npy.zeros((nf, nC, nC), dtype="complex")
-    C[:, :nA, :nA] = A.copy()
-    C[:, nA:, nA:] = B.copy()
-
-    return C
-
-
+# Functions operating on s-parameter matrices
 def connect_s(A, k, B, l):
     """
     connect two n-port networks' s-matrices together.
@@ -104,6 +87,22 @@ def connect_s(A, k, B, l):
 
     # call innerconnect_s() on composit matrix C
     return innerconnect_s(C, k, nA + l)
+
+
+def create_block_diagonal(A, B):
+    """merges an fxnxn matrix with an fxmxm matrix to form a fx(n+m)x(n+m)
+    block diagonal matrix."""
+    nf = A.shape[0]  # num frequency points
+    nA = A.shape[1]  # num ports on A
+    nB = B.shape[1]  # num ports on B
+    nC = nA + nB  # num ports on C
+
+    # create composite matrix, appending each sub-matrix diagonally
+    C = npy.zeros((nf, nC, nC), dtype="complex")
+    C[:, :nA, :nA] = A.copy()
+    C[:, nA:, nA:] = B.copy()
+
+    return C
 
 
 def innerconnect_s(A, k, l):

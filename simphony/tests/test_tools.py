@@ -4,7 +4,7 @@
 
 import pytest
 
-from simphony.tools import freq2wl, str2float, wl2freq
+from simphony.tools import str2float
 
 
 def test_wl2freq():

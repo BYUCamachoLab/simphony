@@ -33,8 +33,7 @@ A Simulator for Photonic circuits
 import platform
 import sys
 
-from .models import Model
-from .simulators import SweepSimulator
+from .models import Model  # noqa: F401
 
 if sys.version_info < (3, 0, 0):
     raise Exception(

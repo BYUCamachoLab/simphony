@@ -2,7 +2,24 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-from typing import TYPE_CHECKING, ClassVar, Dict, List, Literal, Optional, Tuple, Union
+"""
+simphony.models
+==============
+
+This module contains the ``Model`` and ``Subcircuit`` classes. The ``Model``
+class is the base class for all models. The ``Subcircuit`` class is where
+the subnetwork growth algorithm takes place.
+
+Instances of models are components. As components are connected to each other,
+they form a circuit. There are three ways to connect components:
+
+1. ``comp1_or_pin.connect(comp2_or_pin)``
+2. ``comp1.multiconnect(comp_or_pin, comp_or_pin, ...)``
+3. ``comp1.interface(comp2)``
+"""
+
+import os
+from typing import TYPE_CHECKING, ClassVar, Dict, List, Optional, Tuple, Union
 
 from simphony.connect import create_block_diagonal, innerconnect_s
 from simphony.formatters import ModelFormatter, ModelJSONFormatter
@@ -350,9 +367,19 @@ class Model:
         formatter :
             The formatter instance to use.
         """
+        # change the cwd to the the directory containing the file
+        filename = os.path.abspath(filename)
+        cwd = os.getcwd()
+        dir, _ = os.path.split(filename)
+        os.chdir(dir)
+
+        # format the file
         with open(filename, "w") as file:
             file.write(self.to_string(freqs, formatter=formatter))
             file.close()
+
+        # restore the cwd
+        os.chdir(cwd)
 
     def to_string(
         self, freqs: "np.array", *, formatter: Optional[ModelFormatter] = None
@@ -383,9 +410,19 @@ class Model:
         formatter :
             The formatter instance to use.
         """
+        # change the cwd to the the directory containing the file
+        filename = os.path.abspath(filename)
+        cwd = os.getcwd()
+        dir, _ = os.path.split(filename)
+        os.chdir(dir)
+
+        # parse the file
         with open(filename, "r") as file:
             component = Model.from_string(file.read(), formatter=formatter)
             file.close()
+
+        # restore the cwd
+        os.chdir(cwd)
 
         return component
 
@@ -417,7 +454,12 @@ class Subcircuit(Model):
     scache: Dict[Model, "np.ndarray"] = {}
 
     def __init__(
-        self, circuit: Circuit, name: str = "", *, permanent: bool = True, **kwargs,
+        self,
+        circuit: Circuit,
+        name: str = "",
+        *,
+        permanent: bool = True,
+        **kwargs,
     ) -> None:
         """Initializes a subcircuit from the given circuit.
 
@@ -483,9 +525,7 @@ class Subcircuit(Model):
     def _s_parameters(
         self,
         freqs: "np.array",
-        s_parameters_method: Literal[
-            "monte_carlo_s_parameters", "s_parameters"
-        ] = "s_parameters",
+        s_parameters_method: str = "s_parameters",
     ) -> "np.ndarray":
         """Returns the scattering parameters for the subcircuit.
 
@@ -498,6 +538,7 @@ class Subcircuit(Model):
             The list of frequencies to get scattering parameters for.
         s_parameters_method :
             The method name to call to get the scattering parameters.
+            Either 's_parameters' or 'monte_carlo_s_parameters'
         """
         from simphony.simulators import Simulator
 

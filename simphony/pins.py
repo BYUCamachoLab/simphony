@@ -2,6 +2,15 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
+"""
+simphony.pins
+==============
+
+This module contains the logic for managing pins and their connections. When
+connections are made, the pins handle letting the components know which in turn
+makes sure all components belong to the same ``Circuit`` instance.
+"""
+
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
