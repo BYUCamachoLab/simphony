@@ -2,32 +2,37 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
+from typing import TYPE_CHECKING, Callable, Dict, TypeVar, Union
+
+from SiPANN import comp, scee
+
 from simphony import Model
 from simphony.tools import freq2wl
-from SiPANN import scee, comp
+
+if TYPE_CHECKING:
+    import numpy as np
 
 
 class SipannWrapper(Model):
-    """Allows wrapping models from SCEE for use in simphony.
-    This class should be extended, with each extending class
-    wrapping one model.
+    """Allows wrapping models from SCEE for use in simphony. This class should
+    be extended, with each extending class wrapping one model.
 
     Each extending class should convert parameters passed in
     from meters (which simphony uses) to nanometers (which
-    SiPANN uses).
-    
+    SiPANN uses). Each extending class should also define a
+    class-wide field for 'pin_count', equal to the number of
+    pins the subcircuit has.
+
     Note that the wrapped SCEE models cannot have varying
     geometries; such a device can't be cascaded properly.
 
     Parameters
     -----------
     `model`
-    Model from `SiPANN.scee` or `SiPANN.comp` modules
-    
-    `pin_count : int`
-    Number of pins for this model
+    Model from `SiPANN.scee` or `SiPANN.comp` modules, must
+    have the 'sparams' method
 
-    `sigmas : dict`
+    `sigmas`
     Dictionary mapping parameters to sigma values for
     Monte-Carlo simulations, values should be in meters. If
     Monte-Carlo simulations are not needed, pass in
@@ -39,9 +44,10 @@ class SipannWrapper(Model):
         205337300000000.0,
     )
 
-    def __init__(self, model, sigmas):
+    def __init__(self, model: TypeVar("M"), sigmas: Dict[str, float]) -> None:
+
         super().__init__()
-        
+
         self.model = model
         self.sigmas = sigmas
 
@@ -51,46 +57,50 @@ class SipannWrapper(Model):
             raise ValueError(
                 "You have changing geometries, use in simphony doesn't make sense!"
             )
-        
+
         self.params = self.model.__dict__.copy()
         self.rand_params = dict()
         self.regenerate_monte_carlo_parameters()
 
-    def s_parameters(self, freq):
+    def s_parameters(self, freqs: "np.array") -> "np.ndarray":
+
         """Get the s-parameters of the SCEE Model.
 
         Parameters
         ----------
-        `freq : np.ndarray`
+        `freqs`
         Frequency array to calculate s-parameters over, in
         Hz
 
         Returns
         -------
-        `s : np.ndarray`
+        `s`
         The s-parameter matrix
         """
-        wl = freq2wl(freq) * 1e9
+
+        wl = freq2wl(freqs) * 1e9
 
         return self.model.sparams(wl)
 
-    def monte_carlo_s_parameters(self, freq):
-        """Get the s-parameters of the SCEE Model,
-        influenced by noise from sigma values.
+    def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
+
+        """Get the s-parameters of the SCEE Model, influenced by noise from
+        sigma values.
 
         Parameters
         ----------
-        freq : np.ndarray
+        `freqs`
         Frequency array to calculate s-parameters over, in
         Hz
 
         Returns
         -------
-        s : np.ndarray
+        `s`
         The s-parameter matrix
         """
-        wl = freq2wl(freq) * 1e9
-        
+
+        wl = freq2wl(freqs) * 1e9
+
         # Change to noise params for monte carlo, then change back
         self.model.update(**self.rand_params)
         sparams = self.model.sparams(wl)
@@ -98,25 +108,26 @@ class SipannWrapper(Model):
 
         return sparams
 
-    def regenerate_monte_carlo_parameters(self):
-        """For each sigma value given to the wrapper, will
-        apply noise the matching parameter.
-        """
+    def regenerate_monte_carlo_parameters(self) -> None:
+
+        """For each sigma value given to the wrapper, will apply noise the
+        matching parameter."""
+
         for param, sigma in self.sigmas.items():
             self.rand_params[param] = np.random.normal(self.params[param], sigma * 1e9)
 
 
 # Convert gap funcs from meters to nanometers
-def convert_func_to_nm(func):
-    def converted_func(value):
-        return func(value) * 1e9
+def convert_func_to_nm(func: Callable[[float], float]) -> Callable[[float], float]:
+    def converted_func(input: float) -> float:
+        return func(input) * 1e9
 
     return converted_func
 
 
 class GapFuncSymmetric(SipannWrapper):
-    """Symmetric directional coupler, meaning both
-    waveguides are the same shape.
+    """Symmetric directional coupler, meaning both waveguides are the same
+    shape.
 
     A gap function must describe the shape of the two
     waveguides, where the vertical distance between the
@@ -133,38 +144,51 @@ class GapFuncSymmetric(SipannWrapper):
 
     Parameters
     ----------
-    `width : float or ndarray`
+    `width`
     Width of waveguides in meters (Valid from 400e-9 to
     600e-9)
 
-    `thickness : float or ndarray`
+    `thickness`
     Thickness of waveguides in meters (Valid from 180e-9 to
     240e-9)
 
-    `gap : function`
+    `gap`
     Gap function along the waveguide, returns meters (Must
     always be greater than 100e-9)
 
-    `dgap : function`
+    `dgap`
     Derivative of the gap function
 
-    `zmin : float`
+    `zmin`
     Real number at which to begin integration of gap
     function
 
-    `zmax : float`
+    `zmax`
     Real number at which to end integration of gap function
 
-    `sw_angle : float or ndarray, optional`
+    `sw_angle, optional`
     Sidewall angle of waveguide from horizontal in degrees
     (Valid from 80 to 90, defaults to 90)
 
-    `sigmas : dict, optional`
+    `sigmas, optional`
     Dictionary mapping parameters to sigma values for
     Monte-Carlo simulations, values should be in meters
     """
+
     pin_count = 4
-    def __init__(self, width, thickness, gap, dgap, zmin, zmax, sw_angle=90, sigmas=dict()):
+
+    def __init__(
+        self,
+        width: Union[float, "np.array"],
+        thickness: Union[float, "np.array"],
+        gap: Callable[[float], float],
+        dgap: Callable[[float], float],
+        zmin: float,
+        zmax: float,
+        sw_angle: Union[float, "np.array"] = 90,
+        sigmas: Dict[str, float] = dict(),
+    ) -> None:
+
         super().__init__(
             scee.GapFuncSymmetric(
                 width * 1e9,
@@ -173,15 +197,15 @@ class GapFuncSymmetric(SipannWrapper):
                 convert_func_to_nm(dgap),
                 zmin,
                 zmax,
-                sw_angle
+                sw_angle,
             ),
-            sigmas
+            sigmas,
         )
 
 
 class GapFuncAntiSymmetric(SipannWrapper):
-    """Antisymmetric directional coupler, meaning both
-    waveguides are differently shaped.
+    """Antisymmetric directional coupler, meaning both waveguides are
+    differently shaped.
 
     A gap function describing the vertical distance between
     the two waveguides at any horizontal point, and arc
@@ -196,47 +220,63 @@ class GapFuncAntiSymmetric(SipannWrapper):
 
     Parameters
     ----------
-    `width : float or ndarray`
+    `width`
     Width of the waveguide in meters (Valid from 400e-9 to
     600e-9)
-    
-    `thickness : float or ndarray`
+
+    `thickness`
     Thickness of waveguide in meters (Valid for 180e-9 to
     240e-9)
 
-    `gap : function`
+    `gap`
     Gap function along the waveguide, returns meters (must
     always be greater than 100e-9)
 
-    `zmin : float`
+    `zmin`
     Real number at which to begin integration of gap
     function
 
-    `zmax : float`
+    `zmax`
     Real number at which to end integration of gap function
 
-    `arc1 : float`
+    `arc1`
     Arc length from port 1 to minimum coupling point
 
-    `arc2 : float`
+    `arc2`
     Arc length from port 2 to minimum coupling point
 
-    `arc3 : float`
+    `arc3`
     Arc length from port 3 to minimum coupling point
 
-    `arc4 : float`
+    `arc4`
     Arc length from port 4 to minimum coupling point
 
-    `sw_angle : float or ndarray, optional`
+    `sw_angle, optional`
     Sidewall angle of waveguide from horizontal in degrees
     (Valid from 80 to 90, defaults to 90)
 
-    `sigmas : dict, optional`
+    `sigmas, optional`
     Dictionary mapping parameters to sigma values for
     Monte-Carlo simulations, values should be in meters
     """
+
     pin_count = 4
-    def __init__(self, width, thickness, gap, zmin, zmax, arc1, arc2, arc3, arc4, sw_angle=90, sigmas=dict()):
+
+    def __init__(
+        self,
+        width: Union[float, "np.array"],
+        thickness: Union[float, "np.array"],
+        gap: Callable[[float], float],
+        zmin: float,
+        zmax: float,
+        arc1: float,
+        arc2: float,
+        arc3: float,
+        arc4: float,
+        sw_angle: Union[float, "np.array"] = 90,
+        sigmas: dict = dict(),
+    ) -> None:
+
         super().__init__(
             scee.GapFuncAntiSymmetric(
                 width * 1e9,
@@ -248,9 +288,9 @@ class GapFuncAntiSymmetric(SipannWrapper):
                 arc2 * 1e9,
                 arc3 * 1e9,
                 arc4 * 1e9,
-                sw_angle
+                sw_angle,
             ),
-            sigmas
+            sigmas,
         )
 
 
@@ -268,47 +308,53 @@ class HalfRing(SipannWrapper):
 
     Parameters
     ----------
-    `width : float or ndarray`
+    `width`
     Width of the waveguide in meters (Valid from 400e-9 to
     600e-9)
-    
-    `thickness : float or ndarray`
+
+    `thickness`
     Thickness of waveguide in meters (Valid for 180e-9 to
     240e-9)
-    
-    `radius : float or ndarray`
+
+    `radius`
     Distance from center of ring to middle of waveguide, in
     meters
 
-    `gap : float or ndarray`
+    `gap`
     Minimum distance from ring waveguide edge to straight
     waveguide edge, in meters (must be greater than 100e-9)
 
-    `sw_angle : float or ndarray, optional`
+    `sw_angle, optional`
     Sidewall angle of waveguide from horizontal in degrees
     (Valid from 80 to 90, defaults to 90)
 
-    `sigmas : dict, optional`
+    `sigmas, optional`
     Dictionary mapping parameters to sigma values for
     Monte-Carlo simulations, values should be in meters
     """
+
     pin_count = 4
-    def __init__(self, width, thickness, radius, gap, sw_angle=90, sigmas=dict()):
+
+    def __init__(
+        self,
+        width: Union[float, "np.array"],
+        thickness: Union[float, "np.array"],
+        radius: Union[float, "np.array"],
+        gap: Union[float, "np.array"],
+        sw_angle: Union[float, "np.array"] = 90,
+        sigmas: Dict[str, float] = dict(),
+    ) -> None:
+
         super().__init__(
             scee.HalfRing(
-                width * 1e9,
-                thickness * 1e9,
-                radius * 1e9,
-                gap * 1e9,
-                sw_angle
+                width * 1e9, thickness * 1e9, radius * 1e9, gap * 1e9, sw_angle
             ),
-            sigmas
+            sigmas,
         )
 
 
 class HalfRacetrack(SipannWrapper):
-    """Half of a ring resonator, similar to the HalfRing
-    class.
+    """Half of a ring resonator, similar to the HalfRing class.
 
     Uses a radius, gap and length to describe the shape of
     the device.
@@ -322,35 +368,47 @@ class HalfRacetrack(SipannWrapper):
 
     Parameters
     ----------
-    `width : float or ndarray`
+    `width`
     Width of the waveguide in meters (Valid from 400e-9 to
     600e-9)
-    
-    `thickness : float or ndarray`
+
+    `thickness`
     Thickness of waveguide in meters (Valid for 180e-9 to
     240e-9)
 
-    `radius : float or ndarray`
+    `radius`
     Distance from center of ring to middle of waveguide, in
     meters
 
-    `gap : float or ndarray`
+    `gap`
     Minimum distance from ring waveguide edge to straight
     waveguide edge, in meters (must be greater than 100e-9)
 
-    `length : float or ndarray`
+    `length`
     Length of straight portion of ring waveguide, in meters
 
-    `sw_angle : float or ndarray, optional`
+    `sw_angle, optional`
     Sidewall angle of waveguide from horizontal in degrees
     (Valid from 80 to 90, defaults to 90)
 
-    `sigmas : dict, optional`
+    `sigmas, optional`
     Dictionary mapping parameters to sigma values for
     Monte-Carlo simulations, values should be in meters
     """
+
     pin_count = 4
-    def __init__(self, width, thickness, radius, gap, length, sw_angle=90, sigmas=dict()):
+
+    def __init__(
+        self,
+        width: Union[float, "np.array"],
+        thickness: Union[float, "np.array"],
+        radius: Union[float, "np.array"],
+        gap: Union[float, "np.array"],
+        length: Union[float, "np.array"],
+        sw_angle: Union[float, "np.array"] = 90,
+        sigmas: Dict[str, float] = dict(),
+    ) -> None:
+
         super().__init__(
             scee.HalfRacetrack(
                 width * 1e9,
@@ -358,15 +416,14 @@ class HalfRacetrack(SipannWrapper):
                 radius * 1e9,
                 gap * 1e9,
                 length * 1e9,
-                sw_angle
+                sw_angle,
             ),
-            sigmas
+            sigmas,
         )
 
 
 class StraightCoupler(SipannWrapper):
-    """Straight directional coupler, both waveguides run
-    parallel.
+    """Straight directional coupler, both waveguides run parallel.
 
     Described by a gap and a length.
 
@@ -377,46 +434,53 @@ class StraightCoupler(SipannWrapper):
 
     Parameters
     --------
-    `width : float or ndarray`
+    `width`
     Width of the waveguide in meters (Valid from 400e-9 to
     600e-9)
-    
-    `thickness : float or ndarray`
+
+    `thickness`
     Thickness of waveguide in meters (Valid for 180e-9 to
     240e-9)
-    
-    `gap : float or ndarray`
+
+    `gap`
     Distance between the two waveguide edges, in meters
     (must be greater than 100e-9)
 
-    `length : float or ndarray`
+    `length`
     Length of both waveguides in meters
 
-    `sw_angle : float or ndarray, optional`
+    `sw_angle, optional`
     Sidewall angle of waveguide from horizontal in degrees
     (Valid from 80 to 90, defaults to 90)
 
-    `sigmas : dict, optional`
+    `sigmas, optional`
     Dictionary mapping parameters to sigma values for
     Monte-Carlo simulations, values should be in meters
     """
+
     pin_count = 4
-    def __init__(self, width, thickness, gap, length, sw_angle=90, sigmas=dict()):
+
+    def __init__(
+        self,
+        width: Union[float, "np.array"],
+        thickness: Union[float, "np.array"],
+        gap: Union[float, "np.array"],
+        length: Union[float, "np.array"],
+        sw_angle: Union[float, "np.array"] = 90,
+        sigmas: Dict[str, float] = dict(),
+    ) -> None:
+
         super().__init__(
             scee.StraightCoupler(
-                width * 1e9,
-                thickness * 1e9,
-                gap * 1e9,
-                length * 1e9,
-                sw_angle
+                width * 1e9, thickness * 1e9, gap * 1e9, length * 1e9, sw_angle
             ),
-            sigmas
+            sigmas,
         )
 
-    
+
 class Standard(SipannWrapper):
     """Standard-shaped directional coupler.
-    
+
     Described by a gap, length, horizontal and vertical
     distance.
 
@@ -429,58 +493,70 @@ class Standard(SipannWrapper):
 
     Parameters
     ----------
-    `width : float or ndarray`
+    `width`
     Width of the waveguide in meters (Valid from 400e-9 to
     600e-9)
-    
-    `thickness : float or ndarray`
+
+    `thickness`
     Thickness of waveguide in meters (Valid for 180e-9 to
     240e-9)
 
-    `gap : float or ndarray`
+    `gap`
     Distance between the two waveguide edges, in meters
     (must be greater than 100e-9)
-    
-    `length : float or ndarray`
+
+    `length`
     Length of the straight portion of both waveguides, in
     meters
-    
-    `horizontal : float or ndarray`
+
+    `horizontal`
     Horizontal distance between end of coupler and straight
     segment, in meters
-    
-    `vertical : float or ndarray`
+
+    `vertical`
     Vertical distance between end of coupler and straight
     segment, in meters
 
-    `sw_angle : float or ndarray, optional`
+    `sw_angle, optional`
     Sidewall angle of waveguide from horizontal in degrees
     (Valid from 80 to 90, defaults to 90)
 
-    `sigmas : dict, optional`
+    `sigmas, optional`
     Dictionary mapping parameters to sigma values for
     Monte-Carlo simulations, values should be in meters
     """
+
     pin_count = 4
-    def __init__(self, width, thickness, gap, length, H, V, sw_angle=90, sigmas=dict()):
+
+    def __init__(
+        self,
+        width: Union[float, "np.array"],
+        thickness: Union[float, "np.array"],
+        gap: Union[float, "np.array"],
+        length: Union[float, "np.array"],
+        horizontal: Union[float, "np.array"],
+        vertical: Union[float, "np.array"],
+        sw_angle: Union[float, "np.array"] = 90,
+        sigmas: Dict[str, float] = dict(),
+    ) -> None:
+
         super().__init__(
             scee.Standard(
                 width * 1e9,
                 thickness * 1e9,
                 gap * 1e9,
-                length * 1e9, 
-                H * 1e9,
-                V * 1e9,
-                sw_angle
+                length * 1e9,
+                horizontal * 1e9,
+                vertical * 1e9,
+                sw_angle,
             ),
-            sigmas
+            sigmas,
         )
 
 
 class DoubleHalfRing(SipannWrapper):
-    """Two equally sized half-rings coupling along their
-    edges.
-    
+    """Two equally sized half-rings coupling along their edges.
+
     Described by a radius and a gap between the two rings.
 
     Ports are numbered as:
@@ -494,48 +570,55 @@ class DoubleHalfRing(SipannWrapper):
 
     Parameters
     ----------
-    `width : float or ndarray`
+    `width`
     Width of the waveguide in meters (Valid from 400e-9 to
     600e-9)
-    
-    `thickness : float or ndarray`
+
+    `thickness`
     Thickness of waveguide in meters (Valid for 180e-9 to
     240e-9)
-    
-    `radius : float or ndarray`
+
+    `radius`
     Distance from center of ring to middle of waveguide, in
     meters
-    
-    `gap : float or ndarray`
+
+    `gap`
     Minimum distance from the edges of the waveguides of the
     two rings, in meters (must be greater than 100e-9)
 
-    `sw_angle : float or ndarray, optional`
+    `sw_angle, optional`
     Sidewall angle of waveguide from horizontal in degrees
     (Valid from 80 to 90, defaults to 90)
 
-    `sigmas : dict, optional`
+    `sigmas, optional`
     Dictionary mapping parameters to sigma values for
     Monte-Carlo simulations, values should be in meters
     """
+
     pin_count = 4
-    def __init__(self, width, thickness, radius, gap, sw_angle=90, sigmas=dict()):
+
+    def __init__(
+        self,
+        width: Union[float, "np.array"],
+        thickness: Union[float, "np.array"],
+        radius: Union[float, "np.array"],
+        gap: Union[float, "np.array"],
+        sw_angle: Union[float, "np.array"] = 90,
+        sigmas: Dict[str, float] = dict(),
+    ) -> None:
+
         super().__init__(
             scee.DoubleHalfRing(
-                width * 1e9,
-                thickness * 1e9,
-                radius * 1e9,
-                gap * 1e9,
-                sw_angle
+                width * 1e9, thickness * 1e9, radius * 1e9, gap * 1e9, sw_angle
             ),
-            sigmas
+            sigmas,
         )
 
 
 class AngledHalfRing(SipannWrapper):
-    """A halfring resonator, except what was the straight
-    waveguide is now curved.
-    
+    """A halfring resonator, except what was the straight waveguide is now
+    curved.
+
     Described by a radius, gap, and angle (theta) that the
     "straight" waveguide is curved by.
 
@@ -550,52 +633,59 @@ class AngledHalfRing(SipannWrapper):
 
     Parameters
     ----------
-    `width : float or ndarray`
+    `width`
     Width of the waveguide in meters (Valid from 400e-9 to
     600e-9)
-    
-    `thickness : float or ndarray`
+
+    `thickness`
     Thickness of waveguide in meters (Valid for 180e-9 to
     240e-9)
-    
-    `radius : float or ndarray`
+
+    `radius`
     Distance from center of ring to middle of waveguide, in
     meters
 
-    `gap : float or ndarray`
+    `gap`
     Minimum distance from ring waveguide edge to "straight"
     waveguide edge, in meters (must be greater than 100e-9)
-    
-    `theta : float or ndarray`
+
+    `theta`
     Angle of the curve of the "straight" waveguide, in
     radians
 
-    `sw_angle : float or ndarray, optional`
+    `sw_angle, optional`
     Sidewall angle of waveguide from horizontal in degrees
     (Valid from 80 to 90, defaults to 90)
 
-    `sigmas : dict, optional`
+    `sigmas, optional`
     Dictionary mapping parameters to sigma values for
     Monte-Carlo simulations, values should be in meters
     """
+
     pin_count = 4
-    def __init__(self, width, thickness, radius, gap, theta, sw_angle=90, sigmas=dict()):
+
+    def __init__(
+        self,
+        width: Union[float, "np.array"],
+        thickness: Union[float, "np.array"],
+        radius: Union[float, "np.array"],
+        gap: Union[float, "np.array"],
+        theta: Union[float, "np.array"],
+        sw_angle: Union[float, "np.array"] = 90,
+        sigmas: Dict[str, float] = dict(),
+    ) -> None:
+
         super().__init__(
             scee.AngledHalfRing(
-                width * 1e9,
-                thickness * 1e9,
-                radius * 1e9,
-                gap * 1e9,
-                theta,
-                sw_angle
+                width * 1e9, thickness * 1e9, radius * 1e9, gap * 1e9, theta, sw_angle
             ),
-            sigmas
+            sigmas,
         )
 
 
 class Waveguide(SipannWrapper):
-    """Lossless model for a straight waveguide. Main use
-    case is for playing nice with other models in SCEE.
+    """Lossless model for a straight waveguide. Main use case is for playing
+    nice with other models in SCEE.
 
     Ports are numbered as:
 
@@ -603,41 +693,45 @@ class Waveguide(SipannWrapper):
 
     Parameters
     ----------
-    `width : float or ndarray`
+    `width`
     Width of the waveguide in meters (Valid from 400e-9 to
     600e-9)
-    
-    `thickness : float or ndarray`
+
+    `thickness`
     Thickness of waveguide in meters (Valid for 180e-9 to
     240e-9)
-    
-    `length : float or ndarray`
+
+    `length`
     Length of waveguide in meters
 
-    `sw_angle : float or ndarray, optional`
+    `sw_angle, optional`
     Sidewall angle of waveguide from horizontal in degrees
     (Valid from 80 to 90, defaults to 90)
 
-    `sigmas : dict, optional`
+    `sigmas, optional`
     Dictionary mapping parameters to sigma values for
     Monte-Carlo simulations, values should be in meters
     """
+
     pin_count = 2
-    def __init__(self, width, thickness, length, sw_angle=90, sigmas=dict()):
+
+    def __init__(
+        self,
+        width: Union[float, "np.array"],
+        thickness: Union[float, "np.array"],
+        length: Union[float, "np.array"],
+        sw_angle: Union[float, "np.array"] = 90,
+        sigmas: Dict[str, float] = dict(),
+    ) -> None:
+
         super().__init__(
-            scee.Waveguide(
-                width * 1e9,
-                thickness * 1e9,
-                length * 1e9,
-                sw_angle
-            ),
-            sigmas
+            scee.Waveguide(width * 1e9, thickness * 1e9, length * 1e9, sw_angle), sigmas
         )
 
 
 class Racetrack(SipannWrapper):
-    """Racetrack waveguide arc, used to connect to a
-    racetrack directional coupler.
+    """Racetrack waveguide arc, used to connect to a racetrack directional
+    coupler.
 
     Ports labeled as:
 
@@ -649,35 +743,47 @@ class Racetrack(SipannWrapper):
 
     Parameters
     ----------
-    `width : float or ndarray`
+    `width`
     Width of the waveguide in meters (Valid from 400e-9 to
     600e-9)
-    
-    `thickness : float or ndarray`
+
+    `thickness`
     Thickness of waveguide in meters (Valid for 180e-9 to
     240e-9)
 
-    `radius : float or ndarray`
+    `radius`
     Distance from center of ring to middle of waveguide, in
     meters
 
-    `gap : float or ndarray`
+    `gap`
     Minimum distance from ring waveguide edge to straight
     waveguide edge, in meters (must be greater than 100e-9)
 
-    `length : float or ndarray`
+    `length`
     Length of straight portion of ring waveguide, in meters
 
-    `sw_angle : float or ndarray, optional`
+    `sw_angle, optional`
     Sidewall angle of waveguide from horizontal in degrees
     (Valid from 80 to 90, defaults to 90)
 
-    `sigmas : dict, optional`
+    `sigmas, optional`
     Dictionary mapping parameters to sigma values for
     Monte-Carlo simulations, values should be in meters
     """
+
     pin_count = 2
-    def __init__(self, width, thickness, radius, gap, length, sw_angle=90, sigmas=dict()):
+
+    def __init__(
+        self,
+        width: Union[float, "np.array"],
+        thickness: Union[float, "np.array"],
+        radius: Union[float, "np.array"],
+        gap: Union[float, "np.array"],
+        length: Union[float, "np.array"],
+        sw_angle: Union[float, "np.array"] = 90,
+        sigmas: Dict[str, float] = dict(),
+    ) -> None:
+
         super().__init__(
             comp.racetrack_sb_rr(
                 width * 1e9,
@@ -685,7 +791,7 @@ class Racetrack(SipannWrapper):
                 radius * 1e9,
                 gap * 1e9,
                 length * 1e9,
-                sw_angle
+                sw_angle,
             ),
-            sigmas
+            sigmas,
         )
