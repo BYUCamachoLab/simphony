@@ -7,12 +7,9 @@
 
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-import numpy as np
 
-from simphony import Model
 from simphony.libraries import siepic, sipann
 from simphony.simulators import SweepSimulator
-from simphony.tools import freq2wl
 
 
 def ring_factory(radius):
