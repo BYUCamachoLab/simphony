@@ -2,15 +2,13 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-from typing import TYPE_CHECKING, Callable, Dict, TypeVar, Union
+from typing import Callable, Dict, TypeVar, Union
 
+import numpy as np
 from SiPANN import comp, scee
 
 from simphony import Model
 from simphony.tools import freq2wl
-
-if TYPE_CHECKING:
-    import numpy as np
 
 
 class SipannWrapper(Model):
@@ -62,7 +60,7 @@ class SipannWrapper(Model):
         self.rand_params = dict()
         self.regenerate_monte_carlo_parameters()
 
-    def s_parameters(self, freqs: "np.array") -> "np.ndarray":
+    def s_parameters(self, freqs: np.array) -> np.ndarray:
 
         """Get the s-parameters of the SCEE Model.
 
@@ -82,7 +80,7 @@ class SipannWrapper(Model):
 
         return self.model.sparams(wl)
 
-    def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
+    def monte_carlo_s_parameters(self, freqs: np.array) -> np.ndarray:
 
         """Get the s-parameters of the SCEE Model, influenced by noise from
         sigma values.
@@ -179,13 +177,13 @@ class GapFuncSymmetric(SipannWrapper):
 
     def __init__(
         self,
-        width: Union[float, "np.array"],
-        thickness: Union[float, "np.array"],
+        width: Union[float, np.array],
+        thickness: Union[float, np.array],
         gap: Callable[[float], float],
         dgap: Callable[[float], float],
         zmin: float,
         zmax: float,
-        sw_angle: Union[float, "np.array"] = 90,
+        sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
     ) -> None:
 
@@ -264,8 +262,8 @@ class GapFuncAntiSymmetric(SipannWrapper):
 
     def __init__(
         self,
-        width: Union[float, "np.array"],
-        thickness: Union[float, "np.array"],
+        width: Union[float, np.array],
+        thickness: Union[float, np.array],
         gap: Callable[[float], float],
         zmin: float,
         zmax: float,
@@ -273,7 +271,7 @@ class GapFuncAntiSymmetric(SipannWrapper):
         arc2: float,
         arc3: float,
         arc4: float,
-        sw_angle: Union[float, "np.array"] = 90,
+        sw_angle: Union[float, np.array] = 90,
         sigmas: dict = dict(),
     ) -> None:
 
@@ -337,11 +335,11 @@ class HalfRing(SipannWrapper):
 
     def __init__(
         self,
-        width: Union[float, "np.array"],
-        thickness: Union[float, "np.array"],
-        radius: Union[float, "np.array"],
-        gap: Union[float, "np.array"],
-        sw_angle: Union[float, "np.array"] = 90,
+        width: Union[float, np.array],
+        thickness: Union[float, np.array],
+        radius: Union[float, np.array],
+        gap: Union[float, np.array],
+        sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
     ) -> None:
 
@@ -400,12 +398,12 @@ class HalfRacetrack(SipannWrapper):
 
     def __init__(
         self,
-        width: Union[float, "np.array"],
-        thickness: Union[float, "np.array"],
-        radius: Union[float, "np.array"],
-        gap: Union[float, "np.array"],
-        length: Union[float, "np.array"],
-        sw_angle: Union[float, "np.array"] = 90,
+        width: Union[float, np.array],
+        thickness: Union[float, np.array],
+        radius: Union[float, np.array],
+        gap: Union[float, np.array],
+        length: Union[float, np.array],
+        sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
     ) -> None:
 
@@ -462,11 +460,11 @@ class StraightCoupler(SipannWrapper):
 
     def __init__(
         self,
-        width: Union[float, "np.array"],
-        thickness: Union[float, "np.array"],
-        gap: Union[float, "np.array"],
-        length: Union[float, "np.array"],
-        sw_angle: Union[float, "np.array"] = 90,
+        width: Union[float, np.array],
+        thickness: Union[float, np.array],
+        gap: Union[float, np.array],
+        length: Union[float, np.array],
+        sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
     ) -> None:
 
@@ -530,13 +528,13 @@ class Standard(SipannWrapper):
 
     def __init__(
         self,
-        width: Union[float, "np.array"],
-        thickness: Union[float, "np.array"],
-        gap: Union[float, "np.array"],
-        length: Union[float, "np.array"],
-        horizontal: Union[float, "np.array"],
-        vertical: Union[float, "np.array"],
-        sw_angle: Union[float, "np.array"] = 90,
+        width: Union[float, np.array],
+        thickness: Union[float, np.array],
+        gap: Union[float, np.array],
+        length: Union[float, np.array],
+        horizontal: Union[float, np.array],
+        vertical: Union[float, np.array],
+        sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
     ) -> None:
 
@@ -599,11 +597,11 @@ class DoubleHalfRing(SipannWrapper):
 
     def __init__(
         self,
-        width: Union[float, "np.array"],
-        thickness: Union[float, "np.array"],
-        radius: Union[float, "np.array"],
-        gap: Union[float, "np.array"],
-        sw_angle: Union[float, "np.array"] = 90,
+        width: Union[float, np.array],
+        thickness: Union[float, np.array],
+        radius: Union[float, np.array],
+        gap: Union[float, np.array],
+        sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
     ) -> None:
 
@@ -666,12 +664,12 @@ class AngledHalfRing(SipannWrapper):
 
     def __init__(
         self,
-        width: Union[float, "np.array"],
-        thickness: Union[float, "np.array"],
-        radius: Union[float, "np.array"],
-        gap: Union[float, "np.array"],
-        theta: Union[float, "np.array"],
-        sw_angle: Union[float, "np.array"] = 90,
+        width: Union[float, np.array],
+        thickness: Union[float, np.array],
+        radius: Union[float, np.array],
+        gap: Union[float, np.array],
+        theta: Union[float, np.array],
+        sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
     ) -> None:
 
@@ -717,10 +715,10 @@ class Waveguide(SipannWrapper):
 
     def __init__(
         self,
-        width: Union[float, "np.array"],
-        thickness: Union[float, "np.array"],
-        length: Union[float, "np.array"],
-        sw_angle: Union[float, "np.array"] = 90,
+        width: Union[float, np.array],
+        thickness: Union[float, np.array],
+        length: Union[float, np.array],
+        sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
     ) -> None:
 
@@ -775,12 +773,12 @@ class Racetrack(SipannWrapper):
 
     def __init__(
         self,
-        width: Union[float, "np.array"],
-        thickness: Union[float, "np.array"],
-        radius: Union[float, "np.array"],
-        gap: Union[float, "np.array"],
-        length: Union[float, "np.array"],
-        sw_angle: Union[float, "np.array"] = 90,
+        width: Union[float, np.array],
+        thickness: Union[float, np.array],
+        radius: Union[float, np.array],
+        gap: Union[float, np.array],
+        length: Union[float, np.array],
+        sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
     ) -> None:
 
