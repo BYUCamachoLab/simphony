@@ -115,7 +115,7 @@ class Circuit(list):
 
         return output
 
-    def s_parameters(self, freqs: "np.ndarray") -> "np.ndarray":
+    def s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns the scattering parameters for the circuit."""
         return self.to_subcircuit(permanent=False).s_parameters(freqs)
 
