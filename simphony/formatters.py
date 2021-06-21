@@ -286,8 +286,6 @@ class CircuitSiEPICFormatter(CircuitFormatter):
             },
             "ebeam_y_1550": {"name": "YBranch", "parameters": {}},
         },
-        # TODO: setup SiPANN mapping
-        "simphony.libraries.sipann": {},
     }
 
     def __init__(self, pdk=None) -> None:
@@ -348,6 +346,7 @@ class CircuitSiEPICFormatter(CircuitFormatter):
         # setup a SweepSimulator if one is active
         for analysis in data["analyses"]:
             if analysis["definition"]["input_parameter"] == "start_and_stop":
+                _, input = analysis["params"]["input"][0].split(",")
                 _, output = analysis["params"]["output"].split(",")
                 start = analysis["params"]["start"]
                 stop = analysis["params"]["stop"]
@@ -360,7 +359,7 @@ class CircuitSiEPICFormatter(CircuitFormatter):
 
                 simulator = SweepSimulator(start, stop, points)
                 simulator.mode = mode
-                simulator.multiconnect(None, subcircuit[output])
+                simulator.multiconnect(subcircuit[output], subcircuit[input])
 
         # no reason to include the subcircuit component for now
         return subcircuit._wrapped_circuit

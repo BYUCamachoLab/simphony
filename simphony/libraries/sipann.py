@@ -6,6 +6,7 @@ from typing import Callable, Dict, TypeVar, Union
 
 import numpy as np
 from SiPANN import comp, scee
+from SiPANN.scee_opt import premade_coupler
 
 from simphony import Model
 from simphony.tools import freq2wl
@@ -42,9 +43,8 @@ class SipannWrapper(Model):
         205337300000000.0,
     )
 
-    def __init__(self, model: TypeVar("M"), sigmas: Dict[str, float]) -> None:
-
-        super().__init__()
+    def __init__(self, model: TypeVar("M"), sigmas: Dict[str, float], **kwargs) -> None:
+        super().__init__(**kwargs)
 
         self.model = model
         self.sigmas = sigmas
@@ -61,7 +61,6 @@ class SipannWrapper(Model):
         self.regenerate_monte_carlo_parameters()
 
     def s_parameters(self, freqs: np.array) -> np.ndarray:
-
         """Get the s-parameters of the SCEE Model.
 
         Parameters
@@ -75,13 +74,11 @@ class SipannWrapper(Model):
         `s`
         The s-parameter matrix
         """
-
         wl = freq2wl(freqs) * 1e9
 
         return self.model.sparams(wl)
 
     def monte_carlo_s_parameters(self, freqs: np.array) -> np.ndarray:
-
         """Get the s-parameters of the SCEE Model, influenced by noise from
         sigma values.
 
@@ -96,7 +93,6 @@ class SipannWrapper(Model):
         `s`
         The s-parameter matrix
         """
-
         wl = freq2wl(freqs) * 1e9
 
         # Change to noise params for monte carlo, then change back
@@ -107,10 +103,8 @@ class SipannWrapper(Model):
         return sparams
 
     def regenerate_monte_carlo_parameters(self) -> None:
-
         """For each sigma value given to the wrapper, will apply noise the
         matching parameter."""
-
         for param, sigma in self.sigmas.items():
             self.rand_params[param] = np.random.normal(self.params[param], sigma * 1e9)
 
@@ -185,8 +179,8 @@ class GapFuncSymmetric(SipannWrapper):
         zmax: float,
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
+        **kwargs
     ) -> None:
-
         super().__init__(
             scee.GapFuncSymmetric(
                 width * 1e9,
@@ -198,6 +192,7 @@ class GapFuncSymmetric(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
+            **kwargs
         )
 
 
@@ -273,8 +268,8 @@ class GapFuncAntiSymmetric(SipannWrapper):
         arc4: float,
         sw_angle: Union[float, np.array] = 90,
         sigmas: dict = dict(),
+        **kwargs
     ) -> None:
-
         super().__init__(
             scee.GapFuncAntiSymmetric(
                 width * 1e9,
@@ -289,6 +284,7 @@ class GapFuncAntiSymmetric(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
+            **kwargs
         )
 
 
@@ -341,13 +337,14 @@ class HalfRing(SipannWrapper):
         gap: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
+        **kwargs
     ) -> None:
-
         super().__init__(
             scee.HalfRing(
                 width * 1e9, thickness * 1e9, radius * 1e9, gap * 1e9, sw_angle
             ),
             sigmas,
+            **kwargs
         )
 
 
@@ -405,8 +402,8 @@ class HalfRacetrack(SipannWrapper):
         length: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
+        **kwargs
     ) -> None:
-
         super().__init__(
             scee.HalfRacetrack(
                 width * 1e9,
@@ -417,6 +414,7 @@ class HalfRacetrack(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
+            **kwargs
         )
 
 
@@ -466,13 +464,14 @@ class StraightCoupler(SipannWrapper):
         length: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
+        **kwargs
     ) -> None:
-
         super().__init__(
             scee.StraightCoupler(
                 width * 1e9, thickness * 1e9, gap * 1e9, length * 1e9, sw_angle
             ),
             sigmas,
+            **kwargs
         )
 
 
@@ -536,8 +535,8 @@ class Standard(SipannWrapper):
         vertical: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
+        **kwargs
     ) -> None:
-
         super().__init__(
             scee.Standard(
                 width * 1e9,
@@ -549,6 +548,7 @@ class Standard(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
+            **kwargs
         )
 
 
@@ -603,13 +603,14 @@ class DoubleHalfRing(SipannWrapper):
         gap: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
+        **kwargs
     ) -> None:
-
         super().__init__(
             scee.DoubleHalfRing(
                 width * 1e9, thickness * 1e9, radius * 1e9, gap * 1e9, sw_angle
             ),
             sigmas,
+            **kwargs
         )
 
 
@@ -671,13 +672,14 @@ class AngledHalfRing(SipannWrapper):
         theta: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
+        **kwargs
     ) -> None:
-
         super().__init__(
             scee.AngledHalfRing(
                 width * 1e9, thickness * 1e9, radius * 1e9, gap * 1e9, theta, sw_angle
             ),
             sigmas,
+            **kwargs
         )
 
 
@@ -720,10 +722,12 @@ class Waveguide(SipannWrapper):
         length: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
+        **kwargs
     ) -> None:
-
         super().__init__(
-            scee.Waveguide(width * 1e9, thickness * 1e9, length * 1e9, sw_angle), sigmas
+            scee.Waveguide(width * 1e9, thickness * 1e9, length * 1e9, sw_angle),
+            sigmas,
+            **kwargs
         )
 
 
@@ -780,8 +784,8 @@ class Racetrack(SipannWrapper):
         length: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
+        **kwargs
     ) -> None:
-
         super().__init__(
             comp.racetrack_sb_rr(
                 width * 1e9,
@@ -792,4 +796,33 @@ class Racetrack(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
+            **kwargs
         )
+
+
+class PremadeCoupler(SipannWrapper):
+    """Loads premade couplers.
+
+    Various splitting ratio couplers have been made and saved. This function reloads them. Note that each of their
+    lengths are different and are also returned for the users info. These have all been designed with waveguide
+    geometry 500nm x 220nm.
+
+    Ports are numbered as:
+
+        |       2---\      /---4       |
+        |            ------            |
+        |            ------            |
+        |       1---/      \---3       |
+    """
+
+    pin_count = 4
+
+    def __init__(self, split: int, sigmas: Dict[str, float] = dict(), **kwargs) -> None:
+        """Loads the premade coupler based on the given split value.
+
+        Parameters
+        ----------
+        split :
+            Percent of light coming out cross port. Valid numbers are 10, 20, 30, 40, 50, 100. 100 is a full crossover.
+        """
+        super().__init__(premade_coupler(split)[0], sigmas, **kwargs)

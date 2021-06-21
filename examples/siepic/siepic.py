@@ -3,36 +3,32 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-# flake8: noqa
-
 import os
 
 import matplotlib.pyplot as plt
-import numpy as np
 
-from simphony.netlist import Subcircuit
-from simphony.simulation import SweepSimulation, MonteCarloSweepSimulation
-from simphony.plugins.siepic import load
+from simphony.formatters import CircuitSiEPICFormatter
+from simphony.layout import Circuit
 
 # The siepic plugin only needs the path to the main spice file.
 filename = os.path.join(os.path.dirname(__file__), "MZI4", "MZI4_main.spi")
 
 # Loading the main file includes any other files linked to it internally.
-built = load(filename)
+circuit = Circuit.from_file(filename, formatter=CircuitSiEPICFormatter())
 
-# The file ``MZI4_main.spi`` declares one single-sweep simulation.
-analyses = built["analyses"]
-sim = analyses[0]
+# We can see the connections of the circuit by printing it.
+print(circuit)
 
 # We can see what the external pins of the circuit are.
-sim.circuit.pins
-# ['ebeam_gc_te1550_laser1', 'ebeam_gc_te1550_detector2']
+print([pin.name for pin in circuit.pins])
 
-# The simulation object is returned pre-simulated. We run the simulatio and
-# take the data from the ports, using the pin names we looked up earlier.
-res = sim.simulate()
-f, s = res.data("ebeam_gc_te1550_laser1", "ebeam_gc_te1550_detector2")
-plt.plot(f, s)
+# The SPI file defines an analyzer (SweepSimulator) that we can access to run
+# the simulation.
+simulator = circuit[-1]
+wl, t = simulator.simulate()
+plt.plot(wl, t)
 plt.title("MZI")
+plt.xlabel("Wavelength (m)")
+plt.ylabel("Transmission")
 plt.tight_layout()
 plt.show()
