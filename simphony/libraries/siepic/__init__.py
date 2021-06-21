@@ -266,10 +266,17 @@ class SiEPIC_PDK_Base(Model):
     # -------------------------------------------------------------------------
 
     def __init__(self, **kwargs):
-        super().__init__()
+        model_params = ("name", "freq_range", "pins")
+        model_args = {param: kwargs.get(param, None) for param in model_params}
+        model_args["name"] = (
+            model_args["name"] if model_args["name"] is not None else ""
+        )
+        super().__init__(**model_args)
 
         for key, value in kwargs.items():
-            setattr(self, key, value)
+            if key not in model_params:
+                setattr(self, key, value)
+
         self.enable_autoupdate()
         self.on_args_changed()
 
@@ -505,8 +512,8 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
         r"(?:\.sparam)"
     )
 
-    def __init__(self, thickness=220e-9, width=500e-9):
-        super().__init__(thickness=thickness, width=width)
+    def __init__(self, thickness=220e-9, width=500e-9, **kwargs):
+        super().__init__(**kwargs, thickness=thickness, width=width)
 
     def on_args_changed(self):
         self.suspend_autoupdate()
@@ -582,9 +589,16 @@ class HalfRing(SiEPIC_PDK_Base):
     )
 
     def __init__(
-        self, gap=30e-9, radius=10e-6, width=500e-9, thickness=220e-9, couple_length=0.0
+        self,
+        gap=30e-9,
+        radius=10e-6,
+        width=500e-9,
+        thickness=220e-9,
+        couple_length=0.0,
+        **kwargs
     ):
         super().__init__(
+            **kwargs,
             gap=gap,
             radius=radius,
             width=width,
@@ -650,8 +664,8 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
         r"(?:m\.sparam)"
     )
 
-    def __init__(self, gap=200e-9, Lc=10e-6):
-        super().__init__(gap=gap, Lc=Lc)
+    def __init__(self, gap=200e-9, Lc=10e-6, **kwargs):
+        super().__init__(**kwargs, gap=gap, Lc=Lc)
 
     def on_args_changed(self):
         self.suspend_autoupdate()
@@ -713,8 +727,8 @@ class Terminator(SiEPIC_PDK_Base):
         r"(?:_TE.sparam)"
     )
 
-    def __init__(self, w1=500e-9, w2=60e-9, L=10e-6):
-        super().__init__(w1=w1, w2=w2, L=L)
+    def __init__(self, w1=500e-9, w2=60e-9, L=10e-6, **kwargs):
+        super().__init__(**kwargs, w1=w1, w2=w2, L=L)
 
     def on_args_changed(self):
         self.suspend_autoupdate()
@@ -783,8 +797,10 @@ class GratingCoupler(SiEPIC_PDK_Base):
         r"(?:\.txt)"
     )
 
-    def __init__(self, thickness=220e-9, deltaw=0, polarization="TE"):
-        super().__init__(thickness=thickness, deltaw=deltaw, polarization=polarization)
+    def __init__(self, thickness=220e-9, deltaw=0, polarization="TE", **kwargs):
+        super().__init__(
+            **kwargs, thickness=thickness, deltaw=deltaw, polarization=polarization
+        )
 
     def on_args_changed(self):
         self.suspend_autoupdate()
@@ -889,6 +905,7 @@ class Waveguide(SiEPIC_PDK_Base):
         sigma_ne=0.05,
         sigma_ng=0.05,
         sigma_nd=0.0001,
+        **kwargs
     ):
         if polarization not in ["TE", "TM"]:
             raise ValueError(
@@ -902,6 +919,7 @@ class Waveguide(SiEPIC_PDK_Base):
             raise NotImplementedError
 
         super().__init__(
+            **kwargs,
             length=length,
             width=width,
             height=height,
@@ -1041,14 +1059,16 @@ class YBranch(SiEPIC_PDK_Base):
         r"(?:\.sparam)"
     )
 
-    def __init__(self, thickness=220e-9, width=500e-9, polarization="TE"):
+    def __init__(self, thickness=220e-9, width=500e-9, polarization="TE", **kwargs):
         if polarization not in ["TE", "TM"]:
             raise ValueError(
                 "Unknown polarization value '{}', must be one of 'TE' or 'TM'".format(
                     polarization
                 )
             )
-        super().__init__(thickness=thickness, width=width, polarization=polarization)
+        super().__init__(
+            **kwargs, thickness=thickness, width=width, polarization=polarization
+        )
 
     def on_args_changed(self):
         self.suspend_autoupdate()
