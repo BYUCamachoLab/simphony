@@ -6,6 +6,7 @@ from typing import Callable, Dict, TypeVar, Union
 
 import numpy as np
 from SiPANN import comp, scee
+from SiPANN.scee_opt import premade_coupler
 
 from simphony import Model
 from simphony.tools import freq2wl
@@ -797,3 +798,31 @@ class Racetrack(SipannWrapper):
             sigmas,
             **kwargs
         )
+
+
+class PremadeCoupler(SipannWrapper):
+    """Loads premade couplers.
+
+    Various splitting ratio couplers have been made and saved. This function reloads them. Note that each of their
+    lengths are different and are also returned for the users info. These have all been designed with waveguide
+    geometry 500nm x 220nm.
+
+    Ports are numbered as:
+
+        |       2---\      /---4       |
+        |            ------            |
+        |            ------            |
+        |       1---/      \---3       |
+    """
+
+    pin_count = 4
+
+    def __init__(self, split: int, sigmas: Dict[str, float] = dict(), **kwargs) -> None:
+        """Loads the premade coupler based on the given split value.
+
+        Parameters
+        ----------
+        split :
+            Percent of light coming out cross port. Valid numbers are 10, 20, 30, 40, 50, 100. 100 is a full crossover.
+        """
+        super().__init__(premade_coupler(split)[0], sigmas, **kwargs)
