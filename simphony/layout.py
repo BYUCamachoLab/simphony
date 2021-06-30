@@ -31,6 +31,21 @@ class Circuit(list):
     they are connected and disconnected from one another.
     """
 
+    def __hash__(self) -> int:
+        """Gets a hash for the circuit based on components and connections."""
+        from simphony.simulators import Simulator
+
+        components = 0
+        connections = 0
+        for component in self:
+            if not isinstance(component, Simulator):
+                components += hash(component)
+                for pin in component.pins:
+                    if pin._isconnected(include_simulators=False):
+                        connections += hash(hash(pin) + hash(pin._connection))
+
+        return hash(components + connections)
+
     def __init__(self, component: "Model") -> None:
         """Initializes a circuit.
 

@@ -294,3 +294,27 @@ class TestSimulators:
 
         wl, p = sweep_wl.simulate()
         assert np.allclose(wl2freq(wl), sweep_freqs)
+
+    def test_caching(self, mzi, sweep):
+        _, gc_input, _, _, _, gc_output = mzi
+        sweep.multiconnect(gc_input, gc_output)
+
+        # after simulating, the circuit should be cached
+        sweep.simulate()
+        assert sweep.circuit in sweep.__class__.scache
+
+        # connecting the simulator to different points should retain the cache
+        sweep.disconnect()
+        sweep.multiconnect(gc_output, gc_input)
+        assert sweep.circuit in sweep.__class__.scache
+
+        # if the circuit changes, it shouldn't be cached anymore
+        sweep.disconnect()
+        wg_med = siepic.Waveguide(length=100e-6)
+        wg_med.connect(gc_output)
+        sweep.multiconnect(gc_input, wg_med)
+        assert sweep.circuit not in sweep.__class__.scache
+
+        # of course, after simulation it should then be cached again
+        sweep.simulate()
+        assert sweep.circuit in sweep.__class__.scache
