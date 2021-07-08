@@ -7,11 +7,13 @@ fast simulations on them, all in Python.
 - Simphony is free and open-source
 - Runs on Windows, MacOS, and Linux
 - Uses a SPICE-like method for defining photonic circuits
+- Subnetwork growth algorithms, giving 20x speedup over
+other photonic modeling software
 - Includes libraries for circuit components (known as models)
 - Provides a simple framework for defining new models 
 
-**To install Simphony**, simply use the following in a Python 3
-environment: ::
+**To install Simphony**, simply use the following in a
+Python 3 environment: ::
 
   pip install simphony
 
