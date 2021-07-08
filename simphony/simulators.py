@@ -16,7 +16,6 @@ from typing import Optional, Tuple
 import numpy as np
 
 from simphony import Model
-from simphony.pins import PinList
 from simphony.tools import freq2wl, wl2freq
 
 
@@ -29,17 +28,14 @@ class Simulator(Model):
     """
 
     pins = ("to_input", "to_output")
+    scache = {}
 
     def _generate(
         self,
         freqs: np.array,
         s_parameters_method: str = "s_parameters",
-    ) -> Tuple[np.ndarray, PinList]:
-        """Generates the scattering parameters for the circuit.
-
-        This method gets the scattering parameters for the circuit and
-        returns them with the list of corresponding pins.
-        """
+    ) -> np.ndarray:
+        """Generates the scattering parameters for the circuit."""
         subcircuit = self.circuit.to_subcircuit(permanent=False)
 
         lower, upper = subcircuit.freq_range
@@ -48,9 +44,7 @@ class Simulator(Model):
                 f"Cannot simulate the range ({freqs[0], freqs[1]}) over the valid range ({lower}, {upper})"
             )
 
-        s_params = getattr(subcircuit, s_parameters_method)(freqs)
-
-        return (s_params, subcircuit.pins)
+        return getattr(subcircuit, s_parameters_method)(freqs)
 
     def simulate(
         self,
@@ -83,19 +77,35 @@ class Simulator(Model):
         ):
             raise RuntimeError("Simulator must be connected before simulating.")
 
+        # make sure we are working with an array of frequencies
         if freq:
             freqs = np.array(freq)
 
-        s_params, pins = self._generate(freqs, s_parameters_method)
-        power_ratios = np.abs(s_params.copy()) ** 2
+        # if the scattering parameters for the circuit are cached, use those
+        try:
+            if s_parameters_method == "monte_carlo_s_parameters":
+                raise RuntimeError("No caching for Monte Carlo simulations.")
 
+            s_params = self.__class__.scache[self.circuit]
+        except (KeyError, RuntimeError):
+            s_params = self._generate(freqs, s_parameters_method)
+            if s_parameters_method == "s_parameters":
+                self.__class__.scache[self.circuit] = s_params
+
+        # convert the scattering parameters to power ratios
+        power_ratios = np.abs(s_params.copy()) ** 2
         if dB:
             power_ratios = np.log10(power_ratios)
 
-        input = pins.index(self.pins["to_input"]._connection)
-        output = pins.index(self.pins["to_output"]._connection)
+        input = self.circuit.pins.index(self.pins["to_input"]._connection)
+        output = self.circuit.pins.index(self.pins["to_output"]._connection)
 
         return (freqs, power_ratios[:, input, output])
+
+    @classmethod
+    def clear_scache(cls) -> None:
+        """Clears the scattering parameters cache."""
+        cls.scache = {}
 
 
 class SweepSimulator(Simulator):

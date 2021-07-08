@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
     from simphony import Model
     from simphony.models import Subcircuit
+    from simphony.pins import Pin
 
 
 class Circuit(list):
@@ -29,6 +30,21 @@ class Circuit(list):
     The components themselves manage which circuits they belong to as
     they are connected and disconnected from one another.
     """
+
+    def __hash__(self) -> int:
+        """Gets a hash for the circuit based on components and connections."""
+        from simphony.simulators import Simulator
+
+        components = 0
+        connections = 0
+        for component in self:
+            if not isinstance(component, Simulator):
+                components += hash(component)
+                for pin in component.pins:
+                    if pin._isconnected(include_simulators=False):
+                        connections += hash(hash(pin) + hash(pin._connection))
+
+        return hash(components + connections)
 
     def __init__(self, component: "Model") -> None:
         """Initializes a circuit.
@@ -107,7 +123,7 @@ class Circuit(list):
                     output += f"[{components.index(pin._component)}][{pin.name}]"
 
                     # if the pin is connected, add the connection info
-                    if pin._isconnected(include_simulators=False):
+                    if pin._isconnected():
                         i = components.index(pin._connection._component)
                         output += f" - [{i}][{pin._connection.name}]"
 
@@ -115,7 +131,12 @@ class Circuit(list):
 
         return output
 
-    def s_parameters(self, freqs: "np.ndarray") -> "np.ndarray":
+    @property
+    def pins(self) -> List["Pin"]:
+        """Returns the pins for the circuit."""
+        return self.to_subcircuit(permanent=False).pins
+
+    def s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns the scattering parameters for the circuit."""
         return self.to_subcircuit(permanent=False).s_parameters(freqs)
 
