@@ -24,18 +24,18 @@ Models are basic, presimulated devices; you will connect a
 these together as components to build your circuit.
 
 A model has a number of ports for inputs and outputs, known
-as 'pins' in Simphony, and a frequency of ranges the model
-is valid over. Internally, it stores a set of scattering
-parameters (s-parameters) for given frequencies, which are
-used when simulating your circuit.
+as 'pins' in Simphony, and a range of light frequencies that 
+the model is valid over. Internally, it stores a set of 
+scattering parameters (s-parameters). S-parameters, if you
+aren't already familiar with them, are matrices used when
+simulating your circuit. We won't go into depth on them
+here.
 
-Here's a look at the Model parent class
-:py:class:`simphony.elements.Model`.
+Here's an overview of the Model parent class
+:py:class:`simphony.models.Model`.
 
-.. autoclass:: simphony.elements.Model
+.. autoclass:: simphony.models.Model
   :noindex:
-  :members:
-  :inherited-members:
 
 .. Note::
   A basic model has no ``__init__()`` function. It is only
@@ -52,9 +52,10 @@ Instantiating Models
 --------------------
 Before we can use a model in our circuit, we need to
 instantiate it. When we instantiate a model we call the
-resulting object a component--the difference being that
-components can have state outside of what is defined by the
-model it references.
+resulting object a component. The difference between models
+and components is that we can add any kind of state to a
+component after it has been instantiated, outside of what
+the model defines.
 
 Simphony includes a default library of models from the
 `SiEPIC PDK`_ (developed at the University of British
@@ -68,34 +69,35 @@ following: ::
 These are both :py:class:`Waveguide` components. The model
 has two pins and a valid frequency range. We pass in
 parameters when instantiating them, so that ``component1``
-will have differing s-parameters, and therefore differing
-simulation results, than ``component2``.
+will be a shorter :py:class:`Waveguide` than ``component2``.
+Thus the two will have differing s-parameters, meaning
+differing simulation results.
 
 .. Note::
   All measurements in Simphony should be in base SI units: 
-  this means instead of nanometer measurements, we will pass
-  in meter measurements when instantiating models.
+  instead of nanometer measurements, we will pass in meter
+  measurements when instantiating models (i.e. 500e-9 m 
+  instead of 500 nm).
 
 
 Connecting Components
 ---------------------
-The :py:class:`simphony.netlist.Pin` class is used as an
+The :py:class:`simphony.pins.Pin` class is used as an
 interface to connect two components in a circuit. As an end
 user, you should rarely have to interact with pins
 themselves; instead, there are component methods that will
-handle connecting pins for you.
+handle connecting pins for you. Let's give an example.
 
 Using our previous two components to demonstrate, the
-simplest way to connect pins is to do so implicitly, as
-follows: ::
+simplest way to connect pins is as follows: ::
 
   component1.connect(component2)
 
 This will connect the first unconnected pin on both
-components. However, if we wanted the first pin of
+components. However, if we want the first pin of
 ``component1`` to be an input, and instead connect its
-second pin to ``component2``, we would have to connect the
-pins explicitly: ::
+second pin to ``component2`` as an output, we have to
+connect the pins explicitly: ::
 
   component1['pin2'].connect(component2['pin1'])
 
@@ -113,7 +115,7 @@ rename the two pins of ``component1`` to 'input' and
 We do not need to explicitly specify 'pin1' for
 ``component2``, since that is the first unconnected pin.
 
-With this connection, we now have a very rudimentary circuit
+With this connection, we now have a rudimentary 'circuit'
 to run simulations on.
 
 
@@ -122,11 +124,11 @@ Simulation
 :py:class:`simphony.simulators` provides a collection of
 simulators that connect to an input and output pin on a 
 circuit, then perform a subnetwork growth algorithm (a
-series of matrix operations) in order to simulate resulting 
-outputs for inputs on the circuit. The simulation process
-modifies pins and components, so simulators actually copy
-the circuit they are passed in order to preserve the
-original circuit.
+series of matrix operations). The results show us what 
+output light comes out of the circuit for given inputs of
+light. The simulation process modifies pins and components,
+so simulators actually copy the circuit they are passed in
+order to preserve the original circuit.
 
 Let's run a simple sweep simulation on the circuit we have
 created: ::
@@ -136,10 +138,12 @@ created: ::
   simulation.multiconnect(component1['input'], component2['pin2'])
   result = simulation.simulate()
 
-Our sweep simulation passed input light on a range of
-wavelengths from 1500nm to 1600nm, and now ``result``
-contains what frequencies came out of our circuit. We can
-use these results however we like.
+We hooked up our simulator to our circuit, with the 'input'
+pin on ``component1`` being our input and 'pin2' on
+``component2`` being our output. Our sweep simulation passed
+input light on a range of wavelengths from 1500nm to 1600nm,
+and now ``result`` contains what frequencies came out of our
+circuit. We can use these results however we like.
 
 In order to view the results, we can use the ``matplotlib``
 package to graph our output, but that will be demonstrated
