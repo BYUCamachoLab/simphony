@@ -4,7 +4,7 @@
 
 """
 simphony.libraries.siepic
-=======================
+=========================
 
 This package contains parameterized models of PIC components from the SiEPIC
 Electron Beam Lithography Process Development Kit (PDK), which is licensed

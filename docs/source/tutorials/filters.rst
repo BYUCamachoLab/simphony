@@ -1,304 +1,277 @@
 .. _example-filters:
 
+
 Add-Drop Filters
 ================
+In this tutorial, we are designing a circuit called an
+Add-Drop Filter, with a single input and multiple outputs.
+We'll walk through the code in ``examples/filters.py`` in
+the Simphony repo, and we expect you to have already
+completed the previous tutorial: :doc:`mzi`.
 
-.. note::
-   This tutorial requires the installation of SiPANN. See 
-   :ref:`Companion Libraries <companion-libraries>` for more details.
 
-In this tutorial, we're going to create a simulation that would predict
-the frequency response of a single-input, multiple-output Add-Drop Filter.
+Deconstruction
+--------------
+An add-drop filter uses rings of different radii to select
+specific frequencies from an input waveguide and convey them
+to an output.
 
 .. figure:: images/filters.png
-   :alt: Add-Drop Filter
-   :align: center
+  :alt: Add-Drop Filter
+  :align: center
 
-   A sample add-drop filter. The values of "r1", "r2", and "r3" are all 
-   different from each other.
+  A sample Add-Drop Filter. The rings all have differing
+  radii.
 
-An add-drop filter uses rings of different radii to "select" out specific 
-frequencies from a main data line and convey them to an output.
+Light travels through the input waveguide, and some
+frequencies carry over to the ring waveguides, depending on
+the radius of the ring. These signals move along the ring
+until they transfer over to the output waveguides, giving us
+a reading on what frequencies of light traveled through the
+input. Light is designed to travel only in one direction
+after reaching the output waveguides, but we must account
+for backwards scattering light. We simply add a terminator
+at the other end of the output waveguides to diffuse any
+such light.
 
-.. note::
-   You should be familiar with the processes explained in the 
-   :ref:`MZI Tutorial <example-mzi>` before doing this 
-   tutorial, as it provides a more detailed overview of decomposing circuits 
-   into blocks, declaring the models required in a circuit, and making 
-   connections between elements.
-
-
-Code Walkthrough
-----------------
-
-This example walks through the file "filters.py". 
-
-::
-
-    #!/usr/bin/env python3
-    # Copyright © Simphony Project Contributors
-    # Licensed under the terms of the MIT License
-    # (see simphony/__init__.py for details)
-    #
-    # File: filters.py
-
-For this tutorial, we will be using matplotlib and numpy to manipulate and
-view the results of our simulation. 
-
-::
-
-    import matplotlib.pyplot as plt
-    import matplotlib.gridspec as gridspec
-    import numpy as np
-
-We'll need the following modules and objects from simphony:
-
-* **sipann**:
-  The SiPANN model library, which provides models trained using machine learning
-  techniques. Since they're not premodeled using a process such as FDTD, we're 
-  not limited to specific parameterized devices for which simulations have
-  already been performed.
-
-* **simphony.libraries.siepic**:
-  We use waveguide and terminator models from the ``siepic`` library.
-
-* **simphony.netlist.Subcircuit**:
-  We use the Subcircuit object to define our photonic circuits.
-
-* **simphony.simulation.SweepSimulation**:
-  The ``SweepSimulation`` takes our circuit and calculates the outputs
-  for a frequency sweep simulation.
-
-* **simphony.tools.freq2wl**:
-  A convenience function provided by Simphony for converting frequencies
-  to wavelengths.
-
-::
-
-    from SiPANN import scee
-    from SiPANN.scee_int import SimphonyWrapper
-    from simphony.libraries import siepic
-    from simphony.netlist import Subcircuit
-    from simphony.simulation import SweepSimulation
-    from simphony.tools import freq2wl
-
-The tutorial began with a block-diagram model of our final construction.
-Note the main input data line and terminators. We can declare the models we'll use
-for those circuit instances.
-
-::
-
-    # Have a main data line where frequency multiplexed data enters the circuit.
-    wg_data = siepic.ebeam_wg_integral_1550(100e-6)
-
-    # A terminator for dispersing unused light
-    term = siepic.ebeam_terminator_te1550()
-
-Our final product has a component that is duplicated three times with varying
-parameters. This kind of redundancy makes an excellent case for the use of the
-:ref:`factory method design pattern<factory-method-design-pattern>`.
+Notice how the Add-Drop Filter is composed of three similar
+rings, differing only by their radius:
 
 .. figure:: images/ring.png
-   :align: center
+  :align: center
 
-   A block-diagram model of a ring resonator alone. Note the port with a 
-   termination; light is never designed to travel in that direction, so any
-   potential back-scattered light is simply dispersed.
+  An isolated, single ring resonator.
 
-The following function generates a subcircuit of a ring resonator, as pictured above,
-with a radius given as a parameter. The subcircuit it returns can be used within
-another circuit, just like any regular, base model.
+This single ring resonator can be defined using models from
+both SiEPIC and SiPANN libraries in Simphony. Instead of
+defining each model for each ring resonator sequentially,
+we can use what we call the "factory" design pattern: we 
+will create a method that defines a ring resonator for us.
 
-::
 
-    def ring_factory(radius):
-        """
-        Creates a full ring (with terminator) from a half ring.
-
-        Ports of a half ring are ordered like so:
-        2           4
-        |         |
-         \       /
-          \     /
-        ---=====---
-        1           3
-
-        Resulting pins are ('in', 'out', 'pass').
-
-        Parameters
-        ----------
-        radius : float
-            The radius of the ring resonator, in nanometers.
-        """
-        # Have rings for selecting out frequencies from the data line.
-        # See SiPANN's model API for argument order and units.
-        half_ring = SimphonyWrapper(scee.HalfRing(500, 220, radius, 100))
-
-        circuit = Subcircuit()
-        circuit.add([
-            (half_ring, 'input'),
-            (half_ring, 'output'),
-            (term, 'terminator')
-        ])
-
-        circuit.elements['input'].pins = ('pass', 'midb', 'in', 'midt')
-        circuit.elements['output'].pins = ('out', 'midt', 'term', 'midb')
-        
-        circuit.connect_many([
-            ('input', 'midb', 'output', 'midb'),
-            ('input', 'midt', 'output', 'midt'),
-            ('terminator', 'n1', 'output', 'term')
-        ])
-
-        return circuit
-
-Before we construct the full add-drop filter, we can run a simulation on a 
-single ring to make sure our code is behaving the way we'd expect.
+Factory Design Pattern
+----------------------
+First, we need to import the libraries we need. The SiEPIC
+library, the sweep simulator, and matplotlib will be used,
+just as last tutorial. In addition, we need the SiPANN 
+library. This library of models is not included by default
+in Simphony, but it integrates well. You will need to 
+install it as shown in the `SiPANN docs`_.
 
 ::
 
-    # Behold, we can run a simulation on a single ring resonator.
-    cir1 = ring_factory(10000)
-    sim1 = SweepSimulation(cir1, 1500e-9, 1600e-9)
-    res1 = sim1.simulate()
+  import matplotlib.pyplot as plt
+  import matplotlib.gridspec as gridspec
 
-    f1, s = res1.data(res1.pinlist['in'], res1.pinlist['pass'])
-    plt.plot(f1, s)
-    plt.title("10-micron Ring Resonator")
-    plt.tight_layout()
-    plt.show()
+  from simphony.libraries import siepic, sipann
+  from simphony.simulators import SweepSimulator
+
+We now create the method that generates a ring resonator for
+us. We pass in the radius as a parameter, and we are
+returned a subcircuit, which can be used much the same way a
+component can.
+
+::
+
+  def ring_factory(radius):
+    """Creates a full ring (with terminator) from a half ring.
+
+    Resulting pins are ('pass', 'in', 'out').
+
+    Parameters
+    ----------
+    radius : float
+        The radius of the ring resonator, in meters.
+    """
+    # Have rings for selecting out frequencies from the data line.
+    # See SiPANN's model API for argument order and units.
+    halfring1 = sipann.HalfRing(500e-9, 220e-9, radius, 100e-9)
+    halfring2 = sipann.HalfRing(500e-9, 220e-9, radius, 100e-9)
+    terminator = siepic.Terminator()
+
+    halfring1.rename_pins("pass", "midb", "in", "midt")
+    halfring2.rename_pins("out", "midt", "term", "midb")
+
+    # the interface method will connect all of the pins with matching names
+    # between the two components together
+    halfring1.interface(halfring2)
+    halfring2["term"].connect(terminator)
+
+    # bundling the circuit as a Subcircuit allows us to interact with it
+    # as if it were a component
+    return halfring1.circuit.to_subcircuit()
+
+.. note::
+  In this method, we just demonstrated two new abilities of
+  Simphony that will be of interest to you. First is the
+  ``interface`` method of a component, another way of
+  connecting components together conveniently. Second is the
+  ``to_subcircuit`` method. From one of our components, we
+  can get its ``circuit``, which includes all components 
+  directly or indirectly connected to that first component.
+  We transform that circuit into a Simphony Subcircuit,
+  which behaves similarly to a single component.
+
+Before we construct the full Add-Drop Filter, we can run a
+simulation on a single ring to make sure everything is
+behaving as expected.
+
+::
+
+  ring1 = ring_factory(10e-6)
+
+  simulator = SweepSimulator(1500e-9, 1600e-9)
+  simulator.multiconnect(ring1["in"], ring1["pass"])
+
+  f, t = simulator.simulate(mode="freq")
+  plt.plot(f, t)
+  plt.title("10-micron Ring Resonator")
+  plt.tight_layout()
+  plt.show()
+
+  simulator.disconnect()
+
+When you run your python file up to this point, you should
+see a graph similar to this:
 
 .. figure:: images/10um_ring_res.png
-   :align: center
+  :align: center
 
-   The through-port frequency response of a 10 micron ring resonator.
+  The through-port frequency response of a 10 micron ring
+  resonator.
 
-Now we'll add several of these ring resonators to our circuit. They
-will be cascaded together to create our filter.
+Now that we've created and tested our ``ring_factory``
+method, we can use it to define the Add-Drop Filter.
 
-::
 
-    # Now, we'll create the circuit (using several ring resonator subcircuits)
-    # and add all individual instances.
-    circuit = Subcircuit('Add-Drop Filter')
-    e = circuit.add([
-        (wg_data, 'input'),
-        (ring_factory(10000), 'ring10'),
-        (wg_data, 'out1'),
-
-        (wg_data, 'connect1'),
-        (ring_factory(11000), 'ring11'),
-        (wg_data, 'out2'),
-
-        (wg_data, 'connect2'),
-        (ring_factory(12000), 'ring12'),
-        (wg_data, 'out3'),
-
-        (term, 'terminator')
-    ])
-
-We can rename pins, as convenient, either individually or simulateously.
-For ease of accessing outputs post-simulation, we'll rename some of the 
-ports. Renaming requires prior knowledge of how ports are laid out on the 
-device. For pin ordering on SiPANN models, see their `documentation`_.
-
-.. _documentation: https://sipann.readthedocs.io/
+Defining the Circuit
+--------------------
+Let's create the components we'll use in the circuit:
 
 ::
 
-    # You can set pin names individually (here I'm naming all the outputs that
-    # I'll want to access after the simulation has been run):
-    circuit.elements['input'].pins['n1'] = 'input'
-    circuit.elements['out1'].pins['n2'] = 'out1'
-    circuit.elements['out2'].pins['n2'] = 'out2'
-    circuit.elements['out3'].pins['n2'] = 'out3'
+  wg_input = siepic.Waveguide(100e-6)
+  wg_out1 = siepic.Waveguide(100e-6)
+  wg_connect1 = siepic.Waveguide(100e-6)
+  wg_out2 = siepic.Waveguide(100e-6)
+  wg_connect2 = siepic.Waveguide(100e-6)
+  wg_out3 = siepic.Waveguide(100e-6)
+  terminator = siepic.Terminator()
 
-Now we'll define all circuit connections:
+  ring1 = ring_factory(10e-6)
+  ring2 = ring_factory(11e-6)
+  ring3 = ring_factory(12e-6)
 
-::
-
-    circuit.connect_many([
-        ('input', 'n2', 'ring10', 'in'),
-        ('out1', 'n1', 'ring10', 'out'),
-        ('connect1', 'n1', 'ring10', 'pass'),
-
-        ('connect1', 'n2', 'ring11', 'in'),
-        ('out2', 'n1', 'ring11', 'out'),
-        ('connect2', 'n1', 'ring11', 'pass'),
-
-        ('connect2', 'n2', 'ring12', 'in'),
-        ('out3', 'n1', 'ring12', 'out'),
-        ('terminator', 'n1', 'ring12', 'pass'),
-    ])
-
-Finally, let's run a sweep simulation. (Notice the reduced frequency range, 
-since I'm interested in focusing in on only a few peaks, instead of a
-perhaps standard, full 1500nm-1600nm sweep.)
+And then connect each component as seen in the diagram:
 
 ::
 
-    # Run a simulation on the netlist.
-    simulation = SweepSimulation(circuit, 1524.5e-9, 1551.15e-9)
-    result = simulation.simulate()
+  ring1.multiconnect(wg_connect1, wg_input["pin2"], wg_out1)
+  ring2.multiconnect(wg_connect2, wg_connect1, wg_out2)
+  ring3.multiconnect(terminator, wg_connect2, wg_out3)
 
-The rest of this confusing "gridspec" code is to create a pretty plot that
-looks at the full sweep range and also a single peak that I'm particularly
-interested in. The main takeaway from this section is that getting the
-data out of a simulation object is as simple as calling 
-:py:func:`data <simphony.simulation.SweepSimulationResult.data>` and
-providing the names of the pins you're using as an input and output.
+Now we're ready to simulate.
+
+
+Simulation
+----------
+We'll run a sweep simulation, but we're reducing the
+frequency range to 1524.5-1551.15 nm, instead of a full 
+1500-1600 nm sweep as we have done previously. This will 
+show us a simpler graph of only a few peaks that the filter
+picks out. We'll be using more advanced matplotlib features 
+here, reference the `matplotlib docs`_ on these.
+
+Let's prepare the graph and the simulator to perform
+simulation:
 
 ::
 
-    fig = plt.figure(tight_layout=True)
-    gs = gridspec.GridSpec(1, 3)
+  fig = plt.figure(tight_layout=True)
+  gs = gridspec.GridSpec(1, 3)
+  ax = fig.add_subplot(gs[0, :2])
 
-    ax = fig.add_subplot(gs[0, :2])
-    f, s = result.data('input', 'out1')
-    ax.plot(freq2wl(f)*1e9, s, label='Output 1', lw='0.7')
-    f, s = result.data('input', 'out2')
-    ax.plot(freq2wl(f)*1e9, s, label='Output 2', lw='0.7')
-    f, s = result.data('input', 'out3')
-    ax.plot(freq2wl(f)*1e9, s, label='Output 3', lw='0.7')
+  simulator = SweepSimulator(1524.5e-9, 1551.15e-9)
+  simulator.connect(wg_input)
 
-    ax.set_ylabel("Fractional Optical Power")
-    ax.set_xlabel("Wavelength (nm)")
-    plt.legend(loc='upper right')
+Next we simulate each output, and draw a curve for each.
 
-    ax = fig.add_subplot(gs[0, 2])
-    f, s = result.data('input', 'out1')
-    ax.plot(freq2wl(f)*1e9, s, label='Output 1', lw='0.7')
-    f, s = result.data('input', 'out2')
-    ax.plot(freq2wl(f)*1e9, s, label='Output 2', lw='0.7')
-    f, s = result.data('input', 'out3')
-    ax.plot(freq2wl(f)*1e9, s, label='Output 3', lw='0.7')
+::
 
-    ax.set_xlim(1543,1545)
-    ax.set_ylabel("Fractional Optical Power")
-    ax.set_xlabel("Wavelength (nm)")
+  # get the results for output 1
+  simulator.multiconnect(None, wg_out1)
+  wl, t = simulator.simulate()
+  ax.plot(wl * 1e9, t, label="Output 1", lw="0.7")
 
-    fig.align_labels()
-    plt.show()
+  # get the results for output 2
+  simulator.multiconnect(None, wg_out2)
+  wl, t = simulator.simulate()
+  ax.plot(wl * 1e9, t, label="Output 2", lw="0.7")
+
+  # get the results for output 3
+  simulator.multiconnect(None, wg_out3)
+  wl, t = simulator.simulate()
+  ax.plot(wl * 1e9, t, label="Output 3", lw="0.7")
+
+Then we label our plot.
+
+::
+
+  ax.set_ylabel("Fractional Optical Power")
+  ax.set_xlabel("Wavelength (nm)")
+  plt.legend(loc="upper right")
+
+We could stop here and have a perfectly good plot, but you
+will notice that one of the peaks will be very small and
+will be hard to see clearly on this graph. To fix this,
+we'll add a subplot to our graph to magnify the frequency
+range of this peak, then simulate and draw each of our
+outputs on this subplot again.
+
+::
+
+  ax = fig.add_subplot(gs[0, 2])
+
+  # get the results for output 1
+  simulator.multiconnect(None, wg_out1)
+  wl, t = simulator.simulate()
+  ax.plot(wl * 1e9, t, label="Output 1", lw="0.7")
+
+  # get the results for output 2
+  simulator.multiconnect(None, wg_out2)
+  wl, t = simulator.simulate()
+  ax.plot(wl * 1e9, t, label="Output 2", lw="0.7")
+
+  # get the results for output 3
+  simulator.multiconnect(None, wg_out3)
+  wl, t = simulator.simulate()
+  ax.plot(wl * 1e9, t, label="Output 3", lw="0.7")
+
+  ax.set_xlim(1543, 1545)
+  ax.set_ylabel("Fractional Optical Power")
+  ax.set_xlabel("Wavelength (nm)")
+  fig.align_labels()
+
+Finally, we show our plot.
+
+::
+
+  plt.show()
+
+What you should see when you run your Add-Drop circuit is
+something like this:
 
 .. figure:: images/add_drop_response.png
    :align: center
 
    The response of our designed add-drop filter.
 
+And with that, this tutorial is concluded. For now, this is
+the last tutorial in the series for learning Simphony. We
+plan to write more for this series in future, but we hope
+that this has sufficiently demonstrated the capabilities of
+Simphony to you. If you wish, you may see the references
+section to dive into the API for Simphony.
 
-Full Code Listing
------------------
-
-.. literalinclude:: ../../../../examples/filters.py
-
-
-
-.. Example Rendered
-.. ================
-
-.. .. ifconfig:: python_version_major < '3'
-
-..     The example is rendered only when sphinx is run with python3 and above
-
-.. .. automodule:: doc.example
-..     :members:
+.. _SiPANN docs: https://sipann.readthedocs.io/en/latest/
+.. _matplotlib docs: https://matplotlib.org/

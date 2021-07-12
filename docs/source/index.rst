@@ -8,7 +8,7 @@ fast simulations on them, all in Python.
 - Runs on Windows, MacOS, and Linux
 - Uses a SPICE-like method for defining photonic circuits
 - Subnetwork growth algorithms, giving 20x speedup over
-other photonic modeling software
+  other photonic modeling software
 - Includes libraries for circuit components (known as models)
 - Provides a simple framework for defining new models 
 
@@ -38,28 +38,28 @@ accessible through the sidebar navigation.
   tutorials/intro
   tutorials/mzi
   tutorials/filters
-  tutorials/gm
 
 .. toctree::
   :hidden:
   :caption: Reference
 
   reference/api
-  reference/libraries/index
-  reference/simulators/index
+  reference/libraries
 
 Simphony is primarily developed and maintained by members of
 the `CamachoLab`_ at Brigham Young University. Feedback is
 welcome: if you find errors or have suggestions for the
 Simphony project, let us know by raising an issue on
 `Github`_. If you want to contribute, even better! See
-:doc:`dev/index` to learn how.
+:doc:`dev/contributing` to learn how.
 
 .. toctree::
   :hidden:
   :caption: Development
 
-  dev/index
+  dev/contributing
+  dev/developing
+  dev/documenting
 
 .. _Github: https://github.com/BYUCamachoLab/simphony
 .. _CamachoLab: https://camacholab.byu.edu
