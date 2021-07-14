@@ -49,3 +49,5 @@ are welcome, from social media to blog posts. And finally,
 thank you for your excitement about the project! We are glad
 you've found Simphony as a helpful tool, and for your
 eagerness to contribute to the project.
+
+.. _Github issues: https://github.com/BYUCamachoLab/simphony/issues
