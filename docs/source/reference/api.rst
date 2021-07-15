@@ -8,11 +8,6 @@ API
   :inherited-members:
   :show-inheritance:
 
-.. automodule:: simphony.connect
-  :members:
-  :inherited-members:
-  :show-inheritance:
-
 .. automodule:: simphony.formatters
   :members:
   :inherited-members:

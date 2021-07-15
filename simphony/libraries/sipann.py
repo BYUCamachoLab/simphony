@@ -2,6 +2,20 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
+"""
+simphony.libraries.sipann
+=========================
+This package contains wrappers for models defined in the
+SiPANN (Silicon Photonics with Artificial Neural Networks)
+project, another project by CamachoLab at BYU. It leverages
+machine learning to simulate photonic devices, giving
+greater speed and similar accuracy to a full FDTD
+simulation.
+
+The wrappers defined here integrate SiPANN models into
+Simphony for easier use.
+"""
+
 from typing import Callable, Dict, TypeVar, Union
 
 import numpy as np
