@@ -4,7 +4,7 @@
 
 """
 simphony.formatters
-==============
+===================
 
 This module contains two types of classes: ``ModelFormatters`` and
 ``CircuitFormatters``. These classes are used to serialize / unseralize models

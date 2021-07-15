@@ -4,7 +4,7 @@
 
 """
 simphony.models
-==============
+===============
 
 This module contains the ``Model`` and ``Subcircuit`` classes. The ``Model``
 class is the base class for all models. The ``Subcircuit`` class is where

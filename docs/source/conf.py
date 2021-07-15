@@ -81,7 +81,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "Simphony"
-copyright = "2019-2020, Simphony Project Contributors"
+copyright = "2019-2021, Simphony Project Contributors"
 author = "Sequoia Ploeg, et al."
 
 # The version info for the project you're documenting, acts as replacement for

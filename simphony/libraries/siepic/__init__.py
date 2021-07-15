@@ -4,7 +4,7 @@
 
 """
 simphony.libraries.siepic
-=======================
+=========================
 
 This package contains parameterized models of PIC components from the SiEPIC
 Electron Beam Lithography Process Development Kit (PDK), which is licensed
@@ -487,7 +487,7 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
     interferes lights from two adjacent inputs, efficiently splitting the
     interfered signal between the two ports on the opposing side.
 
-    .. image:: /user/libraries/images/ebeam_bdc_te1550.png
+    .. image:: /reference/images/ebeam_bdc_te1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -539,17 +539,13 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
 
 
 class HalfRing(SiEPIC_PDK_Base):
-    """A bidirectional coupler optimized for TE polarized light at 1550
+    """A half-ring resonator optimized for TE polarized light at 1550
     nanometers.
 
-    The bidirectional coupler has 4 ports, labeled as pictured. Its efficiently
-    splits light that is input from one port into the two outputs on the opposite
-    side (with a corresponding pi/2 phase shift). Additionally, it efficiently
-    interferes lights from two adjacent inputs, efficiently splitting the
-    interfered signal between the two ports on the opposing side.
+    The halfring has 4 ports, labeled as pictured.
 
-    .. image:: /user/libraries/images/ebeam_bdc_te1550.png
-        :alt: ebeam_bdc_te1550.png
+    .. image:: /reference/images/halfring.png
+        :alt: halfring.png
 
     Parameters
     ----------
@@ -639,7 +635,7 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
     interferes lights from two adjacent inputs, efficiently splitting the
     interfered signal between the two ports on the opposing side.
 
-    .. image:: /user/libraries/images/ebeam_bdc_te1550.png
+    .. image:: /reference/images/ebeam_bdc_te1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -698,7 +694,7 @@ class Terminator(SiEPIC_PDK_Base):
     where the light doesn't need to be measured but you don't want it reflecting
     back into the circuit, you can use a terminator to release it from the circuit.
 
-    .. image:: /user/libraries/images/ebeam_terminator_te1550.png
+    .. image:: /reference/images/ebeam_terminator_te1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -767,7 +763,7 @@ class GratingCoupler(SiEPIC_PDK_Base):
     above the chip into the circuit. For the TE mode, the angle is -25 degrees
     [needs citation].
 
-    .. image:: /user/libraries/images/ebeam_gc_te1550.png
+    .. image:: /reference/images/ebeam_gc_te1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -849,7 +845,7 @@ class Waveguide(SiEPIC_PDK_Base):
 
     A waveguide easily connects other optical components within a circuit.
 
-    .. image:: /user/libraries/images/ebeam_wg_integral_1550.png
+    .. image:: /reference/images/ebeam_wg_integral_1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -1027,7 +1023,7 @@ class YBranch(SiEPIC_PDK_Base):
     It can also be used as a combiner if used in the opposite direction,
     combining and interfering the light from two inputs into the one output.
 
-    .. image:: /user/libraries/images/ebeam_y_1550.png
+    .. image:: /reference/images/ebeam_y_1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
