@@ -26,14 +26,14 @@ jobs:
           python setup.py sdist bdist_wheel
       - name: Get version number
         id: get_version
-        run: echo ::set-env name=VERSION::$(python3 -c "import simphony; print(simphony.__version__)")
+        run: echo "VERSION=$(python3 -c "import simphony; print(simphony.__version__)")" >> $GITHUB_ENV
       - name: Load Release text
         run: |
           BODY=$(cat ./docs/changelog/${{ env.VERSION }}-changelog.md)
           BODY="${BODY//'%'/'%25'}"
           BODY="${BODY//$'\n'/'%0A'}"
           BODY="${BODY//$'\r'/'%0D'}"
-          echo "::set-env name=BODY::$BODY"
+          echo "BODY=$BODY" >> $GITHUB_ENV
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.1.0
         with:
