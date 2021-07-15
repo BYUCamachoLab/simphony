@@ -4,7 +4,7 @@
 
 """
 simphony.connect
-=================
+================
 
 Code for s-parameter matrix cascading uses the scikit-rf implementation. Per
 their software license, the copyright notice is reproduced below:

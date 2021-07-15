@@ -4,7 +4,7 @@
 
 """
 simphony.simulators
-==============
+===================
 
 This module contains the simulator components. Simulators must be connected to
 components before simulating. This can be done using the same connection methods

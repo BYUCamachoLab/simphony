@@ -4,7 +4,7 @@
 
 """
 simphony.pins
-==============
+=============
 
 This module contains the logic for managing pins and their connections. When
 connections are made, the pins handle letting the components know which in turn

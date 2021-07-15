@@ -4,7 +4,7 @@
 
 """
 simphony.layout
-==============
+===============
 
 This module contains the ``Circuit`` object. The ``Circuit`` object acts as
 a sorted set that contains components. As components connect/disconnect to each
