@@ -23,7 +23,6 @@ import numpy as np
 import pytest
 
 from simphony.libraries import siepic
-from simphony.models import Subcircuit
 from simphony.plugins import interconnect
 from simphony.tools import wl2freq
 
@@ -99,7 +98,7 @@ def test_load(file):
     interconnect.load(filename)
 
 
-#### Couldn't get this test to work, no easy way to get order of lines exactly the same
+# Couldn't get this test to work, no easy way to get order of lines exactly the same
 # @pytest.fixture(params=["awg_1x9", "awg_1x2x2x4"])
 # def cleaned_file(request):
 #     return request.param

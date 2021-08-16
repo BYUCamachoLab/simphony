@@ -26,8 +26,6 @@ by Lumerical Interconnect
 
 """
 
-import os
-
 import numpy as np
 
 from simphony.models import Model, Subcircuit
