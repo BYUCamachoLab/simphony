@@ -96,7 +96,7 @@ def export(model, filename, wl=None, freq=None, clear=True):
 
     # get sparameters and pins
     if isinstance(model, Subcircuit):
-        simulator = SweepSimulation(freq.min(), freq.max())
+        simulator = SweepSimulator(freq.min(), freq.max())
         simulator.multiconnect(model, model)
         temp = simulator.simulate()
 
