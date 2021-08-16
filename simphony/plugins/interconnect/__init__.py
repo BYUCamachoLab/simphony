@@ -30,7 +30,7 @@ import os
 
 import numpy as np
 
-from simphony import Model, Subcircuit
+from simphony.models import Model, Subcircuit
 from simphony.simulators import SweepSimulator
 from simphony.tools import interpolate, wl2freq
 
@@ -210,7 +210,7 @@ def load(filename):
         sparams[:, pins.index(out), pins.index(in_)] = values
 
     # make class for it
-    klass = type("InterconnectImport", (Model,), {"pins": pins})
+    model_class = type("InterconnectImport", (Model,), {"pins": pins})
 
     def s_parameters(self, freq):
         """
@@ -226,8 +226,8 @@ def load(filename):
         """
         return interpolate(freq, self._f, self._s)
 
-    setattr(klass, "_f", freq_final)
-    setattr(klass, "_s", sparams)
-    setattr(klass, "s_parameters", s_parameters)
+    setattr(model_class, "_f", freq_final)
+    setattr(model_class, "_s", sparams)
+    setattr(model_class, "s_parameters", s_parameters)
 
-    return klass
+    return model_class

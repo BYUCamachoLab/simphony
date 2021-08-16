@@ -22,8 +22,8 @@ import os
 import numpy as np
 import pytest
 
-from simphony.library import siepic
-from simphony.netlist import Subcircuit
+from simphony.libraries import siepic
+from simphony.models import Subcircuit
 from simphony.plugins import interconnect
 from simphony.tools import wl2freq
 
@@ -31,46 +31,20 @@ from simphony.tools import wl2freq
 @pytest.fixture(params=["subcircuit", "model"])
 def model(request):
     if request.param == "model":
-        return siepic.ebeam_y_1550()
+        return siepic.YBranch()
     if request.param == "subcircuit":
-        # Declare the models used in the circuit
-        gc = siepic.ebeam_gc_te1550()
-        y = siepic.ebeam_y_1550()
-        wg150 = siepic.ebeam_wg_integral_1550(length=150e-6)
-        wg50 = siepic.ebeam_wg_integral_1550(length=50e-6)
+        # components
+        gc_input = siepic.GratingCoupler()
+        y_splitter = siepic.YBranch()
+        wg_long = siepic.Waveguide(length=150e-6)
+        wg_short = siepic.Waveguide(length=50e-6)
+        y_recombiner = siepic.YBranch()
+        gc_output = siepic.GratingCoupler()
 
-        # Create the circuit, add all individual instances
-        circuit = Subcircuit("MZI")
-        e = circuit.add(
-            [
-                (gc, "input"),
-                (gc, "output"),
-                (y, "splitter"),
-                (y, "recombiner"),
-                (wg150, "wg_long"),
-                (wg50, "wg_short"),
-            ]
-        )
+        # connections
+        y_splitter.multiconnect(gc_input, wg_long, wg_short)
+        y_recombiner.multiconnect(gc_output, wg_short, wg_long)
 
-        # You can set pin names individually:
-        circuit.elements["input"].pins["n2"] = "input"
-        circuit.elements["output"].pins["n2"] = "output"
-
-        # Or you can rename all the pins simultaneously:
-        circuit.elements["splitter"].pins = ("in1", "out1", "out2")
-        circuit.elements["recombiner"].pins = ("out1", "in2", "in1")
-
-        # Circuits can be connected using the elements' string names:
-        circuit.connect_many(
-            [
-                ("input", "n1", "splitter", "in1"),
-                ("splitter", "out1", "wg_long", "n1"),
-                ("splitter", "out2", "wg_short", "n1"),
-                ("recombiner", "in1", "wg_long", "n2"),
-                ("recombiner", "in2", "wg_short", "n2"),
-                ("output", "n1", "recombiner", "out1"),
-            ]
-        )
         return circuit
 
 
@@ -84,7 +58,7 @@ def test_export(model):
     interconnect.export(model, "temp_wl.sparams", wl=wl)
     interconnect.export(model, "temp_freq.sparams", freq=freq)
 
-    num_pins = len(model.pins)
+    num_pins = model.pin_count
     num_headers = num_pins * num_pins
 
     # check files to make sure they're the same
