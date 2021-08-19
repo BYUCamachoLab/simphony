@@ -44,7 +44,7 @@ def model(request):
         y_splitter.multiconnect(gc_input, wg_long, wg_short)
         y_recombiner.multiconnect(gc_output, wg_short, wg_long)
 
-        return y_splitter.circuit.to_subcircuit()
+        return y_splitter.circuit.to_subcircuit(permanent=False)
 
 
 def test_export(model):
