@@ -540,6 +540,7 @@ class Subcircuit(Model):
             The method name to call to get the scattering parameters.
             Either 's_parameters' or 'monte_carlo_s_parameters'
         """
+        from simphony.simulation import SimulationModel
         from simphony.simulators import Simulator
 
         all_pins = []
@@ -549,7 +550,9 @@ class Subcircuit(Model):
         # merge all of the s_params into one giant block diagonal matrix
         for component in self._wrapped_circuit:
             # simulators don't have scattering parameters
-            if isinstance(component, Simulator):
+            if isinstance(component, Simulator) or isinstance(
+                component, SimulationModel
+            ):
                 continue
 
             # get the s_params from the cache if possible

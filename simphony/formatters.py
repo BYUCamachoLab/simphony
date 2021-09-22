@@ -220,12 +220,15 @@ class CircuitJSONFormatter:
     """This class handles converting a circuit to JSON and vice-versa."""
 
     def format(self, circuit: "Circuit", freqs: np.array) -> str:
+        from simphony.simulation import SimulationModel
         from simphony.simulators import Simulator
 
         data = {"components": [], "connections": []}
         for i, component in enumerate(circuit):
             # skip simulators
-            if isinstance(component, Simulator):
+            if isinstance(component, Simulator) or isinstance(
+                component, SimulationModel
+            ):
                 continue
 
             # get a representation for each component

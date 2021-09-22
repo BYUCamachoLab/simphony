@@ -53,9 +53,12 @@ class Pin:
         if include_simulators:
             return True
 
+        from simphony.simulation import SimulationModel
         from simphony.simulators import Simulator
 
-        return not isinstance(self._connection._component, Simulator)
+        return not isinstance(
+            self._connection._component, Simulator
+        ) and not isinstance(self._connection._component, SimulationModel)
 
     def connect(self, pin_or_component: Union["Pin", "Model"]) -> None:
         """Connects this pin to the pin/component that is passed in.
