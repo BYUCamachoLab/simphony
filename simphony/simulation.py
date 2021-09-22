@@ -61,9 +61,6 @@ class Simulation:
         # remove this as the global context
         self.set_context(None)
 
-        # clear the s_params cache
-        Subcircuit.clear_scache()
-
         return False
 
     def __init__(self, *, fs: float = 1e9, seed: Optional[int] = None) -> None:

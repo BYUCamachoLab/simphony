@@ -19,15 +19,14 @@ they form a circuit. There are three ways to connect components:
 """
 
 import os
-from typing import TYPE_CHECKING, ClassVar, Dict, List, Optional, Tuple, Union
+from typing import ClassVar, Dict, List, Optional, Tuple, Union
+
+import numpy as np
 
 from simphony.connect import create_block_diagonal, innerconnect_s
 from simphony.formatters import ModelFormatter, ModelJSONFormatter
 from simphony.layout import Circuit
 from simphony.pins import Pin, PinList
-
-if TYPE_CHECKING:
-    import numpy as np
 
 
 class Model:
@@ -557,11 +556,29 @@ class Subcircuit(Model):
 
             # get the s_params from the cache if possible
             if s_parameters_method == "s_parameters":
-                try:
-                    s_params = self.__class__.scache[component]
-                except KeyError:
-                    s_params = getattr(component, s_parameters_method)(freqs)
-                    self.__class__.scache[component] = s_params
+                # each frequency has a different s-matrix, so we need to cache
+                # the s-matrices by frequency as well as component
+                s_params = []
+                for freq in freqs:
+                    try:
+                        # use the cached s-matrix if available
+                        s_matrix = self.__class__.scache[component][freq]
+                    except KeyError:
+                        # make sure the frequency dict is created
+                        if component not in self.__class__.scache:
+                            self.__class__.scache[component] = {}
+
+                        # store the s-matrix for the frequency and component
+                        s_matrix = getattr(component, s_parameters_method)(
+                            np.array([freq])
+                        )[0]
+                        self.__class__.scache[component][freq] = s_matrix
+
+                    # add the s-matrix to our list of s-matrices
+                    s_params.append(s_matrix)
+
+                # convert to numpy array for the rest of the function
+                s_params = np.array(s_params)
             elif s_parameters_method == "monte_carlo_s_parameters":
                 # don't cache Monte Carlo scattering parameters
                 s_params = getattr(component, s_parameters_method)(freqs)
