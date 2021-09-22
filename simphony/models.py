@@ -229,7 +229,7 @@ class Model:
                 if circuit._add(component):
                     component._on_disconnect_recursive(circuit)
 
-    def connect(self, component_or_pin: Union["Model", Pin]) -> None:
+    def connect(self, component_or_pin: Union["Model", Pin]) -> "Model":
         """Connects the next available (unconnected) pin from this component to
         the component/pin passed in as the argument.
 
@@ -238,13 +238,14 @@ class Model:
         component.
         """
         self._get_next_unconnected_pin().connect(component_or_pin)
+        return self
 
     def disconnect(self) -> None:
         """Disconnects this component from all other components."""
         for pin in self.pins:
             pin.disconnect()
 
-    def interface(self, component: "Model") -> None:
+    def interface(self, component: "Model") -> "Model":
         """Interfaces this component to the component passed in by connecting
         pins with the same names.
 
@@ -254,6 +255,8 @@ class Model:
             for componentpin in component.pins:
                 if selfpin.name[0:3] != "pin" and selfpin.name == componentpin.name:
                     selfpin.connect(componentpin)
+
+        return self
 
     def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Implements the monte carlo routine for the given Model.
@@ -277,7 +280,7 @@ class Model:
         """
         return self.s_parameters(freqs)
 
-    def multiconnect(self, *connections: Union["Model", Pin, None]) -> None:
+    def multiconnect(self, *connections: Union["Model", Pin, None]) -> "Model":
         """Connects this component to the specified connections by looping
         through each connection and connecting it with the corresponding pin.
 
@@ -291,6 +294,8 @@ class Model:
         for index, connection in enumerate(connections):
             if connection is not None:
                 self.pins[index].connect(connection)
+
+        return self
 
     def regenerate_monte_carlo_parameters(self) -> None:
         """Regenerates parameters used to generate monte carlo s-matrices.
