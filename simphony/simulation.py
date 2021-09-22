@@ -382,7 +382,7 @@ class Laser(Source):
         self.phase = phase
         self.powers = np.array([])
 
-    def freqsweep(self, start: float, end: float, num: int = 50) -> "Laser":
+    def freqsweep(self, start: float, end: float, num: int = 500) -> "Laser":
         """Sets the frequencies to sweep during simulation.
 
         Parameters
@@ -397,7 +397,7 @@ class Laser(Source):
         self._freqs = np.linspace(start, end, num)
         return self
 
-    def powersweep(self, start: float, end: float, num: int = 50) -> "Laser":
+    def powersweep(self, start: float, end: float, num: int = 500) -> "Laser":
         """Sets the powers to sweep during simulation.
 
         Parameters
@@ -412,7 +412,7 @@ class Laser(Source):
         self._powers = np.linspace(start, end, num)
         return self
 
-    def wlsweep(self, start: float, end: float, num: int = 50) -> "Laser":
+    def wlsweep(self, start: float, end: float, num: int = 500) -> "Laser":
         """Sets the wavelengths to sweep during simulation.
 
         Parameters
