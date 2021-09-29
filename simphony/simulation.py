@@ -198,21 +198,12 @@ class Simulation:
                 # figure out how the sources interfere
                 transmissions = 0
                 for i, pin in enumerate(self.circuit.pins):
-                    # for the pins not connected to detectors,
-                    # get their connected source. fallback to an unpowered laser
+                    # calculate transmissions for every source connected to
+                    # the circuit
                     for source in self.sources:
                         if source.index == i:
                             break
                     else:
-                        source = None
-                        if not pin._isconnected():
-                            source = Laser()
-                            source._load_context_data()
-                            source.connect(pin)
-                            source.index = i
-
-                    # no source means this is a detector pin, so skip it
-                    if source is None:
                         continue
 
                     # calculate how much this source contributes to the output field
