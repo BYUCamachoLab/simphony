@@ -17,7 +17,6 @@ import numpy as np
 from scipy.constants import epsilon_0, h, mu_0
 
 from simphony import Model
-from simphony.models import Subcircuit
 from simphony.tools import wl2freq
 
 if TYPE_CHECKING:
@@ -268,7 +267,7 @@ class Simulation:
         lower, upper = subcircuit.freq_range
         if lower > freqs[0] or upper < freqs[-1]:
             raise ValueError(
-                f"Cannot simulate the range ({freqs[0], freqs[1]}) over the valid range ({lower}, {upper})"
+                f"Cannot simulate the range ({freqs[0], freqs[-1]}) over the valid range ({lower}, {upper})"
             )
 
         # get the scattering parameters for the specified method and frequencies
@@ -421,7 +420,7 @@ class Laser(Source):
         num :
             The number of wavelengths to sweep.
         """
-        self._freqs = wl2freq(np.linspace(start, end, num))
+        self._freqs = wl2freq(np.linspace(start, end, num))[::-1]
         return self
 
 
