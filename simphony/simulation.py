@@ -149,9 +149,10 @@ class Simulation:
         """Get the signals in the order set by the detectors. Each signal is a
         multi-dimensional array. The first index corresponds to frequency. The
         second index corresponds to power. The third index corresponds to
-        sample number.
+        sample number. For example, ``signal[freq][power][sample]``.
 
-        For example, ``signals[signal][freq][power][sample]``.
+        This method returns an array of signals if there are multiple,
+        or a single signal if there is only one.
         """
         # make sure we have detectors and sources connected
         if len(self.detectors) == 0 or len(self.sources) == 0:
@@ -226,7 +227,12 @@ class Simulation:
             # send the powers through the detectors to convert to signals
             signals.extend(detector._detect(powers))
 
-        return np.array(signals)
+        # if there's only one signal, don't return it in an array
+        signals = np.array(signals)
+        if len(signals) == 1:
+            return signals[0]
+
+        return signals
 
     def monte_carlo(self, flag: bool) -> None:
         """Sets whether or not to use the Monte Carlo scattering parameters.
@@ -429,26 +435,76 @@ class Detector(SimulationModel):
 
     pin_count = 1
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, conversion_gain=1, noise=0, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.context._add_detector(self)
 
-    def _detect(self, powers: List[np.ndarray]) -> List[np.ndarray]:
+        # conversion gain = responsivity * transimpedance gain
+        # noise = Vrms on measurement
+        self.conversion_gain = conversion_gain
+        self.noise = noise
+
+    def _detect(self, power: List[np.ndarray]) -> List[np.ndarray]:
         """This method receives the signal values as powers, i.e. the units are
         in Watts.
 
         Other detectors should extend this method to inject noise,
         amplify the signal, etc.
         """
-        return powers
+        # temporarily unwrap the signal for easier manipulation
+        power = power[0]
+
+        if self.context.noise:
+            # for now, we assume that all sources are lasers and inject
+            # quantum noise using poissonian distributions
+
+            # inject an independent distribution for each frequency and power
+            for i, freq in enumerate(self.context.freqs):
+                # power = num_photons * h * freq * sampling_freq
+                hffs = h * freq * self.context.fs
+                for j, _ in enumerate(power[i]):
+                    # power[i][j] has the correct shape but all of the values
+                    # are the raw power. so we get one of those values and
+                    # calculate the corresponding photon number. we then
+                    # take a photon number distribution and convert it to power
+                    # which we then use as our samples.
+                    power[i][j] = hffs * self.context.rng.poisson(
+                        power[i][j][0] / hffs, self.context.num_samples
+                    )
+
+        # amplify and filter the signal
+        signal = power * self.conversion_gain
+        signal = self._filter(signal)
+
+        # for every frequency and power, add the electrical noise on top
+        if self.context.noise and self.noise:
+            for i, _ in enumerate(signal):
+                for j, _ in enumerate(signal[i]):
+                    signal[i][j] += self.noise * self.context.rng.normal(
+                        size=self.context.num_samples
+                    )
+
+        # wrap the signal back up
+        return np.array([signal])
+
+    def _filter(self, signal: np.ndarray) -> np.ndarray:
+        """Filters the signal. Should be overridden.
+
+        Parameters
+        ----------
+        signal :
+            The signal to filter.
+        """
+        return signal
 
 
 class DifferentialDetector(Detector):
     """A differential detector takes two connections and provides three outputs
-    to the ``Simulation.sample`` method. The outputs are [connection1,
+    to the ``Simulation.sample`` method.
 
-    connection1 - connection2, connection2]. The first and third outputs are
-    the monitor outputs and the second output is the RF output.
+    The outputs are [connection1, connection1 - connection2, connection2]. The
+    first and third outputs are the monitor outputs and the second output is the
+    RF output.
     """
 
     pin_count = 2
@@ -518,7 +574,7 @@ class DifferentialDetector(Detector):
         signal = self._monitor_filter(signal)
 
         # for every frequency and power, add the electrical noise on top
-        if self.context.noise:
+        if self.context.noise and self.monitor_noise:
             for i, _ in enumerate(signal):
                 for j, _ in enumerate(signal[i]):
                     signal[i][j] += self.monitor_noise * self.context.rng.normal(
@@ -551,7 +607,7 @@ class DifferentialDetector(Detector):
         signal = self._rf_filter(signal)
 
         # for every frequency and power, add the electrical noise on top
-        if self.context.noise:
+        if self.context.noise and self.rf_noise:
             for i, _ in enumerate(signal):
                 for j, _ in enumerate(signal[i]):
                     signal[i][j] += self.rf_noise * self.context.rng.normal(
