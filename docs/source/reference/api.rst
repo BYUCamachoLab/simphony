@@ -28,6 +28,11 @@ API
   :inherited-members:
   :show-inheritance:
 
+.. automodule:: simphony.simulation
+  :members:
+  :inherited-members:
+  :show-inheritance:
+
 .. automodule:: simphony.simulators
   :members:
   :inherited-members:
