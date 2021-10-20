@@ -136,6 +136,15 @@ class Circuit(list):
         """Returns the pins for the circuit."""
         return self.to_subcircuit(permanent=False).pins
 
+    def get_pin_index(self, pin: "Pin") -> int:
+        """Gets the pin index for the specified pin in the scattering
+        parameters."""
+        for i, _pin in enumerate(self.pins):
+            if _pin == pin:
+                return i
+
+        raise ValueError("The pin must belong to the circuit.")
+
     def s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns the scattering parameters for the circuit."""
         return self.to_subcircuit(permanent=False).s_parameters(freqs)
