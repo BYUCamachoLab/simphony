@@ -184,7 +184,7 @@ class TestSimulation:
             assert l1.circuit == gc_input.circuit == sim1.circuit
             assert d1.circuit == gc_output.circuit == sim1.circuit
 
-        with Simulation() as sim2:
+        with Simulation() as _:
             assert sim1.circuit is None
             assert l1.circuit != gc_input.circuit
             assert d1.circuit != gc_output.circuit
@@ -196,7 +196,7 @@ class TestSimulation:
             Laser().connect(gc_input)
             Detector().connect(gc_output)
 
-            with pytest.raises(Exception) as e:
+            with pytest.raises(Exception) as _:
                 # sample only takes odd numbers
                 sim1.sample(100)
 
