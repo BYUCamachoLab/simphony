@@ -1,38 +1,32 @@
 # Simphony: A Simulator for Photonic Circuits
 
 <p align="center">
-<<<<<<< HEAD
-  <a href="https://pypi.python.org/pypi/simphony">
-    <img alt="PyPI Version" src="https://img.shields.io/pypi/v/simphony.svg">
-  </a>
-=======
-<img alt="Development version" src="https://img.shields.io/badge/master-v0.5.0-informational">
-<a href="https://pypi.python.org/pypi/simphony"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/simphony.svg"></a>
-<img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/simphony">
-<a href="https://github.com/BYUCamachoLab/simphony/actions?query=workflow%3A%22build+%28pip%29%22"><img alt="Build Status" src="https://github.com/BYUCamachoLab/simphony/workflows/build%20(pip)/badge.svg"></a>
-<a href="https://github.com/pre-commit/pre-commit"><img src="https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white" alt="pre-commit" style="max-width:100%;"></a>
-<a href="https://simphonyphotonics.readthedocs.io/"><img alt="Documentation Status" src="https://readthedocs.org/projects/simphonyphotonics/badge/?version=latest"></a>
-<a href="https://pypi.python.org/pypi/simphony/"><img alt="License" src="https://img.shields.io/pypi/l/simphony.svg"></a>
-<a href="https://github.com/BYUCamachoLab/simphony/commits/master"><img alt="Latest Commit" src="https://img.shields.io/github/last-commit/BYUCamachoLab/simphony.svg"></a>
-</p>
->>>>>>> 5d1e5ad3256400edee156fcd010f5853a25d87c8
+  <img alt="Development version" src="https://img.shields.io/badge/master-v0.5.0-informational"/>
 
-  <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/simphony">
+  <a href="https://pypi.python.org/pypi/simphony">
+    <img alt="PyPI Version" src="https://img.shields.io/pypi/v/simphony.svg"/>
+  </a>
+
+  <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/simphony"/>
 
   <a href="https://github.com/BYUCamachoLab/simphony/actions?query=workflow%3A%22build+%28pip%29%22">
-    <img alt="Build Status" src="https://github.com/BYUCamachoLab/simphony/workflows/build%20(pip)/badge.svg">
+    <img alt="Build Status" src="https://github.com/BYUCamachoLab/simphony/workflows/build%20(pip)/badge.svg"/>
+  </a>
+
+  <a href="https://github.com/pre-commit/pre-commit">
+    <img src="https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white" alt="pre-commit" style="max-width:100%;"/>
   </a>
 
   <a href="https://simphonyphotonics.readthedocs.io/">
-    <img alt="Documentation Status" src="https://readthedocs.org/projects/simphonyphotonics/badge/?version=latest">
+    <img alt="Documentation Status" src="https://readthedocs.org/projects/simphonyphotonics/badge/?version=latest"/>
   </a>
 
   <a href="https://pypi.python.org/pypi/simphony/">
-    <img alt="License" src="https://img.shields.io/pypi/l/simphony.svg">
+    <img alt="License" src="https://img.shields.io/pypi/l/simphony.svg"/>
   </a>
-
+  
   <a href="https://github.com/BYUCamachoLab/simphony/commits/master">
-    <img alt="Latest Commit" src="https://img.shields.io/github/last-commit/BYUCamachoLab/simphony.svg">
+    <img alt="Latest Commit" src="https://img.shields.io/github/last-commit/BYUCamachoLab/simphony.svg"/>
   </a>
 </p>
 
@@ -71,14 +65,14 @@ to learn more.
 
 ## Example
 
-Let's simulate this circuit, known as a Mach-Zender
+We can simulate this circuit, known as a Mach-Zender
 Interferometer (MZI), in Simphony:
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/BYUCamachoLab/simphony/master/docs/source/user/tutorials/images/mzi.png" width="50%">
+<img src="https://raw.githubusercontent.com/BYUCamachoLab/simphony/master/docs/source/tutorials/images/mzi.png" width="50%">
 </p>
 
-We can define it like this:
+We can define it:
 
 ```python
 from simphony.libraries import siepic
@@ -94,7 +88,7 @@ splitter.multiconnect(input, waveguide_short, waveguide_long)
 recombiner.multiconnect(output, waveguide_long, waveguide_short)
 ```
 
-And simulate like this:
+Then simulate it:
 
 ```python
 import matplotlib.pyplot as plt
@@ -109,7 +103,7 @@ plt.title("MZI")
 plt.tight_layout()
 plt.show()
 ```
-Which shows us our light frequencies like this:
+Which shows our desired results:
 
 <p align="center">
   <img 
@@ -117,6 +111,5 @@ Which shows us our light frequencies like this:
     width="50%">
 </p>
 
-And we're done! For a deeper walkthrough of the same
-circuit, see the [doc page](https://simphonyphotonics.readthedocs.io/en/latest/tutorials/mzi.html)
-on it.
+For a deeper walkthrough of the same circuit, see the 
+[doc page](https://simphonyphotonics.readthedocs.io/en/latest/tutorials/mzi.html).
