@@ -93,39 +93,30 @@ def export(model, filename, wl=None, freq=None, clear=True):
     file = open(filename, "ab")
 
     # get sparameters and pins
-    if isinstance(model, Subcircuit):
-        simulator = SweepSimulator(freq.min(), freq.max())
-        simulator.multiconnect(model, model)
-        temp = simulator.simulate()
-
-        sparams = temp.s
-        pins = temp.pins
-    elif isinstance(model, Model):
+    if isinstance(model, Subcircuit) or isinstance(model, Model):
         sparams = model.s_parameters(freq)
         pins = model.pins
     else:
         raise ValueError("Model isn't of type model or subcircuit")
 
-        # iterate through sparams saving
-        for in_ in range(len(pins)):
-            for out in range(len(pins)):
-                # put things together
-                sp = sparams[:, out, in_]
+    # iterate through sparams saving
+    for in_ in range(len(pins)):
+        for out in range(len(pins)):
+            # put things together
+            sp = sparams[:, out, in_]
 
-                # only save if it's not 0's
-                if sp.any():
-                    temp = np.vstack((freq, np.abs(sp), np.unwrap(np.angle(sp)))).T
+            # only save if it's not 0's
+            if sp.any():
+                temp = np.vstack((freq, np.abs(sp), np.unwrap(np.angle(sp)))).T
 
-                    # Save header
-                    header = (
-                        f'("{pins[out]}", "TE", 1, "{pins[in_]}", 1, "transmission")\n'
-                    )
-                    header += f"{temp.shape}"
+                # Save header
+                header = f'("{pins[out]}", "TE", 1, "{pins[in_]}", 1, "transmission")\n'
+                header += f"{temp.shape}"
 
-                    # save data
-                    np.savetxt(file, temp, header=header, comments="")
+                # save data
+                np.savetxt(file, temp, header=header, comments="")
 
-        file.close()
+    file.close()
 
 
 def load(filename):
