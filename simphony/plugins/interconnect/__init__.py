@@ -29,7 +29,6 @@ by Lumerical Interconnect
 import numpy as np
 
 from simphony.models import Model, Subcircuit
-from simphony.simulators import SweepSimulator
 from simphony.tools import interpolate, wl2freq
 
 
