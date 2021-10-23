@@ -19,15 +19,14 @@ they form a circuit. There are three ways to connect components:
 """
 
 import os
-from typing import TYPE_CHECKING, ClassVar, Dict, List, Optional, Tuple, Union
+from typing import ClassVar, Dict, List, Optional, Tuple, Union
+
+import numpy as np
 
 from simphony.connect import create_block_diagonal, innerconnect_s
 from simphony.formatters import ModelFormatter, ModelJSONFormatter
 from simphony.layout import Circuit
 from simphony.pins import Pin, PinList
-
-if TYPE_CHECKING:
-    import numpy as np
 
 
 class Model:
@@ -230,7 +229,7 @@ class Model:
                 if circuit._add(component):
                     component._on_disconnect_recursive(circuit)
 
-    def connect(self, component_or_pin: Union["Model", Pin]) -> None:
+    def connect(self, component_or_pin: Union["Model", Pin]) -> "Model":
         """Connects the next available (unconnected) pin from this component to
         the component/pin passed in as the argument.
 
@@ -239,13 +238,14 @@ class Model:
         component.
         """
         self._get_next_unconnected_pin().connect(component_or_pin)
+        return self
 
     def disconnect(self) -> None:
         """Disconnects this component from all other components."""
         for pin in self.pins:
             pin.disconnect()
 
-    def interface(self, component: "Model") -> None:
+    def interface(self, component: "Model") -> "Model":
         """Interfaces this component to the component passed in by connecting
         pins with the same names.
 
@@ -255,6 +255,8 @@ class Model:
             for componentpin in component.pins:
                 if selfpin.name[0:3] != "pin" and selfpin.name == componentpin.name:
                     selfpin.connect(componentpin)
+
+        return self
 
     def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Implements the monte carlo routine for the given Model.
@@ -278,7 +280,7 @@ class Model:
         """
         return self.s_parameters(freqs)
 
-    def multiconnect(self, *connections: Union["Model", Pin, None]) -> None:
+    def multiconnect(self, *connections: Union["Model", Pin, None]) -> "Model":
         """Connects this component to the specified connections by looping
         through each connection and connecting it with the corresponding pin.
 
@@ -292,6 +294,8 @@ class Model:
         for index, connection in enumerate(connections):
             if connection is not None:
                 self.pins[index].connect(connection)
+
+        return self
 
     def regenerate_monte_carlo_parameters(self) -> None:
         """Regenerates parameters used to generate monte carlo s-matrices.
@@ -540,6 +544,7 @@ class Subcircuit(Model):
             The method name to call to get the scattering parameters.
             Either 's_parameters' or 'monte_carlo_s_parameters'
         """
+        from simphony.simulation import SimulationModel
         from simphony.simulators import Simulator
 
         all_pins = []
@@ -549,16 +554,36 @@ class Subcircuit(Model):
         # merge all of the s_params into one giant block diagonal matrix
         for component in self._wrapped_circuit:
             # simulators don't have scattering parameters
-            if isinstance(component, Simulator):
+            if isinstance(component, Simulator) or isinstance(
+                component, SimulationModel
+            ):
                 continue
 
             # get the s_params from the cache if possible
             if s_parameters_method == "s_parameters":
-                try:
-                    s_params = self.__class__.scache[component]
-                except KeyError:
-                    s_params = getattr(component, s_parameters_method)(freqs)
-                    self.__class__.scache[component] = s_params
+                # each frequency has a different s-matrix, so we need to cache
+                # the s-matrices by frequency as well as component
+                s_params = []
+                for freq in freqs:
+                    try:
+                        # use the cached s-matrix if available
+                        s_matrix = self.__class__.scache[component][freq]
+                    except KeyError:
+                        # make sure the frequency dict is created
+                        if component not in self.__class__.scache:
+                            self.__class__.scache[component] = {}
+
+                        # store the s-matrix for the frequency and component
+                        s_matrix = getattr(component, s_parameters_method)(
+                            np.array([freq])
+                        )[0]
+                        self.__class__.scache[component][freq] = s_matrix
+
+                    # add the s-matrix to our list of s-matrices
+                    s_params.append(s_matrix)
+
+                # convert to numpy array for the rest of the function
+                s_params = np.array(s_params)
             elif s_parameters_method == "monte_carlo_s_parameters":
                 # don't cache Monte Carlo scattering parameters
                 s_params = getattr(component, s_parameters_method)(freqs)
