@@ -571,7 +571,7 @@ class DifferentialDetector(Detector):
         """
         # amplify and filter the signal
         signal = power * self.monitor_conversion_gain
-        if len(signal) > 1:
+        if len(signal[0][0]) > 1:
             signal = self._monitor_filter(signal)
 
         # for every frequency and power, add the electrical noise on top
@@ -605,7 +605,7 @@ class DifferentialDetector(Detector):
             The second signal (in Watts)."""
         # amplify and filter the difference
         signal = (p1 - p2) * self.rf_conversion_gain
-        if len(signal) > 1:
+        if len(signal[0][0]) > 1:
             signal = self._rf_filter(signal)
 
         # for every frequency and power, add the electrical noise on top
