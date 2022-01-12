@@ -1348,7 +1348,7 @@ class TestLaser:
         gc_input, gc_output = mzi
 
         with Simulation(seed=117) as sim:
-            l = Laser(power=1e-3, rin=-145).connect(gc_input)
+            Laser(power=1e-3, rin=-145).connect(gc_input)
             Detector().connect(gc_output)
 
             data = sim.sample(23)
