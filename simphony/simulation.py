@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, ClassVar, List, Optional
 
 import numpy as np
 from scipy.constants import epsilon_0, h, mu_0
+from scipy.signal import butter, sosfiltfilt
 
 from simphony import Model
 from simphony.tools import wl2freq
@@ -355,7 +356,7 @@ class Source(SimulationModel):
         """
         self.freqs = self.context.freqs
         self.powers = self.context._expand_array(self._powers, self.context.shape[1])
-        self._coupled_powers = self.powers * (1 - self.coupling_loss)
+        self._coupled_powers = self.powers * self.coupling_ratio
 
 
 class Laser(Source):
@@ -364,19 +365,46 @@ class Laser(Source):
     pin_count = 1
 
     def __init__(
-        self, *args, coupling_loss=0, freq=None, phase=0, power=0, wl=1550e-9, **kwargs
+        self,
+        *args,
+        coupling_loss=0,
+        freq=None,
+        phase=0,
+        power=0,
+        rin=-np.inf,
+        wl=1550e-9,
+        **kwargs,
     ) -> None:
+        """Initializes the laser.
+
+        Parameters
+        ----------
+        coupling_loss :
+            The coupling loss of the laser in dB.
+        freq :
+            The frequency of the laser in Hz.
+        phase :
+            The phase of the laser in radians.
+        power :
+            The power of the laser in Watts.
+        rin :
+            The relative intensity noise of the laser in dBc/Hz.
+        wl :
+            The wavelength of the laser in meters.
+        """
         super().__init__(*args, **kwargs)
 
         # initialize properties
         self._coupled_powers = np.array([])
         self._freqs = np.array([freq if freq else wl2freq(wl)])
         self._powers = np.array([power])
-        self.coupling_loss = coupling_loss
+        self.coupling_ratio = 10 ** (-np.abs(coupling_loss) / 10)
         self.freqs = np.array([])
         self.index = 0
         self.phase = phase
         self.powers = np.array([])
+        self.rin = -np.abs(rin)
+        self.rin_dists = {}
 
     def freqsweep(self, start: float, end: float, num: int = 500) -> "Laser":
         """Sets the frequencies to sweep during simulation.
@@ -392,6 +420,39 @@ class Laser(Source):
         """
         self._freqs = np.linspace(start, end, num)
         return self
+
+    def get_rin(self, bandwidth: float) -> float:
+        """Gets the RIN value in dBc.
+
+        Parameters
+        ----------
+        bandwidth :
+            The bandwidth of the detector in Hz.
+        """
+        return (
+            0
+            if self.rin == -np.inf
+            else 10 * np.log10((10 ** (self.rin / 10)) * bandwidth)
+        )
+
+    def get_rin_dist(self, i: int, j: int) -> List[float]:
+        """Returns the normal distribution used for the i,j key. If this is the
+        first access, a new distribution is created.
+
+        Parameters
+        ----------
+        i :
+            The first index (frequency index).
+        j :
+            The second index (power index).
+        """
+        try:
+            return self.rin_dists[i, j]
+        except KeyError:
+            self.rin_dists[i, j] = self.context.rng.normal(
+                size=self.context.num_samples
+            )
+            return self.rin_dists[i, j]
 
     def powersweep(self, start: float, end: float, num: int = 500) -> "Laser":
         """Sets the powers to sweep during simulation.
@@ -434,14 +495,26 @@ class Detector(SimulationModel):
 
     pin_count = 1
 
-    def __init__(self, *args, conversion_gain=1, noise=0, **kwargs) -> None:
+    def __init__(
+        self,
+        *args,
+        conversion_gain=1,
+        high_fc=1e9,
+        low_fc=0,
+        noise=0,
+        **kwargs,
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.context._add_detector(self)
 
         # conversion gain = responsivity * transimpedance gain
         # noise = Vrms on measurement
         self.conversion_gain = conversion_gain
+        self.high_fc = high_fc
+        self.low_fc = low_fc
         self.noise = noise
+        self.noise_dists = np.array([])
+        self.rin_dists = np.array([])
 
     def _detect(self, power: List[np.ndarray]) -> List[np.ndarray]:
         """This method receives the signal values as powers, i.e. the units are
@@ -453,6 +526,10 @@ class Detector(SimulationModel):
         # temporarily unwrap the signal for easier manipulation
         power = power[0]
 
+        # prepare noise dists with the proper shape
+        self.noise_dists = np.zeros(power.shape)
+        self.rin_dists = np.zeros(power.shape)
+
         if self.context.noise:
             # for now, we assume that all sources are lasers and inject
             # quantum noise using poissonian distributions
@@ -462,6 +539,31 @@ class Detector(SimulationModel):
                 # power = num_photons * h * freq * sampling_freq
                 hffs = h * freq * self.context.fs
                 for j, _ in enumerate(power[i]):
+                    # calulcate the RIN noise
+                    noise = np.zeros(self.context.num_samples)
+                    for source in self.context.sources:
+                        # we let the laser handle the RIN distribution
+                        # so the same noise is injected in all the signals
+                        rin = source.get_rin(self.high_fc - self.low_fc)
+                        dist = source.get_rin_dist(i, j)
+
+                        # calculate the standard deviation of the RIN noise
+                        std = (
+                            10 ** ((10 * np.log10(power[i][j][0]) + rin) / 20)
+                            if power[i][j][0]
+                            else 0
+                        )
+
+                        noise += std * dist
+
+                    # store the RIN noise for later use
+                    self.rin_dists[i][j] = noise
+
+                    # calculate and store electrical noise for later use
+                    self.noise_dists[i][j] = self.noise * self.context.rng.normal(
+                        size=self.context.num_samples
+                    )
+
                     # power[i][j] has the correct shape but all of the values
                     # are the raw power. so we get one of those values and
                     # calculate the corresponding photon number. we then
@@ -471,31 +573,43 @@ class Detector(SimulationModel):
                         power[i][j][0] / hffs, self.context.num_samples
                     )
 
-        # amplify and filter the signal
-        signal = power * self.conversion_gain
-        if len(signal) > 1:
-            signal = self._filter(signal)
+        # amplify the signal
+        signal = (power + self.rin_dists) * self.conversion_gain
 
-        # for every frequency and power, add the electrical noise on top
-        if self.context.noise and self.noise:
-            for i, _ in enumerate(signal):
-                for j, _ in enumerate(signal[i]):
-                    signal[i][j] += self.noise * self.context.rng.normal(
-                        size=self.context.num_samples
-                    )
+        # add electrical noise on top
+        signal += self.noise_dists
+
+        # filter the signal
+        if self.context.num_samples > 1:
+            signal = self._filter(signal)
 
         # wrap the signal back up
         return np.array([signal])
 
     def _filter(self, signal: np.ndarray) -> np.ndarray:
-        """Filters the signal. Should be overridden.
+        """Filters the signal.
 
         Parameters
         ----------
         signal :
             The signal to filter.
         """
-        return signal
+        high = min(self.high_fc, 0.5 * (self.context.fs - 1))
+        sos = (
+            butter(6, high, "lowpass", fs=self.context.fs, output="sos")
+            if self.low_fc == 0
+            else butter(
+                6,
+                [
+                    max(self.low_fc, self.context.fs / self.context.num_samples * 30),
+                    high,
+                ],
+                "bandpass",
+                fs=self.context.fs,
+                output="sos",
+            )
+        )
+        return sosfiltfilt(sos, signal)
 
 
 class DifferentialDetector(Detector):
@@ -513,23 +627,46 @@ class DifferentialDetector(Detector):
         self,
         *args,
         monitor_conversion_gain=1,
+        monitor_high_fc=1e9,
+        monitor_low_fc=0,
         monitor_noise=0,
+        rf_cmrr=np.inf,
         rf_conversion_gain=1,
+        rf_high_fc=1e9,
+        rf_low_fc=0,
         rf_noise=0,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
 
-        # conversion gain = responsivity * transimpedance gain
-        # noise = Vrms on measurement
+        # initialize parameters
         self.monitor_conversion_gain = monitor_conversion_gain
+        self.monitor_high_fc = monitor_high_fc
+        self.monitor_low_fc = monitor_low_fc
         self.monitor_noise = monitor_noise
+        self.monitor_noise_dists = np.array([])
+        self.monitor_rin_dists1 = np.array([])
+        self.monitor_rin_dists2 = np.array([])
+        self.rf_cmrr = -np.abs(rf_cmrr)
         self.rf_conversion_gain = rf_conversion_gain
+        self.rf_high_fc = rf_high_fc
+        self.rf_low_fc = rf_low_fc
         self.rf_noise = rf_noise
+        self.rf_noise_dists = np.array([])
+        self.rf_rin_dists1 = np.array([])
+        self.rf_rin_dists2 = np.array([])
 
     def _detect(self, powers: List[np.ndarray]) -> List[np.ndarray]:
         p1 = powers[0]
         p2 = powers[1]
+
+        # prepare noise dists with the proper shape
+        self.monitor_noise_dists = np.zeros(p1.shape)
+        self.monitor_rin_dists1 = np.zeros(p1.shape)
+        self.monitor_rin_dists2 = np.zeros(p2.shape)
+        self.rf_noise_dists = np.zeros(p1.shape)
+        self.rf_rin_dists1 = np.zeros(p1.shape)
+        self.rf_rin_dists2 = np.zeros(p2.shape)
 
         if self.context.noise:
             # for now, we assume that all sources are lasers and inject
@@ -540,6 +677,56 @@ class DifferentialDetector(Detector):
                 # power = num_photons * h * freq * sampling_freq
                 hffs = h * freq * self.context.fs
                 for j, _ in enumerate(p1[i]):
+                    # calculate the RIN noise
+                    # we will need to keep track of the noise for each
+                    # differential signal independently
+                    monitor_noise1 = np.zeros(self.context.num_samples)
+                    monitor_noise2 = np.zeros(self.context.num_samples)
+                    rf_noise1 = np.zeros(self.context.num_samples)
+                    rf_noise2 = np.zeros(self.context.num_samples)
+
+                    # every source will contribute different noise
+                    for source in self.context.sources:
+                        # get the RIN specs from the laser to ensure that the
+                        # same noise is injected across all signals
+                        monitor_rin = source.get_rin(
+                            self.monitor_high_fc - self.monitor_low_fc
+                        )
+                        rf_rin = source.get_rin(self.rf_high_fc - self.rf_low_fc)
+                        dist = source.get_rin_dist(i, j)
+
+                        # only calculate the noise if there is power
+                        if p1[i][j][0] > 0:
+                            p1db = 10 * np.log10(p1[i][j][0])
+                            monitor_noise1 += (10 ** ((p1db + monitor_rin) / 20)) * dist
+                            rf_noise1 += (
+                                10 ** ((p1db + rf_rin + self.rf_cmrr) / 20)
+                            ) * dist
+
+                        # only calculate the noise if there is power
+                        if p2[i][j][0] > 0:
+                            p2db = 10 * np.log10(p2[i][j][0])
+                            monitor_noise2 += (10 ** ((p2db + monitor_rin) / 20)) * dist
+                            rf_noise2 += (
+                                10 ** ((p2db + rf_rin + self.rf_cmrr) / 20)
+                            ) * dist
+
+                    # store the RIN noise for later use
+                    self.monitor_rin_dists1[i][j] = monitor_noise1
+                    self.monitor_rin_dists2[i][j] = monitor_noise2
+                    self.rf_rin_dists1[i][j] = rf_noise1
+                    self.rf_rin_dists2[i][j] = rf_noise2
+
+                    # calculate and store electrical noise
+                    self.monitor_noise_dists[i][
+                        j
+                    ] = self.monitor_noise * self.context.rng.normal(
+                        size=self.context.num_samples
+                    )
+                    self.rf_noise_dists[i][j] = self.rf_noise * self.context.rng.normal(
+                        size=self.context.num_samples
+                    )
+
                     # p1[i][j] has the correct shape but all of the values
                     # are the raw power. so we get one of those values and
                     # calculate the corresponding photon number. we then
@@ -556,12 +743,41 @@ class DifferentialDetector(Detector):
 
         # return the outputs
         return (
-            self._monitor(p1),
+            self._monitor(p1, self.monitor_rin_dists1),
             self._rf(p1, p2),
-            self._monitor(p2),
+            self._monitor(p2, self.monitor_rin_dists2),
         )
 
-    def _monitor(self, power: np.ndarray) -> np.ndarray:
+    def _filter(self, signal: np.ndarray, low_fc: float, high_fc: float) -> np.ndarray:
+        """Filters the signal.
+
+        Parameters
+        ----------
+        signal :
+            The signal to filter.
+        low_fc :
+            The lower cut-off frequency.
+        high_fc :
+            The higher cut-off frequency.
+        """
+        high = min(high_fc, 0.5 * (self.context.fs - 1))
+        sos = (
+            butter(6, high, "lowpass", fs=self.context.fs, output="sos")
+            if low_fc == 0
+            else butter(
+                6,
+                [
+                    max(low_fc, self.context.fs / self.context.num_samples * 30),
+                    high,
+                ],
+                "bandpass",
+                fs=self.context.fs,
+                output="sos",
+            )
+        )
+        return sosfiltfilt(sos, signal)
+
+    def _monitor(self, power: np.ndarray, rin_dists: np.ndarray) -> np.ndarray:
         """Takes a signal and turns it into a monitor output.
 
         Parameters
@@ -569,30 +785,27 @@ class DifferentialDetector(Detector):
         power :
             The power to convert to a monitor signal.
         """
-        # amplify and filter the signal
-        signal = power * self.monitor_conversion_gain
-        if len(signal[0][0]) > 1:
-            signal = self._monitor_filter(signal)
+        # amplify the signal
+        signal = (power + rin_dists) * self.monitor_conversion_gain
 
-        # for every frequency and power, add the electrical noise on top
-        if self.context.noise and self.monitor_noise:
-            for i, _ in enumerate(signal):
-                for j, _ in enumerate(signal[i]):
-                    signal[i][j] += self.monitor_noise * self.context.rng.normal(
-                        size=self.context.num_samples
-                    )
+        # add the electrical noise after amplification
+        signal += self.monitor_noise_dists
+
+        # filter the signal
+        if self.context.num_samples > 1:
+            signal = self._monitor_filter(signal)
 
         return signal
 
     def _monitor_filter(self, signal: np.ndarray) -> np.ndarray:
-        """Filters the monitor signal. Should be overridden.
+        """Filters the monitor signal.
 
         Parameters
         ----------
         signal :
             The signal to filter.
         """
-        return signal
+        return self._filter(signal, self.monitor_low_fc, self.monitor_high_fc)
 
     def _rf(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """Takes two signals and generates the differential RF signal. p1 - p2.
@@ -603,27 +816,30 @@ class DifferentialDetector(Detector):
             The first signal (in Watts).
         p2 :
             The second signal (in Watts)."""
-        # amplify and filter the difference
-        signal = (p1 - p2) * self.rf_conversion_gain
-        if len(signal[0][0]) > 1:
-            signal = self._rf_filter(signal)
+        # amplify the difference.
+        # we don't subtract RIN dists because that would be a CMRR of infinity.
+        # when we generated the RIN, we took the CMRR into account so at this
+        # point, all we need to do is add them after the quantum signals have
+        # been diffed.
+        signal = (
+            (p1 - p2) + (self.rf_rin_dists1 + self.rf_rin_dists2)
+        ) * self.rf_conversion_gain
 
-        # for every frequency and power, add the electrical noise on top
-        if self.context.noise and self.rf_noise:
-            for i, _ in enumerate(signal):
-                for j, _ in enumerate(signal[i]):
-                    signal[i][j] += self.rf_noise * self.context.rng.normal(
-                        size=self.context.num_samples
-                    )
+        # add the electrical signal after amplification
+        signal += self.rf_noise_dists
+
+        # filter the difference
+        if self.context.num_samples > 1:
+            signal = self._rf_filter(signal)
 
         return signal
 
     def _rf_filter(self, signal: np.ndarray) -> np.ndarray:
-        """Filters the RF signal. Should be overridden.
+        """Filters the RF signal.
 
         Parameters
         ----------
         signal :
             The signal to filter.
         """
-        return signal
+        return self._filter(signal, self.rf_low_fc, self.rf_high_fc)
