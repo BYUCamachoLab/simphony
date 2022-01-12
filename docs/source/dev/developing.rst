@@ -166,7 +166,7 @@ may still be informative, so we include it here.
 
 The release process is handled by GitHub Actions. When the
 release script is triggered, it builds the package for 
-Python 3.6-3.8 for Windows, Mac and Linux. It uploads the
+Python 3.7-3.10 for Windows, Mac and Linux. It uploads the
 package to PyPI, creates a GitHub release, and updates the
 documentation to the most recent stable release.
 
