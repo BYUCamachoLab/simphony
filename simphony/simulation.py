@@ -11,7 +11,7 @@ used within the context. Devices include theoretical sources and detectors.
 """
 
 from cmath import rect
-from typing import TYPE_CHECKING, ClassVar, List, Optional
+from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple
 
 import numpy as np
 from scipy.constants import epsilon_0, h, mu_0
@@ -552,7 +552,7 @@ class Detector(SimulationModel):
                     for source in self.context.sources:
                         # we let the laser handle the RIN distribution
                         # so the same noise is injected in all the signals
-                        rin = source.get_rin(self.high_fc - self.low_fc)
+                        rin = source.get_rin(self._get_bandwidth()[0])
                         dist = source.get_rin_dist(i, j)
 
                         # calculate the standard deviation of the RIN noise
@@ -602,15 +602,15 @@ class Detector(SimulationModel):
         signal :
             The signal to filter.
         """
-        high = min(self.high_fc, 0.5 * (self.context.fs - 1))
+        bw = self._get_bandwidth()
         sos = (
-            butter(6, high, "lowpass", fs=self.context.fs, output="sos")
-            if self.low_fc == 0
+            butter(6, bw[2], "lowpass", fs=self.context.fs, output="sos")
+            if bw[1] == 0
             else butter(
                 6,
                 [
-                    max(self.low_fc, self.context.fs / self.context.num_samples * 30),
-                    high,
+                    bw[1],
+                    bw[2],
                 ],
                 "bandpass",
                 fs=self.context.fs,
@@ -618,6 +618,20 @@ class Detector(SimulationModel):
             )
         )
         return sosfiltfilt(sos, signal)
+
+    def _get_bandwidth(self):
+        """Gets the bandwidth of the detector w.r.t.
+
+        the sampling frequency.
+        """
+        low = (
+            0
+            if self.low_fc == 0
+            else max(self.low_fc, self.context.fs / self.context.num_samples * 30)
+        )
+        high = min(self.high_fc, 0.5 * (self.context.fs - 1))
+
+        return (high - low, low, high)
 
 
 class DifferentialDetector(Detector):
@@ -697,10 +711,8 @@ class DifferentialDetector(Detector):
                     for source in self.context.sources:
                         # get the RIN specs from the laser to ensure that the
                         # same noise is injected across all signals
-                        monitor_rin = source.get_rin(
-                            self.monitor_high_fc - self.monitor_low_fc
-                        )
-                        rf_rin = source.get_rin(self.rf_high_fc - self.rf_low_fc)
+                        monitor_rin = source.get_rin(self._get_monitor_bandwidth()[0])
+                        rf_rin = source.get_rin(self._get_rf_bandwidth()[0])
                         dist = source.get_rin_dist(i, j)
 
                         # only calculate the noise if there is power
@@ -756,27 +768,24 @@ class DifferentialDetector(Detector):
             self._monitor(p2, self.monitor_rin_dists2),
         )
 
-    def _filter(self, signal: np.ndarray, low_fc: float, high_fc: float) -> np.ndarray:
+    def _filter(self, signal: np.ndarray, bw: Tuple[float, float, float]) -> np.ndarray:
         """Filters the signal.
 
         Parameters
         ----------
         signal :
             The signal to filter.
-        low_fc :
-            The lower cut-off frequency.
-        high_fc :
-            The higher cut-off frequency.
+        bw :
+            The bandwidth of the filter. (difference, low_fc, high_fc)
         """
-        high = min(high_fc, 0.5 * (self.context.fs - 1))
         sos = (
-            butter(6, high, "lowpass", fs=self.context.fs, output="sos")
-            if low_fc == 0
+            butter(6, bw[2], "lowpass", fs=self.context.fs, output="sos")
+            if bw[1] == 0
             else butter(
                 6,
                 [
-                    max(low_fc, self.context.fs / self.context.num_samples * 30),
-                    high,
+                    bw[1],
+                    bw[2],
                 ],
                 "bandpass",
                 fs=self.context.fs,
@@ -784,6 +793,39 @@ class DifferentialDetector(Detector):
             )
         )
         return sosfiltfilt(sos, signal)
+
+    def _get_bandwidth(self, low_fc, high_fc):
+        """Gets the bandwidth of the detector w.r.t. the sampling frequency.
+
+        Parameters
+        ----------
+        low_fc :
+            The lower cut-off frequency.
+        high_fc :
+            The higher cut-off frequency.
+        """
+        low = (
+            0
+            if low_fc == 0
+            else max(low_fc, self.context.fs / self.context.num_samples * 30)
+        )
+        high = min(high_fc, 0.5 * (self.context.fs - 1))
+
+        return (high - low, low, high)
+
+    def _get_monitor_bandwidth(self):
+        """Gets the bandwidth of the monitor w.r.t.
+
+        the sampling frequency.
+        """
+        return self._get_bandwidth(self.monitor_low_fc, self.monitor_high_fc)
+
+    def _get_rf_bandwidth(self):
+        """Gets the bandwidth of the rf w.r.t.
+
+        the sampling frequency.
+        """
+        return self._get_bandwidth(self.rf_low_fc, self.rf_high_fc)
 
     def _monitor(self, power: np.ndarray, rin_dists: np.ndarray) -> np.ndarray:
         """Takes a signal and turns it into a monitor output.
@@ -813,7 +855,7 @@ class DifferentialDetector(Detector):
         signal :
             The signal to filter.
         """
-        return self._filter(signal, self.monitor_low_fc, self.monitor_high_fc)
+        return self._filter(signal, self._get_monitor_bandwidth())
 
     def _rf(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """Takes two signals and generates the differential RF signal. p1 - p2.
@@ -850,4 +892,4 @@ class DifferentialDetector(Detector):
         signal :
             The signal to filter.
         """
-        return self._filter(signal, self.rf_low_fc, self.rf_high_fc)
+        return self._filter(signal, self._get_rf_bandwidth())
