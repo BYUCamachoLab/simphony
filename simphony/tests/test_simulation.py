@@ -589,12 +589,6 @@ class TestDifferentialDetector:
             )
 
             x1, x, x2, p1, p, p2 = sim.sample(23)
-            print(x1[0][0])
-            print(x[0][0])
-            print(x2[0][0])
-            print(p1[0][0])
-            print(p[0][0])
-            print(p2[0][0])
 
             assert np.allclose(x1[0][0], self.x1results, rtol=0, atol=1e-7)
             assert np.allclose(x[0][0], self.xresults, rtol=0, atol=1e-7)
