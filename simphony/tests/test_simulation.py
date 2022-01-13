@@ -196,10 +196,7 @@ class TestSimulation:
             Laser().connect(gc_input)
             Detector().connect(gc_output)
 
-            with pytest.raises(Exception) as _:
-                # sample only takes odd numbers
-                sim1.sample(100)
-
+            assert len(sim1.sample(100)[0][0]) == 100
             assert len(sim1.sample(101)[0][0]) == 101
 
     def test_seed(self, mzi):

@@ -286,17 +286,25 @@ class Simulation:
             be the theoretical value of the circuit. If more than one sample is
             taken, they will vary based on simulated noise.
         """
-        # we enforce an odd number of samples so filter implementation is easy
+        # filtering requires an odd number of samples.
+        # if they want an even number, we will add one and then remove a
+        # sample at the end
+        _num_samples = num_samples
         if num_samples % 2 == 0:
-            raise ValueError("`num_samples` must be an odd number.")
+            _num_samples += 1
 
         # if we are taking more than one sample, include noise
-        self.num_samples = num_samples
+        self.num_samples = _num_samples
         self.noise = self.num_samples > 1
 
         # sample the signals
         signals = self._get_signals()
-        return signals
+
+        # remove the extra sample if we added one
+        if _num_samples != num_samples:
+            return signals[:, :, :num_samples]
+        else:
+            return signals
 
     @classmethod
     def get_context(cls) -> "Simulation":
