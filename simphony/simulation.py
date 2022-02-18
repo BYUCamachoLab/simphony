@@ -31,6 +31,16 @@ context = None
 nprect = np.vectorize(rect)
 
 
+def from_db(x: float, factor: int = 10) -> float:
+    """Converts a dB value to a linear value."""
+    return 10 ** (x / factor)
+
+
+def to_db(x: float, factor: int = 10) -> float:
+    """Converts a linear value to a dB value."""
+    return factor * np.log10(x)
+
+
 class Simulation:
     """This class instantiates a simulation context.
 
@@ -406,7 +416,7 @@ class Laser(Source):
         self._coupled_powers = np.array([])
         self._freqs = np.array([freq if freq else wl2freq(wl)])
         self._powers = np.array([power])
-        self.coupling_ratio = 10 ** (-np.abs(coupling_loss) / 10)
+        self.coupling_ratio = from_db(-np.abs(coupling_loss))
         self.freqs = np.array([])
         self.index = 0
         self.phase = phase
@@ -437,11 +447,7 @@ class Laser(Source):
         bandwidth :
             The bandwidth of the detector in Hz.
         """
-        return (
-            0
-            if self.rin == -np.inf
-            else 10 * np.log10((10 ** (self.rin / 10)) * bandwidth)
-        )
+        return 0 if self.rin == -np.inf else to_db(from_db(self.rin) * bandwidth)
 
     def get_rin_dist(self, i: int, j: int) -> List[float]:
         """Returns the normal distribution used for the i,j key. If this is the
@@ -557,7 +563,7 @@ class Detector(SimulationModel):
 
                         # calculate the standard deviation of the RIN noise
                         std = (
-                            10 ** ((10 * np.log10(power[i][j][0]) + rin) / 20)
+                            from_db(to_db(power[i][j][0]) + rin, 20)
                             if power[i][j][0]
                             else 0
                         )
@@ -715,21 +721,28 @@ class DifferentialDetector(Detector):
                         rf_rin = source.get_rin(self._get_rf_bandwidth()[0])
                         dist = source.get_rin_dist(i, j)
 
+                        # if the two powers are different, we need to adjust
+                        # the CMRR to account for the difference
+                        cmrr = self.rf_cmrr
+                        sum = p1[i][j][0] + p2[i][j][0]
+                        diff = np.abs(p1[i][j][0] - p2[i][j][0])
+                        if diff:
+                            cmrr2 = -to_db(sum / diff)
+                            cmrr = to_db(
+                                np.sqrt(from_db(cmrr) ** 2 + from_db(cmrr2) ** 2)
+                            )
+
                         # only calculate the noise if there is power
                         if p1[i][j][0] > 0:
-                            p1db = 10 * np.log10(p1[i][j][0])
-                            monitor_noise1 += (10 ** ((p1db + monitor_rin) / 20)) * dist
-                            rf_noise1 += (
-                                10 ** ((p1db + rf_rin + self.rf_cmrr) / 20)
-                            ) * dist
+                            p1db = to_db(p1[i][j][0])
+                            monitor_noise1 += from_db(p1db + monitor_rin, 20) * dist
+                            rf_noise1 += from_db(p1db + rf_rin + cmrr, 20) * dist
 
                         # only calculate the noise if there is power
                         if p2[i][j][0] > 0:
-                            p2db = 10 * np.log10(p2[i][j][0])
-                            monitor_noise2 += (10 ** ((p2db + monitor_rin) / 20)) * dist
-                            rf_noise2 += (
-                                10 ** ((p2db + rf_rin + self.rf_cmrr) / 20)
-                            ) * dist
+                            p2db = to_db(p2[i][j][0])
+                            monitor_noise2 += from_db(p2db + monitor_rin, 20) * dist
+                            rf_noise2 += from_db(p2db + rf_rin + cmrr, 20) * dist
 
                     # store the RIN noise for later use
                     self.monitor_rin_dists1[i][j] = monitor_noise1
