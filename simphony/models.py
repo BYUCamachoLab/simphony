@@ -52,17 +52,12 @@ class Model:
     pin_count: ClassVar[Optional[int]]
     pins: ClassVar[Optional[Tuple[str, ...]]]
     pins: PinList  # additional type hint for instance.pins
-
+    
     def __hash__(self) -> int:
         """Gets a hash for the model based on connections."""
 
-        connections = 0
-        for pin in self.pins:
-            if pin._isconnected(include_simulators=False):
-                connections += hash(hash(pin) + hash(pin._connection))
-
-        return hash(connections)
-
+        return hash(hash(self.pin_count) + hash(self.freq_range))
+    
     def __getitem__(self, item: Union[int, str]) -> Pin:
         return self.pins[item]
 
@@ -74,7 +69,7 @@ class Model:
         pins: Optional[List[Pin]] = None,
     ) -> None:
         """Initializes an instance of the model.
-
+        
         Parameters
         ----------
         name :
