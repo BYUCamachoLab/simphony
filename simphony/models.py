@@ -54,7 +54,7 @@ class Model:
     pins: PinList  # additional type hint for instance.pins
     
     def __hash__(self) -> int:
-        """Gets a hash for the model based on connections."""
+        """Gets a hash for the model based on pin count and freq range."""
 
         return hash(hash(self.pin_count) + hash(self.freq_range))
     
