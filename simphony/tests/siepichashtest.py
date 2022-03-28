@@ -23,7 +23,7 @@ dc1 = DirectionalCoupler()
 dc2 = DirectionalCoupler()
 print(f'Identical Directional couplers:{dc1.__hash__()}, {dc2.__hash__()}')
 
-dc1 = DirectionalCoupler(gap=2e-7, Lc=10e-6)    # this autocorrects to default attribute values everytime
+dc1 = DirectionalCoupler(gap=2e-7, Lc=10e-6)    # this autocorrects to default attribute values everytime, not sure why
 dc2 = DirectionalCoupler()
 print(f'Non-identical Directional couplers:{dc1.__hash__()}, {dc2.__hash__()}')
 
