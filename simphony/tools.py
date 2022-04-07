@@ -141,11 +141,14 @@ def interpolate(resampled, sampled, s_parameters, polar_interpolation = False):
     """
 
     if polar_interpolation:
+        #convert to magnitude and phase
         mag = np.abs(s_parameters)
         angle = np.arctan2(s_parameters.imag,s_parameters.real)
         angle = np.unwrap(angle,axis=0)
+        #interpolate
         func_mag = interp1d(sampled,mag,kind='cubic',axis=0)
         func_angle = interp1d(sampled,angle,kind='cubic',axis=0)
+        #convert back to complex and return
         return func_mag(resampled) * np.cos(func_angle(resampled)) + \
             (func_mag(resampled) * np.sin(func_angle(resampled))) * 1j
     else:
