@@ -383,6 +383,14 @@ class CircuitJSONFormatter:
 
         return components[0].circuit
 
+class CircuitLumericalFormatter(CircuitFormatter):
+
+    def format(self, circuit: "Circuit", freqs: np.array, orientations = None, file_name: str = None) -> None:
+        circuit_model = circuit.to_subcircuit(autoname=True)
+        model_formatter = ModelLumericalFormatter()
+        model_formatter.flatten_subcircuits = True
+        model_formatter.format(circuit_model, freqs, orientations, file_name)
+
 
 class CircuitSiEPICFormatter(CircuitFormatter):
     """This class saves/loads circuits in the SiEPIC SPICE format."""

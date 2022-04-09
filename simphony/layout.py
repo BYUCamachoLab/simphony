@@ -183,12 +183,12 @@ class Circuit(list):
         # restore the cwd
         os.chdir(cwd)
 
-    def to_subcircuit(self, name: str = "", **kwargs) -> "Subcircuit":
+    def to_subcircuit(self, name: str = "", autoname: bool = False, **kwargs) -> "Subcircuit":
         """Converts this circuit into a subcircuit component for easy re-use in
         another circuit."""
         from simphony.models import Subcircuit
 
-        return Subcircuit(self, **kwargs, name=name)
+        return Subcircuit(self, **kwargs, name=name, autoname=autoname)
 
     @staticmethod
     def from_file(
