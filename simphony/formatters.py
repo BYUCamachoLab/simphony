@@ -232,7 +232,7 @@ class ModelLumericalFormatter(ModelFormatter):
                 continue
             else:
                 # for each frequency
-                for point in connection_data_points[:len(connection_data_points)-1]:
+                for point in connection_data_points[:len(connection_data_points) - 1]:
                     point_info = point.strip().split(" ")
                     freq = float(point_info[0])
                     mag = float(point_info[1])
@@ -277,7 +277,7 @@ class ModelLumericalFormatter(ModelFormatter):
         angles = np.unwrap(angles, axis=0)
         # write the header information
         for pin, orientation in zip(pins, orientations):
-            lum_string = lum_string+"[\""+pin+"\",\""+orientation+"\"]\n"
+            lum_string = lum_string + "[\"" + pin + "\",\"" + orientation + "\"]\n"
         input_pin_count = 0
         # write the body information
         for input_pin in pins:
@@ -382,6 +382,7 @@ class CircuitJSONFormatter:
             components[i].pins[j].connect(components[k].pins[l])
 
         return components[0].circuit
+
 
 class CircuitLumericalFormatter(CircuitFormatter):
 
