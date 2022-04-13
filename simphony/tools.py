@@ -121,7 +121,7 @@ def wl2freq(wl):
     return SPEED_OF_LIGHT / wl
 
 
-def interpolate(resampled, sampled, s_parameters, polar_interpolation = False):
+def interpolate(resampled, sampled, s_parameters, polar_interpolation=False):
     """Returns the result of a cubic interpolation for a given frequency range.
 
     Parameters
@@ -143,17 +143,16 @@ def interpolate(resampled, sampled, s_parameters, polar_interpolation = False):
     """
 
     if polar_interpolation:
-        #convert to magnitude and phase
+        # convert to magnitude and phase
         mag = np.abs(s_parameters)
-        angle = np.arctan2(s_parameters.imag,s_parameters.real)
+        angle = np.arctan2(s_parameters.imag, s_parameters.real)
         angle = np.unwrap(angle,axis=0)
-        #interpolate
-        func_mag = interp1d(sampled,mag,kind='cubic',axis=0)
-        func_angle = interp1d(sampled,angle,kind='cubic',axis=0)
-        #convert back to complex and return
+        # interpolate
+        func_mag = interp1d(sampled, mag,kind='cubic', axis=0)
+        func_angle = interp1d(sampled, angle, kind='cubic', axis=0)
+        # convert back to complex and return
         return func_mag(resampled) * np.cos(func_angle(resampled)) + \
             (func_mag(resampled) * np.sin(func_angle(resampled))) * 1j
     else:
         func = interp1d(sampled, s_parameters, kind="cubic", axis=0)
         return func(resampled)
-

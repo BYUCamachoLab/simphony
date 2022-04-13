@@ -517,7 +517,7 @@ class Subcircuit(Model):
 
                         # make the pin's owner this component if permanent
                         if permanent:
-                            pin_names[pin.name] = True                            
+                            pin_names[pin.name] = True
                             pin._component = self
 
         if len(pins) == 0:

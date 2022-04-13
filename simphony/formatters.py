@@ -191,46 +191,47 @@ class ModelJSONFormatter(ModelFormatter):
             data["subcircuit"],
         )
 
+
 class ModelLumericalFormatter(ModelFormatter):
     """The ModelLumericalFormatter class formats the model data in a format compatible with Lumerical."""
 
     def parse(self, file_name: str, mode_id: int = 1, name: str = None) -> "Model":
-        #create name for the model
+        # create name for the model
         if name is None:
             name = file_name.split(".")[0]
-        #read the lumerical s-parameters file
+        # read the lumerical s-parameters file
         file_r = open(file_name, 'r')
         string = file_r.read()
         file_r.close()
-        #read the header information
-        header = string[:string.index("(")-1]
-        body = string[string.index("(")+2:]
+        # read the header information
+        header = string[:string.index("(") - 1]
+        body = string[string.index("(") + 2:]
         pin_list = header.split("\n")
         pins = []
         for pin_title in pin_list:
             pin_details = pin_title.split("\"")
             pins.append(pin_details[1])
-        #read the body information
+        # read the body information
         body_sections = body.split("(\"")
-        freq_num = len(body_sections[0].strip().split("\n"))-2
-        s_params = np.zeros([freq_num,len(pins),len(pins)],dtype=complex)
+        freq_num = len(body_sections[0].strip().split("\n")) - 2
+        s_params = np.zeros([freq_num, len(pins), len(pins)], dtype=complex)
         freqs = []
         record_freqs = True
-        #for each input port and output port
+        # for each input port and output port
         for body_section in body_sections:
             connection_header = body_section[:body_section.index(")")]
             connection_info = connection_header.split(",")
-            #read which ports the following s-parameters apply to
-            in_pin = connection_info[0][:len(connection_info[0])-1]
-            out_pin = connection_info[3][1:len(connection_info[3])-1]
-            connection_meas = body_section[body_section.index(")")+2:]
-            connection_data = connection_meas[connection_meas.index(")")+2:]
-            #read the s-parameters
+            # read which ports the following s-parameters apply to
+            in_pin = connection_info[0][:len(connection_info[0]) - 1]
+            out_pin = connection_info[3][1:len(connection_info[3]) - 1]
+            connection_meas = body_section[body_section.index(")") + 2:]
+            connection_data = connection_meas[connection_meas.index(")") + 2:]
+            # read the s-parameters
             connection_data_points = connection_data.split("\n")
             if(int(connection_info[2]) != mode_id):
                 continue
             else:
-                #for each frequency
+                # for each frequency
                 for point in connection_data_points[:len(connection_data_points)-1]:
                     point_info = point.strip().split(" ")
                     freq = float(point_info[0])
@@ -239,10 +240,10 @@ class ModelLumericalFormatter(ModelFormatter):
                     s_param = complex(mag * np.cos(angle), mag * np.sin(angle))
                     if(record_freqs):
                         freqs.append(freq)
-                    #add the s-parameter to the correct location in the s-parameter matrix
-                    s_params[freqs.index(freq),pins.index(in_pin),pins.index(out_pin)] = s_param
+                    # add the s-parameter to the correct location in the s-parameter matrix
+                    s_params[freqs.index(freq), pins.index(in_pin), pins.index(out_pin)] = s_param
                 record_freqs = False
-        #return the component
+        # return the component
         return self._to_component(
             np.array(freqs),
             name,
@@ -252,54 +253,53 @@ class ModelLumericalFormatter(ModelFormatter):
             polar_interpolation=True,
         )
 
-    def format(self, component: "Model", freqs: np.array, orientations = None, file_name: str = None) -> None:
-        #get the information from the component
+    def format(self, component: "Model", freqs: np.array, orientations=None, file_name: str = None) -> None:
+        # get the information from the component
         name, pins, s_params, subcircuit = self._from_component(component, freqs)
         mode_name = "mode 1"
         mode_id = 1
-        #create the file name
+        # create the file name
         if file_name is None:
             file_name = name + ".txt"
         lum_string = ""
-        #generate the port orienations if not inputted
+        # generate the port orienations if not inputted
         if(orientations is None):
             orientations = []
-            switch_point = np.ceil(len(pins)/2.0)
+            switch_point = np.ceil(len(pins) / 2.0)
             for i in range(len(pins)):
                 if(i < switch_point):
                     orientations.append("LEFT")
                 else:
                     orientations.append("RIGHT")
-        #convert the s-parameters to magnitude and phase format
+        # convert the s-parameters to magnitude and phase format
         mags = np.abs(s_params)
-        angles = np.arctan2(s_params.imag,s_params.real)
-        angles = np.unwrap(angles,axis=0)
-        #write the header information
-        for pin,orientation in zip(pins,orientations):
+        angles = np.arctan2(s_params.imag, s_params.real)
+        angles = np.unwrap(angles, axis=0)
+        # write the header information
+        for pin, orientation in zip(pins, orientations):
             lum_string = lum_string+"[\""+pin+"\",\""+orientation+"\"]\n"
         input_pin_count = 0
-        #write the body information
+        # write the body information
         for input_pin in pins:
             output_pin_count = 0
             for output_pin in pins:
-                #write the input and output port information
+                # write the input and output port information
                 lum_string = lum_string + "(\"" + input_pin + "\",\"" + mode_name + "\"," + str(mode_id) + ",\"" + output_pin + "\"," + str(mode_id) + ",\"transmission\")\n"
                 lum_string = lum_string + "(" + str(len(freqs)) + ",3)\n"
                 freq_count = 0
-                #for each frequency
+                # for each frequency
                 for freq in freqs:
-                    #write the frequency
+                    # write the frequency
                     lum_string = lum_string + '{:.12e}'.format(freq) + " "
-                    s_param = s_params[freq_count,input_pin_count,output_pin_count]
-                    mag = mags[freq_count,input_pin_count,output_pin_count]
-                    angle = angles[freq_count,input_pin_count,output_pin_count]
-                    #write the magnitude and phase of the s-parameter
+                    mag = mags[freq_count, input_pin_count, output_pin_count]
+                    angle = angles[freq_count, input_pin_count, output_pin_count]
+                    # write the magnitude and phase of the s-parameter
                     lum_string = lum_string + '{:.12e}'.format(mag) + " "
                     lum_string = lum_string + '{:.12e}'.format(angle) + "\n"
                     freq_count += 1
                 output_pin_count += 1
             input_pin_count += 1
-        #write the string to the file
+        # write the string to the file
         file_w = open(file_name, 'w')
         file_w.write(lum_string)
         file_w.close()
@@ -385,7 +385,7 @@ class CircuitJSONFormatter:
 
 class CircuitLumericalFormatter(CircuitFormatter):
 
-    def format(self, circuit: "Circuit", freqs: np.array, orientations = None, file_name: str = None) -> None:
+    def format(self, circuit: "Circuit", freqs: np.array, orientations=None, file_name: str = None) -> None:
         circuit_model = circuit.to_subcircuit(autoname=True)
         model_formatter = ModelLumericalFormatter()
         model_formatter.flatten_subcircuits = True
