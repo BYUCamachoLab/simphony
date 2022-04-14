@@ -182,7 +182,7 @@ class GapFuncSymmetric(SipannWrapper):
     """
 
     pin_count = 4
-    
+
     def __init__(
         self,
         width: Union[float, np.array],
@@ -344,11 +344,10 @@ class HalfRing(SipannWrapper):
     pin_count = 4
 
     def __hash__(self) -> int:
-            
+    
         """Gets a hash for the HalfRing component based on component type, and component parameters."""
 
         return hash(hash(type(self)) + hash(self.model.gap) + hash(self.model.radius) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.sw_angle))
-
 
     def __init__(
         self,
@@ -415,11 +414,10 @@ class HalfRacetrack(SipannWrapper):
     pin_count = 4
 
     def __hash__(self) -> int:
-            
+
         """Gets a hash for the HalfRacetrack component based on component type, and component parameters."""
 
         return hash(hash(type(self)) + hash(self.model.gap) + hash(self.model.radius) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.length) + hash(self.model.sw_angle))
-
 
     def __init__(
         self,
@@ -485,7 +483,7 @@ class StraightCoupler(SipannWrapper):
     pin_count = 4
 
     def __hash__(self) -> int:
-            
+ 
         """Gets a hash for the StraightCoupler component based on component type, and component parameters."""
 
         return hash(hash(type(self)) + hash(self.model.gap) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.length) + hash(self.model.sw_angle))
@@ -560,11 +558,10 @@ class Standard(SipannWrapper):
     pin_count = 4
 
     def __hash__(self) -> int:
-            
+
         """Gets a hash for the standard-shaped directional coupler component based on component type, and component parameters."""
 
         return hash(hash(type(self)) + hash(self.model.gap) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.length) + hash(self.model.sw_angle))
-
 
     def __init__(
         self,
@@ -637,7 +634,7 @@ class DoubleHalfRing(SipannWrapper):
     pin_count = 4
 
     def __hash__(self) -> int:
-            
+
         """Gets a hash for the DoubleHalfRing component based on component type, gap, radius, thickness, couple length, and width."""
 
         return hash(hash(type(self)) + hash(self.model.gap) + hash(self.model.radius) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.sw_angle))
@@ -711,11 +708,10 @@ class AngledHalfRing(SipannWrapper):
     pin_count = 4
 
     def __hash__(self) -> int:
-            
+
         """Gets a hash for the AngledHalfRing component based on component type, gap, radius, thickness, couple length, and width."""
 
         return hash(hash(type(self)) + hash(self.model.gap) + hash(self.model.radius) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.theta) + hash(self.model.sw_angle))
-
 
     def __init__(
         self,
@@ -769,7 +765,6 @@ class Waveguide(SipannWrapper):
 
     pin_count = 2
 
-    
     def __init__(
         self,
         width: Union[float, np.array],
@@ -784,8 +779,9 @@ class Waveguide(SipannWrapper):
             sigmas,
             **kwargs
         )
+
     def __hash__(self) -> int:
-                
+ 
             """Gets a hash for the staright waveguide component based on component type, gap, radius, thickness, couple length, and width."""
 
             return hash(hash(type(self)) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.length) + hash(self.model.sw_angle))
@@ -836,11 +832,10 @@ class Racetrack(SipannWrapper):
     pin_count = 2
 
     def __hash__(self) -> int:
-            
+  
         """Gets a hash for the Racetrack component based on component type, gap, radius, thickness, couple length, and width."""
 
         return hash(hash(type(self)) + hash(self.gap) + hash(self.radius) + hash(self.thickness) + hash(self.width) + + hash(self.length) + hash(self.sw_angle) + hash(self.sigmas))
-
 
     def __init__(
         self,
@@ -885,7 +880,7 @@ class PremadeCoupler(SipannWrapper):
     pin_count = 4
 
     def __hash__(self) -> int:
-        
+
         """Gets a hash value for the premade coupler component based on type, and 'split' parameter value."""
 
         return hash(hash(type(self)) + hash(self.split))
