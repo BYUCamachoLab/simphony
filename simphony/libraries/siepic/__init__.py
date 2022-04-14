@@ -513,10 +513,10 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
     )
 
     def __hash__(self) -> int:
-            
-            """Gets a hash for the BidirectionalCoupler component based on component type, and component parameters"""
 
-            return hash(hash(type(self)) + hash(self.thickness) + hash(self.width))
+        """Gets a hash for the BidirectionalCoupler component based on component type, and component parameters"""
+
+        return hash(hash(type(self)) + hash(self.thickness) + hash(self.width))
 
     def __init__(self, thickness=220e-9, width=500e-9, **kwargs):
         super().__init__(**kwargs, thickness=thickness, width=width)
@@ -591,7 +591,7 @@ class HalfRing(SiEPIC_PDK_Base):
     )
 
     def __hash__(self) -> int:
-            
+
         """Gets a hash for the HalfRing component based on component type, and component parameters."""
 
         return hash(hash(type(self)) + hash(self.gap) + hash(self.radius) + hash(self.thickness) + hash(self.width) + hash(self.couple_length))
@@ -673,10 +673,10 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
     )
 
     def __hash__(self) -> int:
-            
-            """Gets a hash for the DirectionalCoupler component based on component type, gap, and length of coupler."""
+  
+        """Gets a hash for the DirectionalCoupler component based on component type, gap, and length of coupler."""
 
-            return hash(hash(type(self)) + hash(self.gap) + hash(self.Lc))
+        return hash(hash(type(self)) + hash(self.gap) + hash(self.Lc))
 
     def __init__(self, gap=200e-9, Lc=10e-6, **kwargs):
         super().__init__(**kwargs, gap=gap, Lc=Lc)
@@ -742,10 +742,10 @@ class Terminator(SiEPIC_PDK_Base):
     )
 
     def __hash__(self) -> int:
-            
-            """Gets a hash for the Terminator component based on component type, and component parameters."""
 
-            return hash(hash(type(self)) + hash(self.w1) + hash(self.w2) + hash(self.L))
+        """Gets a hash for the Terminator component based on component type, and component parameters."""
+
+        return hash(hash(type(self)) + hash(self.w1) + hash(self.w2) + hash(self.L))
 
     def __init__(self, w1=500e-9, w2=60e-9, L=10e-6, **kwargs):
         super().__init__(**kwargs, w1=w1, w2=w2, L=L)
@@ -818,10 +818,10 @@ class GratingCoupler(SiEPIC_PDK_Base):
     )
 
     def __hash__(self) -> int:
-            
-            """Gets a hash for the GratingCoupler component based on component type, and component parameters."""
 
-            return hash(hash(type(self)) + hash(self.polarization) + hash(self.thickness) + hash(self.deltaw))
+        """Gets a hash for the GratingCoupler component based on component type, and component parameters."""
+
+        return hash(hash(type(self)) + hash(self.polarization) + hash(self.thickness) + hash(self.deltaw))
 
     def __init__(self, thickness=220e-9, deltaw=0, polarization="TE", **kwargs):
         super().__init__(
@@ -923,7 +923,7 @@ class Waveguide(SiEPIC_PDK_Base):
     )
 
     def __hash__(self) -> int:
-            
+
         """Gets a hash for the Waveguide component based on component type, and component parameters."""
 
         return hash(hash(type(self)) + hash(self.length) + hash(self.width) + hash(self.height) + hash(self.polarization) + hash(self.sigma_ne) + hash(self.sigma_ng) + hash(self.sigma_nd))
@@ -1092,10 +1092,10 @@ class YBranch(SiEPIC_PDK_Base):
     )
 
     def __hash__(self) -> int:
-            
-            """Gets a hash for the YBranch component based on component type, and component parameters."""
 
-            return hash(hash(type(self)) + hash(self.thickness) + hash(self.width) + hash(type(self.polarization)))
+        """Gets a hash for the YBranch component based on component type, and component parameters."""
+
+        return hash(hash(type(self)) + hash(self.thickness) + hash(self.width) + hash(type(self.polarization)))
 
     def __init__(self, thickness=220e-9, width=500e-9, polarization="TE", **kwargs):
         if polarization not in ["TE", "TM"]:
