@@ -57,7 +57,7 @@ class TestSiepicHash:
 class TestSipannHash:
 
     def test_hash():
-                
+
         hr1siepic = sipann.HalfRing(gap=2e-7, radius=1e-5, width=5e-7, thickness=2.2e-7)
         hr2siepic = sipann.HalfRing(gap=2e-7, radius=1e-5, width=5e-7, thickness=2.2e-7)
         assert np.allclose(hr1siepic.__hash__(), hr2siepic.__hash__())
@@ -85,7 +85,7 @@ class TestSipannHash:
         wg1 = sipann.Waveguide(length=150e-6, width=5e-7, thickness=2e-7)
         wg2 = sipann.Waveguide(length=150e-6, width=5e-7, thickness=2e-7)
         assert np.allclose(wg1.__hash__(), wg2.__hash__())
-        
+
         wg1 = sipann.Waveguide(length=150e-6, width=5e-7, thickness=2e-7)
         wg2 = sipann.Waveguide(length=50e-6, width=6e-7, thickness=2.3e-7)
         assert not np.allclose(wg1.__hash__(), wg2.__hash__())
@@ -98,18 +98,18 @@ class TestSipannHash:
         stcoup2 = sipann.Standard(width=5e-7, thickness=2.3e-7, gap=2e-7, length=10e-6, horizontal=1e-6, vertical=1e-6)
         assert not np.allclose(stcoup1.__hash__(), stcoup2.__hash__())
 
-        dhr1 = sipann.DoubleHalfRing(width=5e-7, thickness=2.3e-7, radius=1e-5,gap=2e-7)
-        dhr2 = sipann.DoubleHalfRing(width=5e-7, thickness=2.3e-7, radius=1e-5,gap=2e-7)
+        dhr1 = sipann.DoubleHalfRing(width=5e-7, thickness=2.3e-7, radius=1e-5, gap=2e-7)
+        dhr2 = sipann.DoubleHalfRing(width=5e-7, thickness=2.3e-7, radius=1e-5, gap=2e-7)
         assert np.allclose(dhr1.__hash__(), dhr2.__hash__())
 
-        dhr1 = sipann.DoubleHalfRing(width=5.8e-7, thickness=2.2e-7, radius=9e-6,gap=3e-7)
-        dhr2 = sipann.DoubleHalfRing(width=5e-7, thickness=2.3e-7, radius=1e-5,gap=2e-7)
+        dhr1 = sipann.DoubleHalfRing(width=5.8e-7, thickness=2.2e-7, radius=9e-6, gap=3e-7)
+        dhr2 = sipann.DoubleHalfRing(width=5e-7, thickness=2.3e-7, radius=1e-5, gap=2e-7)
         assert not np.allclose(dhr1.__hash__(), dhr2.__hash__())
 
-        ahr1 = sipann.AngledHalfRing(width=5e-7, thickness=2.3e-7, radius=1e-5,theta=45,gap=2e-7)
-        ahr2 = sipann.AngledHalfRing(width=5e-7, thickness=2.3e-7, radius=1e-5,theta=45,gap=2e-7)
+        ahr1 = sipann.AngledHalfRing(width=5e-7, thickness=2.3e-7, radius=1e-5, theta=45, gap=2e-7)
+        ahr2 = sipann.AngledHalfRing(width=5e-7, thickness=2.3e-7, radius=1e-5, theta=45, gap=2e-7)
         assert np.allclose(ahr1.__hash__(), ahr2.__hash__())
 
-        ahr1 = sipann.AngledHalfRing(width=5.8e-7, thickness=2.2e-7, radius=9e-6,theta=50,gap=3e-7)
-        ahr2 = sipann.AngledHalfRing(width=5e-7, thickness=2.3e-7, radius=1e-5,theta=45,gap=2e-7)
+        ahr1 = sipann.AngledHalfRing(width=5.8e-7, thickness=2.2e-7, radius=9e-6, theta=50, gap=3e-7)
+        ahr2 = sipann.AngledHalfRing(width=5e-7, thickness=2.3e-7, radius=1e-5, theta=45, gap=2e-7)
         assert not np.allclose(ahr1.__hash__(), ahr2.__hash__())

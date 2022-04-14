@@ -673,7 +673,7 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
     )
 
     def __hash__(self) -> int:
-  
+
         """Gets a hash for the DirectionalCoupler component based on component type, gap, and length of coupler."""
 
         return hash(hash(type(self)) + hash(self.gap) + hash(self.Lc))

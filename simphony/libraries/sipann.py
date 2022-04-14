@@ -344,7 +344,7 @@ class HalfRing(SipannWrapper):
     pin_count = 4
 
     def __hash__(self) -> int:
-    
+
         """Gets a hash for the HalfRing component based on component type, and component parameters."""
 
         return hash(hash(type(self)) + hash(self.model.gap) + hash(self.model.radius) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.sw_angle))
@@ -483,7 +483,7 @@ class StraightCoupler(SipannWrapper):
     pin_count = 4
 
     def __hash__(self) -> int:
- 
+
         """Gets a hash for the StraightCoupler component based on component type, and component parameters."""
 
         return hash(hash(type(self)) + hash(self.model.gap) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.length) + hash(self.model.sw_angle))
@@ -781,10 +781,10 @@ class Waveguide(SipannWrapper):
         )
 
     def __hash__(self) -> int:
- 
-            """Gets a hash for the staright waveguide component based on component type, gap, radius, thickness, couple length, and width."""
 
-            return hash(hash(type(self)) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.length) + hash(self.model.sw_angle))
+        """Gets a hash for the staright waveguide component based on component type, gap, radius, thickness, couple length, and width."""
+
+        return hash(hash(type(self)) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.length) + hash(self.model.sw_angle))
 
 
 class Racetrack(SipannWrapper):
@@ -832,7 +832,7 @@ class Racetrack(SipannWrapper):
     pin_count = 2
 
     def __hash__(self) -> int:
-  
+
         """Gets a hash for the Racetrack component based on component type, gap, radius, thickness, couple length, and width."""
 
         return hash(hash(type(self)) + hash(self.gap) + hash(self.radius) + hash(self.thickness) + hash(self.width) + + hash(self.length) + hash(self.sw_angle) + hash(self.sigmas))
