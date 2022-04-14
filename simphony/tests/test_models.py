@@ -2,7 +2,6 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-from cmath import inf
 import pytest
 
 from simphony.libraries import siepic
