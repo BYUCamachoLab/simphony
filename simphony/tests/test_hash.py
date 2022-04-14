@@ -10,7 +10,7 @@ from simphony.libraries import sipann
 
 class TestSiepicHash:
 
-    def test_hash():
+    def test_hash(self):
 
         bdc1 = siepic.BidirectionalCoupler()
         bdc2 = siepic.BidirectionalCoupler()
@@ -56,7 +56,7 @@ class TestSiepicHash:
 
 class TestSipannHash:
 
-    def test_hash():
+    def test_hash(self):
 
         hr1siepic = sipann.HalfRing(gap=2e-7, radius=1e-5, width=5e-7, thickness=2.2e-7)
         hr2siepic = sipann.HalfRing(gap=2e-7, radius=1e-5, width=5e-7, thickness=2.2e-7)
