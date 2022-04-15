@@ -5,6 +5,7 @@
 from simphony.libraries import siepic
 from simphony.libraries import sipann
 
+
 class TestSiepicHash:
 
     def test_hash(self):
