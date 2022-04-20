@@ -851,12 +851,12 @@ class DifferentialDetector(Detector):
         # amplify the signal
         signal = (power + rin_dists) * self.monitor_conversion_gain
 
-        # add the electrical noise after amplification
-        signal += self.monitor_noise_dists
-
         # filter the signal
         if self.context.num_samples > 1:
             signal = self._monitor_filter(signal)
+
+        # add the electrical noise after amplification
+        signal += self.monitor_noise_dists
 
         return signal
 
@@ -888,12 +888,12 @@ class DifferentialDetector(Detector):
             (p1 - p2) + (self.rf_rin_dists1 + self.rf_rin_dists2)
         ) * self.rf_conversion_gain
 
-        # add the electrical signal after amplification
-        signal += self.rf_noise_dists
-
         # filter the difference
         if self.context.num_samples > 1:
             signal = self._rf_filter(signal)
+
+        # add the electrical signal after amplification
+        signal += self.rf_noise_dists
 
         return signal
 
