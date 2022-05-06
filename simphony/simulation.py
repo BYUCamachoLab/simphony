@@ -723,13 +723,13 @@ class DifferentialDetector(Detector):
 
                         # if the two powers are different, we need to adjust
                         # the CMRR to account for the difference
-                        cmrr = self.rf_cmrr
+                        cmrr = self.rf_cmrr # CMRR from path length
                         sum = p1[i][j][0] + p2[i][j][0]
                         diff = np.abs(p1[i][j][0] - p2[i][j][0])
                         if diff:
-                            cmrr2 = -to_db(sum / diff)
-                            cmrr = to_db(
-                                np.sqrt(from_db(cmrr) ** 2 + from_db(cmrr2) ** 2)
+                            cmrr2 = -to_db(sum/diff) # CMRR from power difference
+                            cmrr = cmrr if cmrr == -np.inf else to_db(
+                                (1/(1/from_db(cmrr) + 1/from_db(cmrr2)))
                             )
 
                         # only calculate the noise if there is power
