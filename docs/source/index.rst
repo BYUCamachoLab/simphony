@@ -66,7 +66,7 @@ Simphony project, let us know by raising an issue on
 .. _matplotlib: https://matplotlib.org/
 .. _SiPANN: https://sipann.readthedocs.io/en/latest/
 
-.. note:: Citing this work
+.. admonition:: Citing this work
    S. Ploeg, H. Gunther and R. M. Camacho, "Simphony: An Open-Source Photonic 
    Integrated Circuit Simulation Framework," in Computing in Science & 
    Engineering, vol. 23, no. 1, pp. 65-74, 1 Jan.-Feb. 2021, doi: 10.1109/MCSE.2020.3012099.
