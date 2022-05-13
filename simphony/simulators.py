@@ -11,11 +11,13 @@ components before simulating. This can be done using the same connection methods
 that exist on a component.
 """
 
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
+import scipy
 
 from simphony import Model
+from simphony.libraries import siepic
 from simphony.tools import freq2wl, wl2freq
 
 
@@ -83,7 +85,7 @@ class Simulator(Model):
 
         # if the scattering parameters for the circuit are cached, use those
         try:
-            if s_parameters_method == "monte_carlo_s_parameters":
+            if s_parameters_method == "monte_carlo_s_parameters" or "layout_aware_monte_carlo_s_parameters":
                 raise RuntimeError("No caching for Monte Carlo simulations.")
 
             s_params = self.__class__.scache[self.circuit]
@@ -193,6 +195,76 @@ class MonteCarloSweepSimulator(SweepSimulator):
         for i in range(runs):
             # use s_parameters for the first run, then monte_carlo_* for the rest
             s_parameters_method = "monte_carlo_s_parameters" if i else "s_parameters"
+            results.append(
+                super().simulate(**kwargs, s_parameters_method=s_parameters_method)
+            )
+
+            for component in self.circuit:
+                component.regenerate_monte_carlo_parameters()
+
+        return results
+
+
+class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
+    """Wrapper simulator to make it easier to simulate over a range of
+    frequencies while performing Monte Carlo experimentation."""
+
+    def simulate(self, x : List = [], y : List = [], sigmaw : float = 5, sigmat : float = 3, l : float = 4.5e-3, runs: int = 10, **kwargs) -> Tuple[np.array, np.array]:
+        """Runs the Monte Carlo sweep simulation for the circuit.
+
+        Parameters
+        ----------
+        dB :
+            Returns the power ratios in deciBels when True.
+        mode :
+            Whether to return frequencies or wavelengths for the corresponding
+            power ratios. Defaults to whatever values were passed in upon
+            instantiation.
+        runs :
+            The number of Monte Carlo iterations to run (default 10).
+        """
+        results = []
+
+        corr_matrix_w = np.zeros((13, 13))
+        corr_matrix_t = np.zeros((13, 13))
+
+        for i in range(13):
+            for k in range(13):
+
+                corr_val = np.exp(- ((x[k] - x[i]) ** 2 + (y[k] - y[i]) ** 2) / (0.5 * (l ** 2)))
+
+                corr_matrix_w[i][k] = corr_matrix_w[k][i] = corr_val
+                corr_matrix_t[i][k] = corr_matrix_t[k][i] = corr_val
+
+        cov_matrix_w = np.zeros((13, 13))
+        cov_matrix_t = np.zeros((13, 13))
+        for i in range(13):
+            for k in range(13):
+                cov_matrix_w[i][k] = sigmaw * corr_matrix_w[i][k] * sigmaw
+                cov_matrix_t[i][k] = sigmat * corr_matrix_t[i][k] * sigmat
+
+        l_w = scipy.linalg.cholesky(cov_matrix_w, lower=True)
+        l_t = scipy.linalg.cholesky(cov_matrix_t, lower=True)
+
+        X = np.random.multivariate_normal([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], np.eye(13, 13), 1000).T
+
+        corr_sample_matrix_w = np.dot(l_w, X)
+        corr_sample_matrix_t = np.dot(l_t, X)
+
+        components = self.circuit._get_components()
+
+        for i in range(runs):
+            # use s_parameters for the first run, then monte_carlo_* for the rest
+
+            for idx, _ in enumerate(components):
+                dw = corr_sample_matrix_w[idx][i]
+                dt = corr_sample_matrix_t[idx][i]
+                if isinstance(components[idx], siepic.Waveguide):
+                    components[idx].__setattr__("layout_aware", True)
+                    components[idx].__setattr__("width", components[idx].__getattribute__("width") + dw * 1e-9)
+                    components[idx].__setattr__("height", components[idx].__getattribute__("height") + dt * 1e-9)
+                    s_parameters_method = "layout_aware_monte_carlo_s_parameters" if i else "s_parameters"
+
             results.append(
                 super().simulate(**kwargs, s_parameters_method=s_parameters_method)
             )
