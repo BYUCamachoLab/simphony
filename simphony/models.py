@@ -280,6 +280,28 @@ class Model:
         """
         return self.s_parameters(freqs)
 
+    def layout_aware_monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
+        """Implements the monte carlo routine for the given Model.
+
+        If no monte carlo routine is defined, the default behavior returns the
+        result of a call to ``s_parameters()``.
+
+        Parameters
+        ----------
+        freqs : np.array
+            The frequency range to generate monte carlo s-parameters over.
+
+        Returns
+        -------
+        s : np.ndarray
+            The scattering parameters corresponding to the frequency range.
+            Its shape should be (the number of frequency points x ports x ports).
+            If the scattering parameters are requested for only a single
+            frequency, for example, and the device has 4 ports, the shape
+            returned by ``monte_carlo_s_parameters`` would be (1, 4, 4).
+        """
+        return self.s_parameters(freqs)
+
     def multiconnect(self, *connections: Union["Model", Pin, None]) -> "Model":
         """Connects this component to the specified connections by looping
         through each connection and connecting it with the corresponding pin.
@@ -587,6 +609,9 @@ class Subcircuit(Model):
             elif s_parameters_method == "monte_carlo_s_parameters":
                 # don't cache Monte Carlo scattering parameters
                 s_params = getattr(component, s_parameters_method)(freqs)
+            elif s_parameters_method == "layout_aware_monte_carlo_s_parameters":
+                # don't cache Layout Aware Monte Carlo scattering parameters
+                s_params = getattr(component, s_parameters_method)(freqs)
 
             # merge the s_params into the block diagonal matrix
             if s_block is None:
@@ -623,6 +648,10 @@ class Subcircuit(Model):
     def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns the Monte Carlo scattering parameters for the subcircuit."""
         return self._s_parameters(freqs, "monte_carlo_s_parameters")
+
+    def layout_aware_monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
+        """Returns the Monte Carlo scattering parameters for the subcircuit."""
+        return self._s_parameters(freqs, "layout_aware_monte_carlo_s_parameters")
 
     def regenerate_monte_carlo_parameters(self) -> None:
         """Regenerates parameters used to generate Monte Carlo s-matrices."""
