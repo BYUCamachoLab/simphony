@@ -425,9 +425,9 @@ class SiEPIC_PDK_Base(Model):
             Warns if exact requested parameters are not available.
         """
         try:
-            return norm_args.index(req_args)
+            return (norm_args.index(req_args), None)
         except ValueError:
-            adjusted_args = cls._find_closest(norm_args, req_args)
+            adjusted_args, adjusted_args_2 = cls._find_closest(norm_args, req_args)
             msg = (
                 "Exact parameters not available for '{}', ".format(cls)
                 + "using closest approximation (results may not be as accurate).\n"
@@ -436,7 +436,7 @@ class SiEPIC_PDK_Base(Model):
                 + "NOTE: Model attributes may have been automatically modified."
             )
             warnings.warn(msg, UserWarning)
-            return norm_args.index(adjusted_args)
+            return (norm_args.index(adjusted_args), norm_args.index(adjusted_args_2))
 
     @staticmethod
     def _find_closest(normalized, args):
@@ -466,15 +466,25 @@ class SiEPIC_PDK_Base(Model):
             diff_keys = [k for k, v in argset.items() if v != args[k]]
             diff_count = len(diff_keys)
             diffs.append(Candidate(diff_count, diff_keys, argset))
+
         min_diff = min(c.count for c in diffs)
         candidates = [c for c in diffs if c.count == min_diff]
-
         errors = []
         for count, keys, argset in candidates:
             sum_error = sum([abs(percent_diff(argset[key], args[key])) for key in keys])
             errors.append(sum_error / count)
         idx = np.argmin(errors)
-        return candidates[idx].argset
+
+        diffs2 = diffs
+        diffs2.pop(idx)
+        min_diff2 = min(c.count for c in diffs2)
+        candidates2 = [c for c in diffs2 if c.count == min_diff2]
+        errors2 = []
+        for count, keys, argset in candidates2:
+            sum_error = sum([abs(percent_diff(argset[key], args[key])) for key in keys])
+            errors2.append(sum_error / count)
+        idx2 = np.argmin(errors2)
+        return (candidates[idx].argset, candidates2[idx2].argset)
 
 
 class BidirectionalCoupler(SiEPIC_PDK_Base):
@@ -522,7 +532,7 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
         normalized = [
             {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()} for d in available
         ]
-        idx = self._get_matched_args(normalized, self.args)
+        idx, _ = self._get_matched_args(normalized, self.args)
 
         valid_args = available[idx]
         sparams = parser.read_params(self._get_file(valid_args))
@@ -609,7 +619,7 @@ class HalfRing(SiEPIC_PDK_Base):
         normalized = [
             {k: round(str2float(v), 15) for k, v in d.items()} for d in available
         ]
-        idx = self._get_matched_args(normalized, self.args)
+        idx, _ = self._get_matched_args(normalized, self.args)
 
         valid_args = available[idx]
         sparams = parser.read_params(self._get_file(valid_args))
@@ -670,8 +680,7 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
         normalized = [
             {k: round(str2float(v), 15) for k, v in d.items()} for d in available
         ]
-        idx = self._get_matched_args(normalized, self.args)
-
+        idx, _ = self._get_matched_args(normalized, self.args)
         valid_args = available[idx]
         sparams = parser.read_params(self._get_file(valid_args))
         self._f, self._s = parser.build_matrix(sparams)
@@ -740,7 +749,7 @@ class Terminator(SiEPIC_PDK_Base):
                     L[0]: round(str2float(L[1]) * 1e-6, 15),
                 }
             )
-        idx = self._get_matched_args(normalized, self.args)
+        idx, _ = self._get_matched_args(normalized, self.args)
 
         valid_args = available[idx]
         sparams = parser.read_params(self._get_file(valid_args))
@@ -814,7 +823,7 @@ class GratingCoupler(SiEPIC_PDK_Base):
                     deltaw[0]: round(str2float(deltaw[1]) * 1e-9, 15),
                 }
             )
-        idx = self._get_matched_args(normalized, self.args)
+        idx, _ = self._get_matched_args(normalized, self.args)
         for key, value in normalized[idx].items():
             setattr(self, key, value)
 
@@ -901,6 +910,7 @@ class Waveguide(SiEPIC_PDK_Base):
         sigma_ne=0.05,
         sigma_ng=0.05,
         sigma_nd=0.0001,
+        layout_aware=False,
         **kwargs
     ):
         if polarization not in ["TE", "TM"]:
@@ -923,37 +933,78 @@ class Waveguide(SiEPIC_PDK_Base):
             sigma_ne=sigma_ne,
             sigma_ng=sigma_ng,
             sigma_nd=sigma_nd,
+            layout_aware=layout_aware
         )
 
         self.regenerate_monte_carlo_parameters()
 
     def on_args_changed(self):
-        self.suspend_autoupdate()
 
-        available = self._source_argsets()
-        normalized = [
-            {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()} for d in available
-        ]
-        idx = self._get_matched_args(normalized, self.args)
+        if not self.layout_aware:
+            self.suspend_autoupdate()
 
-        valid_args = available[idx]
-        with open(self._get_file(valid_args), "r") as f:
-            params = f.read().rstrip("\n")
-        if self.polarization == "TE":
-            lam0, ne, _, ng, _, nd, _ = params.split(" ")
-        elif self.polarization == "TM":
-            lam0, _, ne, _, ng, _, nd = params.split(" ")
-            raise NotImplementedError
-        self.lam0 = float(lam0)
-        self.ne = float(ne)
-        self.ng = float(ng)
-        self.nd = float(nd)
+            available = self._source_argsets()
+            normalized = [
+                {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()} for d in available
+            ]
+            idx, _ = self._get_matched_args(normalized, self.args)
 
-        # Updates parameters width and thickness to closest match.
-        for key, value in normalized[idx].items():
-            setattr(self, key, value)
+            valid_args = available[idx]
+            with open(self._get_file(valid_args), "r") as f:
+                params = f.read().rstrip("\n")
+            if self.polarization == "TE":
+                lam0, ne, _, ng, _, nd, _ = params.split(" ")
+            elif self.polarization == "TM":
+                lam0, _, ne, _, ng, _, nd = params.split(" ")
+                raise NotImplementedError
+            self.lam0 = float(lam0)
+            self.ne = float(ne)
+            self.ng = float(ng)
+            self.nd = float(nd)
 
-        self.enable_autoupdate()
+            # Updates parameters width and thickness to closest match.
+            for key, value in normalized[idx].items():
+                setattr(self, key, value)
+
+            self.enable_autoupdate()
+
+        else:
+            self.suspend_autoupdate()
+
+            available = self._source_argsets()
+            normalized = [
+                {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()} for d in available
+            ]
+            idx, idx_2 = self._get_matched_args(normalized, self.args)
+
+            valid_args = available[idx]
+            with open(self._get_file(valid_args), "r") as f:
+                params = f.read().rstrip("\n")
+            if self.polarization == "TE":
+                lam0, ne, _, ng, _, nd, _ = params.split(" ")
+            elif self.polarization == "TM":
+                lam0, _, ne, _, ng, _, nd = params.split(" ")
+                raise NotImplementedError
+
+            valid_args_2 = available[idx_2]
+            with open(self._get_file(valid_args_2), "r") as f:
+                params = f.read().rstrip("\n")
+            if self.polarization == "TE":
+                lam0_2, ne2, _, ng2, _, nd2, _ = params.split(" ")
+            elif self.polarization == "TM":
+                lam0_2, _, ne2, _, ng2, _, nd2 = params.split(" ")
+                raise NotImplementedError
+
+            self.lam0 = float((float(lam0) + float(lam0_2)) / 2)
+            self.ne = float((float(ne) + float(ne2)) / 2)
+            self.ng = float((float(ng) + float(ng2)) / 2)
+            self.nd = float((float(nd) + float(nd2)) / 2)
+
+            # Updates parameters width and thickness to closest match.
+            for key, value in normalized[idx].items():
+                setattr(self, key, value)
+
+            self.enable_autoupdate()
 
     def s_parameters(self, freqs):
         """Get the s-parameters of a waveguide.
@@ -969,7 +1020,7 @@ class Waveguide(SiEPIC_PDK_Base):
             Returns a tuple containing the frequency array, `freqs`,
             corresponding to the calculated s-parameter matrix, `s`.
         """
-        return self.cacl_s_params(
+        return self.calc_s_params(
             freqs, self.length, self.lam0, self.ne, self.ng, self.nd
         )
 
@@ -984,7 +1035,22 @@ class Waveguide(SiEPIC_PDK_Base):
         monte carlo parameters but they are consistent within a single
         circuit.
         """
-        return self.cacl_s_params(
+        return self.calc_s_params(
+            freqs, self.length, self.lam0, self.rand_ne, self.rand_ng, self.rand_nd
+        )
+
+    def layout_aware_monte_carlo_s_parameters(self, freqs):
+        """Returns a monte carlo (randomized) set of s-parameters.
+
+        In this implementation of the monte carlo routine, random values
+        are generated for ne, ng, and nd for each run through of the
+        monte carlo simulation. This means that all waveguide elements
+        throughout a single circuit will have the same (random) ne, ng,
+        and nd values. Hence, there is correlated randomness in the
+        monte carlo parameters but they are consistent within a single
+        circuit.
+        """
+        return self.calc_s_params(
             freqs, self.length, self.lam0, self.rand_ne, self.rand_ng, self.rand_nd
         )
 
@@ -994,7 +1060,7 @@ class Waveguide(SiEPIC_PDK_Base):
         self.rand_nd = np.random.normal(self.nd, self.sigma_nd)
 
     @staticmethod
-    def cacl_s_params(freqs, length, lam0, ne, ng, nd):
+    def calc_s_params(freqs, length, lam0, ne, ng, nd):
         # Initialize array to hold s-params
         s = np.zeros((len(freqs), 2, 2), dtype=complex)
 
