@@ -1051,7 +1051,7 @@ class Waveguide(SiEPIC_PDK_Base):
         circuit.
         """
         return self.calc_s_params(
-            freqs, self.length, self.lam0, self.rand_ne, self.rand_ng, self.rand_nd
+            freqs, self.length, self.lam0, self.ne, self.ng, self.nd
         )
 
     def regenerate_monte_carlo_parameters(self):

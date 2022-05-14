@@ -224,29 +224,29 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
             The number of Monte Carlo iterations to run (default 10).
         """
         results = []
-
-        corr_matrix_w = np.zeros((13, 13))
-        corr_matrix_t = np.zeros((13, 13))
-
-        for i in range(13):
-            for k in range(13):
+        n = len(self.circuit._get_components())
+        corr_matrix_w = np.zeros((n, n))
+        corr_matrix_t = np.zeros((n, n))
+        
+        for i in range(n):
+            for k in range(n):
 
                 corr_val = np.exp(- ((x[k] - x[i]) ** 2 + (y[k] - y[i]) ** 2) / (0.5 * (l ** 2)))
 
                 corr_matrix_w[i][k] = corr_matrix_w[k][i] = corr_val
                 corr_matrix_t[i][k] = corr_matrix_t[k][i] = corr_val
 
-        cov_matrix_w = np.zeros((13, 13))
-        cov_matrix_t = np.zeros((13, 13))
-        for i in range(13):
-            for k in range(13):
+        cov_matrix_w = np.zeros((n, n))
+        cov_matrix_t = np.zeros((n, n))
+        for i in range(n):
+            for k in range(n):
                 cov_matrix_w[i][k] = sigmaw * corr_matrix_w[i][k] * sigmaw
                 cov_matrix_t[i][k] = sigmat * corr_matrix_t[i][k] * sigmat
 
         l_w = scipy.linalg.cholesky(cov_matrix_w, lower=True)
         l_t = scipy.linalg.cholesky(cov_matrix_t, lower=True)
 
-        X = np.random.multivariate_normal([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], np.eye(13, 13), 1000).T
+        X = np.random.multivariate_normal(np.zeros(n), np.eye(n, n), runs).T
 
         corr_sample_matrix_w = np.dot(l_w, X)
         corr_sample_matrix_t = np.dot(l_t, X)
