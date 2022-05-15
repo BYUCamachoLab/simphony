@@ -38,6 +38,9 @@ class Pin:
         self._connection = None
         self.name = name
 
+    def __repr__(self):
+        return self.name
+
     def _isconnected(self, *, include_simulators: bool = True) -> bool:
         """Returns whether or not this pin is connected to another pin.
 
