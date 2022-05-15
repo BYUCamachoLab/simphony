@@ -30,6 +30,7 @@ simphony
 A Simulator for Photonic circuits
 """
 
+
 import platform
 import sys
 
@@ -46,5 +47,5 @@ __version__ = "0.6.1"
 __license__ = "MIT"
 __project_url__ = "https://github.com/BYUCamachoLab/simphony"
 __forum_url__ = "https://github.com/BYUCamachoLab/simphony/issues"
-__trouble_url__ = __project_url__ + "/wiki/Troubleshooting-Guide"
+__trouble_url__ = f"{__project_url__}/wiki/Troubleshooting-Guide"
 __website_url__ = "https://camacholab.byu.edu/"

@@ -54,10 +54,7 @@ class ParamVisitor(NodeVisitor):
         Returns:
             list : List of all paramsets (dict) in the file.
         """
-        paramsets = []
-        for paramset in visited_children[1]:
-            paramsets.append(paramset)
-        return paramsets
+        return list(visited_children[1])
 
     def visit_paramset(self, node, visited_children):
         """
@@ -185,8 +182,7 @@ class ParamVisitor(NodeVisitor):
         Returns:
             float : the number cast to a float.
         """
-        value = float(node.text)
-        return value
+        return float(node.text)
 
     def generic_visit(self, node, visited_children):
         """The generic visit method."""

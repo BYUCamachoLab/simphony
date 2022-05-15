@@ -71,7 +71,7 @@ class SipannWrapper(Model):
             )
 
         self.params = self.model.__dict__.copy()
-        self.rand_params = dict()
+        self.rand_params = {}
         self.regenerate_monte_carlo_parameters()
 
     def s_parameters(self, freqs: np.array) -> np.ndarray:

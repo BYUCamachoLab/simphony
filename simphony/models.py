@@ -141,11 +141,7 @@ class Model:
 
     def _isconnected(self) -> bool:
         """Returns whether this component is connected to other components."""
-        for pin in self.pins:
-            if pin._isconnected():
-                return True
-
-        return False
+        return any(pin._isconnected() for pin in self.pins)
 
     def _on_connect(self, component: "Model") -> None:
         """This method is called whenever one of this component's pins is
@@ -253,7 +249,7 @@ class Model:
         """
         for selfpin in self.pins:
             for componentpin in component.pins:
-                if selfpin.name[0:3] != "pin" and selfpin.name == componentpin.name:
+                if selfpin.name[:3] != "pin" and selfpin.name == componentpin.name:
                     selfpin.connect(componentpin)
 
         return self
@@ -508,16 +504,15 @@ class Subcircuit(Model):
                         raise ValueError(
                             f"Multiple pins named '{pin.name}' cannot exist in a subcircuit."
                         )
-                    else:
-                        # keep track of the pin to re-expose
-                        pins.append(pin)
+                    # keep track of the pin to re-expose
+                    pins.append(pin)
 
-                        # make the pin's owner this component if permanent
-                        if permanent:
-                            pin_names[pin.name] = True
-                            pin._component = self
+                    # make the pin's owner this component if permanent
+                    if permanent:
+                        pin_names[pin.name] = True
+                        pin._component = self
 
-        if len(pins) == 0:
+        if not pins:
             raise ValueError(
                 "A subcircuit needs to contain at least one unconnected pin."
             )
@@ -554,13 +549,15 @@ class Subcircuit(Model):
         # merge all of the s_params into one giant block diagonal matrix
         for component in self._wrapped_circuit:
             # simulators don't have scattering parameters
-            if isinstance(component, Simulator) or isinstance(
-                component, SimulationModel
-            ):
+            if isinstance(component, (Simulator, SimulationModel)):
                 continue
 
             # get the s_params from the cache if possible
-            if s_parameters_method == "s_parameters":
+            if s_parameters_method == "monte_carlo_s_parameters":
+                # don't cache Monte Carlo scattering parameters
+                s_params = getattr(component, s_parameters_method)(freqs)
+
+            elif s_parameters_method == "s_parameters":
                 # each frequency has a different s-matrix, so we need to cache
                 # the s-matrices by frequency as well as component
                 s_params = []
@@ -584,10 +581,6 @@ class Subcircuit(Model):
 
                 # convert to numpy array for the rest of the function
                 s_params = np.array(s_params)
-            elif s_parameters_method == "monte_carlo_s_parameters":
-                # don't cache Monte Carlo scattering parameters
-                s_params = getattr(component, s_parameters_method)(freqs)
-
             # merge the s_params into the block diagonal matrix
             if s_block is None:
                 s_block = s_params

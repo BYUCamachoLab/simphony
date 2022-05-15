@@ -163,7 +163,7 @@ class SweepSimulator(Simulator):
         """
         freqs, power_ratios = super().simulate(**kwargs, freqs=self.freqs)
 
-        mode = mode if mode else self.mode
+        mode = mode or self.mode
         if mode == "wl":
             return (freq2wl(freqs), power_ratios)
 

@@ -77,7 +77,7 @@ def str2float(num):
         r"([-+]?[0-9]+(?:[.][0-9]+)?)((?:[eE][-+]?[0-9]+)|(?:[a-zA-Z]))?", num
     )
     if len(matches) > 1:
-        raise ValueError("'{}' is malformed".format(num))
+        raise ValueError(f"'{num}' is malformed")
     num, suffix = matches[0]
     try:
         if suffix.startswith("e") or suffix.startswith("E"):
@@ -85,7 +85,7 @@ def str2float(num):
         else:
             return float(num + (MATH_SUFFIXES[suffix] if suffix != "" else ""))
     except KeyError as e:
-        raise ValueError("Suffix {} in '{}' not recognized.".format(str(e), matches[0]))
+        raise ValueError(f"Suffix {str(e)} in '{matches[0]}' not recognized.")
 
 
 def freq2wl(freq):

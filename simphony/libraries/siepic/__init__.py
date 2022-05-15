@@ -113,10 +113,7 @@ def closest(sorted_list, value):
         return sorted_list[-1]
     before = sorted_list[pos - 1]
     after = sorted_list[pos]
-    if after - value < value - before:
-        return after
-    else:
-        return before
+    return after if after - value < value - before else before
 
 
 def get_files_from_dir(path):
@@ -428,13 +425,8 @@ class SiEPIC_PDK_Base(Model):
             return norm_args.index(req_args)
         except ValueError:
             adjusted_args = cls._find_closest(norm_args, req_args)
-            msg = (
-                "Exact parameters not available for '{}', ".format(cls)
-                + "using closest approximation (results may not be as accurate).\n"
-                + "{:<11}{}\n".format("Requested:", req_args)
-                + "{:<11}{}\n".format("Selected:", adjusted_args)
-                + "NOTE: Model attributes may have been automatically modified."
-            )
+            msg = (f"Exact parameters not available for '{cls}', " + "using closest approximation (results may not be as accurate).\n") + "{:<11}{}\n".format("Requested:", req_args) + "{:<11}{}\n".format("Selected:", adjusted_args) + "NOTE: Model attributes may have been automatically modified."
+
             warnings.warn(msg, UserWarning)
             return norm_args.index(adjusted_args)
 
@@ -471,7 +463,7 @@ class SiEPIC_PDK_Base(Model):
 
         errors = []
         for count, keys, argset in candidates:
-            sum_error = sum([abs(percent_diff(argset[key], args[key])) for key in keys])
+            sum_error = sum(abs(percent_diff(argset[key], args[key])) for key in keys)
             errors.append(sum_error / count)
         idx = np.argmin(errors)
         return candidates[idx].argset
@@ -904,11 +896,8 @@ class Waveguide(SiEPIC_PDK_Base):
         **kwargs
     ):
         if polarization not in ["TE", "TM"]:
-            raise ValueError(
-                "Unknown polarization value '{}', must be one of 'TE' or 'TM'".format(
-                    polarization
-                )
-            )
+            raise ValueError(f"Unknown polarization value '{polarization}', must be one of 'TE' or 'TM'")
+
 
         # TODO: TM calculations
         if polarization == "TM":
@@ -1012,7 +1001,7 @@ class Waveguide(SiEPIC_PDK_Base):
             - (nd * lam0 ** 2 / (4 * np.pi * SPEED_OF_LIGHT)) * ((w - w0) ** 2)
         )
 
-        for x in range(0, len(freqs)):  # build s-matrix from K and waveguide length
+        for x in range(len(freqs)):  # build s-matrix from K and waveguide length
             s[x, 0, 1] = s[x, 1, 0] = np.exp(-alpha * length + (K[x] * length * 1j))
 
         return s
@@ -1057,11 +1046,8 @@ class YBranch(SiEPIC_PDK_Base):
 
     def __init__(self, thickness=220e-9, width=500e-9, polarization="TE", **kwargs):
         if polarization not in ["TE", "TM"]:
-            raise ValueError(
-                "Unknown polarization value '{}', must be one of 'TE' or 'TM'".format(
-                    polarization
-                )
-            )
+            raise ValueError(f"Unknown polarization value '{polarization}', must be one of 'TE' or 'TM'")
+
         super().__init__(
             **kwargs, thickness=thickness, width=width, polarization=polarization
         )

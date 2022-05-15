@@ -140,9 +140,7 @@ class Simulation:
 
         # calculate how many times each value needs to be repeated
         expanded = np.zeros(size)
-        repeat = int(size / arr_len)
-        remainder = size % arr_len
-
+        repeat, remainder = divmod(size, arr_len)
         # expand each value in the given array
         for i, value in enumerate(arr):
             # calculate ranges, accounting for remainders
@@ -311,10 +309,7 @@ class Simulation:
         signals = self._get_signals()
 
         # remove the extra sample if we added one
-        if _num_samples != num_samples:
-            return signals[:, :, :num_samples]
-        else:
-            return signals
+        return signals[:, :, :num_samples] if _num_samples != num_samples else signals
 
     @classmethod
     def get_context(cls) -> "Simulation":
@@ -414,7 +409,7 @@ class Laser(Source):
 
         # initialize properties
         self._coupled_powers = np.array([])
-        self._freqs = np.array([freq if freq else wl2freq(wl)])
+        self._freqs = np.array([freq or wl2freq(wl)])
         self._powers = np.array([power])
         self.coupling_ratio = from_db(-np.abs(coupling_loss))
         self.freqs = np.array([])

@@ -226,9 +226,7 @@ class CircuitJSONFormatter:
         data = {"components": [], "connections": []}
         for i, component in enumerate(circuit):
             # skip simulators
-            if isinstance(component, Simulator) or isinstance(
-                component, SimulationModel
-            ):
+            if isinstance(component, (Simulator, SimulationModel)):
                 continue
 
             # get a representation for each component
@@ -259,9 +257,7 @@ class CircuitJSONFormatter:
         data = json.loads(string)
 
         # load all of the components
-        components = []
-        for string in data["components"]:
-            components.append(Model.from_string(string, formatter=ModelJSONFormatter()))
+        components = [Model.from_string(string, formatter=ModelJSONFormatter()) for string in data["components"]]
 
         # connect the components to each other
         for i, j, k, l in data["connections"]:
@@ -309,10 +305,7 @@ class CircuitSiEPICFormatter(CircuitFormatter):
         mapping = self.__class__.mappings[self.pdk.__name__][component["model"]]
 
         # remap the parameter values so they match the components' API
-        parameters = {}
-        for k, v in component["params"].items():
-            if k in mapping["parameters"]:
-                parameters[mapping["parameters"][k]] = v
+        parameters = {mapping["parameters"][k]: v for k, v in component["params"].items() if k in mapping["parameters"]}
 
         # instantiate the model and pass in the corrected parameters
         return getattr(self.pdk, mapping["name"])(**parameters)
