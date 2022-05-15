@@ -263,7 +263,7 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
                     components[idx].__setattr__("layout_aware", True)
                     components[idx].__setattr__("width", components[idx].__getattribute__("width") + dw * 1e-9)
                     components[idx].__setattr__("height", components[idx].__getattribute__("height") + dt * 1e-9)
-                    s_parameters_method = "layout_aware_monte_carlo_s_parameters" if i else "s_parameters"
+            s_parameters_method = "s_parameters" if i==0 else "layout_aware_monte_carlo_s_parameters"
 
             results.append(
                 super().simulate(**kwargs, s_parameters_method=s_parameters_method)
