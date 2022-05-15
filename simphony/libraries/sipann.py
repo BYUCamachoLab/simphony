@@ -132,7 +132,7 @@ def convert_func_to_nm(func: Callable[[float], float]) -> Callable[[float], floa
 
 
 class GapFuncSymmetric(SipannWrapper):
-    """Symmetric directional coupler, meaning both waveguides are the same
+    r"""Symmetric directional coupler, meaning both waveguides are the same
     shape.
 
     A gap function must describe the shape of the two
@@ -211,7 +211,7 @@ class GapFuncSymmetric(SipannWrapper):
 
 
 class GapFuncAntiSymmetric(SipannWrapper):
-    """Antisymmetric directional coupler, meaning both waveguides are
+    r"""Antisymmetric directional coupler, meaning both waveguides are
     differently shaped.
 
     A gap function describing the vertical distance between
@@ -303,7 +303,7 @@ class GapFuncAntiSymmetric(SipannWrapper):
 
 
 class HalfRing(SipannWrapper):
-    """Half of a ring resonator.
+    r"""Half of a ring resonator.
 
     Uses a radius and a gap to describe the shape.
 
@@ -363,7 +363,7 @@ class HalfRing(SipannWrapper):
 
 
 class HalfRacetrack(SipannWrapper):
-    """Half of a ring resonator, similar to the HalfRing class.
+    r"""Half of a ring resonator, similar to the HalfRing class.
 
     Uses a radius, gap and length to describe the shape of
     the device.
@@ -490,7 +490,7 @@ class StraightCoupler(SipannWrapper):
 
 
 class Standard(SipannWrapper):
-    """Standard-shaped directional coupler.
+    r"""Standard-shaped directional coupler.
 
     Described by a gap, length, horizontal and vertical
     distance.
@@ -567,7 +567,7 @@ class Standard(SipannWrapper):
 
 
 class DoubleHalfRing(SipannWrapper):
-    """Two equally sized half-rings coupling along their edges.
+    r"""Two equally sized half-rings coupling along their edges.
 
     Described by a radius and a gap between the two rings.
 
@@ -629,7 +629,7 @@ class DoubleHalfRing(SipannWrapper):
 
 
 class AngledHalfRing(SipannWrapper):
-    """A halfring resonator, except what was the straight waveguide is now
+    r"""A halfring resonator, except what was the straight waveguide is now
     curved.
 
     Described by a radius, gap, and angle (theta) that the
@@ -746,7 +746,7 @@ class Waveguide(SipannWrapper):
 
 
 class Racetrack(SipannWrapper):
-    """Racetrack waveguide arc, used to connect to a racetrack directional
+    r"""Racetrack waveguide arc, used to connect to a racetrack directional
     coupler.
 
     Ports labeled as:
@@ -815,7 +815,7 @@ class Racetrack(SipannWrapper):
 
 
 class PremadeCoupler(SipannWrapper):
-    """Loads premade couplers.
+    r"""Loads premade couplers.
 
     Various splitting ratio couplers have been made and saved. This function reloads them. Note that each of their
     lengths are different and are also returned for the users info. These have all been designed with waveguide
