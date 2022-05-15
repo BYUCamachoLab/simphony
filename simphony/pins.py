@@ -38,7 +38,7 @@ class Pin:
         self._connection = None
         self.name = name
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.name
 
     def _isconnected(self, *, include_simulators: bool = True) -> bool:
