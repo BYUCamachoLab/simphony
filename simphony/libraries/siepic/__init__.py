@@ -81,6 +81,7 @@ from bisect import bisect_left
 from collections import namedtuple
 
 import numpy as np
+import scipy.interpolate as interp
 from scipy.constants import c as SPEED_OF_LIGHT
 
 from simphony import Model
@@ -972,38 +973,58 @@ class Waveguide(SiEPIC_PDK_Base):
             self.suspend_autoupdate()
 
             available = self._source_argsets()
-            normalized = [
-                {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()} for d in available
-            ]
-            idx, idx_2 = self._get_matched_args(normalized, self.args)
 
-            valid_args = available[idx]
-            with open(self._get_file(valid_args), "r") as f:
-                params = f.read().rstrip("\n")
-            if self.polarization == "TE":
-                lam0, ne, _, ng, _, nd, _ = params.split(" ")
-            elif self.polarization == "TM":
-                lam0, _, ne, _, ng, _, nd = params.split(" ")
-                raise NotImplementedError
+            widths = []
+            heights = []
+            for d in available:
+               widths.append(d['width'])
+               heights.append(d['height'])
 
-            valid_args_2 = available[idx_2]
-            with open(self._get_file(valid_args_2), "r") as f:
-                params = f.read().rstrip("\n")
-            if self.polarization == "TE":
-                lam0_2, ne2, _, ng2, _, nd2, _ = params.split(" ")
-            elif self.polarization == "TM":
-                lam0_2, _, ne2, _, ng2, _, nd2 = params.split(" ")
-                raise NotImplementedError
+            lam0_all = []
+            ne_all = []
+            ng_all = []
+            nd_all = []
+            for idx in range(len(available)):
+                valid_args = available[idx]
+                with open(self._get_file(valid_args), "r") as f:
+                    params = f.read().rstrip("\n")
+                if self.polarization == "TE":
+                    lam0, ne, _, ng, _, nd, _ = params.split(" ")
+                elif self.polarization == "TM":
+                    lam0, _, ne, _, ng, _, nd = params.split(" ")
+                    raise NotImplementedError
 
-            self.lam0 = float((float(lam0) + float(lam0_2)) / 2)
-            self.ne = float((float(ne) + float(ne2)) / 2)
-            self.ng = float((float(ng) + float(ng2)) / 2)
-            self.nd = float((float(nd) + float(nd2)) / 2)
+                lam0_all.append(lam0)
+                ne_all.append(ne)
+                ng_all.append(ng)
+                nd_all.append(nd)
 
-            # Updates parameters width and thickness to closest match.
-            # for key, value in normalized[idx].items():
-            #     setattr(self, key, value)
+            lam0_all = [lam for _, lam in sorted(zip(widths,lam0_all))]
+            ne_all = [ne for _, ne in sorted(zip(widths,ne_all))]
+            ng_all = [ng for _, ng in sorted(zip(widths,ng_all))]
+            nd_all = [nd for _, nd in sorted(zip(widths,nd_all))]
 
+            widths = np.unique(widths)
+            heights = np.unique(heights)
+
+            wx, _ = np.meshgrid(widths, heights)
+
+            lam0_all = np.asarray(lam0_all).reshape((wx.shape[0], wx.shape[1]), order='F')
+            ne_all = np.asarray(ne_all).reshape((wx.shape[0], wx.shape[1]), order='F')
+            ng_all = np.asarray(ng_all).reshape((wx.shape[0], wx.shape[1]), order='F')
+            nd_all = np.asarray(nd_all).reshape((wx.shape[0], wx.shape[1]), order='F')
+
+            xv, yv = np.meshgrid(widths, heights)
+            interp_lam0 = interp.interp2d(xv.astype(float), yv.astype(float), lam0_all.astype(float), kind='cubic')
+            interp_ne = interp.interp2d(xv.astype(float), yv.astype(float), ne_all.astype(float), kind='cubic')
+            interp_ng = interp.interp2d(xv.astype(float), yv.astype(float), ng_all.astype(float), kind='cubic')
+            interp_nd = interp.interp2d(xv.astype(float), yv.astype(float), nd_all.astype(float), kind='cubic')
+
+            self.lam0 = float(interp_lam0(self.width*1e9, self.height*1e9))
+            self.ng = float(interp_ng(self.width*1e9, self.height*1e9))
+            self.ne = float(interp_ne(self.width*1e9, self.height*1e9))
+            self.nd = float(interp_nd(self.width*1e9, self.height*1e9))
+            
             self.enable_autoupdate()
 
     def s_parameters(self, freqs):
