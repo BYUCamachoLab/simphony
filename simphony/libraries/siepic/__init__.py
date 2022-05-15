@@ -940,7 +940,7 @@ class Waveguide(SiEPIC_PDK_Base):
 
     def on_args_changed(self):
 
-        if not self.layout_aware:
+        if self.layout_aware is False:
             self.suspend_autoupdate()
 
             available = self._source_argsets()
@@ -1001,8 +1001,8 @@ class Waveguide(SiEPIC_PDK_Base):
             self.nd = float((float(nd) + float(nd2)) / 2)
 
             # Updates parameters width and thickness to closest match.
-            for key, value in normalized[idx].items():
-                setattr(self, key, value)
+            # for key, value in normalized[idx].items():
+            #     setattr(self, key, value)
 
             self.enable_autoupdate()
 
