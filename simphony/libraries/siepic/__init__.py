@@ -999,10 +999,10 @@ class Waveguide(SiEPIC_PDK_Base):
                 ng_all.append(ng)
                 nd_all.append(nd)
 
-            lam0_all = [lam for _, lam in sorted(zip(widths,lam0_all))]
-            ne_all = [ne for _, ne in sorted(zip(widths,ne_all))]
-            ng_all = [ng for _, ng in sorted(zip(widths,ng_all))]
-            nd_all = [nd for _, nd in sorted(zip(widths,nd_all))]
+            lam0_all = [lam for _, lam in sorted(zip(np.asarray(widths).astype(float),lam0_all))]
+            ne_all = [ne for _, ne in sorted(zip(np.asarray(widths).astype(float),ne_all))]
+            ng_all = [ng for _, ng in sorted(zip(np.asarray(widths).astype(float),ng_all))]
+            nd_all = [nd for _, nd in sorted(zip(np.asarray(widths).astype(float),nd_all))]
 
             widths = np.unique(widths)
             heights = np.unique(heights)
