@@ -1,5 +1,5 @@
 from matplotlib.pyplot import legend, plot, show
-from numpy import log10
+from numpy import log10, max
 import numpy as np
 import time
 from ..libraries import siepic
@@ -47,20 +47,23 @@ simulator.circuit = dc1.circuit
 simulator.multiconnect(dc1["pin1"], dc5["pin3"])
 
 start = time.time()
-results = simulator.simulate(x=x, y=y, sigmaw=5, sigmat=3, l=4.5e-3, runs=1000)
+results = simulator.simulate(x=x, y=y, sigmaw=5, sigmat=3, l=4.5e-3, runs=1000, dB=True)
 end = time.time()
 print(f'{end-start}')
 g = []
 
 for wl, s in results:
-    g.append(10 * log10(s))
+    g.append(10*s)
 
 for i, _g in enumerate(g):
     plot(wl, _g, label=f'{i}')
+    print(max(_g))
 legend()
 show()
 
 g = np.asarray(g)
 wl = np.asarray(wl)
-np.savetxt("Gain_1_simphony.txt", g)
+np.savetxt("Gain_1_simphony_test.txt", g)
 np.savetxt("wl.txt", wl)
+
+print(max(g))
