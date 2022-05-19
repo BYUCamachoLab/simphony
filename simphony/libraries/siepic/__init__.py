@@ -671,26 +671,68 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
         r"(?:m\.sparam)"
     )
 
-    def __init__(self, gap=200e-9, Lc=10e-6, **kwargs):
-        super().__init__(**kwargs, gap=gap, Lc=Lc)
+    def __init__(self, gap=200e-9, Lc=10e-6, layout_aware=False, **kwargs):
+        super().__init__(**kwargs, gap=gap, Lc=Lc, layout_aware=layout_aware)
 
     def on_args_changed(self):
-        self.suspend_autoupdate()
 
-        available = self._source_argsets()
-        normalized = [
+        if not self.layout_aware:
+                
+            self.suspend_autoupdate()
+
+            available = self._source_argsets()
+            normalized = [
             {k: round(str2float(v), 15) for k, v in d.items()} for d in available
         ]
-        idx, _ = self._get_matched_args(normalized, self.args)
-        valid_args = available[idx]
-        sparams = parser.read_params(self._get_file(valid_args))
-        self._f, self._s = parser.build_matrix(sparams)
+            idx, _ = self._get_matched_args(normalized, self.args)
 
-        self.freq_range = (self._f[0], self._f[-1])
-        for key, value in normalized[idx].items():
-            setattr(self, key, value)
+            valid_args = available[idx]
+            sparams = parser.read_params(self._get_file(valid_args))
+            self._f, self._s = parser.build_matrix(sparams)
 
-        self.enable_autoupdate()
+            self.freq_range = (self._f[0], self._f[-1])
+            for key, value in normalized[idx].items():
+                setattr(self, key, value)
+
+            self.enable_autoupdate()
+        else:
+            self.suspend_autoupdate()
+
+            available = self._source_argsets()
+            Lc = []
+            s_params = []
+            for idx in range(0, len(available), 2):
+                d = available[idx]
+                Lc.append(d['Lc'])
+                valid_args = available[idx]
+                sparams = parser.read_params(self._get_file(valid_args))
+                self._f, s = parser.build_matrix(sparams)
+
+                s_params.append(s)
+
+            s_params = np.asarray(s_params)
+            
+            Lc = [Lc[i].replace("u","") for i in range(len(Lc))]
+            Lc = np.asarray(Lc, dtype=np.double)
+
+            dim, freq, inp, out = s_params.shape
+            s_new = np.ndarray((freq, inp, out))
+            for freqidx in range(freq):
+                for inpidx in range(inp):
+                    for outidx in range(out):
+                        s_list = []
+                        for dimidx in range(dim):
+                            s_list.append(s_params[dimidx][freqidx][inpidx][outidx])
+        
+                        s_interp = interp.interp1d(Lc,
+                         np.asarray(s_list),
+                          kind='cubic')
+                        s_new[freqidx][inpidx][outidx] = np.abs(s_interp(self.Lc))
+
+            self._s = s_new
+            self.freq_range = (self._f[0], self._f[-1])
+
+            self.enable_autoupdate()
 
     def s_parameters(self, freqs):
         return interpolate(freqs, self._f, self._s)
@@ -803,47 +845,100 @@ class GratingCoupler(SiEPIC_PDK_Base):
         r"(?:\.txt)"
     )
 
-    def __init__(self, thickness=220e-9, deltaw=0, polarization="TE", **kwargs):
+    def __init__(self, thickness=220e-9, deltaw=0, polarization="TE", layout_aware=False, **kwargs):
         super().__init__(
-            **kwargs, thickness=thickness, deltaw=deltaw, polarization=polarization
+            **kwargs, thickness=thickness, deltaw=deltaw, polarization=polarization, layout_aware=layout_aware
         )
 
     def on_args_changed(self):
-        self.suspend_autoupdate()
 
-        available = self._source_argsets()
-        normalized = []
-        for d in available:
-            polarization, thickness, deltaw = [
-                (key, d.get(key)) for key in self._args_keys
-            ]
-            normalized.append(
-                {
-                    polarization[0]: polarization[1],
-                    thickness[0]: round(str2float(thickness[1]) * 1e-9, 15),
-                    deltaw[0]: round(str2float(deltaw[1]) * 1e-9, 15),
-                }
-            )
-        idx, _ = self._get_matched_args(normalized, self.args)
-        for key, value in normalized[idx].items():
-            setattr(self, key, value)
+        if not self.layout_aware:
+            self.suspend_autoupdate()
 
-        valid_args = available[idx]
-        params = np.genfromtxt(self._get_file(valid_args), delimiter="\t")
-        self._f = params[:, 0]
-        self._s = np.zeros((len(self._f), 2, 2), dtype="complex128")
-        self._s[:, 0, 0] = params[:, 1] * np.exp(1j * params[:, 2])
-        self._s[:, 0, 1] = params[:, 3] * np.exp(1j * params[:, 4])
-        self._s[:, 1, 0] = params[:, 5] * np.exp(1j * params[:, 6])
-        self._s[:, 1, 1] = params[:, 7] * np.exp(1j * params[:, 8])
+            available = self._source_argsets()
+            normalized = []
+            for d in available:
+                polarization, thickness, deltaw = [
+                    (key, d.get(key)) for key in self._args_keys
+                ]
+                normalized.append(
+                    {
+                        polarization[0]: polarization[1],
+                        thickness[0]: round(str2float(thickness[1]) * 1e-9, 15),
+                        deltaw[0]: round(str2float(deltaw[1]) * 1e-9, 15),
+                    }
+                )
+            idx, _ = self._get_matched_args(normalized, self.args)
+            for key, value in normalized[idx].items():
+                setattr(self, key, value)
 
-        # Arrays are from high frequency to low; reverse it,
-        # for convention's sake.
-        self._f = self._f[::-1]
-        self._s = self._s[::-1]
-        self.freq_range = (self._f[0], self._f[-1])
+            valid_args = available[idx]
+            params = np.genfromtxt(self._get_file(valid_args), delimiter="\t")
+            self._f = params[:, 0]
+            self._s = np.zeros((len(self._f), 2, 2), dtype="complex128")
+            self._s[:, 0, 0] = params[:, 1] * np.exp(1j * params[:, 2])
+            self._s[:, 0, 1] = params[:, 3] * np.exp(1j * params[:, 4])
+            self._s[:, 1, 0] = params[:, 5] * np.exp(1j * params[:, 6])
+            self._s[:, 1, 1] = params[:, 7] * np.exp(1j * params[:, 8])
 
-        self.enable_autoupdate()
+            # Arrays are from high frequency to low; reverse it,
+            # for convention's sake.
+            self._f = self._f[::-1]
+            self._s = self._s[::-1]
+            self.freq_range = (self._f[0], self._f[-1])
+
+            self.enable_autoupdate()
+
+        else:
+            self.suspend_autoupdate()
+
+            available = self._source_argsets()
+            thicknesses = []
+            deltaws = []
+            freqs = []
+            s_params = []
+            for d in available:
+                _, thickness, deltaw = [
+                    (key, d.get(key)) for key in self._args_keys
+                ]
+                thicknesses.append(round(str2float(thickness[1]) * 1e-9, 15))
+                deltaws.append(round(str2float(deltaw[1]) * 1e-9, 15))
+
+            for idx in range(0, len(available), 2):
+                d = available[idx]
+                widths.append(d['width'])
+                heights.append(d['thickness'])
+                valid_args = available[idx]
+                sparams = parser.read_params(self._get_file(valid_args))
+                sparams = list(
+                    filter(lambda sparams: sparams["mode"] == self.polarization, sparams)
+                )
+                self._f, s = parser.build_matrix(sparams)
+
+                s_params.append(s)
+
+            s_params = np.asarray(s_params)
+
+            widths = np.asarray(widths, dtype=complex)
+            heights = np.asarray(heights, dtype=complex)
+            
+            dim, freq, inp, out = s_params.shape
+            s_new = np.ndarray((freq, inp, out))
+            for freqidx in range(freq):
+                for inpidx in range(inp):
+                    for outidx in range(out):
+                        s_list = []
+                        for dimidx in range(dim):
+                            s_list.append(s_params[dimidx][freqidx][inpidx][outidx])
+        
+                        s_interp = interp.griddata((widths, heights), np.asarray(s_list), (self.width * 1e9, self.thickness * 1e9), method='cubic')
+                        s_new[freqidx][inpidx][outidx] = np.abs(s_interp)
+
+            self._s = s_new
+            self.freq_range = (self._f[0], self._f[-1])
+
+            self.enable_autoupdate()
+
 
     def s_parameters(self, freqs):
         return interpolate(freqs, self._f, self._s)
@@ -1004,26 +1099,29 @@ class Waveguide(SiEPIC_PDK_Base):
             ng_all = [ng for _, ng in sorted(zip(np.asarray(widths).astype(float),ng_all))]
             nd_all = [nd for _, nd in sorted(zip(np.asarray(widths).astype(float),nd_all))]
 
-            widths = np.unique(widths)
-            heights = np.unique(heights)
-
-            wx, _ = np.meshgrid(widths, heights)
-
-            lam0_all = np.asarray(lam0_all).reshape((wx.shape[0], wx.shape[1]), order='F')
-            ne_all = np.asarray(ne_all).reshape((wx.shape[0], wx.shape[1]), order='F')
-            ng_all = np.asarray(ng_all).reshape((wx.shape[0], wx.shape[1]), order='F')
-            nd_all = np.asarray(nd_all).reshape((wx.shape[0], wx.shape[1]), order='F')
+            widths = np.unique(np.asarray(widths).astype(float))
+            heights = np.unique(np.asarray(heights).astype(float))
 
             xv, yv = np.meshgrid(widths, heights)
-            interp_lam0 = interp.interp2d(xv.astype(float), yv.astype(float), lam0_all.astype(float), kind='cubic')
-            interp_ne = interp.interp2d(xv.astype(float), yv.astype(float), ne_all.astype(float), kind='cubic')
-            interp_ng = interp.interp2d(xv.astype(float), yv.astype(float), ng_all.astype(float), kind='cubic')
-            interp_nd = interp.interp2d(xv.astype(float), yv.astype(float), nd_all.astype(float), kind='cubic')
 
-            self.lam0 = float(interp_lam0(self.width*1e9, self.height*1e9))
-            self.ng = float(interp_ng(self.width*1e9, self.height*1e9))
-            self.ne = float(interp_ne(self.width*1e9, self.height*1e9))
-            self.nd = float(interp_nd(self.width*1e9, self.height*1e9))
+            lam0_all = np.asarray(lam0_all).astype(float)
+            ne_all = np.asarray(ne_all).astype(float)
+            ng_all = np.asarray(ng_all).astype(float)
+            nd_all = np.asarray(nd_all).astype(float)
+
+            interp_lam0 = interp.interp2d(xv, yv, lam0_all, kind='cubic')
+            interp_ne = interp.interp2d(xv, yv, ne_all, kind='cubic')
+            interp_ng = interp.interp2d(xv, yv, ng_all, kind='cubic')
+            interp_nd = interp.interp2d(xv, yv, nd_all, kind='cubic')
+
+            # lam0_tck = interp.bisplrep(wx.ravel(), hx.ravel(), lam0_all.ravel(), s=np.random.randint(len(wx.ravel())-np.sqrt(2*len(wx.ravel())), len(wx.ravel())+np.sqrt(2*len(wx.ravel()))))
+            # ne_tck = interp.bisplrep(wx.ravel(), hx.ravel(), ne_all.ravel(), s=np.random.randint(len(wx.ravel())-np.sqrt(2*len(wx.ravel())), len(wx.ravel())+np.sqrt(2*len(wx.ravel()))))
+            # ng_tck = interp.bisplrep(wx.ravel(), hx.ravel(), ng_all.ravel(), s=np.random.randint(len(wx.ravel())-np.sqrt(2*len(wx.ravel())), len(wx.ravel())+np.sqrt(2*len(wx.ravel()))))
+            # nd_tck = interp.bisplrep(wx.ravel(), hx.ravel(), nd_all.ravel(), s=np.random.randint(len(wx.ravel())-np.sqrt(2*len(wx.ravel())), len(wx.ravel())+np.sqrt(2*len(wx.ravel()))))
+            self.lam0 = float(interp_lam0(self.width, self.height))
+            self.ng = float(interp_ng(self.width, self.height))
+            self.ne = float(interp_ne(self.width, self.height))
+            self.nd = float(interp_nd(self.width, self.height))
             
             self.enable_autoupdate()
 
@@ -1142,7 +1240,7 @@ class YBranch(SiEPIC_PDK_Base):
         r"(?:\.sparam)"
     )
 
-    def __init__(self, thickness=220e-9, width=500e-9, polarization="TE", **kwargs):
+    def __init__(self, thickness=220e-9, width=500e-9, polarization="TE", layout_aware=False, **kwargs):
         if polarization not in ["TE", "TM"]:
             raise ValueError(
                 "Unknown polarization value '{}', must be one of 'TE' or 'TM'".format(
@@ -1150,30 +1248,77 @@ class YBranch(SiEPIC_PDK_Base):
                 )
             )
         super().__init__(
-            **kwargs, thickness=thickness, width=width, polarization=polarization
+            **kwargs, thickness=thickness, width=width, polarization=polarization, layout_aware=layout_aware
         )
 
     def on_args_changed(self):
-        self.suspend_autoupdate()
 
-        available = self._source_argsets()
-        normalized = [
-            {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()} for d in available
-        ]
-        idx = self._get_matched_args(normalized, self.args)
+        if not self.layout_aware:
+                
+            self.suspend_autoupdate()
 
-        valid_args = available[idx]
-        sparams = parser.read_params(self._get_file(valid_args))
-        sparams = list(
-            filter(lambda sparams: sparams["mode"] == self.polarization, sparams)
-        )
+            available = self._source_argsets()
+            normalized = [
+                {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()} for d in available
+            ]
+            idx, _ = self._get_matched_args(normalized, self.args)
 
-        for key, value in normalized[idx].items():
-            setattr(self, key, value)
-        self._f, self._s = parser.build_matrix(sparams)
-        self.freq_range = (self._f[0], self._f[-1])
+            valid_args = available[idx]
+            sparams = parser.read_params(self._get_file(valid_args))
+            sparams = list(
+                filter(lambda sparams: sparams["mode"] == self.polarization, sparams)
+            )
 
-        self.enable_autoupdate()
+            for key, value in normalized[idx].items():
+                setattr(self, key, value)
+            self._f, self._s = parser.build_matrix(sparams)
+            self.freq_range = (self._f[0], self._f[-1])
+
+            self.enable_autoupdate()
+        else:
+            self.suspend_autoupdate()
+
+            available = self._source_argsets()
+            widths = []
+            heights = []
+            freqs = []
+            s_params = []
+            for idx in range(0, len(available), 2):
+                d = available[idx]
+                widths.append(d['width'])
+                heights.append(d['thickness'])
+                valid_args = available[idx]
+                sparams = parser.read_params(self._get_file(valid_args))
+                sparams = list(
+                    filter(lambda sparams: sparams["mode"] == self.polarization, sparams)
+                )
+                self._f, s = parser.build_matrix(sparams)
+
+                s_params.append(s)
+
+            s_params = np.asarray(s_params)
+            
+            
+            widths = np.asarray(widths, dtype=complex)
+            heights = np.asarray(heights, dtype=complex)
+            
+            dim, freq, inp, out = s_params.shape
+            s_new = np.ndarray((freq, inp, out))
+            for freqidx in range(freq):
+                for inpidx in range(inp):
+                    for outidx in range(out):
+                        s_list = []
+                        for dimidx in range(dim):
+                            s_list.append(s_params[dimidx][freqidx][inpidx][outidx])
+        
+                        s_interp = interp.griddata((widths, heights), np.asarray(s_list), (self.width * 1e9, self.thickness * 1e9), method='cubic')
+                        s_new[freqidx][inpidx][outidx] = np.abs(s_interp)
+
+            self._s = s_new
+            self.freq_range = (self._f[0], self._f[-1])
+
+            self.enable_autoupdate()
+
 
     def s_parameters(self, freqs):
         """Returns scattering parameters for the y-branch based on its
