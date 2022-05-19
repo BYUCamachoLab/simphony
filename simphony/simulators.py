@@ -259,57 +259,23 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
             for idx in range(n):
 
                 if isinstance(components[idx], siepic.Waveguide):
-                    w = components[idx].__getattribute__("width") + corr_sample_matrix_w[idx][i] * 1e9
+                    w = components[idx].__getattribute__("width") + corr_sample_matrix_w[idx][i] * 1e-9
                     h = components[idx].__getattribute__("height") + corr_sample_matrix_t[idx][i] * 1e-9
-                    # if w < 400:
-                    #     w = 400
-                    # elif w > 3500:
-                    #     w = 3500
-                    # if h < 210:
-                    #     h = 210
-                    # elif h > 230:
-                    #     h = 230
                     components[idx].__setattr__("layout_aware", True)
                     components[idx].__setattr__("width", w)
                     components[idx].__setattr__("height", h)
                 elif isinstance(components[idx], (siepic.BidirectionalCoupler, siepic.HalfRing, siepic.YBranch)):
                     w = components[idx].__getattribute__("width") * 1e9 + corr_sample_matrix_w[idx][i]
                     h = components[idx].__getattribute__("thickness") * 1e9 + corr_sample_matrix_t[idx][i]
-                    # if w < 400:
-                    #     w = 400
-                    # elif w > 3500:
-                    #     w = 3500
-                    # if h < 210:
-                    #     h = 210
-                    # elif h > 230:
-                    #     h = 230
                     components[idx].__setattr__("layout_aware", True)
                     components[idx].__setattr__("width", w * 1e-9)
                     components[idx].__setattr__("thickness", h * 1e-9)
                 elif isinstance(components[idx], siepic.DirectionalCoupler):
-                    w = components[idx].__getattribute__("gap") * 1e9 + corr_sample_matrix_w[idx][i]
                     h = components[idx].__getattribute__("Lc") * 1e6 + corr_sample_matrix_t[idx][i]
-                    # if w < 400:
-                    #     w = 400
-                    # elif w > 3500:
-                    #     w = 3500
-                    # if h < 210:
-                    #     h = 210
-                    # elif h > 230:
-                    #     h = 230
                     components[idx].__setattr__("layout_aware", True)
-                    components[idx].__setattr__("gap", w * 1e-9)
                     components[idx].__setattr__("Lc", h * 1e-6)
                 elif isinstance(components[idx], siepic.GratingCoupler):
                     t = components[idx].__getattribute__("thickness") * 1e9 + corr_sample_matrix_w[idx][i]
-                    # if w < 400:
-                    #     w = 400
-                    # elif w > 3500:
-                    #     w = 3500
-                    # if h < 210:
-                    #     h = 210
-                    # elif h > 230:
-                    #     h = 230
                     components[idx].__setattr__("layout_aware", True)
                     components[idx].__setattr__("thickness", t * 1e-9)
             s_parameters_method = "s_parameters" if i==0 else "layout_aware_monte_carlo_s_parameters"
