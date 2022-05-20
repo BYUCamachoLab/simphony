@@ -1018,7 +1018,7 @@ class GratingCoupler(SiEPIC_PDK_Base):
                                 s = s_params[dimidx]
                                 s_list.append(s[freqidx][inpidx][outidx])
                             
-                            s_interp = interp.griddata((thicknesses[0:round(len(thicknesses)/2)], deltaws[0:round(len(deltaws)/2)]), np.abs(np.asarray(s_list)), (self.thickness, self.deltaw), method='linear')
+                            s_interp = interp.griddata((thicknesses[0:round(len(thicknesses)/2)], deltaws[0:round(len(deltaws)/2)]), np.abs(np.asarray(s_list)), (self.thickness * 1e9, self.deltaw * 1e9), method='linear')
                             s_new[freqidx][inpidx][outidx] = s_interp
 
                 self._s = s_new
