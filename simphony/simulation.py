@@ -12,9 +12,10 @@ used within the context. Devices include theoretical sources and detectors.
 
 from cmath import rect
 from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple
+import matplotlib
 
 import numpy as np
-from scipy.constants import epsilon_0, h, mu_0
+from scipy.constants import epsilon_0, h, mu_0, c
 from scipy.signal import butter, sosfiltfilt
 
 from simphony import Model
@@ -663,6 +664,9 @@ class DifferentialDetector(Detector):
         rf_high_fc=1e9,
         rf_low_fc=0,
         rf_noise=0,
+        mod_freq=0,
+        mod_ampl=0,
+        dl=0,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -680,6 +684,9 @@ class DifferentialDetector(Detector):
         self.rf_high_fc = rf_high_fc
         self.rf_low_fc = rf_low_fc
         self.rf_noise = rf_noise
+        self.mod_freq = mod_freq
+        self.mod_ampl = mod_ampl
+        self.dl = dl
         self.rf_noise_dists = np.array([])
         self.rf_rin_dists1 = np.array([])
         self.rf_rin_dists2 = np.array([])
@@ -713,6 +720,9 @@ class DifferentialDetector(Detector):
                     rf_noise1 = np.zeros(self.context.num_samples)
                     rf_noise2 = np.zeros(self.context.num_samples)
 
+                    p1_init = p1[i][j][0]
+                    p2_init = p2[i][j][0]
+
                     # every source will contribute different noise
                     for source in self.context.sources:
                         # get the RIN specs from the laser to ensure that the
@@ -723,14 +733,14 @@ class DifferentialDetector(Detector):
 
                         # if the two powers are different, we need to adjust
                         # the CMRR to account for the difference
-                        cmrr = self.rf_cmrr # CMRR from path length
-                        sum = p1[i][j][0] + p2[i][j][0]
-                        diff = np.abs(p1[i][j][0] - p2[i][j][0])
-                        if diff:
-                            cmrr2 = -to_db(sum/diff) # CMRR from power difference
-                            cmrr = cmrr if cmrr == -np.inf else to_db(
-                                (1/(1/from_db(cmrr) + 1/from_db(cmrr2)))
-                            )
+                        cmrr = self.rf_cmrr
+                        # sum = p1[i][j][0] + p2[i][j][0]
+                        # diff = np.abs(p1[i][j][0] - p2[i][j][0])
+                        # if diff:
+                        #     cmrr2 = -to_db(sum / diff)
+                        #     cmrr = to_db(
+                        #         np.sqrt(from_db(cmrr) ** 2 + from_db(cmrr2) ** 2)
+                        #     )
 
                         # only calculate the noise if there is power
                         if p1[i][j][0] > 0:
@@ -766,14 +776,33 @@ class DifferentialDetector(Detector):
                     # take a photon number distribution and convert it to power
                     # which we then use as our samples.
                     p1[i][j] = hffs * self.context.rng.poisson(
-                        p1[i][j][0] / hffs, self.context.num_samples
+                        p1_init / hffs, self.context.num_samples
                     )
 
                     # we do the same for the second signal
                     p2[i][j] = hffs * self.context.rng.poisson(
-                        p2[i][j][0] / hffs, self.context.num_samples
+                        p2_init / hffs, self.context.num_samples
                     )
 
+        # add the modulated signal to the input powers
+        if self.mod_ampl > 0:
+            i, j = 0, 0
+            print("Modulating signal")
+            t = np.linspace(0, (len(p1[i][j])-1)/self.context.fs, len(p1[i][j]))
+            p1_ampl = self.mod_ampl * p1[i][j][0] / source.powers[0]
+            print(f"source power: {source.powers[0]}")
+            print(f"p1_amp: {p1_ampl}")
+            p1[i][j] += p1_ampl * np.cos(2 * np.pi * self.mod_freq * t)
+            p2_ampl = self.mod_ampl * p2[i][j][0] / source.powers[0]
+            p2_phase = 2 * np.pi * self.dl * self.mod_freq / c
+            print(f"p2_amp: {p2_ampl}")
+            print("p2_phase: ", p2_phase)
+            p2[i][j] += self.mod_ampl * p2_ampl * np.cos(2 * np.pi * self.mod_freq * t + p2_phase)
+
+        # import matplotlib.pyplot as plt
+        # plt.plot(p1[i][j])
+        # plt.plot(p2[i][j])
+        # plt.show()
         # return the outputs
         return (
             self._monitor(p1, self.monitor_rin_dists1),
@@ -851,12 +880,12 @@ class DifferentialDetector(Detector):
         # amplify the signal
         signal = (power + rin_dists) * self.monitor_conversion_gain
 
+        # add the electrical noise after amplification
+        signal += self.monitor_noise_dists
+
         # filter the signal
         if self.context.num_samples > 1:
             signal = self._monitor_filter(signal)
-
-        # add the electrical noise after amplification
-        signal += self.monitor_noise_dists
 
         return signal
 
@@ -888,12 +917,18 @@ class DifferentialDetector(Detector):
             (p1 - p2) + (self.rf_rin_dists1 + self.rf_rin_dists2)
         ) * self.rf_conversion_gain
 
-        # filter the difference
-        if self.context.num_samples > 1:
-            signal = self._rf_filter(signal)
+        # import matplotlib.pyplot as plt
+        # plt.plot(p1[0][0])
+        # plt.plot(p2[0][0])
+        # plt.show()
+
 
         # add the electrical signal after amplification
         signal += self.rf_noise_dists
+
+        # filter the difference
+        if self.context.num_samples > 1:
+            signal = self._rf_filter(signal)
 
         return signal
 
