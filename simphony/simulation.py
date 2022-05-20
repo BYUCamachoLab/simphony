@@ -12,7 +12,6 @@ used within the context. Devices include theoretical sources and detectors.
 
 from cmath import rect
 from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple
-import matplotlib
 
 import numpy as np
 from scipy.constants import epsilon_0, h, mu_0, c
@@ -733,14 +732,15 @@ class DifferentialDetector(Detector):
 
                         # if the two powers are different, we need to adjust
                         # the CMRR to account for the difference
-                        cmrr = self.rf_cmrr
-                        # sum = p1[i][j][0] + p2[i][j][0]
-                        # diff = np.abs(p1[i][j][0] - p2[i][j][0])
-                        # if diff:
-                        #     cmrr2 = -to_db(sum / diff)
-                        #     cmrr = to_db(
-                        #         np.sqrt(from_db(cmrr) ** 2 + from_db(cmrr2) ** 2)
-                        #     )
+
+                        cmrr = self.rf_cmrr # CMRR from path length
+                        sum = p1[i][j][0] + p2[i][j][0]
+                        diff = np.abs(p1[i][j][0] - p2[i][j][0])
+                        if diff:
+                            cmrr2 = -to_db(sum/diff) # CMRR from power difference
+                            cmrr = cmrr if cmrr == -np.inf else to_db(
+                                (1/(1/from_db(cmrr) + 1/from_db(cmrr2)))
+                            )
 
                         # only calculate the noise if there is power
                         if p1[i][j][0] > 0:
@@ -787,22 +787,14 @@ class DifferentialDetector(Detector):
         # add the modulated signal to the input powers
         if self.mod_ampl > 0:
             i, j = 0, 0
-            print("Modulating signal")
             t = np.linspace(0, (len(p1[i][j])-1)/self.context.fs, len(p1[i][j]))
             p1_ampl = self.mod_ampl * p1[i][j][0] / source.powers[0]
-            print(f"source power: {source.powers[0]}")
-            print(f"p1_amp: {p1_ampl}")
             p1[i][j] += p1_ampl * np.cos(2 * np.pi * self.mod_freq * t)
             p2_ampl = self.mod_ampl * p2[i][j][0] / source.powers[0]
             p2_phase = 2 * np.pi * self.dl * self.mod_freq / c
-            print(f"p2_amp: {p2_ampl}")
-            print("p2_phase: ", p2_phase)
+
             p2[i][j] += self.mod_ampl * p2_ampl * np.cos(2 * np.pi * self.mod_freq * t + p2_phase)
 
-        # import matplotlib.pyplot as plt
-        # plt.plot(p1[i][j])
-        # plt.plot(p2[i][j])
-        # plt.show()
         # return the outputs
         return (
             self._monitor(p1, self.monitor_rin_dists1),
@@ -916,11 +908,6 @@ class DifferentialDetector(Detector):
         signal = (
             (p1 - p2) + (self.rf_rin_dists1 + self.rf_rin_dists2)
         ) * self.rf_conversion_gain
-
-        # import matplotlib.pyplot as plt
-        # plt.plot(p1[0][0])
-        # plt.plot(p2[0][0])
-        # plt.show()
 
 
         # add the electrical signal after amplification
