@@ -578,7 +578,7 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
                         for dimidx in range(dim):
                             s_list.append(s_params[dimidx][freqidx][inpidx][outidx])
 
-                        s_interp = interp.griddata((widths, heights), np.asarray(s_list), (self.width * 1e9, self.thickness * 1e9), method='linear')
+                        s_interp = interp.griddata((widths, heights), np.asarray(s_list), (self.width * 1e9, self.thickness * 1e9), method='cubic')
                         s_new[freqidx][inpidx][outidx] = s_interp
 
             self._s = s_new
@@ -703,7 +703,7 @@ class HalfRing(SiEPIC_PDK_Base):
             heights = np.asarray(heights, dtype=complex)
             
             dim, freq, inp, out = s_params.shape
-            s_new = np.ndarray((freq, inp, out))
+            s_new = np.ndarray((freq, inp, out), dtype=complex)
             for freqidx in range(freq):
                 for inpidx in range(inp):
                     for outidx in range(out):
@@ -711,7 +711,7 @@ class HalfRing(SiEPIC_PDK_Base):
                         for dimidx in range(dim):
                             s_list.append(s_params[dimidx][freqidx][inpidx][outidx])
         
-                        s_interp = interp.griddata((widths, heights), np.asarray(s_list), (self.width * 1e9, self.thickness * 1e9), method='linear')
+                        s_interp = interp.griddata((widths, heights), np.asarray(s_list), (self.width * 1e9, self.thickness * 1e9), method='cubic')
                         s_new[freqidx][inpidx][outidx] = s_interp
 
             self._s = s_new
@@ -786,11 +786,11 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
             self.suspend_autoupdate()
 
             available = self._source_argsets()
-            Lc = []
+            Lcs = []
             s_params = []
-            for idx in range(0, len(available), 2):
+            for idx in range(len(available)):
                 d = available[idx]
-                Lc.append(d['Lc'])
+                Lcs.append(d['Lc'])
                 valid_args = available[idx]
                 sparams = parser.read_params(self._get_file(valid_args))
                 self._f, s = parser.build_matrix(sparams)
@@ -799,18 +799,18 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
 
             s_params = np.asarray(s_params)
             
-            Lc = [Lc[i].replace("u","") for i in range(len(Lc))]
-            Lc = np.asarray(Lc, dtype=np.double)
+            Lcs = [Lcs[i].replace("u","") for i in range(len(Lcs))]
+            Lcs = np.asarray(Lcs, dtype=float)
 
             dim, freq, inp, out = s_params.shape
-            s_new = np.ndarray((freq, inp, out))
+            s_new = np.ndarray((freq, inp, out), dtype=complex)
             for freqidx in range(freq):
                 for inpidx in range(inp):
                     for outidx in range(out):
                         s_list = []
                         for dimidx in range(dim):
                             s_list.append(s_params[dimidx][freqidx][inpidx][outidx])
-                        s_interp = interp.interp1d(Lc, np.asarray(s_list), kind='linear')
+                        s_interp = interp.interp1d(Lcs, np.asarray(s_list), kind='cubic')
                         s_new[freqidx][inpidx][outidx] = s_interp(self.Lc * 1e6)
 
             self._s = s_new
@@ -820,6 +820,9 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
 
     def s_parameters(self, freqs):
         return interpolate(freqs, self._f, self._s)
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        self.Lc = self.nominal_Lc
 
 
 class Terminator(SiEPIC_PDK_Base):
@@ -935,7 +938,6 @@ class GratingCoupler(SiEPIC_PDK_Base):
         )
 
     def on_args_changed(self):
-
         if not self.layout_aware:
             self.suspend_autoupdate()
 
@@ -979,7 +981,6 @@ class GratingCoupler(SiEPIC_PDK_Base):
             available = self._source_argsets()
             thicknesses = []
             deltaws = []
-            freqs = []
             s_params = []
             for d in available:
                 _, thickness, deltaw = [
@@ -1009,7 +1010,7 @@ class GratingCoupler(SiEPIC_PDK_Base):
 
                 dim = len(s_params)
                 freq, inp, out = s.shape
-                s_new = np.ndarray((freq, inp, out))
+                s_new = np.ndarray((freq, inp, out), dtype=complex)
                 for freqidx in range(freq):
                     for inpidx in range(inp):
                         for outidx in range(out):
@@ -1017,8 +1018,8 @@ class GratingCoupler(SiEPIC_PDK_Base):
                             for dimidx in range(dim):
                                 s = s_params[dimidx]
                                 s_list.append(s[freqidx][inpidx][outidx])
-                            
-                            s_interp = interp.griddata((thicknesses[0:round(len(thicknesses)/2)], deltaws[0:round(len(deltaws)/2)]), np.abs(np.asarray(s_list)), (self.thickness * 1e9, self.deltaw * 1e9), method='linear')
+
+                            s_interp = interp.griddata((thicknesses[0:round(len(thicknesses)/2)], deltaws[0:round(len(deltaws)/2)]), np.asarray(s_list), (self.thickness, self.deltaw), method='cubic')
                             s_new[freqidx][inpidx][outidx] = s_interp
 
                 self._s = s_new
@@ -1053,7 +1054,7 @@ class GratingCoupler(SiEPIC_PDK_Base):
                                 s = s_params[dimidx]
                                 s_list.append(s[freqidx][inpidx][outidx])
             
-                            s_interp = interp.griddata((thicknesses[round(len(thicknesses)/2)+1, len(thicknesses)], deltaws[round(len(deltaws)/2)+1, len(deltaws)]), np.asarray(s_list), (self.thickness * 1e9, self.deltaw * 1e9), method='linear')
+                            s_interp = interp.griddata((thicknesses[round(len(thicknesses)/2)+1, len(thicknesses)], deltaws[round(len(deltaws)/2)+1, len(deltaws)]), np.asarray(s_list), (self.thickness * 1e9, self.deltaw * 1e9), method='cubic')
                             s_new[freqidx][inpidx][outidx] = s_interp
 
                 self._s = s_new
@@ -1065,6 +1066,9 @@ class GratingCoupler(SiEPIC_PDK_Base):
 
     def s_parameters(self, freqs):
         return interpolate(freqs, self._f, self._s)
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        self.thickness = self.nominal_thickness
 
 
 class Waveguide(SiEPIC_PDK_Base):
@@ -1217,14 +1221,14 @@ class Waveguide(SiEPIC_PDK_Base):
                 ng_all.append(ng)
                 nd_all.append(nd)
 
-            lam0_all = [lam for _, lam in sorted(zip(np.asarray(widths).astype(float),lam0_all))]
-            ne_all = [ne for _, ne in sorted(zip(np.asarray(widths).astype(float),ne_all))]
-            ng_all = [ng for _, ng in sorted(zip(np.asarray(widths).astype(float),ng_all))]
-            nd_all = [nd for _, nd in sorted(zip(np.asarray(widths).astype(float),nd_all))]
-
-            # widths = np.unique(np.asarray(widths).astype(float))
-            # heights = np.unique(np.asarray(heights).astype(float))
-
+            # lam0_all = [lam for _, lam in sorted(zip(np.asarray(widths).astype(float),lam0_all))]
+            # ne_all = [ne for _, ne in sorted(zip(np.asarray(widths).astype(float),ne_all))]
+            # ng_all = [ng for _, ng in sorted(zip(np.asarray(widths).astype(float),ng_all))]
+            # nd_all = [nd for _, nd in sorted(zip(np.asarray(widths).astype(float),nd_all))]
+            # widths = np.asarray(widths).astype(float)
+            # heights = np.asarray(heights).astype(float)
+            # widths.sort()
+            # heights.sort()
             # widths, heights = np.meshgrid(widths, heights)
 
             lam0_all = np.asarray(lam0_all).astype(float)
@@ -1232,10 +1236,10 @@ class Waveguide(SiEPIC_PDK_Base):
             ng_all = np.asarray(ng_all).astype(float)
             nd_all = np.asarray(nd_all).astype(float)
 
-            interp_lam0 = interp.griddata((widths, heights), lam0_all, (self.width * 1e9, self.height * 1e9), method='linear')
-            interp_ne = interp.griddata((widths, heights), ne_all, (self.width * 1e9, self.height * 1e9), method='linear')
-            interp_ng = interp.griddata((widths, heights), ng_all, (self.width * 1e9, self.height * 1e9), method='linear')
-            interp_nd = interp.griddata((widths, heights), nd_all, (self.width * 1e9, self.height * 1e9), method='linear')
+            interp_lam0 = interp.griddata((widths, heights), lam0_all, (self.width * 1e9, self.height * 1e9), method='cubic')
+            interp_ne = interp.griddata((widths, heights), ne_all, (self.width * 1e9, self.height * 1e9), method='cubic')
+            interp_ng = interp.griddata((widths, heights), ng_all, (self.width * 1e9, self.height * 1e9), method='cubic')
+            interp_nd = interp.griddata((widths, heights), nd_all, (self.width * 1e9, self.height * 1e9), method='cubic')
 
             # lam0_tck = interp.bisplrep(wx.ravel(), hx.ravel(), lam0_all.ravel(), s=np.random.randint(len(wx.ravel())-np.sqrt(2*len(wx.ravel())), len(wx.ravel())+np.sqrt(2*len(wx.ravel()))))
             # ne_tck = interp.bisplrep(wx.ravel(), hx.ravel(), ne_all.ravel(), s=np.random.randint(len(wx.ravel())-np.sqrt(2*len(wx.ravel())), len(wx.ravel())+np.sqrt(2*len(wx.ravel()))))
@@ -1300,6 +1304,10 @@ class Waveguide(SiEPIC_PDK_Base):
         self.rand_ne = np.random.normal(self.ne, self.sigma_ne)
         self.rand_ng = np.random.normal(self.ng, self.sigma_ng)
         self.rand_nd = np.random.normal(self.nd, self.sigma_nd)
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        self.width = self.nominal_width
+        self.height = self.nominal_height
 
     @staticmethod
     def calc_s_params(freqs, length, lam0, ne, ng, nd):
@@ -1404,9 +1412,8 @@ class YBranch(SiEPIC_PDK_Base):
             available = self._source_argsets()
             widths = []
             heights = []
-            freqs = []
             s_params = []
-            for idx in range(0, len(available), 2):
+            for idx in range(0, len(available)):
                 d = available[idx]
                 widths.append(d['width'])
                 heights.append(d['thickness'])
@@ -1422,11 +1429,11 @@ class YBranch(SiEPIC_PDK_Base):
             s_params = np.asarray(s_params)
             
             
-            widths = np.asarray(widths, dtype=complex)
-            heights = np.asarray(heights, dtype=complex)
+            widths = np.asarray(widths, dtype=float)
+            heights = np.asarray(heights, dtype=float)
             
             dim, freq, inp, out = s_params.shape
-            s_new = np.ndarray((freq, inp, out))
+            s_new = np.ndarray((freq, inp, out), dtype=complex)
             for freqidx in range(freq):
                 for inpidx in range(inp):
                     for outidx in range(out):
@@ -1434,7 +1441,7 @@ class YBranch(SiEPIC_PDK_Base):
                         for dimidx in range(dim):
                             s_list.append(s_params[dimidx][freqidx][inpidx][outidx])
         
-                        s_interp = interp.griddata((widths, heights), np.asarray(s_list), (self.width * 1e9, self.thickness * 1e9), method='linear')
+                        s_interp = interp.griddata((widths, heights), np.asarray(s_list), (self.width * 1e9, self.thickness * 1e9), method='cubic')
                         s_new[freqidx][inpidx][outidx] = s_interp
 
             self._s = s_new
@@ -1458,3 +1465,7 @@ class YBranch(SiEPIC_PDK_Base):
             The scattering parameters corresponding to the frequency range.
         """
         return interpolate(freqs, self._f, self._s)
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        self.width = self.nominal_width
+        self.thickness = self.nominal_thickness
