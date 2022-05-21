@@ -209,7 +209,7 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
     """Wrapper simulator to make it easier to simulate over a range of
     frequencies while performing Monte Carlo experimentation."""
 
-    def simulate(self, x : List = [], y : List = [], sigmaw : float = 5, sigmat : float = 3, l : float = 4.5e-3, runs: int = 10, **kwargs) -> Tuple[np.array, np.array]:
+    def simulate(self, x : List = [], y : List = [], sigmaw : float = 5, sigmat : float = 2, l : float = 4.5e-3, runs: int = 10, **kwargs) -> Tuple[np.array, np.array]:
         """Runs the Monte Carlo sweep simulation for the circuit.
 
         Parameters
@@ -259,30 +259,38 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
             for idx in range(n):
 
                 if isinstance(components[idx], siepic.Waveguide):
+                    components[idx].__setattr__("nominal_width", components[idx].__getattribute__("width"))
+                    components[idx].__setattr__("nominal_height", components[idx].__getattribute__("height"))
                     w = components[idx].__getattribute__("width") + corr_sample_matrix_w[idx][i] * 1e-9
                     h = components[idx].__getattribute__("height") + corr_sample_matrix_t[idx][i] * 1e-9
                     components[idx].__setattr__("layout_aware", True)
                     components[idx].__setattr__("width", w)
                     components[idx].__setattr__("height", h)
                 elif isinstance(components[idx], (siepic.BidirectionalCoupler, siepic.HalfRing, siepic.YBranch)):
-                    w = components[idx].__getattribute__("width") * 1e9 + corr_sample_matrix_w[idx][i]
-                    h = components[idx].__getattribute__("thickness") * 1e9 + corr_sample_matrix_t[idx][i]
+                    components[idx].__setattr__("nominal_width", components[idx].__getattribute__("width"))
+                    components[idx].__setattr__("nominal_thickness", components[idx].__getattribute__("thickness"))
+                    w = components[idx].__getattribute__("width") + corr_sample_matrix_w[idx][i] * 1e-9
+                    h = components[idx].__getattribute__("thickness") + corr_sample_matrix_t[idx][i] * 1e-9
                     components[idx].__setattr__("layout_aware", True)
-                    components[idx].__setattr__("width", w * 1e-9)
-                    components[idx].__setattr__("thickness", h * 1e-9)
-                elif isinstance(components[idx], siepic.DirectionalCoupler):
-                    h = components[idx].__getattribute__("Lc") * 1e6 + corr_sample_matrix_t[idx][i]
-                    components[idx].__setattr__("layout_aware", True)
-                    components[idx].__setattr__("Lc", h * 1e-6)
+                    components[idx].__setattr__("width", w)
+                    components[idx].__setattr__("thickness", h)
                 elif isinstance(components[idx], siepic.GratingCoupler):
-                    t = components[idx].__getattribute__("thickness") * 1e9 + corr_sample_matrix_w[idx][i]
+                    components[idx].__setattr__("nominal_thickness", components[idx].__getattribute__("thickness"))
+                    h = components[idx].__getattribute__("thickness") + corr_sample_matrix_t[idx][i] * 1e-9
                     components[idx].__setattr__("layout_aware", True)
-                    components[idx].__setattr__("thickness", t * 1e-9)
+                    components[idx].__setattr__("thickness", h)
+                elif isinstance(components[idx], siepic.DirectionalCoupler):
+                    components[idx].__setattr__("nominal_Lc", components[idx].__getattribute__("Lc"))
+                    h = components[idx].__getattribute__("Lc") + corr_sample_matrix_t[idx][i] * 1e-6
+                    components[idx].__setattr__("layout_aware", True)
+                    components[idx].__setattr__("Lc", h)
             s_parameters_method = "s_parameters" if i==0 else "layout_aware_monte_carlo_s_parameters"
             print(f'Run {i} of {runs}')
             results.append(
                 super().simulate(**kwargs, s_parameters_method=s_parameters_method)
             )
 
+            for idx in range(n):
+                components[idx].regenerate_layout_aware_monte_carlo_parameters()
 
         return results
