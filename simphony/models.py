@@ -331,7 +331,7 @@ class Model:
         circuit; they will be more or less consistent within a single small
         circuit.
 
-        The ``MonteCarloSweepSimulation`` calls this function once per run over
+        The ``MonteCarloSweepSimulator`` calls this function once per run over
         the circuit.
 
         Notes
@@ -339,6 +339,25 @@ class Model:
         This function should not accept any parameters, but may act on instance
         or class attributes.
         """
+        pass
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        """Reassigns dimension parameters to the nominal values for the component.
+
+        If a monte carlo method is not implemented for a given model, this
+        method does nothing. However, it can optionally be implemented so that
+        parameters are reassigned for every run.
+
+        The ``LayoutAwareMonteCarloSweepSimulator`` calls this function once per run per component.
+
+        Notes
+        -----
+        This function should not accept any parameters, but may act on instance
+        or class attributes.
+        """
+        pass
+
+    def update_variations(self, **kwargs):
         pass
 
     def rename_pins(self, *names: str) -> None:
@@ -657,6 +676,27 @@ class Subcircuit(Model):
         """Regenerates parameters used to generate Monte Carlo s-matrices."""
         for component in self._wrapped_circuit:
             component.regenerate_monte_carlo_parameters()
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        """Reassigns dimension parameters to the nominal values for the component.
+
+        If a monte carlo method is not implemented for a given model, this
+        method does nothing. However, it can optionally be implemented so that
+        parameters are reassigned for every run.
+
+        The ``LayoutAwareMonteCarloSweepSimulator`` calls this function once per run per component.
+
+        Notes
+        -----
+        This function should not accept any parameters, but may act on instance
+        or class attributes.
+        """
+        for component in self._wrapped_circuit:
+            component.regenerate_layout_aware_monte_carlo_parameters()
+
+    def update_variations(self, **kwargs):
+            for component in self._wrapped_circuit:
+                component.update_variations(**kwargs)
 
     def s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns the scattering parameters for the subcircuit."""
