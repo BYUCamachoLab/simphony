@@ -207,13 +207,23 @@ class MonteCarloSweepSimulator(SweepSimulator):
 
 class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
     """Wrapper simulator to make it easier to simulate over a range of
-    frequencies while performing Monte Carlo experimentation."""
+    frequencies while performing layout-aware Monte Carlo experimentation."""
 
     def simulate(self, x : List = [], y : List = [], sigmaw : float = 5, sigmat : float = 2, l : float = 4.5e-3, runs: int = 10, **kwargs) -> Tuple[np.array, np.array]:
         """Runs the Monte Carlo sweep simulation for the circuit.
 
         Parameters
         ----------
+        x :
+            List of x-coordinates for each component
+        y :
+            List of y-coordinates for each component
+        sigmaw :
+            Standard deviation of width variations
+        sigmat :
+            Standard deviation of thickness variations
+        l :
+            Correlation length (nm)         
         dB :
             Returns the power ratios in deciBels when True.
         mode :
@@ -224,10 +234,11 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
             The number of Monte Carlo iterations to run (default 10).
         """
         results = []
-        n = len(self.circuit._get_components())-1
+        n = len(self.circuit._get_components()) - 1
         corr_matrix_w = np.zeros((n, n))
         corr_matrix_t = np.zeros((n, n))
-        
+
+        # generate correlation values
         for i in range(n):
             for k in range(n):
 
@@ -238,54 +249,34 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
 
         cov_matrix_w = np.zeros((n, n))
         cov_matrix_t = np.zeros((n, n))
+        # generate covariance matrix
         for i in range(n):
             for k in range(n):
                 cov_matrix_w[i][k] = sigmaw * corr_matrix_w[i][k] * sigmaw
                 cov_matrix_t[i][k] = sigmat * corr_matrix_t[i][k] * sigmat
 
+        # perform Cholesky decomposition on the covariance matrices
         l_w = scipy.linalg.cholesky(cov_matrix_w, lower=True)
         l_t = scipy.linalg.cholesky(cov_matrix_t, lower=True)
 
+        # generate random distribution with mean 0 and standard deviation of 1, size no. of elements x no. of runs
         X = np.random.multivariate_normal(np.zeros(n), np.eye(n, n), runs).T
 
+        # generate correlation samples
         corr_sample_matrix_w = np.dot(l_w, X)
         corr_sample_matrix_t = np.dot(l_t, X)
 
         components = self.circuit._get_components()
-
         for i in range(runs):
             # use s_parameters for the first run, then monte_carlo_* for the rest
 
             for idx in range(n):
 
-                if isinstance(components[idx], siepic.Waveguide):
-                    components[idx].__setattr__("nominal_width", components[idx].__getattribute__("width"))
-                    components[idx].__setattr__("nominal_height", components[idx].__getattribute__("height"))
-                    w = components[idx].__getattribute__("width") + corr_sample_matrix_w[idx][i] * 1e-9
-                    h = components[idx].__getattribute__("height") + corr_sample_matrix_t[idx][i] * 1e-9
-                    components[idx].__setattr__("layout_aware", True)
-                    components[idx].__setattr__("width", w)
-                    components[idx].__setattr__("height", h)
-                elif isinstance(components[idx], (siepic.BidirectionalCoupler, siepic.HalfRing, siepic.YBranch)):
-                    components[idx].__setattr__("nominal_width", components[idx].__getattribute__("width"))
-                    components[idx].__setattr__("nominal_thickness", components[idx].__getattribute__("thickness"))
-                    w = components[idx].__getattribute__("width") + corr_sample_matrix_w[idx][i] * 1e-9
-                    h = components[idx].__getattribute__("thickness") + corr_sample_matrix_t[idx][i] * 1e-9
-                    components[idx].__setattr__("layout_aware", True)
-                    components[idx].__setattr__("width", w)
-                    components[idx].__setattr__("thickness", h)
-                elif isinstance(components[idx], siepic.GratingCoupler):
-                    components[idx].__setattr__("nominal_thickness", components[idx].__getattribute__("thickness"))
-                    h = components[idx].__getattribute__("thickness") + corr_sample_matrix_t[idx][i] * 1e-9
-                    components[idx].__setattr__("layout_aware", True)
-                    components[idx].__setattr__("thickness", h)
-                elif isinstance(components[idx], siepic.DirectionalCoupler):
-                    components[idx].__setattr__("nominal_Lc", components[idx].__getattribute__("Lc"))
-                    h = components[idx].__getattribute__("Lc") + corr_sample_matrix_t[idx][i] * 1e-6
-                    components[idx].__setattr__("layout_aware", True)
-                    components[idx].__setattr__("Lc", h)
-            s_parameters_method = "s_parameters" if i==0 else "layout_aware_monte_carlo_s_parameters"
-            print(f'Run {i} of {runs}')
+                # update component parameters
+                components[idx].update_variations(corr_w=corr_sample_matrix_w[idx][i], corr_t=corr_sample_matrix_t[idx][i])
+
+            s_parameters_method = "s_parameters" if i == 0 else "layout_aware_monte_carlo_s_parameters"
+
             results.append(
                 super().simulate(**kwargs, s_parameters_method=s_parameters_method)
             )
