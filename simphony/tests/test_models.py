@@ -88,17 +88,11 @@ class TestModelExtension:
                 return self.y1.s_parameters(freqs)
 
         brancher = YBranch()
-        brancher2 = YBranch()
-        brancher3 = YBranch()
-        brancher3.pin_count = 2
         brancher.multiconnect(wg1, wg2, wg3)
 
         assert brancher.circuit == wg1.circuit
         assert wg1.circuit == wg2.circuit
         assert wg2.circuit == wg3.circuit
-        assert brancher.__hash__() == brancher2.__hash__()
-        assert brancher.__hash__() != brancher3.__hash__()
-
 
 class TestSubcircuitExtension:
     def test_subcircuit_factory(self, y1, wg1, wg2, wg3):
