@@ -94,6 +94,7 @@ class TestModelExtension:
         assert wg1.circuit == wg2.circuit
         assert wg2.circuit == wg3.circuit
 
+
 class TestSubcircuitExtension:
     def test_subcircuit_factory(self, y1, wg1, wg2, wg3):
         def create_brancher(y1, wg1, wg2):
