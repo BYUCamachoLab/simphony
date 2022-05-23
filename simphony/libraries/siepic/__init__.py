@@ -581,15 +581,15 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
         return interpolate(freqs, self._f, self._s)
 
     def update_variations(self, **kwargs):
-            self.nominal_width = self.width
-            self.nominal_thickness = self.thickness
+        self.nominal_width = self.width
+        self.nominal_thickness = self.thickness
 
-            w = self.width + kwargs.get('corr_w') * 1e-9
-            t = self.thickness + kwargs.get('corr_t') * 1e-9
+        w = self.width + kwargs.get('corr_w') * 1e-9
+        t = self.thickness + kwargs.get('corr_t') * 1e-9
 
-            self.layout_aware = True
-            self.width = w
-            self.thickness = t
+        self.layout_aware = True
+        self.width = w
+        self.thickness = t
 
     def regenerate_layout_aware_monte_carlo_parameters(self):
         self.width = self.nominal_width
@@ -719,15 +719,15 @@ class HalfRing(SiEPIC_PDK_Base):
             self.enable_autoupdate()
 
     def update_variations(self, **kwargs):
-            self.nominal_width = self.width
-            self.nominal_thickness = self.thickness
+        self.nominal_width = self.width
+        self.nominal_thickness = self.thickness
 
-            w = self.width + kwargs.get('corr_w') * 1e-9
-            t = self.thickness + kwargs.get('corr_t') * 1e-9
+        w = self.width + kwargs.get('corr_w') * 1e-9
+        t = self.thickness + kwargs.get('corr_t') * 1e-9
 
-            self.layout_aware = True
-            self.width = w
-            self.thickness = t
+        self.layout_aware = True
+        self.width = w
+        self.thickness = t
 
     def s_parameters(self, freqs):
         return interpolate(freqs, self._f, self._s)
@@ -833,12 +833,12 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
         return interpolate(freqs, self._f, self._s)
 
     def update_variations(self, **kwargs):
-            self.nominal_Lc = self.Lc
+        self.nominal_Lc = self.Lc
 
-            w = self.nominal_Lc + kwargs.get('corr_w') * 1e-6
+        w = self.nominal_Lc + kwargs.get('corr_w') * 1e-6
 
-            self.layout_aware = True
-            self.Lc = w
+        self.layout_aware = True
+        self.Lc = w
 
     def regenerate_layout_aware_monte_carlo_parameters(self):
         self.Lc = self.nominal_Lc
@@ -1071,15 +1071,15 @@ class GratingCoupler(SiEPIC_PDK_Base):
         return interpolate(freqs, self._f, self._s)
 
     def update_variations(self, **kwargs):
-            self.nominal_deltaw = self.deltaw
-            self.nominal_thickness = self.thickness
+        self.nominal_deltaw = self.deltaw
+        self.nominal_thickness = self.thickness
 
-            w = self.deltaw + kwargs.get('corr_w') * 1e-9
-            t = self.thickness + kwargs.get('corr_t') * 1e-9
+        w = self.deltaw + kwargs.get('corr_w') * 1e-9
+        t = self.thickness + kwargs.get('corr_t') * 1e-9
 
-            self.layout_aware = True
-            self.deltaw = w
-            self.thickness = t
+        self.layout_aware = True
+        self.deltaw = w
+        self.thickness = t
 
     def regenerate_layout_aware_monte_carlo_parameters(self):
         self.thickness = self.nominal_thickness
@@ -1286,7 +1286,7 @@ class Waveguide(SiEPIC_PDK_Base):
     def layout_aware_monte_carlo_s_parameters(self, freqs):
         """Returns a monte carlo (randomized) set of s-parameters.
 
-        In this implementation of the monte carlo routine, values generated 
+        In this implementation of the monte carlo routine, values generated
         for lam0, ne, ng, and nd using the Reduced Spatial Correlation Matrix method
         are used to return a set of s-parameters. This is repeated for each
         run of the Monte Carlo analysis for every wavehuide component in the circuit.
@@ -1465,15 +1465,15 @@ class YBranch(SiEPIC_PDK_Base):
         return interpolate(freqs, self._f, self._s)
 
     def update_variations(self, **kwargs):
-            self.nominal_width = self.width
-            self.nominal_thickness = self.thickness
+        self.nominal_width = self.width
+        self.nominal_thickness = self.thickness
 
-            w = self.width + kwargs.get('corr_w') * 1e-9
-            t = self.thickness + kwargs.get('corr_t') * 1e-9
+        w = self.width + kwargs.get('corr_w') * 1e-9
+        t = self.thickness + kwargs.get('corr_t') * 1e-9
 
-            self.layout_aware = True
-            self.width = w
-            self.thickness = t
+        self.layout_aware = True
+        self.width = w
+        self.thickness = t
 
     def regenerate_layout_aware_monte_carlo_parameters(self):
         self.width = self.nominal_width
