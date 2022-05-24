@@ -215,7 +215,7 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
         Parameters
         ----------
         coords :
-            Dictionary of co-ordinates. Each key has a component in the circuit as
+            Dictionary of co-ordinates. Each item in the dict has a component in the circuit as
             a key and its x and y co-ordinates as values
         sigmaw :
             Standard deviation of width variations (default 5)
@@ -232,22 +232,23 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
         runs :
             The number of Monte Carlo iterations to run (default 10).
         """
-        x = []
-        y = []
+        x = [0] * len(coords)
+        y = [0] * len(coords) 
 
         # get x and y co-ordinates
-        components = self.circuit._get_components()
-        if len(coords) != len(components)-1:
-            raise ValueError('Incorrect number of components in dict "coords".')
+        components = self.circuit._get_components()[:-1]
+        if len(coords) != len(components):
+            raise ValueError('Incorrect number of component coordinates passed to argument "coords".')
 
         for k, v in coords.items():
             if k in components:
-                x.insert(components.index(k), v['x'])
-                y.insert(components.index(k), v['y'])
+                x[components.index(k)] = v['x']
+                y[components.index(k)] = v['y']
             else:
                 raise KeyError(f'Component {k} not in circuit.')
 
         results = []
+
         n = len(self.circuit._get_components()) - 1
         corr_matrix_w = np.zeros((n, n))
         corr_matrix_t = np.zeros((n, n))
@@ -269,11 +270,16 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
                 cov_matrix_w[i][k] = sigmaw * corr_matrix_w[i][k] * sigmaw
                 cov_matrix_t[i][k] = sigmat * corr_matrix_t[i][k] * sigmat
 
-        # perform Cholesky decomposition on the covariance matrices
-        l_w = scipy.linalg.cholesky(cov_matrix_w, lower=True)
-        l_t = scipy.linalg.cholesky(cov_matrix_t, lower=True)
+        try:
+            # perform Cholesky decomposition on the covariance matrices
+            l_w = scipy.linalg.cholesky(cov_matrix_w, lower=True)
+            l_t = scipy.linalg.cholesky(cov_matrix_t, lower=True)
+        except np.linalg.LinAlgError:
+            # if matrix is not positive-definite, do LU decomposition
+            _, l_w, _ = scipy.linalg.lu(cov_matrix_w)
+            _, l_t, _ = scipy.linalg.lu(cov_matrix_t)
 
-        # generate random distribution with mean 0 and standard deviation of 1, size no. of elements x no. of runs
+        # generate random distribution with mean 0 and standard deviation of 1, size: no. of elements x no. of runs
         X = np.random.multivariate_normal(np.zeros(n), np.eye(n, n), runs).T
 
         # generate correlation samples
