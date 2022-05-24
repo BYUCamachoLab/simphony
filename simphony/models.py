@@ -358,6 +358,8 @@ class Model:
         pass
 
     def update_variations(self, **kwargs):
+        """Update width and thickness variations for the component using correlated
+        samples."""
         pass
 
     def rename_pins(self, *names: str) -> None:
