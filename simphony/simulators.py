@@ -209,21 +209,20 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
     """Wrapper simulator to make it easier to simulate over a range of
     frequencies while performing layout-aware Monte Carlo experimentation."""
 
-    def simulate(self, x : List = [], y : List = [], sigmaw : float = 5, sigmat : float = 2, l : float = 4.5e-3, runs: int = 10, **kwargs) -> Tuple[np.array, np.array]:
+    def simulate(self, coords: dict = {}, sigmaw : float = 5, sigmat : float = 2, l : float = 4.5e-3, runs: int = 10, **kwargs) -> Tuple[np.array, np.array]:
         """Runs the Monte Carlo sweep simulation for the circuit.
 
         Parameters
         ----------
-        x :
-            List of x-coordinates for each component
-        y :
-            List of y-coordinates for each component
+        coords :
+            Dictionary of co-ordinates. Each key has a component in the circuit as
+            a key and its x and y co-ordinates as values
         sigmaw :
-            Standard deviation of width variations
+            Standard deviation of width variations (default 5)
         sigmat :
-            Standard deviation of thickness variations
+            Standard deviation of thickness variations (default 2)
         l :
-            Correlation length (nm)         
+            Correlation length (m) (default 4.5e-3)
         dB :
             Returns the power ratios in deciBels when True.
         mode :
@@ -233,6 +232,21 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
         runs :
             The number of Monte Carlo iterations to run (default 10).
         """
+        x = []
+        y = []
+
+        # get x and y co-ordinates
+        components = self.circuit._get_components()
+        if len(coords) != len(components)-1:
+            raise ValueError('Incorrect number of components in dict "coords".')
+
+        for k, v in coords.items():
+            if k in components:
+                x.insert(components.index(k), v['x'])
+                y.insert(components.index(k), v['y'])
+            else:
+                raise KeyError(f'Component {k} not in circuit.')
+
         results = []
         n = len(self.circuit._get_components()) - 1
         corr_matrix_w = np.zeros((n, n))
