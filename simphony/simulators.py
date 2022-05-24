@@ -208,7 +208,7 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
     """Wrapper simulator to make it easier to simulate over a range of
     frequencies while performing layout-aware Monte Carlo experimentation."""
 
-    def simulate(self, coords: dict = {}, sigmaw : float = 5, sigmat : float = 2, l : float = 4.5e-3, runs: int = 10, **kwargs) -> Tuple[np.array, np.array]:
+    def simulate(self, coords: dict = {}, sigmaw: float = 5, sigmat: float = 2, l: float = 4.5e-3, runs: int = 10, **kwargs) -> Tuple[np.array, np.array]:
         """Runs the Monte Carlo sweep simulation for the circuit.
 
         Parameters
@@ -232,7 +232,7 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
             The number of Monte Carlo iterations to run (default 10).
         """
         x = [0] * len(coords)
-        y = [0] * len(coords) 
+        y = [0] * len(coords)
 
         # get x and y co-ordinates
         components = self.circuit._get_components()[:-1]
