@@ -11,13 +11,12 @@ components before simulating. This can be done using the same connection methods
 that exist on a component.
 """
 
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 import scipy
 
 from simphony import Model
-from simphony.libraries import siepic
 from simphony.tools import freq2wl, wl2freq
 
 

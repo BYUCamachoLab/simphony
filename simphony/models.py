@@ -697,8 +697,8 @@ class Subcircuit(Model):
             component.regenerate_layout_aware_monte_carlo_parameters()
 
     def update_variations(self, **kwargs):
-            for component in self._wrapped_circuit:
-                component.update_variations(**kwargs)
+        for component in self._wrapped_circuit:
+            component.update_variations(**kwargs)
 
     def s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns the scattering parameters for the subcircuit."""
