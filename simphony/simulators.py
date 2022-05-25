@@ -288,7 +288,7 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
         results = []
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(coords, sigmaw, sigmat, l, runs)
         components = self.circuit._get_components()
-        n = len(components)-1
+        n = len(components) - 1
         for i in range(runs):
             # use s_parameters for the first run, then monte_carlo_* for the rest
 
