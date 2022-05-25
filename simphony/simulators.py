@@ -208,29 +208,7 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
     """Wrapper simulator to make it easier to simulate over a range of
     frequencies while performing layout-aware Monte Carlo experimentation."""
 
-    def simulate(self, coords: dict = {}, sigmaw: float = 5, sigmat: float = 2, l: float = 4.5e-3, runs: int = 10, **kwargs) -> Tuple[np.array, np.array]:
-        """Runs the Monte Carlo sweep simulation for the circuit.
-
-        Parameters
-        ----------
-        coords :
-            Dictionary of co-ordinates. Each item in the dict has a component in the circuit as
-            a key and its x and y co-ordinates as values
-        sigmaw :
-            Standard deviation of width variations (default 5)
-        sigmat :
-            Standard deviation of thickness variations (default 2)
-        l :
-            Correlation length (m) (default 4.5e-3)
-        dB :
-            Returns the power ratios in deciBels when True.
-        mode :
-            Whether to return frequencies or wavelengths for the corresponding
-            power ratios. Defaults to whatever values were passed in upon
-            instantiation.
-        runs :
-            The number of Monte Carlo iterations to run (default 10).
-        """
+    def _compute_correlated_samples(self, coords, sigmaw, sigmat, l, runs):
         x = [0] * len(coords)
         y = [0] * len(coords)
 
@@ -245,8 +223,6 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
                 y[components.index(k)] = v['y']
             else:
                 raise KeyError(f'Component {k} not in circuit.')
-
-        results = []
 
         n = len(self.circuit._get_components()) - 1
         corr_matrix_w = np.zeros((n, n))
@@ -284,8 +260,35 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
         # generate correlation samples
         corr_sample_matrix_w = np.dot(l_w, X)
         corr_sample_matrix_t = np.dot(l_t, X)
+        return corr_sample_matrix_w, corr_sample_matrix_t
 
+    def simulate(self, coords: dict = {}, sigmaw: float = 5, sigmat: float = 2, l: float = 4.5e-3, runs: int = 10, **kwargs) -> Tuple[np.array, np.array]:
+        """Runs the Monte Carlo sweep simulation for the circuit.
+
+        Parameters
+        ----------
+        coords :
+            Dictionary of co-ordinates. Each item in the dict has a component in the circuit as
+            a key and its x and y co-ordinates as values
+        sigmaw :
+            Standard deviation of width variations (default 5)
+        sigmat :
+            Standard deviation of thickness variations (default 2)
+        l :
+            Correlation length (m) (default 4.5e-3)
+        dB :
+            Returns the power ratios in deciBels when True.
+        mode :
+            Whether to return frequencies or wavelengths for the corresponding
+            power ratios. Defaults to whatever values were passed in upon
+            instantiation.
+        runs :
+            The number of Monte Carlo iterations to run (default 10).
+        """
+        results = []
+        corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(coords, sigmaw, sigmat, l, runs)
         components = self.circuit._get_components()
+        n = len(components)-1
         for i in range(runs):
             # use s_parameters for the first run, then monte_carlo_* for the rest
 
@@ -295,7 +298,7 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
                 components[idx].update_variations(corr_w=corr_sample_matrix_w[idx][i], corr_t=corr_sample_matrix_t[idx][i])
 
             s_parameters_method = "s_parameters" if i == 0 else "layout_aware_monte_carlo_s_parameters"
-
+            print(f'Run {i} of {runs}')
             results.append(
                 super().simulate(**kwargs, s_parameters_method=s_parameters_method)
             )

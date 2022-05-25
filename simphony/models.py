@@ -627,11 +627,8 @@ class Subcircuit(Model):
 
                 # convert to numpy array for the rest of the function
                 s_params = np.array(s_params)
-            elif s_parameters_method == "monte_carlo_s_parameters":
+            elif s_parameters_method == "monte_carlo_s_parameters" or "layout_aware_monte_carlo_s_parameters":
                 # don't cache Monte Carlo scattering parameters
-                s_params = getattr(component, s_parameters_method)(freqs)
-            elif s_parameters_method == "layout_aware_monte_carlo_s_parameters":
-                # don't cache Layout Aware Monte Carlo scattering parameters
                 s_params = getattr(component, s_parameters_method)(freqs)
 
             # merge the s_params into the block diagonal matrix
