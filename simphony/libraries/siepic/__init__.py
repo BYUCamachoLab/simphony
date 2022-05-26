@@ -426,9 +426,9 @@ class SiEPIC_PDK_Base(Model):
             Warns if exact requested parameters are not available.
         """
         try:
-            return (norm_args.index(req_args), None)
+            return norm_args.index(req_args)
         except ValueError:
-            adjusted_args, adjusted_args_2 = cls._find_closest(norm_args, req_args)
+            adjusted_args = cls._find_closest(norm_args, req_args)
             msg = (
                 "Exact parameters not available for '{}', ".format(cls)
                 + "using closest approximation (results may not be as accurate).\n"
@@ -437,7 +437,7 @@ class SiEPIC_PDK_Base(Model):
                 + "NOTE: Model attributes may have been automatically modified."
             )
             warnings.warn(msg, UserWarning)
-            return (norm_args.index(adjusted_args), norm_args.index(adjusted_args_2))
+            return norm_args.index(adjusted_args)
 
     @staticmethod
     def _find_closest(normalized, args):
@@ -467,25 +467,15 @@ class SiEPIC_PDK_Base(Model):
             diff_keys = [k for k, v in argset.items() if v != args[k]]
             diff_count = len(diff_keys)
             diffs.append(Candidate(diff_count, diff_keys, argset))
-
         min_diff = min(c.count for c in diffs)
         candidates = [c for c in diffs if c.count == min_diff]
+
         errors = []
         for count, keys, argset in candidates:
             sum_error = sum([abs(percent_diff(argset[key], args[key])) for key in keys])
             errors.append(sum_error / count)
         idx = np.argmin(errors)
-
-        diffs2 = diffs
-        diffs2.pop(idx)
-        min_diff2 = min(c.count for c in diffs2)
-        candidates2 = [c for c in diffs2 if c.count == min_diff2]
-        errors2 = []
-        for count, keys, argset in candidates2:
-            sum_error = sum([abs(percent_diff(argset[key], args[key])) for key in keys])
-            errors2.append(sum_error / count)
-        idx2 = np.argmin(errors2)
-        return (candidates[idx].argset, candidates2[idx2].argset)
+        return candidates[idx].argset
 
 
 class BidirectionalCoupler(SiEPIC_PDK_Base):
@@ -534,7 +524,7 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
             normalized = [
                 {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()} for d in available
             ]
-            idx, _ = self._get_matched_args(normalized, self.args)
+            idx = self._get_matched_args(normalized, self.args)
 
             valid_args = available[idx]
             sparams = parser.read_params(self._get_file(valid_args))
@@ -670,7 +660,7 @@ class HalfRing(SiEPIC_PDK_Base):
             normalized = [
                 {k: round(str2float(v), 15) for k, v in d.items()} for d in available
             ]
-            idx, _ = self._get_matched_args(normalized, self.args)
+            idx = self._get_matched_args(normalized, self.args)
 
             valid_args = available[idx]
             sparams = parser.read_params(self._get_file(valid_args))
@@ -781,7 +771,7 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
             normalized = [
                 {k: round(str2float(v), 15) for k, v in d.items()} for d in available
             ]
-            idx, _ = self._get_matched_args(normalized, self.args)
+            idx = self._get_matched_args(normalized, self.args)
 
             valid_args = available[idx]
             sparams = parser.read_params(self._get_file(valid_args))
@@ -898,7 +888,7 @@ class Terminator(SiEPIC_PDK_Base):
                     L[0]: round(str2float(L[1]) * 1e-6, 15),
                 }
             )
-        idx, _ = self._get_matched_args(normalized, self.args)
+        idx = self._get_matched_args(normalized, self.args)
 
         valid_args = available[idx]
         sparams = parser.read_params(self._get_file(valid_args))
@@ -976,7 +966,7 @@ class GratingCoupler(SiEPIC_PDK_Base):
                         deltaw[0]: round(str2float(deltaw[1]) * 1e-9, 15),
                     }
                 )
-            idx, _ = self._get_matched_args(normalized, self.args)
+            idx = self._get_matched_args(normalized, self.args)
             for key, value in normalized[idx].items():
                 setattr(self, key, value)
 
@@ -1185,7 +1175,7 @@ class Waveguide(SiEPIC_PDK_Base):
             normalized = [
                 {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()} for d in available
             ]
-            idx, _ = self._get_matched_args(normalized, self.args)
+            idx = self._get_matched_args(normalized, self.args)
 
             valid_args = available[idx]
             with open(self._get_file(valid_args), "r") as f:
@@ -1398,7 +1388,7 @@ class YBranch(SiEPIC_PDK_Base):
             normalized = [
                 {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()} for d in available
             ]
-            idx, _ = self._get_matched_args(normalized, self.args)
+            idx = self._get_matched_args(normalized, self.args)
 
             valid_args = available[idx]
             sparams = parser.read_params(self._get_file(valid_args))
