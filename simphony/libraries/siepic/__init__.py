@@ -513,11 +513,43 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
         r"(?:\.sparam)"
     )
 
-    def __init__(self, thickness=220e-9, width=500e-9, layout_aware=False, **kwargs):
-        super().__init__(**kwargs, thickness=thickness, width=width, layout_aware=layout_aware)
+    def __init__(self, thickness=220e-9, width=500e-9, **kwargs):
+        super().__init__(**kwargs, thickness=thickness, width=width)
 
     def on_args_changed(self):
-        if not self.layout_aware:
+        try:
+            if self.layout_aware:
+                self.suspend_autoupdate()
+
+                available = self._source_argsets()
+                widths = []
+                heights = []
+                s_params = []
+                for idx in range(0, len(available), 2):
+                    d = available[idx]
+                    widths.append(d['width'])
+                    heights.append(d['thickness'])
+                    valid_args = available[idx]
+                    sparams = parser.read_params(self._get_file(valid_args))
+                    self._f, s = parser.build_matrix(sparams)
+                    s_params.append(s)
+
+                s_params = np.asarray(s_params)
+
+                widths = np.asarray(widths, dtype=np.double)
+                heights = np.asarray(heights, dtype=np.double)
+
+                dim = len(s_params)
+                s_list = []
+                for dimidx in range(dim):
+                    s_list.append(s_params[dimidx][:][:][:])
+                s_list = np.asarray(s_list, dtype=complex)
+                self._s = interp.griddata((widths, heights), s_list, (self.width * 1e9, self.thickness * 1e9), method='cubic')
+
+                self.freq_range = (self._f[0], self._f[-1])
+
+                self.enable_autoupdate()
+        except AttributeError:
             self.suspend_autoupdate()
 
             available = self._source_argsets()
@@ -533,37 +565,6 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
             self.freq_range = (self._f[0], self._f[-1])
             for key, value in normalized[idx].items():
                 setattr(self, key, value)
-
-            self.enable_autoupdate()
-        else:
-            self.suspend_autoupdate()
-
-            available = self._source_argsets()
-            widths = []
-            heights = []
-            s_params = []
-            for idx in range(0, len(available), 2):
-                d = available[idx]
-                widths.append(d['width'])
-                heights.append(d['thickness'])
-                valid_args = available[idx]
-                sparams = parser.read_params(self._get_file(valid_args))
-                self._f, s = parser.build_matrix(sparams)
-                s_params.append(s)
-
-            s_params = np.asarray(s_params)
-
-            widths = np.asarray(widths, dtype=np.double)
-            heights = np.asarray(heights, dtype=np.double)
-
-            dim = len(s_params)
-            s_list = []
-            for dimidx in range(dim):
-                s_list.append(s_params[dimidx][:][:][:])
-            s_list = np.asarray(s_list, dtype=complex)
-            self._s = interp.griddata((widths, heights), s_list, (self.width * 1e9, self.thickness * 1e9), method='cubic')
-
-            self.freq_range = (self._f[0], self._f[-1])
 
             self.enable_autoupdate()
 
@@ -639,7 +640,6 @@ class HalfRing(SiEPIC_PDK_Base):
         width=500e-9,
         thickness=220e-9,
         couple_length=0.0,
-        layout_aware=False,
         **kwargs
     ):
         super().__init__(
@@ -649,11 +649,47 @@ class HalfRing(SiEPIC_PDK_Base):
             width=width,
             thickness=thickness,
             couple_length=couple_length,
-            layout_aware=layout_aware,
         )
 
     def on_args_changed(self):
-        if not self.layout_aware:
+        try:
+            if self.layout_aware:
+                self.suspend_autoupdate()
+
+                available = self._source_argsets()
+                widths = []
+                heights = []
+                s_params = []
+                for idx in range(0, len(available), 2):
+                    d = available[idx]
+                    widths.append(d['width'])
+                    heights.append(d['thickness'])
+                    valid_args = available[idx]
+                    sparams = parser.read_params(self._get_file(valid_args))
+                    sparams = list(
+                        filter(lambda sparams: sparams["mode"] == self.polarization, sparams)
+                    )
+                    self._f, s = parser.build_matrix(sparams)
+
+                    s_params.append(s)
+
+                s_params = np.asarray(s_params)
+
+                widths = np.asarray(widths, dtype=complex)
+                heights = np.asarray(heights, dtype=complex)
+
+                dim, _, _, _ = s_params.shape
+                s_list = []
+
+                for dimidx in range(dim):
+                    s_list.append(s_params[dimidx][:][:][:])
+                s_list = np.asarray(s_list, dtype=complex)
+                self._s = interp.griddata((widths, heights), s_list, (self.width * 1e9, self.thickness * 1e9), method='cubic')
+
+                self.freq_range = (self._f[0], self._f[-1])
+
+                self.enable_autoupdate()
+        except AttributeError:
             self.suspend_autoupdate()
 
             available = self._source_argsets()
@@ -669,42 +705,6 @@ class HalfRing(SiEPIC_PDK_Base):
             self.freq_range = (self._f[0], self._f[-1])
             for key, value in normalized[idx].items():
                 setattr(self, key, value)
-
-            self.enable_autoupdate()
-        else:
-            self.suspend_autoupdate()
-
-            available = self._source_argsets()
-            widths = []
-            heights = []
-            s_params = []
-            for idx in range(0, len(available), 2):
-                d = available[idx]
-                widths.append(d['width'])
-                heights.append(d['thickness'])
-                valid_args = available[idx]
-                sparams = parser.read_params(self._get_file(valid_args))
-                sparams = list(
-                    filter(lambda sparams: sparams["mode"] == self.polarization, sparams)
-                )
-                self._f, s = parser.build_matrix(sparams)
-
-                s_params.append(s)
-
-            s_params = np.asarray(s_params)
-
-            widths = np.asarray(widths, dtype=complex)
-            heights = np.asarray(heights, dtype=complex)
-
-            dim, _, _, _ = s_params.shape
-            s_list = []
-
-            for dimidx in range(dim):
-                s_list.append(s_params[dimidx][:][:][:])
-            s_list = np.asarray(s_list, dtype=complex)
-            self._s = interp.griddata((widths, heights), s_list, (self.width * 1e9, self.thickness * 1e9), method='cubic')
-
-            self.freq_range = (self._f[0], self._f[-1])
 
             self.enable_autoupdate()
 
@@ -758,13 +758,48 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
         r"(?:m\.sparam)"
     )
 
-    def __init__(self, gap=200e-9, Lc=10e-6, layout_aware=False, **kwargs):
-        super().__init__(**kwargs, gap=gap, Lc=Lc, layout_aware=layout_aware)
+    def __init__(self, gap=200e-9, Lc=10e-6, **kwargs):
+        super().__init__(**kwargs, gap=gap, Lc=Lc)
 
     def on_args_changed(self):
+        try:
+            if self.layout_aware:
+                self.suspend_autoupdate()
 
-        if not self.layout_aware:
+                available = self._source_argsets()
+                Lcs = []
+                s_params = []
+                for idx in range(len(available)):
+                    d = available[idx]
+                    Lcs.append(d['Lc'])
+                    valid_args = available[idx]
+                    sparams = parser.read_params(self._get_file(valid_args))
+                    self._f, s = parser.build_matrix(sparams)
 
+                    s_params.append(s)
+
+                s_params = np.asarray(s_params)
+
+                Lcs = [Lcs[i].replace("u", "") for i in range(len(Lcs))]
+                Lcs = np.asarray(Lcs, dtype=float)
+
+                dim, freq, inp, out = s_params.shape
+                s_new = np.ndarray((freq, inp, out), dtype=complex)
+                for freqidx in range(freq):
+                    for inpidx in range(inp):
+                        for outidx in range(out):
+                            s_list = []
+                            for dimidx in range(dim):
+                                s_list.append(s_params[dimidx][freqidx][inpidx][outidx])
+
+                            s_interp = interp.interp1d(Lcs, np.asarray(s_list), kind='cubic')
+                            s_new[freqidx][inpidx][outidx] = s_interp(self.Lc * 1e6)
+
+                self._s = s_new
+                self.freq_range = (self._f[0], self._f[-1])
+
+                self.enable_autoupdate()
+        except AttributeError:
             self.suspend_autoupdate()
 
             available = self._source_argsets()
@@ -780,42 +815,6 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
             self.freq_range = (self._f[0], self._f[-1])
             for key, value in normalized[idx].items():
                 setattr(self, key, value)
-
-            self.enable_autoupdate()
-        else:
-            self.suspend_autoupdate()
-
-            available = self._source_argsets()
-            Lcs = []
-            s_params = []
-            for idx in range(len(available)):
-                d = available[idx]
-                Lcs.append(d['Lc'])
-                valid_args = available[idx]
-                sparams = parser.read_params(self._get_file(valid_args))
-                self._f, s = parser.build_matrix(sparams)
-
-                s_params.append(s)
-
-            s_params = np.asarray(s_params)
-
-            Lcs = [Lcs[i].replace("u", "") for i in range(len(Lcs))]
-            Lcs = np.asarray(Lcs, dtype=float)
-
-            dim, freq, inp, out = s_params.shape
-            s_new = np.ndarray((freq, inp, out), dtype=complex)
-            for freqidx in range(freq):
-                for inpidx in range(inp):
-                    for outidx in range(out):
-                        s_list = []
-                        for dimidx in range(dim):
-                            s_list.append(s_params[dimidx][freqidx][inpidx][outidx])
-
-                        s_interp = interp.interp1d(Lcs, np.asarray(s_list), kind='cubic')
-                        s_new[freqidx][inpidx][outidx] = s_interp(self.Lc * 1e6)
-
-            self._s = s_new
-            self.freq_range = (self._f[0], self._f[-1])
 
             self.enable_autoupdate()
 
@@ -944,13 +943,83 @@ class GratingCoupler(SiEPIC_PDK_Base):
         r"(?:\.txt)"
     )
 
-    def __init__(self, thickness=220e-9, deltaw=0, polarization="TE", layout_aware=False, **kwargs):
+    def __init__(self, thickness=220e-9, deltaw=0, polarization="TE", **kwargs):
         super().__init__(
-            **kwargs, thickness=thickness, deltaw=deltaw, polarization=polarization, layout_aware=layout_aware
+            **kwargs, thickness=thickness, deltaw=deltaw, polarization=polarization
         )
 
     def on_args_changed(self):
-        if not self.layout_aware:
+        try:
+            if self.layout_aware:
+                self.suspend_autoupdate()
+
+                available = self._source_argsets()
+                thicknesses = []
+                deltaws = []
+                s_params = []
+                for d in available:
+                    _, thickness, deltaw = [
+                        (key, d.get(key)) for key in self._args_keys
+                    ]
+                    thicknesses.append(round(str2float(thickness[1]) * 1e-9, 15))
+                    deltaws.append(round(str2float(deltaw[1]) * 1e-9, 15))
+
+                if self.polarization == 'TE':
+                    for idx in range(round(len(thicknesses) / 2)):
+                        valid_args = available[idx]
+                        params = np.genfromtxt(self._get_file(valid_args), delimiter="\t")
+                        self._f = params[:, 0]
+                        s = np.zeros((len(self._f), 2, 2), dtype="complex128")
+                        s[:, 0, 0] = params[:, 1] * np.exp(1j * params[:, 2])
+                        s[:, 0, 1] = params[:, 3] * np.exp(1j * params[:, 4])
+                        s[:, 1, 0] = params[:, 5] * np.exp(1j * params[:, 6])
+                        s[:, 1, 1] = params[:, 7] * np.exp(1j * params[:, 8])
+
+                        self._f = self._f[::-1]
+                        s = s[::-1]
+                        s_params.append(s)
+
+                    s_params = np.asarray(s_params, dtype=object)
+                    thicknesses = np.asarray(thicknesses, dtype=float)
+                    deltaws = np.asarray(deltaws, dtype=float)
+
+                    dim = len(s_params)
+                    s_list = []
+                    for dimidx in range(dim):
+                        s_list.append(s_params[dimidx][:][:][:])
+                    s_list = np.asarray(s_list, dtype=complex)
+                    self._s = interp.griddata((thicknesses[0:round(len(thicknesses) / 2)], deltaws[0:round(len(deltaws) / 2)]), s_list, (self.thickness, self.deltaw), method='cubic')
+
+                elif self.polarization == 'TM':
+                    for idx in range(round(len(thicknesses) / 2) + 1, len(thicknesses)):
+                        valid_args = available[idx]
+                        params = np.genfromtxt(self._get_file(valid_args), delimiter="\t")
+                        self._f = params[:, 0]
+                        s = np.zeros((len(self._f), 2, 2), dtype="complex128")
+                        s[:, 0, 0] = params[:, 1] * np.exp(1j * params[:, 2])
+                        s[:, 0, 1] = params[:, 3] * np.exp(1j * params[:, 4])
+                        s[:, 1, 0] = params[:, 5] * np.exp(1j * params[:, 6])
+                        s[:, 1, 1] = params[:, 7] * np.exp(1j * params[:, 8])
+
+                        self._f = self._f[::-1]
+                        s = s[::-1]
+                        s_params.append(s)
+
+                    s_params = np.asarray(s_params, dtype=object)
+                    thicknesses = np.asarray(thicknesses, dtype=float)
+                    deltaws = np.asarray(deltaws, dtype=float)
+
+                    dim = len(s_params)
+                    s_list = []
+                    for dimidx in range(dim):
+                        s_list.append(s_params[dimidx][:][:][:])
+                    s_list = np.asarray(s_list, dtype=complex)
+                    self._s = interp.griddata((thicknesses[round(len(thicknesses) / 2) + 1, len(thicknesses)], deltaws[round(len(thicknesses) / 2) + 1, len(thicknesses)]), s_list, (self.thickness, self.deltaw), method='cubic')
+
+                self.freq_range = (self._f[0], self._f[-1])
+
+                self.enable_autoupdate()
+        except AttributeError:
             self.suspend_autoupdate()
 
             available = self._source_argsets()
@@ -983,76 +1052,6 @@ class GratingCoupler(SiEPIC_PDK_Base):
             # for convention's sake.
             self._f = self._f[::-1]
             self._s = self._s[::-1]
-            self.freq_range = (self._f[0], self._f[-1])
-
-            self.enable_autoupdate()
-
-        else:
-            self.suspend_autoupdate()
-
-            available = self._source_argsets()
-            thicknesses = []
-            deltaws = []
-            s_params = []
-            for d in available:
-                _, thickness, deltaw = [
-                    (key, d.get(key)) for key in self._args_keys
-                ]
-                thicknesses.append(round(str2float(thickness[1]) * 1e-9, 15))
-                deltaws.append(round(str2float(deltaw[1]) * 1e-9, 15))
-
-            if self.polarization == 'TE':
-                for idx in range(round(len(thicknesses) / 2)):
-                    valid_args = available[idx]
-                    params = np.genfromtxt(self._get_file(valid_args), delimiter="\t")
-                    self._f = params[:, 0]
-                    s = np.zeros((len(self._f), 2, 2), dtype="complex128")
-                    s[:, 0, 0] = params[:, 1] * np.exp(1j * params[:, 2])
-                    s[:, 0, 1] = params[:, 3] * np.exp(1j * params[:, 4])
-                    s[:, 1, 0] = params[:, 5] * np.exp(1j * params[:, 6])
-                    s[:, 1, 1] = params[:, 7] * np.exp(1j * params[:, 8])
-
-                    self._f = self._f[::-1]
-                    s = s[::-1]
-                    s_params.append(s)
-
-                s_params = np.asarray(s_params, dtype=object)
-                thicknesses = np.asarray(thicknesses, dtype=float)
-                deltaws = np.asarray(deltaws, dtype=float)
-
-                dim = len(s_params)
-                s_list = []
-                for dimidx in range(dim):
-                    s_list.append(s_params[dimidx][:][:][:])
-                s_list = np.asarray(s_list, dtype=complex)
-                self._s = interp.griddata((thicknesses[0:round(len(thicknesses) / 2)], deltaws[0:round(len(deltaws) / 2)]), s_list, (self.thickness, self.deltaw), method='cubic')
-
-            elif self.polarization == 'TM':
-                for idx in range(round(len(thicknesses) / 2) + 1, len(thicknesses)):
-                    valid_args = available[idx]
-                    params = np.genfromtxt(self._get_file(valid_args), delimiter="\t")
-                    self._f = params[:, 0]
-                    s = np.zeros((len(self._f), 2, 2), dtype="complex128")
-                    s[:, 0, 0] = params[:, 1] * np.exp(1j * params[:, 2])
-                    s[:, 0, 1] = params[:, 3] * np.exp(1j * params[:, 4])
-                    s[:, 1, 0] = params[:, 5] * np.exp(1j * params[:, 6])
-                    s[:, 1, 1] = params[:, 7] * np.exp(1j * params[:, 8])
-
-                    self._f = self._f[::-1]
-                    s = s[::-1]
-                    s_params.append(s)
-
-                s_params = np.asarray(s_params, dtype=object)
-                thicknesses = np.asarray(thicknesses, dtype=float)
-                deltaws = np.asarray(deltaws, dtype=float)
-
-                dim = len(s_params)
-                s_list = []
-                for dimidx in range(dim):
-                    s_list.append(s_params[dimidx][:][:][:])
-                s_list = np.asarray(s_list, dtype=complex)
-                self._s = interp.griddata((thicknesses[round(len(thicknesses) / 2) + 1, len(thicknesses)], deltaws[round(len(thicknesses) / 2) + 1, len(thicknesses)]), s_list, (self.thickness, self.deltaw), method='cubic')
-
             self.freq_range = (self._f[0], self._f[-1])
 
             self.enable_autoupdate()
@@ -1138,7 +1137,6 @@ class Waveguide(SiEPIC_PDK_Base):
         sigma_ne=0.05,
         sigma_ng=0.05,
         sigma_nd=0.0001,
-        layout_aware=False,
         **kwargs
     ):
         if polarization not in ["TE", "TM"]:
@@ -1161,14 +1159,57 @@ class Waveguide(SiEPIC_PDK_Base):
             sigma_ne=sigma_ne,
             sigma_ng=sigma_ng,
             sigma_nd=sigma_nd,
-            layout_aware=layout_aware
         )
 
         self.regenerate_monte_carlo_parameters()
 
     def on_args_changed(self):
+        try:
+            if self.layout_aware:
+                self.suspend_autoupdate()
 
-        if self.layout_aware is False:
+                available = self._source_argsets()
+
+                widths = []
+                heights = []
+                for d in available:
+                    widths.append(d['width'])
+                    heights.append(d['height'])
+
+                lam0_all = []
+                ne_all = []
+                ng_all = []
+                nd_all = []
+                for idx in range(len(available)):
+                    valid_args = available[idx]
+                    with open(self._get_file(valid_args), "r") as f:
+                        params = f.read().rstrip("\n")
+                    if self.polarization == "TE":
+                        lam0, ne, _, ng, _, nd, _ = params.split(" ")
+                    elif self.polarization == "TM":
+                        lam0, _, ne, _, ng, _, nd = params.split(" ")
+                        raise NotImplementedError
+
+                    lam0_all.append(lam0)
+                    ne_all.append(ne)
+                    ng_all.append(ng)
+                    nd_all.append(nd)
+
+                widths = np.asarray(widths).astype(float)
+                heights = np.asarray(heights).astype(float)
+                lam0_all = np.asarray(lam0_all).astype(float)
+                ne_all = np.asarray(ne_all).astype(float)
+                ng_all = np.asarray(ng_all).astype(float)
+                nd_all = np.asarray(nd_all).astype(float)
+
+                self.lam0 = interp.griddata((widths, heights), lam0_all, (self.width * 1e9, self.height * 1e9), method='cubic')
+                self.ne = interp.griddata((widths, heights), ne_all, (self.width * 1e9, self.height * 1e9), method='cubic')
+                self.ng = interp.griddata((widths, heights), ng_all, (self.width * 1e9, self.height * 1e9), method='cubic')
+                self.nd = interp.griddata((widths, heights), nd_all, (self.width * 1e9, self.height * 1e9), method='cubic')
+
+                self.enable_autoupdate()
+
+        except AttributeError:
             self.suspend_autoupdate()
 
             available = self._source_argsets()
@@ -1193,50 +1234,6 @@ class Waveguide(SiEPIC_PDK_Base):
             # Updates parameters width and thickness to closest match.
             for key, value in normalized[idx].items():
                 setattr(self, key, value)
-
-            self.enable_autoupdate()
-
-        else:
-            self.suspend_autoupdate()
-
-            available = self._source_argsets()
-
-            widths = []
-            heights = []
-            for d in available:
-                widths.append(d['width'])
-                heights.append(d['height'])
-
-            lam0_all = []
-            ne_all = []
-            ng_all = []
-            nd_all = []
-            for idx in range(len(available)):
-                valid_args = available[idx]
-                with open(self._get_file(valid_args), "r") as f:
-                    params = f.read().rstrip("\n")
-                if self.polarization == "TE":
-                    lam0, ne, _, ng, _, nd, _ = params.split(" ")
-                elif self.polarization == "TM":
-                    lam0, _, ne, _, ng, _, nd = params.split(" ")
-                    raise NotImplementedError
-
-                lam0_all.append(lam0)
-                ne_all.append(ne)
-                ng_all.append(ng)
-                nd_all.append(nd)
-
-            widths = np.asarray(widths).astype(float)
-            heights = np.asarray(heights).astype(float)
-            lam0_all = np.asarray(lam0_all).astype(float)
-            ne_all = np.asarray(ne_all).astype(float)
-            ng_all = np.asarray(ng_all).astype(float)
-            nd_all = np.asarray(nd_all).astype(float)
-
-            self.lam0 = interp.griddata((widths, heights), lam0_all, (self.width * 1e9, self.height * 1e9), method='cubic')
-            self.ne = interp.griddata((widths, heights), ne_all, (self.width * 1e9, self.height * 1e9), method='cubic')
-            self.ng = interp.griddata((widths, heights), ng_all, (self.width * 1e9, self.height * 1e9), method='cubic')
-            self.nd = interp.griddata((widths, heights), nd_all, (self.width * 1e9, self.height * 1e9), method='cubic')
 
             self.enable_autoupdate()
 
@@ -1367,7 +1364,7 @@ class YBranch(SiEPIC_PDK_Base):
         r"(?:\.sparam)"
     )
 
-    def __init__(self, thickness=220e-9, width=500e-9, polarization="TE", layout_aware=False, **kwargs):
+    def __init__(self, thickness=220e-9, width=500e-9, polarization="TE", **kwargs):
         if polarization not in ["TE", "TM"]:
             raise ValueError(
                 "Unknown polarization value '{}', must be one of 'TE' or 'TM'".format(
@@ -1375,13 +1372,49 @@ class YBranch(SiEPIC_PDK_Base):
                 )
             )
         super().__init__(
-            **kwargs, thickness=thickness, width=width, polarization=polarization, layout_aware=layout_aware
+            **kwargs, thickness=thickness, width=width, polarization=polarization
         )
 
     def on_args_changed(self):
 
-        if not self.layout_aware:
+        try:
+            if self.layout_aware:
+                self.suspend_autoupdate()
 
+                available = self._source_argsets()
+                widths = []
+                heights = []
+                s_params = []
+                for idx in range(0, len(available)):
+                    d = available[idx]
+                    widths.append(d['width'])
+                    heights.append(d['thickness'])
+                    valid_args = available[idx]
+                    sparams = parser.read_params(self._get_file(valid_args))
+                    sparams = list(
+                        filter(lambda sparams: sparams["mode"] == self.polarization, sparams)
+                    )
+                    self._f, s = parser.build_matrix(sparams)
+
+                    s_params.append(s)
+
+                s_params = np.asarray(s_params)
+
+                widths = np.asarray(widths, dtype=float)
+                heights = np.asarray(heights, dtype=float)
+
+                dim, _, _, _ = s_params.shape
+                s_list = []
+                for dimidx in range(dim):
+                    s_list.append(s_params[dimidx][:][:][:])
+                s_list = np.asarray(s_list, dtype=complex)
+                self._s = interp.griddata((widths, heights), s_list, (self.width * 1e9, self.thickness * 1e9), method='cubic')
+
+                self.freq_range = (self._f[0], self._f[-1])
+
+                self.enable_autoupdate()
+
+        except AttributeError:
             self.suspend_autoupdate()
 
             available = self._source_argsets()
@@ -1399,41 +1432,6 @@ class YBranch(SiEPIC_PDK_Base):
             for key, value in normalized[idx].items():
                 setattr(self, key, value)
             self._f, self._s = parser.build_matrix(sparams)
-            self.freq_range = (self._f[0], self._f[-1])
-
-            self.enable_autoupdate()
-        else:
-            self.suspend_autoupdate()
-
-            available = self._source_argsets()
-            widths = []
-            heights = []
-            s_params = []
-            for idx in range(0, len(available)):
-                d = available[idx]
-                widths.append(d['width'])
-                heights.append(d['thickness'])
-                valid_args = available[idx]
-                sparams = parser.read_params(self._get_file(valid_args))
-                sparams = list(
-                    filter(lambda sparams: sparams["mode"] == self.polarization, sparams)
-                )
-                self._f, s = parser.build_matrix(sparams)
-
-                s_params.append(s)
-
-            s_params = np.asarray(s_params)
-
-            widths = np.asarray(widths, dtype=float)
-            heights = np.asarray(heights, dtype=float)
-
-            dim, _, _, _ = s_params.shape
-            s_list = []
-            for dimidx in range(dim):
-                s_list.append(s_params[dimidx][:][:][:])
-            s_list = np.asarray(s_list, dtype=complex)
-            self._s = interp.griddata((widths, heights), s_list, (self.width * 1e9, self.thickness * 1e9), method='cubic')
-
             self.freq_range = (self._f[0], self._f[-1])
 
             self.enable_autoupdate()
