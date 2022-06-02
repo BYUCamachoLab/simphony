@@ -22,8 +22,33 @@ def mzi():
     y_splitter.multiconnect(gc_input, wg_long, wg_short)
     y_recombiner.multiconnect(gc_output, wg_short, wg_long)
 
-    return (gc_input, gc_output)
-
+    coords = {
+        y_splitter: {
+            'x': -1.736e-05,
+            'y': 7e-07
+        },
+        wg_short: {
+            'x': 1.8978e-05,
+            'y': -1.791e-05
+        },
+        gc_input: {
+            'x': 6.54e-06,
+            'y': 7e-07
+        },
+        wg_long: {
+            'x': 4.1228e-05,
+            'y': -1.791e-05
+        },
+        y_recombiner: {
+            'x': 5.63e-06,
+            'y': -3.652e-05
+        },
+        gc_output: {
+            'x': -1.827e-05,
+            'y': -3.652e-05
+        }
+    }
+    return (gc_input, gc_output, coords)
 
 @pytest.fixture
 def oh():
@@ -173,7 +198,7 @@ class TestSimulation:
     ]
 
     def test_context(self, mzi):
-        gc_input, gc_output = mzi
+        gc_input, gc_output, _ = mzi
 
         with Simulation() as sim1:
             assert sim1.circuit is None
@@ -190,7 +215,7 @@ class TestSimulation:
             assert d1.circuit != gc_output.circuit
 
     def test_sampling(self, mzi):
-        gc_input, gc_output = mzi
+        gc_input, gc_output, _ = mzi
 
         with Simulation() as sim1:
             Laser().connect(gc_input)
@@ -200,7 +225,7 @@ class TestSimulation:
             assert len(sim1.sample(101)[0][0]) == 101
 
     def test_seed(self, mzi):
-        gc_input, gc_output = mzi
+        gc_input, gc_output, _ = mzi
 
         with Simulation(seed=117) as sim1:
             Laser(power=1e-3, wl=1550e-9).connect(gc_input)
@@ -235,7 +260,7 @@ class TestSimulation:
             assert np.allclose(data[0][0], self.seed117, rtol=0, atol=1e-8)
 
     def test_sampling_frequency(self, mzi):
-        gc_input, gc_output = mzi
+        gc_input, gc_output, _ = mzi
 
         data1 = None
         with Simulation(fs=10e9, seed=117) as sim:
@@ -253,6 +278,18 @@ class TestSimulation:
 
         assert np.allclose(data1[0][0], data2[0][0], rtol=0, atol=1e-11)
 
+    def test_layout_aware(self, mzi):
+        gc_input, gc_output, coords = mzi
+
+        data1 = None
+        with Simulation(fs=10e9, seed=117) as sim:
+            Laser(power=1e-3, wl=1550e-9).connect(gc_input)
+            Detector().connect(gc_output)
+
+            data = sim.layout_aware_simulation(coords=coords, runs=2, num_samples=101)
+
+        assert len(data) == 2
+        assert len(data[0][0][0]) == 101
 
 class TestSingleDetector:
     result = 0.00017544
@@ -283,7 +320,7 @@ class TestSingleDetector:
     ]
 
     def test_single_sample(self, mzi):
-        gc_input, gc_output = mzi
+        gc_input, gc_output, _ = mzi
 
         with Simulation() as sim:
             Laser(power=1e-3, wl=1550e-9).connect(gc_input)
@@ -294,7 +331,7 @@ class TestSingleDetector:
             assert np.allclose(data[0][0], [self.result], rtol=0, atol=1e-8)
 
     def test_conversion_gain(self, mzi):
-        gc_input, gc_output = mzi
+        gc_input, gc_output, _ = mzi
 
         with Simulation() as sim:
             Laser(power=1e-3, wl=1550e-9).connect(gc_input)
@@ -305,7 +342,7 @@ class TestSingleDetector:
             assert np.allclose(data[0][0], [self.result * 7], rtol=0, atol=1e-7)
 
     def test_noise(self, mzi):
-        gc_input, gc_output = mzi
+        gc_input, gc_output, _ = mzi
 
         with Simulation(seed=117) as sim:
             Laser(power=1e-3, wl=1550e-9).connect(gc_input)
@@ -1250,7 +1287,7 @@ class TestLaser:
     ]
 
     def test_wlsweep(self, mzi):
-        gc_input, gc_output = mzi
+        gc_input, gc_output, _ = mzi
 
         with Simulation(seed=117) as sim:
             l = Laser(power=1e-3).wlsweep(1500e-9, 1600e-9, 101).connect(gc_input)
@@ -1262,7 +1299,7 @@ class TestLaser:
             assert np.allclose(l.freqs, self.freqs)
 
     def test_freqsweep(self, mzi):
-        gc_input, gc_output = mzi
+        gc_input, gc_output, _ = mzi
 
         with Simulation(seed=117) as sim:
             l = (
@@ -1278,7 +1315,7 @@ class TestLaser:
             assert np.allclose(l.freqs, self.freqs, rtol=0, atol=1e12)
 
     def test_powersweep(self, mzi):
-        gc_input, gc_output = mzi
+        gc_input, gc_output, _ = mzi
 
         with Simulation(seed=117) as sim:
             l = Laser(wl=1550e-9).powersweep(1e-3, 100e-3).connect(gc_input)
@@ -1291,7 +1328,7 @@ class TestLaser:
 
     def test_freqs(self, oh, mzi):
         x1, s, p1, p2, lo, x2 = oh
-        gc_input, gc_output = mzi
+        gc_input, gc_output, _ = mzi
 
         with Simulation(seed=117) as sim:
             Laser(freq=1.94888531e14, power=1e-3).connect(gc_input)
@@ -1336,7 +1373,7 @@ class TestLaser:
             assert np.equal(l1.freqs, sim.freqs).all()
 
     def test_rin(self, mzi):
-        gc_input, gc_output = mzi
+        gc_input, gc_output, _ = mzi
 
         with Simulation(seed=117) as sim:
             Laser(power=1e-3, rin=-145).connect(gc_input)
