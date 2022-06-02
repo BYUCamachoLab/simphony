@@ -14,10 +14,9 @@ from cmath import rect
 from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple
 
 import numpy as np
-import scipy
 from scipy.constants import epsilon_0, h, mu_0, c
 from scipy.signal import butter, sosfiltfilt
-
+from scipy.linalg import cholesky, lu
 from simphony import Model
 from simphony.tools import wl2freq
 
@@ -297,12 +296,12 @@ class Simulation:
 
         try:
             # perform Cholesky decomposition on the covariance matrices
-            l_w = scipy.linalg.cholesky(cov_matrix_w, lower=True)
-            l_t = scipy.linalg.cholesky(cov_matrix_t, lower=True)
+            l_w = cholesky(cov_matrix_w, lower=True)
+            l_t = cholesky(cov_matrix_t, lower=True)
         except np.linalg.LinAlgError:
             # if matrix is not positive-definite, do LU decomposition
-            _, l_w, _ = scipy.linalg.lu(cov_matrix_w)
-            _, l_t, _ = scipy.linalg.lu(cov_matrix_t)
+            _, l_w, _ = lu(cov_matrix_w)
+            _, l_t, _ = lu(cov_matrix_t)
 
         # generate random distribution with mean 0 and standard deviation of 1, size: no. of elements x no. of runs
         X = np.random.multivariate_normal(np.zeros(n), np.eye(n, n), runs).T
