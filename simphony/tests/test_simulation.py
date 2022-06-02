@@ -50,6 +50,7 @@ def mzi():
     }
     return (gc_input, gc_output, coords)
 
+
 @pytest.fixture
 def oh():
     x1 = siepic.GratingCoupler(name="x1")
@@ -281,7 +282,7 @@ class TestSimulation:
     def test_layout_aware(self, mzi):
         gc_input, gc_output, coords = mzi
 
-        data1 = None
+        data = None
         with Simulation(fs=10e9, seed=117) as sim:
             Laser(power=1e-3, wl=1550e-9).connect(gc_input)
             Detector().connect(gc_output)
