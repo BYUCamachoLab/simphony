@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple
 
 import numpy as np
 import scipy
-from scipy.constants import epsilon_0, h, mu_0
+from scipy.constants import epsilon_0, h, mu_0, c
 from scipy.signal import butter, sosfiltfilt
 
 from simphony import Model
