@@ -14,6 +14,7 @@ from cmath import rect
 from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple
 
 import numpy as np
+import scipy
 from scipy.constants import epsilon_0, h, mu_0
 from scipy.signal import butter, sosfiltfilt
 
@@ -256,6 +257,106 @@ class Simulation:
         self.s_parameters_method = (
             "monte_carlo_s_parameters" if flag else "s_parameters"
         )
+
+    def _compute_correlated_samples(self, coords, sigmaw, sigmat, l, runs):
+        x = [0] * len(coords)
+        y = [0] * len(coords)
+
+        # get x and y co-ordinates
+        components = self.circuit._get_components()[:-2]
+        if len(coords) != len(components):
+            raise ValueError('Incorrect number of component coordinates passed to argument "coords".')
+
+        for k, v in coords.items():
+            if k in components:
+                x[components.index(k)] = v['x']
+                y[components.index(k)] = v['y']
+            else:
+                raise KeyError(f'Component {k} not in circuit.')
+
+        n = len(self.circuit._get_components()) - 2
+        corr_matrix_w = np.zeros((n, n))
+        corr_matrix_t = np.zeros((n, n))
+
+        # generate correlation values
+        for i in range(n):
+            for k in range(n):
+
+                corr_val = np.exp(- ((x[k] - x[i]) ** 2 + (y[k] - y[i]) ** 2) / (0.5 * (l ** 2)))
+
+                corr_matrix_w[i][k] = corr_matrix_w[k][i] = corr_val
+                corr_matrix_t[i][k] = corr_matrix_t[k][i] = corr_val
+
+        cov_matrix_w = np.zeros((n, n))
+        cov_matrix_t = np.zeros((n, n))
+        # generate covariance matrix
+        for i in range(n):
+            for k in range(n):
+                cov_matrix_w[i][k] = sigmaw * corr_matrix_w[i][k] * sigmaw
+                cov_matrix_t[i][k] = sigmat * corr_matrix_t[i][k] * sigmat
+
+        try:
+            # perform Cholesky decomposition on the covariance matrices
+            l_w = scipy.linalg.cholesky(cov_matrix_w, lower=True)
+            l_t = scipy.linalg.cholesky(cov_matrix_t, lower=True)
+        except np.linalg.LinAlgError:
+            # if matrix is not positive-definite, do LU decomposition
+            _, l_w, _ = scipy.linalg.lu(cov_matrix_w)
+            _, l_t, _ = scipy.linalg.lu(cov_matrix_t)
+
+        # generate random distribution with mean 0 and standard deviation of 1, size: no. of elements x no. of runs
+        X = np.random.multivariate_normal(np.zeros(n), np.eye(n, n), runs).T
+
+        # generate correlation samples
+        corr_sample_matrix_w = np.dot(l_w, X)
+        corr_sample_matrix_t = np.dot(l_t, X)
+        return corr_sample_matrix_w, corr_sample_matrix_t
+
+    def layout_aware_simulation(self, coords: dict = {}, sigmaw: float = 5, sigmat: float = 2, l: float = 4.5e-3, runs: int = 10, num_samples: int = 1, **kwargs) -> Tuple[np.array, np.array]:
+        """Runs the layout-aware Monte Carlo sweep simulation for the circuit.
+
+        Parameters
+        ----------
+        coords :
+            Dictionary of co-ordinates. Each item in the dict has a component in the circuit as
+            a key and its x and y co-ordinates as values
+        sigmaw :
+            Standard deviation of width variations (default 5)
+        sigmat :
+            Standard deviation of thickness variations (default 2)
+        l :
+            Correlation length (m) (default 4.5e-3)
+        dB :
+            Returns the power ratios in deciBels when True.
+        mode :
+            Whether to return frequencies or wavelengths for the corresponding
+            power ratios. Defaults to whatever values were passed in upon
+            instantiation.
+        runs :
+            The number of Monte Carlo iterations to run (default 10).
+        """
+        results = []
+        corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(coords, sigmaw, sigmat, l, runs)
+        components = self.circuit._get_components()
+        n = len(components) - 2
+        for i in range(runs):
+            # use s_parameters for the first run, then monte_carlo_* for the rest
+
+            for idx in range(n):
+
+                # update component parameters
+                components[idx].update_variations(corr_w=corr_sample_matrix_w[idx][i], corr_t=corr_sample_matrix_t[idx][i])
+
+            self.s_parameters_method = "s_parameters" if i == 0 else "layout_aware_monte_carlo_s_parameters"
+            print(f'Run {i} of {runs}')
+            results.append(
+                self.sample(num_samples=num_samples)
+            )
+
+            for idx in range(n):
+                components[idx].regenerate_layout_aware_monte_carlo_parameters()
+
+        return results
 
     def s_parameters(self, freqs: np.array) -> np.ndarray:
         """Gets the scattering parameters for the specified frequencies.
