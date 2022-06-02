@@ -334,6 +334,10 @@ class Simulation:
             instantiation.
         runs :
             The number of Monte Carlo iterations to run (default 10).
+        num_samples:
+            The number of samples to take. If only one sample is taken, it will
+            be the theoretical value of the circuit. If more than one sample is
+            taken, they will vary based on simulated noise.
         """
         results = []
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(coords, sigmaw, sigmat, l, runs)
@@ -348,7 +352,6 @@ class Simulation:
                 components[idx].update_variations(corr_w=corr_sample_matrix_w[idx][i], corr_t=corr_sample_matrix_t[idx][i])
 
             self.s_parameters_method = "s_parameters" if i == 0 else "layout_aware_monte_carlo_s_parameters"
-            print(f'Run {i} of {runs}')
             results.append(
                 self.sample(num_samples=num_samples)
             )
