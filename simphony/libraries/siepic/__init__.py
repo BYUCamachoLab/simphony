@@ -502,6 +502,24 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
     """
 
     pin_count = 4
+    pins_pos = {
+        'pin1': {
+            'x': -35.45,
+            'y': 2.35
+        },
+        'pin2': {
+            'x': -35.45,
+            'y': -2.35
+        },
+        'pin3': {
+            'x': 35.3,
+            'y': 2.35
+        },
+        'pin4': {
+            'x': 35.3,
+            'y': -2.35
+        }
+    }
     _base_path = os.path.join(os.path.dirname(__file__), "source_data", "bdc_TE_source")
     _base_file = string.Template("bdc_Thickness =${thickness} width=${width}.sparam")
     _args_keys = ["thickness", "width"]
@@ -513,8 +531,8 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
         r"(?:\.sparam)"
     )
 
-    def __init__(self, thickness=220e-9, width=500e-9, **kwargs):
-        super().__init__(**kwargs, thickness=thickness, width=width)
+    def __init__(self, thickness=220e-9, width=500e-9, pins_pos=pins_pos, **kwargs):
+        super().__init__(**kwargs, thickness=thickness, width=width, pins_pos=pins_pos)
 
     def on_args_changed(self):
         try:
@@ -612,6 +630,24 @@ class HalfRing(SiEPIC_PDK_Base):
     """
 
     pin_count = 4
+    pins_pos = {
+        'pin1': {
+            'x': 0,
+            'y': 0
+        },
+        'pin2': {
+            'x': 5.0,
+            'y': 10.7
+        },
+        'pin3': {
+            'x': 25.0,
+            'y': 10.7
+        },
+        'pin4':{
+            'x': 30.0,
+            'y': 0.0
+        }
+    }
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "ebeam_dc_halfring_straight"
     )
@@ -640,6 +676,7 @@ class HalfRing(SiEPIC_PDK_Base):
         width=500e-9,
         thickness=220e-9,
         couple_length=0.0,
+        pins_pos=pins_pos,
         **kwargs
     ):
         super().__init__(
@@ -649,6 +686,7 @@ class HalfRing(SiEPIC_PDK_Base):
             width=width,
             thickness=thickness,
             couple_length=couple_length,
+            pins_pos=pins_pos,
         )
 
     def on_args_changed(self):
@@ -745,6 +783,24 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
     """
 
     pin_count = 4
+    pins_pos = {
+        'pin1': {
+            'x': 0.0,
+            'y': 10.0
+        },
+        'pin2': {
+            'x': 0.0,
+            'y': 0.0
+        },
+        'pin3': {
+            'x': 45.278,
+            'y': 10.0
+        },
+        'pin4': {
+            'x': 45.278,
+            'y': 0.0
+        }
+    }
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "ebeam_dc_te1550"
     )
@@ -758,8 +814,8 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
         r"(?:m\.sparam)"
     )
 
-    def __init__(self, gap=200e-9, Lc=10e-6, **kwargs):
-        super().__init__(**kwargs, gap=gap, Lc=Lc)
+    def __init__(self, gap=200e-9, Lc=10e-6, pins_pos=pins_pos, **kwargs):
+        super().__init__(**kwargs, gap=gap, Lc=Lc, pins_pos=pins_pos)
 
     def on_args_changed(self):
         try:
@@ -855,6 +911,12 @@ class Terminator(SiEPIC_PDK_Base):
     """
 
     pin_count = 1
+    pins_pos = {
+        'pin1': {
+            'x': 0.0,
+            'y': 0.0
+        }
+    }
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "ebeam_terminator_te1550"
     )
@@ -870,8 +932,8 @@ class Terminator(SiEPIC_PDK_Base):
         r"(?:_TE.sparam)"
     )
 
-    def __init__(self, w1=500e-9, w2=60e-9, L=10e-6, **kwargs):
-        super().__init__(**kwargs, w1=w1, w2=w2, L=L)
+    def __init__(self, w1=500e-9, w2=60e-9, L=10e-6, pins_pos=pins_pos, **kwargs):
+        super().__init__(**kwargs, w1=w1, w2=w2, L=L, pins_pos=pins_pos)
 
     def on_args_changed(self):
         self.suspend_autoupdate()
@@ -928,6 +990,16 @@ class GratingCoupler(SiEPIC_PDK_Base):
     """
 
     pin_count = 2
+    pins_pos = {
+        'pin1': {
+            'x': 0.0,
+            'y': 0.0
+        },
+        'pin2': {
+            'x': -20.4,
+            'y': 0.0
+        }
+    }
     _base_path = os.path.join(os.path.dirname(__file__), "source_data", "gc_source")
     _base_file = string.Template(
         "GC_${polarization}1550_thickness=${thickness} deltaw=${deltaw}.txt"
@@ -943,9 +1015,9 @@ class GratingCoupler(SiEPIC_PDK_Base):
         r"(?:\.txt)"
     )
 
-    def __init__(self, thickness=220e-9, deltaw=0, polarization="TE", **kwargs):
+    def __init__(self, thickness=220e-9, deltaw=0, polarization="TE", pins_pos=pins_pos, **kwargs):
         super().__init__(
-            **kwargs, thickness=thickness, deltaw=deltaw, polarization=polarization
+            **kwargs, thickness=thickness, deltaw=deltaw, polarization=polarization, pins_pos=pins_pos,
         )
 
     def on_args_changed(self):
@@ -1110,6 +1182,16 @@ class Waveguide(SiEPIC_PDK_Base):
     """
 
     pin_count = 2
+    pins_pos = {
+        'pin1': {
+            'x': 0.0,
+            'y': 0.0
+        },
+        'pin2': {
+            'x': 10.0,
+            'y': 0.0
+        }
+    }
     freq_range = (
         187370000000000.0,
         199862000000000.0,
@@ -1137,6 +1219,7 @@ class Waveguide(SiEPIC_PDK_Base):
         sigma_ne=0.05,
         sigma_ng=0.05,
         sigma_nd=0.0001,
+        pins_pos=pins_pos,
         **kwargs
     ):
         if polarization not in ["TE", "TM"]:
@@ -1159,6 +1242,7 @@ class Waveguide(SiEPIC_PDK_Base):
             sigma_ne=sigma_ne,
             sigma_ng=sigma_ng,
             sigma_nd=sigma_nd,
+            pins_pos=pins_pos,
         )
 
         self.regenerate_monte_carlo_parameters()
@@ -1348,6 +1432,20 @@ class YBranch(SiEPIC_PDK_Base):
     """
 
     pin_count = 3
+    pins_pos = {
+        'pin1': {
+            'x': -7.4,
+            'y': 0.0
+        },
+        'pin2': {
+            'x': 7.4,
+            'y': 2.75
+        },
+        'pin3': {
+            'x': 7.4,
+            'y': -2.75
+        }
+    }
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "y_branch_source"
     )
@@ -1364,7 +1462,7 @@ class YBranch(SiEPIC_PDK_Base):
         r"(?:\.sparam)"
     )
 
-    def __init__(self, thickness=220e-9, width=500e-9, polarization="TE", **kwargs):
+    def __init__(self, thickness=220e-9, width=500e-9, polarization="TE", pins_pos=pins_pos, **kwargs):
         if polarization not in ["TE", "TM"]:
             raise ValueError(
                 "Unknown polarization value '{}', must be one of 'TE' or 'TM'".format(
@@ -1372,7 +1470,7 @@ class YBranch(SiEPIC_PDK_Base):
                 )
             )
         super().__init__(
-            **kwargs, thickness=thickness, width=width, polarization=polarization
+            **kwargs, thickness=thickness, width=width, polarization=polarization, pins_pos=pins_pos,
         )
 
     def on_args_changed(self):
