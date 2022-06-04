@@ -52,6 +52,22 @@ class Model:
     pin_count: ClassVar[Optional[int]]
     pins: ClassVar[Optional[Tuple[str, ...]]]
     pins: PinList  # additional type hint for instance.pins
+    pins_pos = {}
+    for i, p in enumerate(pins):
+        pins_pos[f'pin{i}'] = {
+            'x': 0.0,
+            'y': 0.0
+        }
+
+    relative_coords = {}
+    for i, p1 in enumerate(pins):
+        for k, p2 in enumerate(pins):
+            relative_coords[f'pin{i}_pin{k}'] = {
+                'x': pins_pos[f'pin{i}']['x'] - pins_pos[f'pin{k}']['x'],
+                'y': pins_pos[f'pin{i}']['y'] - pins_pos[f'pin{k}']['y']
+            }
+
+    fixed = False # flag for if the component is fixed in place in the circuit
 
     def __getitem__(self, item: Union[int, str]) -> Pin:
         return self.pins[item]
@@ -100,6 +116,7 @@ class Model:
                 self.freq_range = (0, float("inf"))
 
         self.name = name
+        self._compute_pos_and_origin()
 
         # initiate the Pin objects for the instance. resolution order:
         # 1. pins (list of Pin objects)
@@ -228,6 +245,24 @@ class Model:
                 component = pin._connection._component
                 if circuit._add(component):
                     component._on_disconnect_recursive(circuit)
+
+    def _compute_pos_and_origin(self, ignore_pin: Pin = None):
+
+        if ignore_pin is not None:
+            i = self.pins.index(ignore_pin)
+            for p in self.pins:
+                if p is not ignore_pin:
+                    p_index = self.pins.index(p)
+                    self.pins_pos[p.name] = {
+                        'x': self.pins_pos[ignore_pin.name]['x'] + self.relative_coords[f'pin{p_index}_pin{i}']['x'],
+                        'y': self.pins_pos[ignore_pin.name]['y'] + self.relative_coords[f'pin{p_index}_pin{i}']['y']
+                    }
+
+        x_values = np.asarray([k['x'] for k in self.pins_pos])
+        y_values = np.asarray([k['y'] for k in self.pins_pos])
+
+        self.x = x_values.mean()
+        self.y = y_values.mean()
 
     def connect(self, component_or_pin: Union["Model", Pin]) -> "Model":
         """Connects the next available (unconnected) pin from this component to
