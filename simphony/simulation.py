@@ -257,9 +257,26 @@ class Simulation:
             "monte_carlo_s_parameters" if flag else "s_parameters"
         )
 
+    def _update_layout(self):
+        """
+        Updates the x- and y- co-ordinates of all the components in the circuit.
+        """
+        components = self.circuit._get_components()[:-2]
+        components[0].fixed = True
+        for component in components[1:]:
+            for p in component.pins:
+                if not isinstance(p._connection._component, Laser) and not isinstance(p._connection._component, Detector) and p._connection is not None :
+                    new_pos = component.__getattribute__('pins_pos')
+                    pin_name = p.name
+                    pin_connection = p._connection.name
+                    update_pos = p._connection._component.__getattribute__('pins_pos')
+                    new_pos[pin_name] = update_pos[pin_connection]
+                    p._component._compute_pos_and_origin(p)
+
     def _compute_correlated_samples(self, coords, sigmaw, sigmat, l, runs):
         x = [0] * len(coords)
         y = [0] * len(coords)
+        coord_pairs = [0] * len(coords)
 
         # get x and y co-ordinates
         components = self.circuit._get_components()[:-2]
@@ -270,8 +287,12 @@ class Simulation:
             if k in components:
                 x[components.index(k)] = v['x']
                 y[components.index(k)] = v['y']
+                coord_pairs[components.index(k)] = (v['x'], v['y'])
             else:
                 raise KeyError(f'Component {k} not in circuit.')
+
+        if len(set(coord_pairs)) != len(coord_pairs):
+            raise ValueError('Components are overlapping, recheck your circuit!')
 
         n = len(self.circuit._get_components()) - 2
         corr_matrix_w = np.zeros((n, n))
@@ -311,14 +332,11 @@ class Simulation:
         corr_sample_matrix_t = np.dot(l_t, X)
         return corr_sample_matrix_w, corr_sample_matrix_t
 
-    def layout_aware_simulation(self, coords: dict = {}, sigmaw: float = 5, sigmat: float = 2, l: float = 4.5e-3, runs: int = 10, num_samples: int = 1, **kwargs) -> Tuple[np.array, np.array]:
+    def layout_aware_simulation(self, sigmaw: float = 5, sigmat: float = 2, l: float = 4.5e-3, runs: int = 10, num_samples: int = 1, **kwargs) -> Tuple[np.array, np.array]:
         """Runs the layout-aware Monte Carlo sweep simulation for the circuit.
 
         Parameters
         ----------
-        coords :
-            Dictionary of co-ordinates. Each item in the dict has a component in the circuit as
-            a key and its x and y co-ordinates as values
         sigmaw :
             Standard deviation of width variations (default 5)
         sigmat :
@@ -339,6 +357,14 @@ class Simulation:
             taken, they will vary based on simulated noise.
         """
         results = []
+        coords = {}
+        for component in self.circuit._get_components()[:-2]:
+            coords[component] = {
+                'x': component.x,
+                'y': component.y
+            }
+
+        self._update_layout()
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(coords, sigmaw, sigmat, l, runs)
         components = self.circuit._get_components()
         n = len(components) - 2
