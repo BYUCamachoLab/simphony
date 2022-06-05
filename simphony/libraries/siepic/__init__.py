@@ -83,6 +83,7 @@ from collections import namedtuple
 import numpy as np
 import scipy.interpolate as interp
 from scipy.constants import c as SPEED_OF_LIGHT
+from shapely.geometry import Polygon
 
 from simphony import Model
 from simphony.libraries.siepic import parser
@@ -534,6 +535,13 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
     def __init__(self, thickness=220e-9, width=500e-9, pins_pos=pins_pos, **kwargs):
         super().__init__(**kwargs, thickness=thickness, width=width, pins_pos=pins_pos)
 
+    def _update_polygon(self):
+        self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
+        try:
+            self.polygon = Polygon(tuple(self.coords))
+        except ValueError: # throws ValueError if there are <3 pins
+            self.polygon = None
+
     def on_args_changed(self):
         try:
             if self.layout_aware:
@@ -689,6 +697,13 @@ class HalfRing(SiEPIC_PDK_Base):
             pins_pos=pins_pos,
         )
 
+    def _update_polygon(self):
+        self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
+        try:
+            self.polygon = Polygon(tuple(self.coords))
+        except ValueError: # throws ValueError if there are <3 pins
+            self.polygon = None
+
     def on_args_changed(self):
         try:
             if self.layout_aware:
@@ -816,6 +831,13 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
 
     def __init__(self, gap=200e-9, Lc=10e-6, pins_pos=pins_pos, **kwargs):
         super().__init__(**kwargs, gap=gap, Lc=Lc, pins_pos=pins_pos)
+
+    def _update_polygon(self):
+        self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
+        try:
+            self.polygon = Polygon(tuple(self.coords))
+        except ValueError: # throws ValueError if there are <3 pins
+            self.polygon = None
 
     def on_args_changed(self):
         try:
@@ -1020,6 +1042,8 @@ class GratingCoupler(SiEPIC_PDK_Base):
             **kwargs, thickness=thickness, deltaw=deltaw, polarization=polarization, pins_pos=pins_pos,
         )
 
+        self.polygon = None
+
     def on_args_changed(self):
         try:
             if self.layout_aware:
@@ -1185,6 +1209,10 @@ class Waveguide(SiEPIC_PDK_Base):
     pins_pos = {
         'pin1': {
             'x': 0.0,
+            'y': 0.0
+        },
+        'pin3':{
+            'x': 5.0,
             'y': 0.0
         },
         'pin2': {
@@ -1472,6 +1500,13 @@ class YBranch(SiEPIC_PDK_Base):
         super().__init__(
             **kwargs, thickness=thickness, width=width, polarization=polarization, pins_pos=pins_pos,
         )
+
+    def _update_polygon(self):
+        self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
+        try:
+            self.polygon = Polygon(tuple(self.coords))
+        except ValueError: # throws ValueError if there are <3 pins
+            self.polygon = None
 
     def on_args_changed(self):
 
