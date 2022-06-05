@@ -123,6 +123,9 @@ class Model:
                         f"{name}.pin_count or {name}.pins needs to be defined."
                     )
 
+        self.x = 0
+        self.y = 0
+
         for i, _ in enumerate(self.pins):
             self.pins_pos[f'pin{i+1}'] = {
                 'x': np.random.randint(100),
@@ -136,6 +139,13 @@ class Model:
                     'x': self.pins_pos[f'pin{i+1}']['x'] - self.pins_pos[f'pin{k+1}']['x'],
                     'y': self.pins_pos[f'pin{i+1}']['y'] - self.pins_pos[f'pin{k+1}']['y']
                 }
+
+        self.coords_wrt_origin = {}
+        for i, _ in enumerate(self.pins):
+            self.coords_wrt_origin[f'pin{i+1}'] = {
+                'x': self.pins_pos[f'pin{i+1}']['x'] - self.x,
+                'y': self.pins_pos[f'pin{i+1}']['y'] - self.y
+            }
 
         self._compute_pos_and_origin()
 
@@ -254,26 +264,37 @@ class Model:
                 if circuit._add(component):
                     component._on_disconnect_recursive(circuit)
 
-    def _compute_pos_and_origin(self, ignore_pin: Pin = None):
+    def _compute_pos_and_origin(self, ignore_pin: Pin = None, origin: dict = None):
 
         self._unfix_component()
-        if ignore_pin is not None and self.fixed is False:
-            i = self.pins.index(ignore_pin)
+        if origin is not None:
+            self.x = origin['x']
+            self.y = origin['y']
+
             for p in self.pins:
-                if p is not ignore_pin:
-                    p_index = self.pins.index(p) + 1
-                    self.pins_pos[p.name] = {
-                        'x': self.pins_pos[ignore_pin.name]['x'] + self.relative_coords[f'pin{p_index}_pin{i+1}']['x'],
-                        'y': self.pins_pos[ignore_pin.name]['y'] + self.relative_coords[f'pin{p_index}_pin{i+1}']['y']
-                    }
+                p_index = self.pins.index(p) + 1
+                self.pins_pos[p.name] = {
+                    'x': self.pins_pos[p.name]['x'] + self.coords_wrt_origin[p.name]['x'],
+                    'y': self.pins_pos[p.name]['y'] + self.coords_wrt_origin[p.name]['y']
+                }
+        else:
+            if ignore_pin is not None and self.fixed is False:
+                i = self.pins.index(ignore_pin)
+                for p in self.pins:
+                    if p is not ignore_pin:
+                        p_index = self.pins.index(p) + 1
+                        self.pins_pos[p.name] = {
+                            'x': self.pins_pos[ignore_pin.name]['x'] + self.relative_coords[f'pin{p_index}_pin{i+1}']['x'],
+                            'y': self.pins_pos[ignore_pin.name]['y'] + self.relative_coords[f'pin{p_index}_pin{i+1}']['y']
+                        }
 
-        x_values = np.asarray([self.pins_pos[k]['x'] for k in self.pins_pos])
-        y_values = np.asarray([self.pins_pos[k]['y'] for k in self.pins_pos])
+            x_values = np.asarray([self.pins_pos[k]['x'] for k in self.pins_pos])
+            y_values = np.asarray([self.pins_pos[k]['y'] for k in self.pins_pos])
 
-        self.x = x_values.mean()
-        self.y = y_values.mean()
+            self.x = x_values.mean()
+            self.y = y_values.mean()
 
-    def _update_polygon(self):
+    def _update_polygon(self, rand_x: int = 0, rand_y: int = 0):
         pass
 
     def _fix_component(self):
