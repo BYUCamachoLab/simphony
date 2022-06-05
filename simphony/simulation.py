@@ -18,8 +18,9 @@ import numpy as np
 from scipy.constants import epsilon_0, h, mu_0, c
 from scipy.signal import butter, sosfiltfilt
 from scipy.linalg import cholesky, lu
-from shapely.geometry import Polygon
+from scipy.spatial.distance import cityblock
 from simphony import Model
+from simphony.libraries import siepic
 from simphony.tools import wl2freq
 
 if TYPE_CHECKING:
@@ -264,11 +265,11 @@ class Simulation:
         Updates the x- and y- co-ordinates of all the components in the circuit.
         """
         components = self.circuit._get_components()[:-2]
-        components[0]._fix_component()
+        # components[0]._fix_component()
         for component in components[1:]:
             pin_count = 0
             for p in component.pins:
-                if not isinstance(p._connection._component, Laser) and not isinstance(p._connection._component, Detector) and p._connection is not None:
+                if p._connection is not None and not isinstance(p._connection._component, Laser) and not isinstance(p._connection._component, Detector):
                     new_pos = component.pins_pos
                     pin_name = p.name
                     pin_connection = p._connection.name
@@ -278,12 +279,29 @@ class Simulation:
                     p._component._compute_pos_and_origin(p)
                     pin_count += 1
 
+                if isinstance(component, siepic.Waveguide):
+                    A = [component.pins_pos['pin1']['x'], component.pins_pos['pin1']['y']]
+                    B = [component.pins_pos['pin2']['x'], component.pins_pos['pin2']['y']]
+
+                    if cityblock(A, B) != component.length:
+                        return True
+
                 # once 2 pins have been updated, we know the positions of all the other pins, if any.
                 if pin_count == 2:
                     break
 
-        for component in components:
-            component._update_polygon()
+        return False
+
+    def _shift_components(self, component: Model):
+        component._unfix_component()
+        rand_x = np.random.randint(1000.0)
+        rand_y = np.random.randint(1000.0)
+
+        component.x += rand_x
+        component.y += rand_y
+
+        component._compute_pos_and_origin(origin={'x':component.x, 'y':component.y})
+        component._update_polygon()
 
     def _compute_correlated_samples(self, coords, sigmaw, sigmat, l, runs):
         x = [0] * len(coords)
@@ -293,16 +311,6 @@ class Simulation:
         components = self.circuit._get_components()[:-2]
         if len(coords) != len(components):
             raise ValueError('Incorrect number of component coordinates passed to argument "coords".')
-
-        for component1 in self.circuit._get_components()[:-2]:
-            for component2 in self.circuit._get_components()[:-2]:
-                if component1 != component2 and None not in (component1.polygon, component2.polygon) and component1.polygon.intersects(component2.polygon):
-                    x1, y1 = component1.polygon.exterior.xy
-                    x2, y2 = component2.polygon.exterior.xy
-                    plt.plot(x1, y1)
-                    plt.plot(x2, y2)
-                    plt.show()
-                    raise RuntimeError(f'The components {component1} and {component2} are intersecting! Recheck your circuit.')
 
         n = len(self.circuit._get_components()) - 2
         corr_matrix_w = np.zeros((n, n))
@@ -342,6 +350,14 @@ class Simulation:
         corr_sample_matrix_t = np.dot(l_t, X)
         return corr_sample_matrix_w, corr_sample_matrix_t
 
+    def _check_intersection(self):
+        for component1 in self.circuit._get_components()[:-2]:
+                for component2 in self.circuit._get_components()[:-2]:
+                    if component1 != component2 and None not in (component1.polygon, component2.polygon) and component1.polygon.intersects(component2.polygon):
+                        return (True, component1, component2)
+
+        return (False, None, None)
+
     def layout_aware_simulation(self, sigmaw: float = 5, sigmat: float = 2, l: float = 4.5e-3, runs: int = 10, num_samples: int = 1, **kwargs) -> Tuple[np.array, np.array]:
         """Runs the layout-aware Monte Carlo sweep simulation for the circuit.
 
@@ -373,8 +389,27 @@ class Simulation:
                 'x': component.x,
                 'y': component.y
             }
+        intersects = True
+        iter = 1
+        while(intersects):
+            waveguide_incorrect = self._update_layout()
+            intersects, component1, component2 = self._check_intersection()
+            if intersects:
+                self._shift_components(component1)
+                component1._fix_component()
+                component2._fix_component()
+            if waveguide_incorrect or intersects:
+                self._update_layout()
+            iter += 1
+            if iter == 1000:
+                for component in self.circuit._get_components()[:-2]:
+                    if component.polygon is not None:
+                        x, y = component.polygon.exterior.coords.xy
+                        plt.plot(x, y, label=f'{component}')
+                plt.legend()
+                plt.show()
+                raise RuntimeError(f'The components {component1} and {component2} are intersecting! Recheck your circuit. {iter}')
 
-        self._update_layout()
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(coords, sigmaw, sigmat, l, runs)
         components = self.circuit._get_components()
         n = len(components) - 2
@@ -387,6 +422,7 @@ class Simulation:
                 components[idx].update_variations(corr_w=corr_sample_matrix_w[idx][i], corr_t=corr_sample_matrix_t[idx][i])
 
             self.s_parameters_method = "s_parameters" if i == 0 else "layout_aware_monte_carlo_s_parameters"
+            print(f'Run {i} of {runs}')
             results.append(
                 self.sample(num_samples=num_samples)
             )
