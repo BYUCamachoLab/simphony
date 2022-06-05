@@ -74,6 +74,7 @@ install_requires = [
     "scipy>=1.5.4",
     "numpy>=1.19.5",
     "parsimonious>=0.8.1",
+    "shapely"
 ]
 
 extras_require = {
