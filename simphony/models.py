@@ -22,6 +22,7 @@ import os
 from typing import ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
+from shapely.geometry import Polygon
 
 from simphony.connect import create_block_diagonal, innerconnect_s
 from simphony.formatters import ModelFormatter, ModelJSONFormatter
@@ -53,21 +54,7 @@ class Model:
     pins: ClassVar[Optional[Tuple[str, ...]]]
     pins: PinList  # additional type hint for instance.pins
     pins_pos = {}
-    for i, p in enumerate(pins):
-        pins_pos[f'pin{i}'] = {
-            'x': 0.0,
-            'y': 0.0
-        }
-
-    relative_coords = {}
-    for i, p1 in enumerate(pins):
-        for k, p2 in enumerate(pins):
-            relative_coords[f'pin{i}_pin{k}'] = {
-                'x': pins_pos[f'pin{i}']['x'] - pins_pos[f'pin{k}']['x'],
-                'y': pins_pos[f'pin{i}']['y'] - pins_pos[f'pin{k}']['y']
-            }
-
-    fixed = False # flag for if the component is fixed in place in the circuit
+    
 
     def __getitem__(self, item: Union[int, str]) -> Pin:
         return self.pins[item]
@@ -116,7 +103,6 @@ class Model:
                 self.freq_range = (0, float("inf"))
 
         self.name = name
-        self._compute_pos_and_origin()
 
         # initiate the Pin objects for the instance. resolution order:
         # 1. pins (list of Pin objects)
@@ -136,6 +122,28 @@ class Model:
                     raise NotImplementedError(
                         f"{name}.pin_count or {name}.pins needs to be defined."
                     )
+
+        for i, _ in enumerate(self.pins):
+            self.pins_pos[f'pin{i+1}'] = {
+                'x': np.random.randint(100),
+                'y': np.random.randint(100)
+            }
+
+        self.relative_coords = {}
+        for i, _ in enumerate(self.pins):
+            for k, _ in enumerate(self.pins):
+                self.relative_coords[f'pin{i+1}_pin{k+1}'] = {
+                    'x': self.pins_pos[f'pin{i+1}']['x'] - self.pins_pos[f'pin{k+1}']['x'],
+                    'y': self.pins_pos[f'pin{i+1}']['y'] - self.pins_pos[f'pin{k+1}']['y']
+                }
+
+        self._compute_pos_and_origin()
+
+        self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
+        try:
+            self.polygon = Polygon(tuple(self.coords))
+        except ValueError: # throws ValueError if there are <3 pins
+            self.polygon = None
 
     def __str__(self) -> str:
         name = self.name or f"{self.__class__.__name__} component"
@@ -248,21 +256,37 @@ class Model:
 
     def _compute_pos_and_origin(self, ignore_pin: Pin = None):
 
-        if ignore_pin is not None:
+        self._unfix_component()
+        if ignore_pin is not None and self.fixed is False:
             i = self.pins.index(ignore_pin)
             for p in self.pins:
                 if p is not ignore_pin:
-                    p_index = self.pins.index(p)
+                    p_index = self.pins.index(p) + 1
                     self.pins_pos[p.name] = {
-                        'x': self.pins_pos[ignore_pin.name]['x'] + self.relative_coords[f'pin{p_index}_pin{i}']['x'],
-                        'y': self.pins_pos[ignore_pin.name]['y'] + self.relative_coords[f'pin{p_index}_pin{i}']['y']
+                        'x': self.pins_pos[ignore_pin.name]['x'] + self.relative_coords[f'pin{p_index}_pin{i+1}']['x'],
+                        'y': self.pins_pos[ignore_pin.name]['y'] + self.relative_coords[f'pin{p_index}_pin{i+1}']['y']
                     }
 
-        x_values = np.asarray([k['x'] for k in self.pins_pos])
-        y_values = np.asarray([k['y'] for k in self.pins_pos])
+        x_values = np.asarray([self.pins_pos[k]['x'] for k in self.pins_pos])
+        y_values = np.asarray([self.pins_pos[k]['y'] for k in self.pins_pos])
 
         self.x = x_values.mean()
         self.y = y_values.mean()
+
+    def _update_polygon(self):
+        pass
+
+    def _fix_component(self):
+        """
+        Fix the component in place in the circuit, disabling pin co-ordinates changes.
+        """
+        self.fixed = True
+
+    def _unfix_component(self):
+        """
+        Unfix the component, enabling pin co-ordinates changes.        
+        """
+        self.fixed = False
 
     def connect(self, component_or_pin: Union["Model", Pin]) -> "Model":
         """Connects the next available (unconnected) pin from this component to
