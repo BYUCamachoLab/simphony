@@ -1211,10 +1211,6 @@ class Waveguide(SiEPIC_PDK_Base):
             'x': 0.0,
             'y': 0.0
         },
-        'pin3':{
-            'x': 5.0,
-            'y': 0.0
-        },
         'pin2': {
             'x': 10.0,
             'y': 0.0
