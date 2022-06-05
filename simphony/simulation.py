@@ -12,11 +12,13 @@ used within the context. Devices include theoretical sources and detectors.
 
 from cmath import rect
 from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple
+from matplotlib import pyplot as plt
 
 import numpy as np
 from scipy.constants import epsilon_0, h, mu_0, c
 from scipy.signal import butter, sosfiltfilt
 from scipy.linalg import cholesky, lu
+from shapely.geometry import Polygon
 from simphony import Model
 from simphony.tools import wl2freq
 
@@ -262,37 +264,45 @@ class Simulation:
         Updates the x- and y- co-ordinates of all the components in the circuit.
         """
         components = self.circuit._get_components()[:-2]
-        components[0].fixed = True
+        components[0]._fix_component()
         for component in components[1:]:
+            pin_count = 0
             for p in component.pins:
-                if not isinstance(p._connection._component, Laser) and not isinstance(p._connection._component, Detector) and p._connection is not None :
-                    new_pos = component.__getattribute__('pins_pos')
+                if not isinstance(p._connection._component, Laser) and not isinstance(p._connection._component, Detector) and p._connection is not None:
+                    new_pos = component.pins_pos
                     pin_name = p.name
                     pin_connection = p._connection.name
-                    update_pos = p._connection._component.__getattribute__('pins_pos')
+                    update_pos = p._connection._component.pins_pos
                     new_pos[pin_name] = update_pos[pin_connection]
+                    component.pins_pos = new_pos
                     p._component._compute_pos_and_origin(p)
+                    pin_count += 1
+
+                # once 2 pins have been updated, we know the positions of all the other pins, if any.
+                if pin_count == 2:
+                    break
+
+        for component in components:
+            component._update_polygon()
 
     def _compute_correlated_samples(self, coords, sigmaw, sigmat, l, runs):
         x = [0] * len(coords)
         y = [0] * len(coords)
-        coord_pairs = [0] * len(coords)
 
         # get x and y co-ordinates
         components = self.circuit._get_components()[:-2]
         if len(coords) != len(components):
             raise ValueError('Incorrect number of component coordinates passed to argument "coords".')
 
-        for k, v in coords.items():
-            if k in components:
-                x[components.index(k)] = v['x']
-                y[components.index(k)] = v['y']
-                coord_pairs[components.index(k)] = (v['x'], v['y'])
-            else:
-                raise KeyError(f'Component {k} not in circuit.')
-
-        if len(set(coord_pairs)) != len(coord_pairs):
-            raise ValueError('Components are overlapping, recheck your circuit!')
+        for component1 in self.circuit._get_components()[:-2]:
+            for component2 in self.circuit._get_components()[:-2]:
+                if component1 != component2 and None not in (component1.polygon, component2.polygon) and component1.polygon.intersects(component2.polygon):
+                    x1, y1 = component1.polygon.exterior.xy
+                    x2, y2 = component2.polygon.exterior.xy
+                    plt.plot(x1, y1)
+                    plt.plot(x2, y2)
+                    plt.show()
+                    raise RuntimeError(f'The components {component1} and {component2} are intersecting! Recheck your circuit.')
 
         n = len(self.circuit._get_components()) - 2
         corr_matrix_w = np.zeros((n, n))
