@@ -125,35 +125,35 @@ class Model:
 
         self.x = 0
         self.y = 0
-
-        for i, _ in enumerate(self.pins):
-            self.pins_pos[f'pin{i+1}'] = {
-                'x': np.random.randint(100),
-                'y': np.random.randint(100)
-            }
-
         self.relative_coords = {}
-        for i, _ in enumerate(self.pins):
-            for k, _ in enumerate(self.pins):
-                self.relative_coords[f'pin{i+1}_pin{k+1}'] = {
-                    'x': self.pins_pos[f'pin{i+1}']['x'] - self.pins_pos[f'pin{k+1}']['x'],
-                    'y': self.pins_pos[f'pin{i+1}']['y'] - self.pins_pos[f'pin{k+1}']['y']
+        self.coords_wrt_origin = {}
+
+        try:
+            for i, _ in enumerate(self.pins):
+                for k, _ in enumerate(self.pins):
+                    self.relative_coords[f'pin{i+1}_pin{k+1}'] = {
+                        'x': self.pins_pos[f'pin{i+1}']['x'] - self.pins_pos[f'pin{k+1}']['x'],
+                        'y': self.pins_pos[f'pin{i+1}']['y'] - self.pins_pos[f'pin{k+1}']['y']
+                    }
+
+            for i, _ in enumerate(self.pins):
+                self.coords_wrt_origin[f'pin{i+1}'] = {
+                    'x': self.pins_pos[f'pin{i+1}']['x'] - self.x,
+                    'y': self.pins_pos[f'pin{i+1}']['y'] - self.y
                 }
 
-        self.coords_wrt_origin = {}
-        for i, _ in enumerate(self.pins):
-            self.coords_wrt_origin[f'pin{i+1}'] = {
-                'x': self.pins_pos[f'pin{i+1}']['x'] - self.x,
-                'y': self.pins_pos[f'pin{i+1}']['y'] - self.y
-            }
+            self._compute_pos_and_origin()
 
-        self._compute_pos_and_origin()
+            self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
+            try:
+                self.polygon = Polygon(tuple(self.coords))
+            except ValueError: # throws ValueError if there are <3 pins
+                self.polygon = None
 
-        self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
-        try:
-            self.polygon = Polygon(tuple(self.coords))
-        except ValueError: # throws ValueError if there are <3 pins
-            self.polygon = None
+            if self.polygon is not None:
+                x, y = self.polygon.exterior.xy
+        except KeyError:
+            self.coords = self.polygon = None
 
     def __str__(self) -> str:
         name = self.name or f"{self.__class__.__name__} component"
@@ -274,8 +274,8 @@ class Model:
             for p in self.pins:
                 p_index = self.pins.index(p) + 1
                 self.pins_pos[p.name] = {
-                    'x': self.pins_pos[p.name]['x'] + self.coords_wrt_origin[p.name]['x'],
-                    'y': self.pins_pos[p.name]['y'] + self.coords_wrt_origin[p.name]['y']
+                    'x': self.x + self.coords_wrt_origin[p.name]['x'],
+                    'y': self.y + self.coords_wrt_origin[p.name]['y']
                 }
         else:
             if ignore_pin is not None and self.fixed is False:
