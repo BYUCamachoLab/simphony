@@ -267,6 +267,7 @@ class Simulation:
         components = self.circuit._get_components()[:-2]
         # components[0]._fix_component()
         for component in components[1:]:
+            print(component)
             pin_count = 0
             for p in component.pins:
                 if p._connection is not None and not isinstance(p._connection._component, Laser) and not isinstance(p._connection._component, Detector):
@@ -297,10 +298,7 @@ class Simulation:
         rand_x = np.random.randint(1000.0)
         rand_y = np.random.randint(1000.0)
 
-        component.x += rand_x
-        component.y += rand_y
-
-        component._compute_pos_and_origin(origin={'x':component.x, 'y':component.y})
+        component._compute_pos_and_origin(origin={'x':rand_x, 'y':rand_y})
         component._update_polygon()
 
     def _compute_correlated_samples(self, coords, sigmaw, sigmat, l, runs):
@@ -356,7 +354,7 @@ class Simulation:
                     if component1 != component2 and None not in (component1.polygon, component2.polygon) and component1.polygon.intersects(component2.polygon):
                         return (True, component1, component2)
 
-        return (False, None, None)
+        return (False, component1, component2)
 
     def layout_aware_simulation(self, sigmaw: float = 5, sigmat: float = 2, l: float = 4.5e-3, runs: int = 10, num_samples: int = 1, **kwargs) -> Tuple[np.array, np.array]:
         """Runs the layout-aware Monte Carlo sweep simulation for the circuit.
@@ -390,15 +388,16 @@ class Simulation:
                 'y': component.y
             }
         intersects = True
+        waveguide_incorrect = True
         iter = 1
-        while(intersects):
+        while(intersects and waveguide_incorrect):
             waveguide_incorrect = self._update_layout()
             intersects, component1, component2 = self._check_intersection()
-            if intersects:
+            print(waveguide_incorrect, intersects)
+            if waveguide_incorrect or intersects:
                 self._shift_components(component1)
                 component1._fix_component()
                 component2._fix_component()
-            if waveguide_incorrect or intersects:
                 self._update_layout()
             iter += 1
             if iter == 1000:
@@ -410,6 +409,12 @@ class Simulation:
                 plt.show()
                 raise RuntimeError(f'The components {component1} and {component2} are intersecting! Recheck your circuit. {iter}')
 
+        for component in self.circuit._get_components():
+            if component.polygon is not None:
+                x, y = component.polygon.exterior.xy
+                print(x, y)
+                plt.plot(*component.polygon.exterior.xy)
+        plt.show()
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(coords, sigmaw, sigmat, l, runs)
         components = self.circuit._get_components()
         n = len(components) - 2
