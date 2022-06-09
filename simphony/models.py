@@ -53,8 +53,7 @@ class Model:
     pin_count: ClassVar[Optional[int]]
     pins: ClassVar[Optional[Tuple[str, ...]]]
     pins: PinList  # additional type hint for instance.pins
-    pins_pos = {}
-    
+    pins_pos = {}  # holds the pins' positions
 
     def __getitem__(self, item: Union[int, str]) -> Pin:
         return self.pins[item]
@@ -123,11 +122,13 @@ class Model:
                         f"{name}.pin_count or {name}.pins needs to be defined."
                     )
 
-        self.x = 0
-        self.y = 0
-        self.relative_coords = {}
-        self.coords_wrt_origin = {}
+        self.x = 0  # initial x-coordinate
+        self.y = 0  # initial y-coordinate
+        self.relative_coords = {}   # holds the relative distances between the co-oridnates
+        self.coords_wrt_origin = {}  # holds the relative distances between the pins and the origin
 
+        # try to compute relative_coords, coords_wrt_origin and polygon
+        # unless KeyError is thrown, in which case, assign None
         try:
             for i, _ in enumerate(self.pins):
                 for k, _ in enumerate(self.pins):
@@ -142,18 +143,24 @@ class Model:
                     'y': self.pins_pos[f'pin{i+1}']['y'] - self.y
                 }
 
-            self._compute_pos_and_origin()
+            # unfix the component
+            self._unfix_component()
 
             self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
             try:
-                self.polygon = Polygon(tuple(self.coords))
-            except ValueError: # throws ValueError if there are <3 pins
+                self.polygon = Polygon(tuple(self.coords))  # used for checking if the components are intersecting
+            except ValueError:  # throws ValueError if there are <3 pins
                 self.polygon = None
 
-            if self.polygon is not None:
-                x, y = self.polygon.exterior.xy
         except KeyError:
             self.coords = self.polygon = None
+
+        # compute origin
+        x_values = np.asarray([self.pins_pos[k]['x'] for k in self.pins_pos])
+        y_values = np.asarray([self.pins_pos[k]['y'] for k in self.pins_pos])
+
+        self.x = x_values.mean()
+        self.y = y_values.mean()
 
     def __str__(self) -> str:
         name = self.name or f"{self.__class__.__name__} component"
@@ -265,28 +272,32 @@ class Model:
                     component._on_disconnect_recursive(circuit)
 
     def _compute_pos_and_origin(self, ignore_pin: Pin = None, origin: dict = None):
+        """
+        Compute the pins' positions and origin.
+        """
 
-        self._unfix_component()
+        # if origin is not None, Layout-Aware Simulation class has requested to
+        # re-arrange the component. Modify the origin, and update pins' positions accordinly.
         if origin is not None:
             self.x = origin['x']
             self.y = origin['y']
 
             for p in self.pins:
-                p_index = self.pins.index(p) + 1
-                self.pins_pos[p.name] = {
-                    'x': self.x + self.coords_wrt_origin[p.name]['x'],
-                    'y': self.y + self.coords_wrt_origin[p.name]['y']
-                }
-        else:
-            if ignore_pin is not None and self.fixed is False:
-                i = self.pins.index(ignore_pin)
-                for p in self.pins:
-                    if p is not ignore_pin:
-                        p_index = self.pins.index(p) + 1
-                        self.pins_pos[p.name] = {
-                            'x': self.pins_pos[ignore_pin.name]['x'] + self.relative_coords[f'pin{p_index}_pin{i+1}']['x'],
-                            'y': self.pins_pos[ignore_pin.name]['y'] + self.relative_coords[f'pin{p_index}_pin{i+1}']['y']
-                        }
+                if self.coords_wrt_origin[p.name]['x'] is not None:
+                    self.pins_pos[p.name]['x'] = self.x + self.coords_wrt_origin[p.name]['x']
+                if self.coords_wrt_origin[p.name]['y'] is not None:
+                    self.pins_pos[p.name]['y'] = self.y + self.coords_wrt_origin[p.name]['y']
+
+        # if ignore_pin is not None, one of the pins has been moved. 
+        # Move the other pins to keep the relative positions of the
+        # pins consistent, and recompute origin.
+        elif ignore_pin is not None and self.fixed is False:
+            for p in self.pins_pos.keys():
+                if p is not ignore_pin.name:
+                    if self.relative_coords[f'{ignore_pin.name}_{p}']['x'] is not None:
+                        self.pins_pos[p]['x'] = self.pins_pos[ignore_pin.name]['x'] + self.relative_coords[f'{ignore_pin.name}_{p}']['x']
+                    if self.relative_coords[f'{ignore_pin.name}_{p}']['y'] is not None:
+                        self.pins_pos[p]['y'] = self.pins_pos[ignore_pin.name]['y'] + self.relative_coords[f'{ignore_pin.name}_{p}']['y']
 
             x_values = np.asarray([self.pins_pos[k]['x'] for k in self.pins_pos])
             y_values = np.asarray([self.pins_pos[k]['y'] for k in self.pins_pos])
@@ -295,6 +306,9 @@ class Model:
             self.y = y_values.mean()
 
     def _update_polygon(self, rand_x: int = 0, rand_y: int = 0):
+        """
+        Updates the polygon of the component.
+        """
         pass
 
     def _fix_component(self):
@@ -305,7 +319,7 @@ class Model:
 
     def _unfix_component(self):
         """
-        Unfix the component, enabling pin co-ordinates changes.        
+        Unfix the component, enabling pin co-ordinates changes.
         """
         self.fixed = False
 
