@@ -262,47 +262,39 @@ class Simulation:
         """
         Updates the x- and y- co-ordinates of all the components in the circuit.
         """
-        components = [component for component in self.circuit._get_components()[:-2] if isinstance(component, (Laser, Detector))]  # get all components except the Simulation instance
+        components = [component for component in self.circuit._get_components() if not isinstance(component, (Laser, Detector))]  # get all components except Lasers and Detectors
 
         # first component in the circuit is fixed while the other components are rearranged and
         # pin positions are updated
+        components[0]._fix_component()
         for component in components[1:]:
-
-            pin_count = 0
 
             for p in component.pins:
 
                 # update positions of pins which are not unconnected or connected to a Laser or Detector
                 if p._connection is not None and not isinstance(p._connection._component, Laser) and not isinstance(p._connection._component, Detector):
-                    pin_name = p.name
-                    pin_connection = p._connection.name
                     update_pos = p._connection._component.pins_pos
 
                     # update positions
-                    component.pins_pos[pin_name] = update_pos[pin_connection]
+                    component.pins_pos[p.name] = update_pos[p._connection.name]
 
                     # update positions of the other pins of the component and the origin of the component
                     p._component._compute_pos_and_origin(ignore_pin=p)
 
                     # update the component polygon
                     p._component._update_polygon()
-                    pin_count += 1
 
                 # once 2 pins have been updated, we know the positions of all the other pins, if any.
-                if pin_count == 2:
+                if component.pins.index(p) == 1 and isinstance(component, siepic.Waveguide):
 
                     # check if the waveguide lengths are correct, i.e., still the same as they were during instantiation
-                    if isinstance(component, siepic.Waveguide):
-                        A = [component.pins_pos['pin1']['x'], component.pins_pos['pin1']['y']]
-                        B = [component.pins_pos['pin2']['x'], component.pins_pos['pin2']['y']]
+                    A = np.array((component.pins_pos['pin1']['x'], component.pins_pos['pin1']['y']))
+                    B = np.array((component.pins_pos['pin2']['x'], component.pins_pos['pin2']['y']))
 
-                        A = np.array((component.pins_pos['pin1']['x'], component.pins_pos['pin1']['y']))
-                        B = np.array((component.pins_pos['pin2']['x'], component.pins_pos['pin2']['y']))
-
-                        A_B = np.linalg.norm(A - B)
-                        if round(np.real(A_B)) != component.length * 1e6:
-                            # return True if the waveguide length is incorrect
-                            return True
+                    A_B = np.linalg.norm(A - B)
+                    if round(np.real(A_B)) != component.length * 1e6:
+                        # return True if the waveguide length is incorrect
+                        return True
 
                     # break and move on to the next component, if any
                     break
@@ -375,10 +367,11 @@ class Simulation:
         """
         Check if any of the components in the circuit are intersecting. SiEPIC Waveguides are ignored.
         """
-        for component1 in self.circuit._get_components()[:-2]:
-                for component2 in self.circuit._get_components()[:-2]:
-                    if component1 != component2 and not isinstance((component1, component2), siepic.Waveguide) and None not in (component1.polygon, component2.polygon) and component1.polygon.intersects(component2.polygon):
-                        return (True, component1, component2)
+        components = [component for component in self.circuit._get_components() if not isinstance(component, (Laser, Detector))]
+        for component1 in components:
+            for component2 in components:
+                if component1 != component2 and not isinstance((component1, component2), siepic.Waveguide) and None not in (component1.polygon, component2.polygon) and component1.polygon.intersects(component2.polygon):
+                    return (True, component1, component2)
 
         return (False, component1, component2)
 
@@ -410,7 +403,7 @@ class Simulation:
         intersects = True  # check for intersections between components
         waveguide_incorrect = True  # check for incorrect waveguide lengths
 
-        components = [component for component in self.circuit._get_components()[:-2] if not isinstance(component, (Laser, Detector))]  # get all components except the Simulation instance
+        components = [component for component in self.circuit._get_components() if not isinstance(component, (Laser, Detector))]  # get all components except the Laser and Detector
 
         # while the two checks are True, run the workflow to rearrange components
         # until a suitable layout has been found.
@@ -429,7 +422,6 @@ class Simulation:
         # get co-ordinates assuming a suitable layout has been found
         coords = {component: {'x': component.x, 'y': component.y} for component in components}
 
-
         # compute correlated samples
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(coords, sigmaw, sigmat, l, runs)
 
@@ -437,19 +429,16 @@ class Simulation:
         for i in range(runs):
             # use s_parameters for the first run, then monte_carlo_* for the rest
 
-            for idx in range(n):
+            # update component parameters
+            [components[idx].update_variations(corr_w=corr_sample_matrix_w[idx][i], corr_t=corr_sample_matrix_t[idx][i]) for idx in range(n)]
 
-                # update component parameters
-                components[idx].update_variations(corr_w=corr_sample_matrix_w[idx][i], corr_t=corr_sample_matrix_t[idx][i])
-
-            self.s_parameters_method = "s_parameters" if i == 0 else "layout_aware_monte_carlo_s_parameters"
+            self.s_parameters_method = "layout_aware_monte_carlo_s_parameters" if i else "s_parameters"
 
             results.append(
                 self.sample(num_samples=num_samples)
             )
 
-            for idx in range(n):
-                components[idx].regenerate_layout_aware_monte_carlo_parameters()
+            [components[idx].regenerate_layout_aware_monte_carlo_parameters() for idx in range(n)]
 
         return results
 
