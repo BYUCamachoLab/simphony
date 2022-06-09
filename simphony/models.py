@@ -159,8 +159,9 @@ class Model:
         x_values = np.asarray([self.pins_pos[k]['x'] for k in self.pins_pos])
         y_values = np.asarray([self.pins_pos[k]['y'] for k in self.pins_pos])
 
-        self.x = x_values.mean()
-        self.y = y_values.mean()
+        if len(x_values) > 0 and len(y_values) > 0:
+            self.x = x_values.mean()
+            self.y = y_values.mean()
 
     def __str__(self) -> str:
         name = self.name or f"{self.__class__.__name__} component"
