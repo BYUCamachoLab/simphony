@@ -12,13 +12,11 @@ used within the context. Devices include theoretical sources and detectors.
 
 from cmath import rect
 from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple
-from matplotlib import pyplot as plt
 
 import numpy as np
 from scipy.constants import epsilon_0, h, mu_0, c
 from scipy.signal import butter, sosfiltfilt
 from scipy.linalg import cholesky, lu
-from scipy.spatial.distance import cityblock
 from simphony import Model
 from simphony.libraries import siepic
 from simphony.tools import wl2freq
@@ -264,41 +262,66 @@ class Simulation:
         """
         Updates the x- and y- co-ordinates of all the components in the circuit.
         """
-        components = self.circuit._get_components()[:-2]
-        # components[0]._fix_component()
+        components = [component for component in self.circuit._get_components()[:-2] if isinstance(component, (Laser, Detector))]  # get all components except the Simulation instance
+
+        # first component in the circuit is fixed while the other components are rearranged and
+        # pin positions are updated
         for component in components[1:]:
-            print(component)
+
             pin_count = 0
+
             for p in component.pins:
+
+                # update positions of pins which are not unconnected or connected to a Laser or Detector
                 if p._connection is not None and not isinstance(p._connection._component, Laser) and not isinstance(p._connection._component, Detector):
-                    new_pos = component.pins_pos
                     pin_name = p.name
                     pin_connection = p._connection.name
                     update_pos = p._connection._component.pins_pos
-                    new_pos[pin_name] = update_pos[pin_connection]
-                    component.pins_pos = new_pos
-                    p._component._compute_pos_and_origin(p)
+
+                    # update positions
+                    component.pins_pos[pin_name] = update_pos[pin_connection]
+
+                    # update positions of the other pins of the component and the origin of the component
+                    p._component._compute_pos_and_origin(ignore_pin=p)
+
+                    # update the component polygon
+                    p._component._update_polygon()
                     pin_count += 1
-
-                if isinstance(component, siepic.Waveguide):
-                    A = [component.pins_pos['pin1']['x'], component.pins_pos['pin1']['y']]
-                    B = [component.pins_pos['pin2']['x'], component.pins_pos['pin2']['y']]
-
-                    if cityblock(A, B) != component.length:
-                        return True
 
                 # once 2 pins have been updated, we know the positions of all the other pins, if any.
                 if pin_count == 2:
+
+                    # check if the waveguide lengths are correct, i.e., still the same as they were during instantiation
+                    if isinstance(component, siepic.Waveguide):
+                        A = [component.pins_pos['pin1']['x'], component.pins_pos['pin1']['y']]
+                        B = [component.pins_pos['pin2']['x'], component.pins_pos['pin2']['y']]
+
+                        A = np.array((component.pins_pos['pin1']['x'], component.pins_pos['pin1']['y']))
+                        B = np.array((component.pins_pos['pin2']['x'], component.pins_pos['pin2']['y']))
+
+                        A_B = np.linalg.norm(A - B)
+                        if round(np.real(A_B)) != component.length * 1e6:
+                            # return True if the waveguide length is incorrect
+                            return True
+
+                    # break and move on to the next component, if any
                     break
 
+        # return False if all the waveguide lengths are correct
         return False
 
     def _shift_components(self, component: Model):
+        """
+        Randomly rearrange the components in the circuit.
+        """
         component._unfix_component()
-        rand_x = np.random.randint(1000.0)
-        rand_y = np.random.randint(1000.0)
+        rand_x = np.random.randint(1000)  # assume a die size of 1000 um. FIXME this could be done better.
+        rand_y = np.random.randint(1000)
 
-        component._compute_pos_and_origin(origin={'x':rand_x, 'y':rand_y})
+        # recompute pins positions based off origin
+        component._compute_pos_and_origin(origin={'x': rand_x, 'y': rand_y})
+
+        # update the polygon for the component
         component._update_polygon()
 
     def _compute_correlated_samples(self, coords, sigmaw, sigmat, l, runs):
@@ -349,9 +372,12 @@ class Simulation:
         return corr_sample_matrix_w, corr_sample_matrix_t
 
     def _check_intersection(self):
+        """
+        Check if any of the components in the circuit are intersecting. SiEPIC Waveguides are ignored.
+        """
         for component1 in self.circuit._get_components()[:-2]:
                 for component2 in self.circuit._get_components()[:-2]:
-                    if component1 != component2 and None not in (component1.polygon, component2.polygon) and component1.polygon.intersects(component2.polygon):
+                    if component1 != component2 and not isinstance((component1, component2), siepic.Waveguide) and None not in (component1.polygon, component2.polygon) and component1.polygon.intersects(component2.polygon):
                         return (True, component1, component2)
 
         return (False, component1, component2)
@@ -380,44 +406,34 @@ class Simulation:
             be the theoretical value of the circuit. If more than one sample is
             taken, they will vary based on simulated noise.
         """
-        results = []
-        coords = {}
-        for component in self.circuit._get_components()[:-2]:
-            coords[component] = {
-                'x': component.x,
-                'y': component.y
-            }
-        intersects = True
-        waveguide_incorrect = True
-        iter = 1
+        results = []  # store results
+        intersects = True  # check for intersections between components
+        waveguide_incorrect = True  # check for incorrect waveguide lengths
+
+        components = [component for component in self.circuit._get_components()[:-2] if not isinstance(component, (Laser, Detector))]  # get all components except the Simulation instance
+
+        # while the two checks are True, run the workflow to rearrange components
+        # until a suitable layout has been found.
         while(intersects and waveguide_incorrect):
             waveguide_incorrect = self._update_layout()
-            intersects, component1, component2 = self._check_intersection()
-            print(waveguide_incorrect, intersects)
-            if waveguide_incorrect or intersects:
-                self._shift_components(component1)
-                component1._fix_component()
-                component2._fix_component()
-                self._update_layout()
-            iter += 1
-            if iter == 1000:
-                for component in self.circuit._get_components()[:-2]:
-                    if component.polygon is not None:
-                        x, y = component.polygon.exterior.coords.xy
-                        plt.plot(x, y, label=f'{component}')
-                plt.legend()
-                plt.show()
-                raise RuntimeError(f'The components {component1} and {component2} are intersecting! Recheck your circuit. {iter}')
 
-        for component in self.circuit._get_components():
-            if component.polygon is not None:
-                x, y = component.polygon.exterior.xy
-                print(x, y)
-                plt.plot(*component.polygon.exterior.xy)
-        plt.show()
+            intersects, component1, component2 = self._check_intersection()
+
+            if waveguide_incorrect or intersects:
+                # if the waveguide length is incorrect or the components are intersecting, rearrange components
+                # and recompute layout
+                component2._fix_component()
+                self._shift_components(component1)
+                self._update_layout()
+
+        # get co-ordinates assuming a suitable layout has been found
+        coords = {component: {'x': component.x, 'y': component.y} for component in components}
+
+
+        # compute correlated samples
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(coords, sigmaw, sigmat, l, runs)
-        components = self.circuit._get_components()
-        n = len(components) - 2
+
+        n = len(components)
         for i in range(runs):
             # use s_parameters for the first run, then monte_carlo_* for the rest
 
@@ -427,7 +443,7 @@ class Simulation:
                 components[idx].update_variations(corr_w=corr_sample_matrix_w[idx][i], corr_t=corr_sample_matrix_t[idx][i])
 
             self.s_parameters_method = "s_parameters" if i == 0 else "layout_aware_monte_carlo_s_parameters"
-            print(f'Run {i} of {runs}')
+
             results.append(
                 self.sample(num_samples=num_samples)
             )
