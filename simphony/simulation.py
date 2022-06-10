@@ -285,16 +285,18 @@ class Simulation:
                     p._component._update_polygon()
 
                 # once 2 pins have been updated, we know the positions of all the other pins, if any.
-                if component.pins.index(p) == 1 and isinstance(component, siepic.Waveguide):
+                if component.pins.index(p) == 1:
 
-                    # check if the waveguide lengths are correct, i.e., still the same as they were during instantiation
-                    A = np.array((component.pins_pos['pin1']['x'], component.pins_pos['pin1']['y']))
-                    B = np.array((component.pins_pos['pin2']['x'], component.pins_pos['pin2']['y']))
+                    if isinstance(component, siepic.Waveguide):
 
-                    A_B = np.linalg.norm(A - B)
-                    if round(np.real(A_B)) != component.length * 1e6:
-                        # return True if the waveguide length is incorrect
-                        return True
+                        # check if the waveguide lengths are correct, i.e., still the same as they were during instantiation
+                        A = np.array((component.pins_pos['pin1']['x'], component.pins_pos['pin1']['y']))
+                        B = np.array((component.pins_pos['pin2']['x'], component.pins_pos['pin2']['y']))
+
+                        A_B = np.linalg.norm(A - B)
+                        if round(A_B) != component.length * 1e6:
+                            # return True if the waveguide length is incorrect
+                            return True
 
                     # break and move on to the next component, if any
                     break
