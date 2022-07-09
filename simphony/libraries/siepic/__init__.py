@@ -81,6 +81,7 @@ from bisect import bisect_left
 from collections import namedtuple
 
 import numpy as np
+from phidl import Device
 import scipy.interpolate as interp
 from scipy.constants import c as SPEED_OF_LIGHT
 from shapely.geometry import Polygon, LineString
@@ -268,7 +269,7 @@ class SiEPIC_PDK_Base(Model):
     # -------------------------------------------------------------------------
 
     def __init__(self, **kwargs):
-        model_params = ("name", "freq_range", "pins")
+        model_params = ("name", "freq_range", "pins", "pins_pos")
         model_args = {param: kwargs.get(param, None) for param in model_params}
         model_args["name"] = (
             model_args["name"] if model_args["name"] is not None else ""
@@ -687,7 +688,7 @@ class HalfRing(SiEPIC_PDK_Base):
         couple_length=0.0,
         pins_pos=pins_pos,
         **kwargs
-    ):
+    ):  # sourcery skip: remove-redundant-if
         super().__init__(
             **kwargs,
             gap=gap,
@@ -698,6 +699,28 @@ class HalfRing(SiEPIC_PDK_Base):
             pins_pos=pins_pos,
         )
         self.fixed - False
+        R = Device('rect')
+        x_values = np.asarray([self.pins_pos[k]['x'] for k in self.pins_pos])
+        y_values = np.asarray([self.pins_pos[k]['y'] for k in self.pins_pos])
+        points = [(x_values.min(), y_values.min()), (x_values.max(), y_values.min()), (x_values.max(), y_values.max()), (x_values.min(), y_values.max())]
+        self.polygons = R.add_polygon(points=points)
+        self.device_ports = {}
+
+        for pin in self.pins:
+            for i, _ in enumerate(self.pins):
+                x = self.pins_pos[f'pin{i+1}']['x']
+                y = self.pins_pos[f'pin{i+1}']['y']
+
+            orientation = [0 if x > ((x_values.min() + x_values.max()) / 2) else 180][0]
+            if pin.name == 'pin2' or 'pin3':
+                orientation = 90
+            try:
+                self.device_ports[pin.name] = R.add_port(name=pin.name, midpoint=[x, y], width = self.width * 1e6, orientation=orientation)
+            except AttributeError:
+                self.device_ports[pin.name] = R.add_port(name=pin.name, midpoint=[x, y], width = 5, orientation=orientation)
+
+        self.device = R
+        self.device_ref = Device().add_ref(self.device)
 
     def _update_polygon(self):
         self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
@@ -1248,10 +1271,21 @@ class Waveguide(SiEPIC_PDK_Base):
                 )
             )
 
+        pins_pos = {
+                    'pin1': {
+                        'x': 0.0,
+                        'y': 0.0
+                    },
+                    'pin2': {
+                        'x': length * 1e6,
+                        'y': 0.0
+                    }
+                }
+
         # TODO: TM calculations
         if polarization == "TM":
             raise NotImplementedError
-
+        self.pins_pos = pins_pos
         super().__init__(
             **kwargs,
             length=length,
@@ -1261,17 +1295,8 @@ class Waveguide(SiEPIC_PDK_Base):
             sigma_ne=sigma_ne,
             sigma_ng=sigma_ng,
             sigma_nd=sigma_nd,
+            pins_pos=pins_pos,
         )
-        self.pins_pos = {
-            'pin1': {
-                'x': 0.0,
-                'y': 0.0
-            },
-            'pin2': {
-                'x': length * 1e6,
-                'y': 0.0
-            }
-        }
 
         for key1 in self.pins_pos.keys():
             for key2 in self.pins_pos.keys():
@@ -1307,6 +1332,8 @@ class Waveguide(SiEPIC_PDK_Base):
 
         coords = [(self.pins_pos[val]['x'], self.pins_pos[val]['y']) for val in self.pins_pos]
         self.polygon = LineString(coords)
+        self.device = Device()
+        self.device_ref = Device().add_ref(self.device)
 
         self.regenerate_monte_carlo_parameters()
 
