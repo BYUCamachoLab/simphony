@@ -11,14 +11,24 @@ used within the context. Devices include theoretical sources and detectors.
 """
 
 from cmath import rect
+from operator import index
+from random import shuffle
 from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple
+from weakref import KeyedRef
+from matplotlib import pyplot as plt
 
 import numpy as np
+from phidl import Device, quickplot, set_quickplot_options
+from phidl.device_layout import DeviceReference
+import phidl.routing as pr
+import phidl.path as pp
+from phidl.geometry import grid, packer
 from scipy.constants import epsilon_0, h, mu_0, c
 from scipy.signal import butter, sosfiltfilt
 from scipy.linalg import cholesky, lu
 from simphony import Model
 from simphony.libraries import siepic
+from simphony.models import Subcircuit
 from simphony.tools import wl2freq
 
 if TYPE_CHECKING:
@@ -377,6 +387,57 @@ class Simulation:
 
         return (False, component1, component2)
 
+    def route_devices(self):
+        components = [component for component in self.circuit._get_components() if not isinstance(component, (type(self), Subcircuit, Laser, Detector))]
+        components2 = [component if not isinstance(component, siepic.Waveguide) else None for component in components]
+
+        self.device = Device()
+        self.device_list = []
+        self.device_refs = []
+        for component in components:
+            self.device_refs.append(self.device.add_ref(component.device))
+            self.device_list.append(component.device)
+        # self.circuit_grid: Device  = grid(self.device_list, (10,10), True, ((len(components)) // 2, len(components) - (len(components)) // 2))
+        self.circuit_grid = packer(self.device_list, aspect_ratio=(len(components) - (len(components)) // 2, (len(components)) // 2), sort_by_area=False)
+
+        all_connected = False
+        while(not all_connected):
+            for device, component in zip(self.circuit_grid[0].references, components):
+                component.device_ports = device.ports
+            for i, (device, component2, component) in enumerate(zip(self.circuit_grid[0].references, components2, components)):
+                if component2 is None and None not in (component.pins[0]._connection, component.pins[1]._connection):
+                    port1 = component.pins[0]._connection._component.device_ports[component.pins[0]._connection.name]
+                    port2 = component.pins[1]._connection._component.device_ports[component.pins[1]._connection.name]
+                    # ==================================
+                    #  NOTE DO NOT REMOVE THESE LINES!!!
+                    # ==================================
+                    # dot = np.dot(port1.normal, port2.normal.T)
+                    # if round((dot[0,0] + dot[1,1]) - (dot[1,0] + dot[0,1])) == 0 and np.intersect1d(port1.normal, port2.normal) is not []:
+                    #     route_path = pr.route_smooth(port1, port2, path_type='L')
+                    # elif round((dot[0,0] + dot[1,1]) - (dot[1,0] + dot[0,1])) == 0 and np.intersect1d(port1.normal, port2.normal) is []:
+                    #     route_path = pr.route_smooth(port1, port2, path_type='J', length1=component.length * 1e6 / 4, length2=component.length * 1e6 / 4)
+                    # elif round((dot[0,0] + dot[1,1]) - (dot[1,0] + dot[0,1])) != 0 and np.intersect1d(port1.normal, port2.normal) is not []:
+                    #     route_path = pr.route_smooth(port1, port2, path_type='U', radius=1, width=component.width * 1e6, length1=component.length * 1e6 / 3)
+                    # elif round((dot[0,0] + dot[1,1]) - (dot[1,0] + dot[0,1])) != 0 and np.intersect1d(port1.normal, port2.normal) is []:
+                    #     route_path = pr.route_smooth(port1, port2, path_type='C', length1=component.length * 1e6 / 5, lengtth2=component.length * 1e6 / 5, left1=component.length * 1e6 / 5)
+                    route_path = pr.route_smooth(port1, port2, radius=1, width=component.width * 1e6, length=component.length * 1e6)
+                    print('At waveguide')
+                    self.device = self.circuit_grid[0]
+                    self.device.add_ref(route_path)
+                else:
+                    if component2 is not None:
+                        for pin in component2.pins:
+                            if not isinstance(pin._connection._component, (siepic.Waveguide, Subcircuit, Laser, Detector)) and component2 is not None:
+                                self.device_refs[i].connect(device.ports[pin.name], components2[components2.index(component2.pins[pin.name]._connection._component)].device.ports[component2.pins[pin.name]._connection.name])
+                        quickplot(self.device)
+                        plt.show()
+            all_connected = True
+        print("All connected")
+        
+        set_quickplot_options(label_aliases=True)
+        quickplot(self.device)
+        plt.show()
+
     def layout_aware_simulation(self, sigmaw: float = 5, sigmat: float = 2, l: float = 4.5e-3, runs: int = 10, num_samples: int = 1, **kwargs) -> Tuple[np.array, np.array]:
         """Runs the layout-aware Monte Carlo sweep simulation for the circuit.
 
@@ -409,20 +470,21 @@ class Simulation:
 
         # while the two checks are True, run the workflow to rearrange components
         # until a suitable layout has been found.
-        while(intersects and waveguide_incorrect):
-            waveguide_incorrect = self._update_layout()
+        # while(intersects and waveguide_incorrect):
+        #     waveguide_incorrect = self._update_layout()
 
-            intersects, component1, component2 = self._check_intersection()
+        #     intersects, component1, component2 = self._check_intersection()
 
-            if waveguide_incorrect or intersects:
-                # if the waveguide length is incorrect or the components are intersecting, rearrange components
-                # and recompute layout
-                component2._fix_component()
-                self._shift_components(component1)
-                self._update_layout()
+        #     if waveguide_incorrect or intersects:
+        #         # if the waveguide length is incorrect or the components are intersecting, rearrange components
+        #         # and recompute layout
+        #         component2._fix_component()
+        #         self._shift_components(component1)
+        #         self._update_layout()
 
         # get co-ordinates assuming a suitable layout has been found
-        coords = {component: {'x': component.x, 'y': component.y} for component in components}
+        self.route_devices()
+        coords = {component: {'x': component.device.x, 'y': component.device.y} for component in components}
 
         # compute correlated samples
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(coords, sigmaw, sigmat, l, runs)
@@ -530,7 +592,14 @@ class SimulationModel(Model):
     """
 
     def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+        pins_pos = {
+            'pin1':{
+                'x': 0,
+                'y': 0
+            }
+        }
+        self.pins_pos = pins_pos
+        super().__init__(*args, **kwargs, pins_pos=pins_pos)
         self.context = Simulation.get_context()
 
     def _on_connect(self, *args, **kwargs):
