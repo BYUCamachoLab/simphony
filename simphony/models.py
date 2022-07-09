@@ -19,10 +19,12 @@ they form a circuit. There are three ways to connect components:
 """
 
 import os
+from pickle import FALSE
 from typing import ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from shapely.geometry import Polygon
+from phidl.geometry import Device
 
 from simphony.connect import create_block_diagonal, innerconnect_s
 from simphony.formatters import ModelFormatter, ModelJSONFormatter
@@ -53,7 +55,6 @@ class Model:
     pin_count: ClassVar[Optional[int]]
     pins: ClassVar[Optional[Tuple[str, ...]]]
     pins: PinList  # additional type hint for instance.pins
-    pins_pos = {}  # holds the pins' positions
 
     def __getitem__(self, item: Union[int, str]) -> Pin:
         return self.pins[item]
@@ -64,6 +65,7 @@ class Model:
         *,
         freq_range: Optional[Tuple[Optional[float], Optional[float]]] = None,
         pins: Optional[List[Pin]] = None,
+        pins_pos = {}
     ) -> None:
         """Initializes an instance of the model.
 
@@ -102,7 +104,7 @@ class Model:
                 self.freq_range = (0, float("inf"))
 
         self.name = name
-
+        self.pins_pos = pins_pos
         # initiate the Pin objects for the instance. resolution order:
         # 1. pins (list of Pin objects)
         # 2. cls.pins (tuple of pin names)
@@ -130,17 +132,17 @@ class Model:
         # try to compute relative_coords, coords_wrt_origin and polygon
         # unless KeyError is thrown, in which case, assign None
         try:
-            for i, _ in enumerate(self.pins):
-                for k, _ in enumerate(self.pins):
-                    self.relative_coords[f'pin{i+1}_pin{k+1}'] = {
-                        'x': self.pins_pos[f'pin{i+1}']['x'] - self.pins_pos[f'pin{k+1}']['x'],
-                        'y': self.pins_pos[f'pin{i+1}']['y'] - self.pins_pos[f'pin{k+1}']['y']
+            for i, pin1 in enumerate(self.pins):
+                for k, pin2 in enumerate(self.pins):
+                    self.relative_coords[f'{pin1.name}_{pin2.name}'] = {
+                        'x': self.pins_pos[f'{pin1.name}']['x'] - self.pins_pos[f'{pin2.name}']['x'],
+                        'y': self.pins_pos[f'{pin1.name}']['y'] - self.pins_pos[f'{pin2.name}']['y']
                     }
 
-            for i, _ in enumerate(self.pins):
-                self.coords_wrt_origin[f'pin{i+1}'] = {
-                    'x': self.pins_pos[f'pin{i+1}']['x'] - self.x,
-                    'y': self.pins_pos[f'pin{i+1}']['y'] - self.y
+            for i, pin in enumerate(self.pins):
+                self.coords_wrt_origin[f'{pin.name}'] = {
+                    'x': self.pins_pos[f'{pin.name}']['x'] - self.x,
+                    'y': self.pins_pos[f'{pin.name}']['y'] - self.y
                 }
 
             # unfix the component
@@ -162,6 +164,25 @@ class Model:
         if len(x_values) > 0 and len(y_values) > 0:
             self.x = x_values.mean()
             self.y = y_values.mean()
+
+        R = Device('rect', alias=self.name)
+        points = [(x_values.min(), y_values.min()), (x_values.max(), y_values.min()), (x_values.max(), y_values.max()), (x_values.min(), y_values.max())]
+        self.polygons = R.add_polygon(points=points)
+        self.device_ports = {}
+
+        for i, pin in enumerate(self.pins):
+            x = self.pins_pos[f'{pin.name}']['x']
+            y = self.pins_pos[f'{pin.name}']['y']
+
+            orientation = [0 if x > ((x_values.min() + x_values.max()) / 2) else 180][0]
+
+            try:
+                self.device_ports[pin.name] = R.add_port(name=pin.name, midpoint=[x, y], width = 0.5* self.width * 1e6, orientation=orientation)
+            except AttributeError:
+                self.device_ports[pin.name] = R.add_port(name=pin.name, midpoint=[x, y], width = 5, orientation=orientation)
+
+        self.device = R
+        self.device_ref = Device().add_ref(self.device)
 
     def __str__(self) -> str:
         name = self.name or f"{self.__class__.__name__} component"
@@ -464,6 +485,8 @@ class Model:
         second pin is renamed to the second value, etc.
         """
         self.pins.rename(*names)
+        self.pins_pos = dict(zip([*names], list(self.pins_pos.values())))
+        self.device.ports = dict(zip([*names], list(self.device.ports.values())))
 
     def s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns scattering parameters for the element with its given
@@ -630,6 +653,7 @@ class Subcircuit(Model):
         freq_range = [0, float("inf")]
         pins = []
         pin_names = {}
+        pins_pos = {}
 
         for component in circuit:
             # calculate the frequency range for the subcircuit
@@ -654,6 +678,11 @@ class Subcircuit(Model):
                         if permanent:
                             pin_names[pin.name] = True
                             pin._component = self
+                if pin._isconnected(include_simulators=False) is False:
+                    pins_pos[pin.name] = {
+                        'x': component.pins_pos[pin.name]['x'],
+                        'y': component.pins_pos[pin.name]['y']
+                    }
 
         if len(pins) == 0:
             raise ValueError(
@@ -662,7 +691,7 @@ class Subcircuit(Model):
 
         self._wrapped_circuit = circuit
 
-        super().__init__(**kwargs, freq_range=freq_range, name=name, pins=pins)
+        super().__init__(**kwargs, freq_range=freq_range, name=name, pins=pins, pins_pos=pins_pos)
 
     def _s_parameters(
         self,
