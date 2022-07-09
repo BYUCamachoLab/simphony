@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from simphony import Model
+    from simphony.libraries import siepic
 
 
 class Pin:
@@ -81,6 +82,10 @@ class Pin:
 
         # let the components know that a new connection was established
         self._component._on_connect(pin._component)
+
+        if None not in (self._component.die , pin._component.die) and (self._component.die != pin._component.die):
+            raise RuntimeError(f'The components {pin._component} and {pin._connection._component} are not in the same die.')
+        elif isinstance(self._connection._component, siepic.Waveguide) and 
 
     def disconnect(self) -> None:
         """Disconnects this pin to whatever it is connected to."""

@@ -21,8 +21,10 @@ they form a circuit. There are three ways to connect components:
 import os
 from pickle import FALSE
 from typing import ClassVar, Dict, List, Optional, Tuple, Union
+from matplotlib import pyplot as plt
 
 import numpy as np
+from phidl import quickplot
 from shapely.geometry import Polygon
 from phidl.geometry import Device
 
@@ -132,14 +134,14 @@ class Model:
         # try to compute relative_coords, coords_wrt_origin and polygon
         # unless KeyError is thrown, in which case, assign None
         try:
-            for i, pin1 in enumerate(self.pins):
-                for k, pin2 in enumerate(self.pins):
+            for pin1 in self.pins:
+                for pin2 in self.pins:
                     self.relative_coords[f'{pin1.name}_{pin2.name}'] = {
                         'x': self.pins_pos[f'{pin1.name}']['x'] - self.pins_pos[f'{pin2.name}']['x'],
                         'y': self.pins_pos[f'{pin1.name}']['y'] - self.pins_pos[f'{pin2.name}']['y']
                     }
 
-            for i, pin in enumerate(self.pins):
+            for pin in self.pins:
                 self.coords_wrt_origin[f'{pin.name}'] = {
                     'x': self.pins_pos[f'{pin.name}']['x'] - self.x,
                     'y': self.pins_pos[f'{pin.name}']['y'] - self.y
@@ -165,12 +167,12 @@ class Model:
             self.x = x_values.mean()
             self.y = y_values.mean()
 
-        R = Device('rect', alias=self.name)
+        R = Device('rect')
         points = [(x_values.min(), y_values.min()), (x_values.max(), y_values.min()), (x_values.max(), y_values.max()), (x_values.min(), y_values.max())]
         self.polygons = R.add_polygon(points=points)
         self.device_ports = {}
 
-        for i, pin in enumerate(self.pins):
+        for pin in self.pins:
             x = self.pins_pos[f'{pin.name}']['x']
             y = self.pins_pos[f'{pin.name}']['y']
 
@@ -183,6 +185,7 @@ class Model:
 
         self.device = R
         self.device_ref = Device().add_ref(self.device)
+        self.die = None
 
     def __str__(self) -> str:
         name = self.name or f"{self.__class__.__name__} component"

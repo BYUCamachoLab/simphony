@@ -389,20 +389,22 @@ class Simulation:
 
     def route_devices(self):
         components = [component for component in self.circuit._get_components() if not isinstance(component, (type(self), Subcircuit, Laser, Detector))]
-        components2 = [component if not isinstance(component, siepic.Waveguide) else None for component in components]
+        components2 = [None if isinstance(component, siepic.Waveguide) else component for component in components]
+
 
         self.device = Device()
+        self.circuit_ref = DeviceReference(self.device)
         self.device_list = []
         self.device_refs = []
         for component in components:
             self.device_refs.append(self.device.add_ref(component.device))
             self.device_list.append(component.device)
         # self.circuit_grid: Device  = grid(self.device_list, (10,10), True, ((len(components)) // 2, len(components) - (len(components)) // 2))
-        self.circuit_grid = packer(self.device_list, aspect_ratio=(len(components) - (len(components)) // 2, (len(components)) // 2), sort_by_area=False)
+        self.circuit_grid = packer(self.device_list, sort_by_area=False)
 
         all_connected = False
         while(not all_connected):
-            for device, component in zip(self.circuit_grid[0].references, components):
+            for device, component in zip(self.circuit_grid, components):
                 component.device_ports = device.ports
             for i, (device, component2, component) in enumerate(zip(self.circuit_grid[0].references, components2, components)):
                 if component2 is None and None not in (component.pins[0]._connection, component.pins[1]._connection):
@@ -422,18 +424,18 @@ class Simulation:
                     #     route_path = pr.route_smooth(port1, port2, path_type='C', length1=component.length * 1e6 / 5, lengtth2=component.length * 1e6 / 5, left1=component.length * 1e6 / 5)
                     route_path = pr.route_smooth(port1, port2, radius=1, width=component.width * 1e6, length=component.length * 1e6)
                     print('At waveguide')
-                    self.device = self.circuit_grid[0]
                     self.device.add_ref(route_path)
-                else:
-                    if component2 is not None:
+                elif component2 is not None:
                         for pin in component2.pins:
-                            if not isinstance(pin._connection._component, (siepic.Waveguide, Subcircuit, Laser, Detector)) and component2 is not None:
+                            if not isinstance(pin._connection._component, (siepic.Waveguide, Subcircuit, Laser, Detector)):
                                 self.device_refs[i].connect(device.ports[pin.name], components2[components2.index(component2.pins[pin.name]._connection._component)].device.ports[component2.pins[pin.name]._connection.name])
+                        set_quickplot_options(label_aliases=True)
                         quickplot(self.device)
+                        print(f'{component.name}')
                         plt.show()
             all_connected = True
         print("All connected")
-        
+
         set_quickplot_options(label_aliases=True)
         quickplot(self.device)
         plt.show()
