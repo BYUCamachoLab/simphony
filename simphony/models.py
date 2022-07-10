@@ -19,9 +19,7 @@ they form a circuit. There are three ways to connect components:
 """
 
 import os
-from pickle import FALSE
-from typing import ClassVar, Dict, List, Optional, Tuple, Union
-from matplotlib import pyplot as plt
+from typing import ClassVar, Dict, List, Optional, Tuple, TYPE_CHECKING, Union
 
 import numpy as np
 from phidl import quickplot
@@ -33,6 +31,8 @@ from simphony.formatters import ModelFormatter, ModelJSONFormatter
 from simphony.layout import Circuit
 from simphony.pins import Pin, PinList
 
+if TYPE_CHECKING:
+    from simphony.die import Die
 
 class Model:
     """The basic element type describing the model for a component with
@@ -67,7 +67,8 @@ class Model:
         *,
         freq_range: Optional[Tuple[Optional[float], Optional[float]]] = None,
         pins: Optional[List[Pin]] = None,
-        pins_pos = {}
+        pins_pos = {},
+        die = None,
     ) -> None:
         """Initializes an instance of the model.
 
@@ -91,8 +92,6 @@ class Model:
         NotImplementedError
             when pins is None and cls.pin_count and cls.pins are undefined.
         """
-        self.circuit = Circuit(self)
-
         # set the frequency range for the instance. resolution order:
         # 1. freq_range
         # 2. cls.freq_range
@@ -167,7 +166,8 @@ class Model:
             self.x = x_values.mean()
             self.y = y_values.mean()
 
-        R = Device('rect')
+        R = Device(self.name)
+        print(f'{self.name} model defined device\n')
         points = [(x_values.min(), y_values.min()), (x_values.max(), y_values.min()), (x_values.max(), y_values.max()), (x_values.min(), y_values.max())]
         self.polygons = R.add_polygon(points=points)
         self.device_ports = {}
@@ -181,11 +181,19 @@ class Model:
             try:
                 self.device_ports[pin.name] = R.add_port(name=pin.name, midpoint=[x, y], width = 0.5* self.width * 1e6, orientation=orientation)
             except AttributeError:
-                self.device_ports[pin.name] = R.add_port(name=pin.name, midpoint=[x, y], width = 5, orientation=orientation)
+                try:
+                    self.device_ports[pin.name] = R.add_port(name=pin.name, midpoint=[x, y], width = 5, orientation=orientation)
+                except ValueError:
+                    pass
 
         self.device = R
-        self.device_ref = Device().add_ref(self.device)
-        self.die = None
+        self.device_ref = Device(f'{self.name}_ref').add_ref(self.device)
+        print(f'{self.name} model defined device ref\n')
+        self.die: "Die" = die
+        if self.die is not None:
+            self.die.add_component([self])
+
+        self.circuit = Circuit(self)
 
     def __str__(self) -> str:
         name = self.name or f"{self.__class__.__name__} component"
@@ -489,7 +497,7 @@ class Model:
         """
         self.pins.rename(*names)
         self.pins_pos = dict(zip([*names], list(self.pins_pos.values())))
-        self.device.ports = dict(zip([*names], list(self.device.ports.values())))
+        self.device_ports = dict(zip([*names], list(self.device_ports.values())))
 
     def s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns scattering parameters for the element with its given
@@ -627,6 +635,7 @@ class Subcircuit(Model):
         name: str = "",
         *,
         permanent: bool = True,
+        die=None,
         **kwargs,
     ) -> None:
         """Initializes a subcircuit from the given circuit.
@@ -694,7 +703,7 @@ class Subcircuit(Model):
 
         self._wrapped_circuit = circuit
 
-        super().__init__(**kwargs, freq_range=freq_range, name=name, pins=pins, pins_pos=pins_pos)
+        super().__init__(**kwargs, freq_range=freq_range, name=name, pins=pins, pins_pos=pins_pos, die=die)
 
     def _s_parameters(
         self,

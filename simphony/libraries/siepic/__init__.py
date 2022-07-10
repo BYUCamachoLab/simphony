@@ -269,7 +269,7 @@ class SiEPIC_PDK_Base(Model):
     # -------------------------------------------------------------------------
 
     def __init__(self, **kwargs):
-        model_params = ("name", "freq_range", "pins", "pins_pos")
+        model_params = ("name", "freq_range", "pins", "pins_pos", "die")
         model_args = {param: kwargs.get(param, None) for param in model_params}
         model_args["name"] = (
             model_args["name"] if model_args["name"] is not None else ""
@@ -699,7 +699,7 @@ class HalfRing(SiEPIC_PDK_Base):
             pins_pos=pins_pos,
         )
         self.fixed - False
-        R = Device('rect')
+        R = Device(self.name)
         x_values = np.asarray([self.pins_pos[k]['x'] for k in self.pins_pos])
         y_values = np.asarray([self.pins_pos[k]['y'] for k in self.pins_pos])
         points = [(x_values.min(), y_values.min()), (x_values.max(), y_values.min()), (x_values.max(), y_values.max()), (x_values.min(), y_values.max())]
@@ -720,7 +720,7 @@ class HalfRing(SiEPIC_PDK_Base):
                 self.device_ports[pin.name] = R.add_port(name=pin.name, midpoint=[x, y], width = 5, orientation=orientation)
 
         self.device = R
-        self.device_ref = Device().add_ref(self.device)
+        self.device_ref = Device(f'{self.name}_ref').add_ref(self.device)
 
     def _update_polygon(self):
         self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
@@ -1332,8 +1332,8 @@ class Waveguide(SiEPIC_PDK_Base):
 
         coords = [(self.pins_pos[val]['x'], self.pins_pos[val]['y']) for val in self.pins_pos]
         self.polygon = LineString(coords)
-        self.device = Device()
-        self.device_ref = Device().add_ref(self.device)
+        self.device = Device(self.name)
+        self.device_ref = Device(f'{self.name}_ref').add_ref(self.device)
 
         self.regenerate_monte_carlo_parameters()
 

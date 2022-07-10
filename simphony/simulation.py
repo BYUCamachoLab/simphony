@@ -485,7 +485,6 @@ class Simulation:
         #         self._update_layout()
 
         # get co-ordinates assuming a suitable layout has been found
-        self.route_devices()
         coords = {component: {'x': component.device.x, 'y': component.device.y} for component in components}
 
         # compute correlated samples

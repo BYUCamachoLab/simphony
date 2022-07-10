@@ -14,8 +14,7 @@ makes sure all components belong to the same ``Circuit`` instance.
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
-    from simphony import Model
-    from simphony.libraries import siepic
+    from simphony.models import Model
 
 
 class Pin:
@@ -85,8 +84,9 @@ class Pin:
 
         if None not in (self._component.die , pin._component.die) and (self._component.die != pin._component.die):
             raise RuntimeError(f'The components {pin._component} and {pin._connection._component} are not in the same die.')
-        elif isinstance(self._connection._component, siepic.Waveguide) and 
-
+        elif self._component.die is not None:
+            self._component.die.connect(self._component, pin._component, self, pin)
+                
     def disconnect(self) -> None:
         """Disconnects this pin to whatever it is connected to."""
         if self._isconnected():

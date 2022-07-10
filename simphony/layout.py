@@ -13,15 +13,11 @@ other, they will make sure that they belong to the same ``Circuit`` instance.
 
 import os
 from typing import TYPE_CHECKING, List, Optional
-from phidl import quickplot
 
-from phidl.device_layout import Device, DeviceReference, Group
-from phidl.geometry import grid
+import numpy as np
 from simphony.formatters import CircuitFormatter, CircuitJSONFormatter
 
 if TYPE_CHECKING:
-    import numpy as np
-
     from simphony import Model
     from simphony.models import Subcircuit
     from simphony.pins import Pin
@@ -58,6 +54,7 @@ class Circuit(list):
             The first component of a circuit
         """
         super().__init__([component])
+        self.die = component.die
 
     def __str__(self) -> str:
         return self._str_recursive(components=self._get_components()).rstrip()
@@ -191,7 +188,7 @@ class Circuit(list):
         another circuit."""
         from simphony.models import Subcircuit
 
-        return Subcircuit(self, **kwargs, name=name)
+        return Subcircuit(self, **kwargs, name=name, die=self.die)
 
     @staticmethod
     def from_file(
@@ -223,39 +220,3 @@ class Circuit(list):
         os.chdir(cwd)
 
         return circuit
-
-class Die(Device):
-    def __init__(self, *args, **kwargs):
-
-        self.device_list = []
-        self.device_refs: List[DeviceReference] = []
-        self.connect_refs: List[DeviceReference] = []
-        super().__init__(*args, **kwargs)
-
-    def add(self, components: List[Model]):
-        for component in components:
-            self.device_list.append(component.device)
-            self.device_refs.append(self.add_ref(component.device))
-            component.die = self
-
-    def connect(self, component1: Model, component2: Model, pin1: Pin, pin2: Pin):
-        ref = self.device_refs[self.device_list.index(component1.device)].connect(component1.device_ports[pin1.name], component2.device_ports[pin2.name])
-        self.connect_refs.append(ref)
-        self.add_ref(ref)
-
-    def distribute(self, direction="x", shape=None, spacing=100, separation=True):
-        if direction == 'x':
-            self.distribute('x', spacing=spacing, separation=separation)
-        elif direction == 'y':
-            self.distribute('y', spacing=spacing, separation=separation)
-        elif direction == 'grid':
-            grid(self.device_list, spacing=spacing, separation=separation, shape=shape)
-
-    def write_gds(self, filename, unit=0.000001, precision=1e-9, auto_rename=True, max_cellname_length=28, cellname="toplevel"):
-        return super().write_gds(filename, unit, precision, auto_rename, max_cellname_length, cellname)
-
-    def write_svg(self, outfile, scaling=10, style=None, fontstyle=None, background="#222", pad="5%", precision=None):
-        return super().write_svg(outfile, scaling, style, fontstyle, background, pad, precision)
-
-    def visualize(self):
-        quickplot(self)
