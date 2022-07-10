@@ -167,7 +167,6 @@ class Model:
             self.y = y_values.mean()
 
         R = Device(self.name)
-        print(f'{self.name} model defined device\n')
         points = [(x_values.min(), y_values.min()), (x_values.max(), y_values.min()), (x_values.max(), y_values.max()), (x_values.min(), y_values.max())]
         self.polygons = R.add_polygon(points=points)
         self.device_ports = {}
@@ -188,7 +187,6 @@ class Model:
 
         self.device = R
         self.device_ref = Device(f'{self.name}_ref').add_ref(self.device)
-        print(f'{self.name} model defined device ref\n')
         self.die: "Die" = die
 
         self.circuit = Circuit(self)
