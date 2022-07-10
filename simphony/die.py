@@ -1,3 +1,4 @@
+from random import choice
 from typing import TYPE_CHECKING, List, Tuple
 
 import numpy as np
@@ -51,7 +52,7 @@ class Die(Device):
         """
         for component in components:
             self.device_list.append(component.device)
-            self.device_refs.append(self.device.add_ref(component.device))
+            self.device_refs.append(self.device_grid.add_ref(component.device))
             component.die = self
 
     def _connect(
@@ -83,7 +84,7 @@ class Die(Device):
                     round((dot[0, 0] + dot[1, 1]) - (dot[1, 0] + dot[0, 1])) == 0
                     and np.intersect1d(port1.normal, port2.normal) is not []
                 ):
-                    route_path = pr.route_smooth(port1, port2, path_type="L")
+                    route_path = pr.route_smooth(port1, port2, path_type="L", radius=1, width=pin2._component.width * 1e6)
                 elif (
                     round((dot[0, 0] + dot[1, 1]) - (dot[1, 0] + dot[0, 1])) == 0
                     and np.intersect1d(port1.normal, port2.normal) is []
@@ -94,7 +95,32 @@ class Die(Device):
                         path_type="J",
                         length1=component2.length * 1e6 / 4,
                         length2=component2.length * 1e6 / 4,
+                        radius=1,
+                        width=pin2._component.width * 1e6,
                     )
+                elif (
+                    round((dot[0, 0] + dot[1, 1]) - (dot[1, 0] + dot[0, 1])) == -1
+                    and np.intersect1d(port1.normal, port2.normal) is not []
+                ):
+                    if np.linalg.norm(port1.midpoint - port2.midpoint) == component2.length * 1e6:
+                        route_path = pr.route_smooth(
+                            port1,
+                            port2,
+                            path_type="straight",
+                            radius=1,
+                            width=pin2._component.width * 1e6,
+                        )
+                    else:
+                        route_path = pr.route_smooth(
+                            port1,
+                            port2,
+                            path_type="C",
+                            length1=component2.length * 1e6 / 5,
+                            length2=component2.length * 1e6 / 5,
+                            left1=choice([-1, 1]) * component2.length * 1e6 / 5,
+                            radius=1,
+                            width=pin2._component.width * 1e6,
+                        )
                 elif (
                     round((dot[0, 0] + dot[1, 1]) - (dot[1, 0] + dot[0, 1])) != 0
                     and np.intersect1d(port1.normal, port2.normal) is not []
@@ -116,8 +142,10 @@ class Die(Device):
                         port2,
                         path_type="C",
                         length1=component2.length * 1e6 / 5,
-                        lengtth2=component2.length * 1e6 / 5,
+                        length2=component2.length * 1e6 / 5,
                         left1=component2.length * 1e6 / 5,
+                        radius=1,
+                        width=pin2._component.width * 1e6,
                     )
                 self.device_grid.add(route_path)
         elif not isinstance(
@@ -178,13 +206,15 @@ class Die(Device):
         self, elements="all", direction="x", shape=None, spacing=100, separation=True
     ):
         if direction == "x":
-            self.distribute(
+            self.device_grid.distribute(
                 elements=elements, direction="x", spacing=spacing, separation=separation
             )
+            self.device_grid_refs: DeviceReference = self.device_grid.references
         elif direction == "y":
-            self.distribute(
+            self.device_grid.distribute(
                 elements=elements, direction="y", spacing=spacing, separation=separation
             )
+            self.device_grid_refs: DeviceReference = self.device_grid.references
         elif direction == "grid":
             self.spacing = spacing
             self.device_grid = grid(
@@ -196,4 +226,5 @@ class Die(Device):
             self.device_grid_refs: DeviceReference = self.device_grid.references
 
     def visualize(self):
-        quickplot(self.device_grid)
+        if self.device_grid_refs is not []:
+            quickplot(self.device_grid)
