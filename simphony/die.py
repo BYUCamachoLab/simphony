@@ -39,19 +39,29 @@ class Die(Device):
             else:
                 pin_ = pin2._component.pins[0]
             if None not in (pin1._connection, pin_._connection) and not isinstance(pin2._component, (Subcircuit, Simulation, Laser, Detector)):
-                ref = pr.route_smooth(component1.device_ports[pin1.name], pin_._connection._component.device_ports[pin_._connection.name], path_type='manhattan', width=pin2._component.width * 1e6, length=pin2._component.length * 1e6, radius=1)
-                self.add_ref(ref)
-                self.connect_refs.append(ref)
-                # for device in self.device_list:
-                #     if device.name is component1.name or pin_._connection._component.name:
-                #         self.device_list.remove(device)
+                # ==================================
+                #  NOTE DO NOT REMOVE THESE LINES!!!
+                # ==================================
+                # ref = pr.route_smooth(self.device_grid.references[self.device_list.index(component1.device)].ports[pin1.name], self.device_grid.references[self.device_list.index(pin_._connection._component.device)].ports[pin_._connection.name], radius=1, path_type='manhattan', width=pin2._component.width * 1e6, length=pin2._component.length * 1e6)
+                # self.device_grid.add(ref)
+                
+                port1 = self.device_grid.references[self.device_list.index(component1.device)].ports[pin1.name]
+                port2 =  self.device_grid.references[self.device_list.index(pin_._connection._component.device)].ports[pin_._connection.name]
+                dot = np.dot(port1.normal, port2.normal.T)
+                if round((dot[0,0] + dot[1,1]) - (dot[1,0] + dot[0,1])) == 0 and np.intersect1d(port1.normal, port2.normal) is not []:
+                    route_path = pr.route_smooth(port1, port2, path_type='L')
+                elif round((dot[0,0] + dot[1,1]) - (dot[1,0] + dot[0,1])) == 0 and np.intersect1d(port1.normal, port2.normal) is []:
+                    route_path = pr.route_smooth(port1, port2, path_type='J', length1=component2.length * 1e6 / 4, length2=component2.length * 1e6 / 4)
+                elif round((dot[0,0] + dot[1,1]) - (dot[1,0] + dot[0,1])) != 0 and np.intersect1d(port1.normal, port2.normal) is not []:
+                    route_path = pr.route_smooth(port1, port2, path_type='U', radius=1, width=component2.width * 1e6, length1=component2.length * 1e6 / 3)
+                elif round((dot[0,0] + dot[1,1]) - (dot[1,0] + dot[0,1])) != 0 and np.intersect1d(port1.normal, port2.normal) is []:
+                    route_path = pr.route_smooth(port1, port2, path_type='C', length1=component2.length * 1e6 / 5, lengtth2=component2.length * 1e6 / 5, left1=component2.length * 1e6 / 5)
+                self.device_grid.add(route_path)
         elif not isinstance(pin1._connection._component, (siepic.Waveguide, Subcircuit, Simulation, Laser, Detector)):
             if self.device_grid_refs[self.device_list.index(component2.device)].parent.ports[pin2.name].orientation == 0 or 180:
                 overlap = np.linalg.norm(self.device_grid_refs[self.device_list.index(component2.device)].parent.ports[pin2.name].midpoint + self.device_grid_refs[self.device_list.index(component1.device)].parent.ports[pin1.name].midpoint) + self.spacing[0]
-                print(f'overlap={overlap}')
             elif self.device_grid_refs[self.device_list.index(component2.device)].parent.ports[pin2.name].orientation == 90 or 270:
                 overlap = np.linalg.norm(self.device_grid_refs[self.device_list.index(component2.device)].parent.ports[pin2.name].midpoint + self.device_grid_refs[self.device_list.index(component1.device)].parent.ports[pin1.name].midpoint) + self.spacing[1]
-                print(f'overlap={overlap}')
             self.device_grid_refs[self.device_list.index(component1.device)].connect(self.device_grid_refs[self.device_list.index(component1.device)].parent.ports[pin1.name], self.device_grid_refs[self.device_list.index(component2.device)].parent.ports[pin2.name], overlap=overlap)
 
     def distribute_devices(self, elements='all', direction="x", shape=None, spacing=100, separation=True):
@@ -73,4 +83,4 @@ class Die(Device):
         return super().write_svg(outfile, scaling, style, fontstyle, background, pad, precision)
 
     def visualize(self):
-        quickplot(self.device_grid_refs)
+        quickplot(self.device_grid)
