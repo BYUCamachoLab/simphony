@@ -266,6 +266,7 @@ class TestSimulation:
         assert len(data) == 2
         assert len(data[0][0][0]) == 101
 
+
 class TestSingleDetector:
     result = 0.00017544
     results = [

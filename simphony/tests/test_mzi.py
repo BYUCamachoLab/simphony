@@ -1,10 +1,11 @@
 from time import time
+
 import matplotlib.pyplot as plt
-from numpy import log10
 import numpy as np
+from numpy import log10
 
 from simphony.libraries import siepic
-from simphony.simulation import Simulation, Laser, Detector
+from simphony.simulation import Detector, Laser, Simulation
 
 gc_input = siepic.GratingCoupler(name="gc_input")
 y_splitter = siepic.YBranch(name="y_splitter")
@@ -40,17 +41,17 @@ with Simulation(fs=10e9, seed=117) as simulator:
 
     start = time()
     data = simulator.layout_aware_simulation(runs=10, num_samples=1)
-    end=time()
-    print(start-end)
+    end = time()
+    print(start - end)
     results = data
 
 # for f, p in results:
-  # plt.plot(f, p)
+# plt.plot(f, p)
 
 g = []
 f = np.linspace(187370000000000.0, 199862000000000.0, 500)
 for p in results:
-    p = 10*np.log10(p)
+    p = 10 * np.log10(p)
     _p = []
     for val1 in p:
         for val2 in val1:
@@ -69,20 +70,20 @@ for i in range(len(g)):
     # print(np.max(g[i][:]))
 x = np.sort(max)
 
-y = 1. * np.arange(len(max)) / (len(max) - 1)
+y = 1.0 * np.arange(len(max)) / (len(max) - 1)
 
 plt.plot(x, y, label="Simphony")
 
 data = np.loadtxt("C:\\Users\\12269\\Downloads\\mzi_Gain_VW.txt")
 data = data[:2000000]
-data = np.reshape(data, (2000,1000))
+data = np.reshape(data, (2000, 1000))
 max = []
 
 for i in range(data.shape[1]):
     max.append(np.max(data[:][i]))
 x = np.sort(max)
 
-y = 1. * np.arange(len(max)) / (len(max) - 1)
+y = 1.0 * np.arange(len(max)) / (len(max) - 1)
 
 plt.plot(x, y, label="Lumerical")
 plt.xlabel("max. Transmission (dB)")

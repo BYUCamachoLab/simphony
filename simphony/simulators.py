@@ -84,7 +84,10 @@ class Simulator(Model):
 
         # if the scattering parameters for the circuit are cached, use those
         try:
-            if s_parameters_method == "monte_carlo_s_parameters" or "layout_aware_monte_carlo_s_parameters":
+            if (
+                s_parameters_method == "monte_carlo_s_parameters"
+                or "layout_aware_monte_carlo_s_parameters"
+            ):
                 raise RuntimeError("No caching for Monte Carlo simulations.")
 
             s_params = self.__class__.scache[self.circuit]
@@ -215,14 +218,16 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
         # get x and y co-ordinates
         components = self.circuit._get_components()[:-1]
         if len(coords) != len(components):
-            raise ValueError('Incorrect number of component coordinates passed to argument "coords".')
+            raise ValueError(
+                'Incorrect number of component coordinates passed to argument "coords".'
+            )
 
         for k, v in coords.items():
             if k in components:
-                x[components.index(k)] = v['x']
-                y[components.index(k)] = v['y']
+                x[components.index(k)] = v["x"]
+                y[components.index(k)] = v["y"]
             else:
-                raise KeyError(f'Component {k} not in circuit.')
+                raise KeyError(f"Component {k} not in circuit.")
 
         n = len(self.circuit._get_components()) - 1
         corr_matrix_w = np.zeros((n, n))
@@ -232,7 +237,9 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
         for i in range(n):
             for k in range(n):
 
-                corr_val = np.exp(- ((x[k] - x[i]) ** 2 + (y[k] - y[i]) ** 2) / (0.5 * (l ** 2)))
+                corr_val = np.exp(
+                    -((x[k] - x[i]) ** 2 + (y[k] - y[i]) ** 2) / (0.5 * (l ** 2))
+                )
 
                 corr_matrix_w[i][k] = corr_matrix_w[k][i] = corr_val
                 corr_matrix_t[i][k] = corr_matrix_t[k][i] = corr_val
@@ -262,7 +269,15 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
         corr_sample_matrix_t = np.dot(l_t, X)
         return corr_sample_matrix_w, corr_sample_matrix_t
 
-    def simulate(self, coords: dict = {}, sigmaw: float = 5, sigmat: float = 2, l: float = 4.5e-3, runs: int = 10, **kwargs) -> Tuple[np.array, np.array]:
+    def simulate(
+        self,
+        coords: dict = {},
+        sigmaw: float = 5,
+        sigmat: float = 2,
+        l: float = 4.5e-3,
+        runs: int = 10,
+        **kwargs,
+    ) -> Tuple[np.array, np.array]:
         """Runs the Monte Carlo sweep simulation for the circuit.
 
         Parameters
@@ -286,7 +301,9 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
             The number of Monte Carlo iterations to run (default 10).
         """
         results = []
-        corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(coords, sigmaw, sigmat, l, runs)
+        corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(
+            coords, sigmaw, sigmat, l, runs
+        )
         components = self.circuit._get_components()
         n = len(components) - 1
         for i in range(runs):
@@ -295,10 +312,15 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
             for idx in range(n):
 
                 # update component parameters
-                components[idx].update_variations(corr_w=corr_sample_matrix_w[idx][i], corr_t=corr_sample_matrix_t[idx][i])
+                components[idx].update_variations(
+                    corr_w=corr_sample_matrix_w[idx][i],
+                    corr_t=corr_sample_matrix_t[idx][i],
+                )
 
-            s_parameters_method = "s_parameters" if i == 0 else "layout_aware_monte_carlo_s_parameters"
-            print(f'Run {i} of {runs}')
+            s_parameters_method = (
+                "s_parameters" if i == 0 else "layout_aware_monte_carlo_s_parameters"
+            )
+            print(f"Run {i} of {runs}")
             results.append(
                 super().simulate(**kwargs, s_parameters_method=s_parameters_method)
             )

@@ -83,8 +83,8 @@ class Pin:
         self._component._on_connect(pin._component)
 
         if self._component.die is not None:
-            self._component.die.connect(self._component, pin._component, self, pin)
-                
+            self._component.die._connect(self._component, pin._component, self, pin)
+
     def disconnect(self) -> None:
         """Disconnects this pin to whatever it is connected to."""
         if self._isconnected():

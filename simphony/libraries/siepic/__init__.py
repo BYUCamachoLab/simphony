@@ -81,10 +81,9 @@ from bisect import bisect_left
 from collections import namedtuple
 
 import numpy as np
-from phidl import Device
 import scipy.interpolate as interp
+from phidl import Device
 from scipy.constants import c as SPEED_OF_LIGHT
-from shapely.geometry import Polygon, LineString
 
 from simphony import Model
 from simphony.libraries.siepic import parser
@@ -505,22 +504,10 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
 
     pin_count = 4
     pins_pos = {
-        'pin1': {
-            'x': -35.45,
-            'y': 2.35
-        },
-        'pin2': {
-            'x': -35.45,
-            'y': -2.35
-        },
-        'pin3': {
-            'x': 35.3,
-            'y': 2.35
-        },
-        'pin4': {
-            'x': 35.3,
-            'y': -2.35
-        }
+        "pin1": {"x": -35.45, "y": 2.35},
+        "pin2": {"x": -35.45, "y": -2.35},
+        "pin3": {"x": 35.3, "y": 2.35},
+        "pin4": {"x": 35.3, "y": -2.35},
     }
     _base_path = os.path.join(os.path.dirname(__file__), "source_data", "bdc_TE_source")
     _base_file = string.Template("bdc_Thickness =${thickness} width=${width}.sparam")
@@ -537,13 +524,6 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
         super().__init__(**kwargs, thickness=thickness, width=width, pins_pos=pins_pos)
         self._unfix_component()
 
-    def _update_polygon(self):
-        self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
-        try:
-            self.polygon = Polygon(tuple(self.coords))
-        except ValueError:  # throws ValueError if there are <3 pins
-            self.polygon = None
-
     def on_args_changed(self):
         try:
             if self.layout_aware:
@@ -555,8 +535,8 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
                 s_params = []
                 for idx in range(0, len(available), 2):
                     d = available[idx]
-                    widths.append(d['width'])
-                    heights.append(d['thickness'])
+                    widths.append(d["width"])
+                    heights.append(d["thickness"])
                     valid_args = available[idx]
                     sparams = parser.read_params(self._get_file(valid_args))
                     self._f, s = parser.build_matrix(sparams)
@@ -572,7 +552,12 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
                 for dimidx in range(dim):
                     s_list.append(s_params[dimidx][:][:][:])
                 s_list = np.asarray(s_list, dtype=complex)
-                self._s = interp.griddata((widths, heights), s_list, (self.width * 1e9, self.thickness * 1e9), method='cubic')
+                self._s = interp.griddata(
+                    (widths, heights),
+                    s_list,
+                    (self.width * 1e9, self.thickness * 1e9),
+                    method="cubic",
+                )
 
                 self.freq_range = (self._f[0], self._f[-1])
 
@@ -582,7 +567,8 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
 
             available = self._source_argsets()
             normalized = [
-                {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()} for d in available
+                {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()}
+                for d in available
             ]
             idx = self._get_matched_args(normalized, self.args)
 
@@ -603,8 +589,8 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
         self.nominal_width = self.width
         self.nominal_thickness = self.thickness
 
-        w = self.width + kwargs.get('corr_w') * 1e-9
-        t = self.thickness + kwargs.get('corr_t') * 1e-9
+        w = self.width + kwargs.get("corr_w") * 1e-9
+        t = self.thickness + kwargs.get("corr_t") * 1e-9
 
         self.layout_aware = True
         self.width = w
@@ -641,22 +627,10 @@ class HalfRing(SiEPIC_PDK_Base):
 
     pin_count = 4
     pins_pos = {
-        'pin1': {
-            'x': 0,
-            'y': 0
-        },
-        'pin2': {
-            'x': 5.0,
-            'y': 10.7
-        },
-        'pin3': {
-            'x': 25.0,
-            'y': 10.7
-        },
-        'pin4': {
-            'x': 30.0,
-            'y': 0.0
-        }
+        "pin1": {"x": 0, "y": 0},
+        "pin2": {"x": 5.0, "y": 10.7},
+        "pin3": {"x": 25.0, "y": 10.7},
+        "pin4": {"x": 30.0, "y": 0.0},
     }
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "ebeam_dc_halfring_straight"
@@ -687,7 +661,7 @@ class HalfRing(SiEPIC_PDK_Base):
         thickness=220e-9,
         couple_length=0.0,
         pins_pos=pins_pos,
-        **kwargs
+        **kwargs,
     ):  # sourcery skip: remove-redundant-if
         super().__init__(
             **kwargs,
@@ -700,34 +674,39 @@ class HalfRing(SiEPIC_PDK_Base):
         )
         self.fixed - False
         R = Device(self.name)
-        x_values = np.asarray([self.pins_pos[k]['x'] for k in self.pins_pos])
-        y_values = np.asarray([self.pins_pos[k]['y'] for k in self.pins_pos])
-        points = [(x_values.min(), y_values.min()), (x_values.max(), y_values.min()), (x_values.max(), y_values.max()), (x_values.min(), y_values.max())]
+        x_values = np.asarray([self.pins_pos[k]["x"] for k in self.pins_pos])
+        y_values = np.asarray([self.pins_pos[k]["y"] for k in self.pins_pos])
+        points = [
+            (x_values.min(), y_values.min()),
+            (x_values.max(), y_values.min()),
+            (x_values.max(), y_values.max()),
+            (x_values.min(), y_values.max()),
+        ]
         self.polygons = R.add_polygon(points=points)
         self.device_ports = {}
 
         for pin in self.pins:
             for i, _ in enumerate(self.pins):
-                x = self.pins_pos[f'pin{i+1}']['x']
-                y = self.pins_pos[f'pin{i+1}']['y']
+                x = self.pins_pos[f"pin{i+1}"]["x"]
+                y = self.pins_pos[f"pin{i+1}"]["y"]
 
             orientation = [0 if x > ((x_values.min() + x_values.max()) / 2) else 180][0]
-            if pin.name == 'pin2' or 'pin3':
+            if pin.name == "pin2" or "pin3":
                 orientation = 90
             try:
-                self.device_ports[pin.name] = R.add_port(name=pin.name, midpoint=[x, y], width = self.width * 1e6, orientation=orientation)
+                self.device_ports[pin.name] = R.add_port(
+                    name=pin.name,
+                    midpoint=[x, y],
+                    width=self.width * 1e6,
+                    orientation=orientation,
+                )
             except AttributeError:
-                self.device_ports[pin.name] = R.add_port(name=pin.name, midpoint=[x, y], width = 5, orientation=orientation)
+                self.device_ports[pin.name] = R.add_port(
+                    name=pin.name, midpoint=[x, y], width=5, orientation=orientation
+                )
 
         self.device = R
-        self.device_ref = Device(f'{self.name}_ref').add_ref(self.device)
-
-    def _update_polygon(self):
-        self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
-        try:
-            self.polygon = Polygon(tuple(self.coords))
-        except ValueError:  # throws ValueError if there are <3 pins
-            self.polygon = None
+        self.device_ref = Device(f"{self.name}_ref").add_ref(self.device)
 
     def on_args_changed(self):
         try:
@@ -740,12 +719,15 @@ class HalfRing(SiEPIC_PDK_Base):
                 s_params = []
                 for idx in range(0, len(available), 2):
                     d = available[idx]
-                    widths.append(d['width'])
-                    heights.append(d['thickness'])
+                    widths.append(d["width"])
+                    heights.append(d["thickness"])
                     valid_args = available[idx]
                     sparams = parser.read_params(self._get_file(valid_args))
                     sparams = list(
-                        filter(lambda sparams: sparams["mode"] == self.polarization, sparams)
+                        filter(
+                            lambda sparams: sparams["mode"] == self.polarization,
+                            sparams,
+                        )
                     )
                     self._f, s = parser.build_matrix(sparams)
 
@@ -762,7 +744,12 @@ class HalfRing(SiEPIC_PDK_Base):
                 for dimidx in range(dim):
                     s_list.append(s_params[dimidx][:][:][:])
                 s_list = np.asarray(s_list, dtype=complex)
-                self._s = interp.griddata((widths, heights), s_list, (self.width * 1e9, self.thickness * 1e9), method='cubic')
+                self._s = interp.griddata(
+                    (widths, heights),
+                    s_list,
+                    (self.width * 1e9, self.thickness * 1e9),
+                    method="cubic",
+                )
 
                 self.freq_range = (self._f[0], self._f[-1])
 
@@ -790,8 +777,8 @@ class HalfRing(SiEPIC_PDK_Base):
         self.nominal_width = self.width
         self.nominal_thickness = self.thickness
 
-        w = self.width + kwargs.get('corr_w') * 1e-9
-        t = self.thickness + kwargs.get('corr_t') * 1e-9
+        w = self.width + kwargs.get("corr_w") * 1e-9
+        t = self.thickness + kwargs.get("corr_t") * 1e-9
 
         self.layout_aware = True
         self.width = w
@@ -824,22 +811,10 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
 
     pin_count = 4
     pins_pos = {
-        'pin1': {
-            'x': 0.0,
-            'y': 10.0
-        },
-        'pin2': {
-            'x': 0.0,
-            'y': 0.0
-        },
-        'pin3': {
-            'x': 45.278,
-            'y': 10.0
-        },
-        'pin4': {
-            'x': 45.278,
-            'y': 0.0
-        }
+        "pin1": {"x": 0.0, "y": 10.0},
+        "pin2": {"x": 0.0, "y": 0.0},
+        "pin3": {"x": 45.278, "y": 10.0},
+        "pin4": {"x": 45.278, "y": 0.0},
     }
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "ebeam_dc_te1550"
@@ -859,7 +834,9 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
         self._unfix_component()
 
     def _update_polygon(self):
-        self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
+        self.coords = [
+            (self.pins_pos[pin]["x"], self.pins_pos[pin]["y"]) for pin in self.pins_pos
+        ]
         try:
             self.polygon = Polygon(tuple(self.coords))
         except ValueError:  # throws ValueError if there are <3 pins
@@ -875,7 +852,7 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
                 s_params = []
                 for idx in range(len(available)):
                     d = available[idx]
-                    Lcs.append(d['Lc'])
+                    Lcs.append(d["Lc"])
                     valid_args = available[idx]
                     sparams = parser.read_params(self._get_file(valid_args))
                     self._f, s = parser.build_matrix(sparams)
@@ -896,7 +873,9 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
                             for dimidx in range(dim):
                                 s_list.append(s_params[dimidx][freqidx][inpidx][outidx])
 
-                            s_interp = interp.interp1d(Lcs, np.asarray(s_list), kind='cubic')
+                            s_interp = interp.interp1d(
+                                Lcs, np.asarray(s_list), kind="cubic"
+                            )
                             s_new[freqidx][inpidx][outidx] = s_interp(self.Lc * 1e6)
 
                 self._s = s_new
@@ -928,7 +907,7 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
     def update_variations(self, **kwargs):
         self.nominal_Lc = self.Lc
 
-        w = self.nominal_Lc + kwargs.get('corr_w') * 1e-6
+        w = self.nominal_Lc + kwargs.get("corr_w") * 1e-6
 
         self.layout_aware = True
         self.Lc = w
@@ -959,12 +938,7 @@ class Terminator(SiEPIC_PDK_Base):
     """
 
     pin_count = 1
-    pins_pos = {
-        'pin1': {
-            'x': 0.0,
-            'y': 0.0
-        }
-    }
+    pins_pos = {"pin1": {"x": 0.0, "y": 0.0}}
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "ebeam_terminator_te1550"
     )
@@ -1039,16 +1013,7 @@ class GratingCoupler(SiEPIC_PDK_Base):
     """
 
     pin_count = 2
-    pins_pos = {
-        'pin1': {
-            'x': 0.0,
-            'y': 0.0
-        },
-        'pin2': {
-            'x': -20.4,
-            'y': 0.0
-        }
-    }
+    pins_pos = {"pin1": {"x": 0.0, "y": 0.0}, "pin2": {"x": -20.4, "y": 0.0}}
     _base_path = os.path.join(os.path.dirname(__file__), "source_data", "gc_source")
     _base_file = string.Template(
         "GC_${polarization}1550_thickness=${thickness} deltaw=${deltaw}.txt"
@@ -1064,9 +1029,15 @@ class GratingCoupler(SiEPIC_PDK_Base):
         r"(?:\.txt)"
     )
 
-    def __init__(self, thickness=220e-9, deltaw=0, polarization="TE", pins_pos=pins_pos, **kwargs):
+    def __init__(
+        self, thickness=220e-9, deltaw=0, polarization="TE", pins_pos=pins_pos, **kwargs
+    ):
         super().__init__(
-            **kwargs, thickness=thickness, deltaw=deltaw, polarization=polarization, pins_pos=pins_pos,
+            **kwargs,
+            thickness=thickness,
+            deltaw=deltaw,
+            polarization=polarization,
+            pins_pos=pins_pos,
         )
 
         self.polygon = None
@@ -1088,10 +1059,12 @@ class GratingCoupler(SiEPIC_PDK_Base):
                     thicknesses.append(round(str2float(thickness[1]) * 1e-9, 15))
                     deltaws.append(round(str2float(deltaw[1]) * 1e-9, 15))
 
-                if self.polarization == 'TE':
+                if self.polarization == "TE":
                     for idx in range(round(len(thicknesses) / 2)):
                         valid_args = available[idx]
-                        params = np.genfromtxt(self._get_file(valid_args), delimiter="\t")
+                        params = np.genfromtxt(
+                            self._get_file(valid_args), delimiter="\t"
+                        )
                         self._f = params[:, 0]
                         s = np.zeros((len(self._f), 2, 2), dtype="complex128")
                         s[:, 0, 0] = params[:, 1] * np.exp(1j * params[:, 2])
@@ -1112,12 +1085,22 @@ class GratingCoupler(SiEPIC_PDK_Base):
                     for dimidx in range(dim):
                         s_list.append(s_params[dimidx][:][:][:])
                     s_list = np.asarray(s_list, dtype=complex)
-                    self._s = interp.griddata((thicknesses[0:round(len(thicknesses) / 2)], deltaws[0:round(len(deltaws) / 2)]), s_list, (self.thickness, self.deltaw), method='cubic')
+                    self._s = interp.griddata(
+                        (
+                            thicknesses[0 : round(len(thicknesses) / 2)],
+                            deltaws[0 : round(len(deltaws) / 2)],
+                        ),
+                        s_list,
+                        (self.thickness, self.deltaw),
+                        method="cubic",
+                    )
 
-                elif self.polarization == 'TM':
+                elif self.polarization == "TM":
                     for idx in range(round(len(thicknesses) / 2) + 1, len(thicknesses)):
                         valid_args = available[idx]
-                        params = np.genfromtxt(self._get_file(valid_args), delimiter="\t")
+                        params = np.genfromtxt(
+                            self._get_file(valid_args), delimiter="\t"
+                        )
                         self._f = params[:, 0]
                         s = np.zeros((len(self._f), 2, 2), dtype="complex128")
                         s[:, 0, 0] = params[:, 1] * np.exp(1j * params[:, 2])
@@ -1138,7 +1121,17 @@ class GratingCoupler(SiEPIC_PDK_Base):
                     for dimidx in range(dim):
                         s_list.append(s_params[dimidx][:][:][:])
                     s_list = np.asarray(s_list, dtype=complex)
-                    self._s = interp.griddata((thicknesses[round(len(thicknesses) / 2) + 1, len(thicknesses)], deltaws[round(len(thicknesses) / 2) + 1, len(thicknesses)]), s_list, (self.thickness, self.deltaw), method='cubic')
+                    self._s = interp.griddata(
+                        (
+                            thicknesses[
+                                round(len(thicknesses) / 2) + 1, len(thicknesses)
+                            ],
+                            deltaws[round(len(thicknesses) / 2) + 1, len(thicknesses)],
+                        ),
+                        s_list,
+                        (self.thickness, self.deltaw),
+                        method="cubic",
+                    )
 
                 self.freq_range = (self._f[0], self._f[-1])
 
@@ -1187,8 +1180,8 @@ class GratingCoupler(SiEPIC_PDK_Base):
         self.nominal_deltaw = self.deltaw
         self.nominal_thickness = self.thickness
 
-        w = self.deltaw + kwargs.get('corr_w') * 1e-9
-        t = self.thickness + kwargs.get('corr_t') * 1e-9
+        w = self.deltaw + kwargs.get("corr_w") * 1e-9
+        t = self.thickness + kwargs.get("corr_t") * 1e-9
 
         self.layout_aware = True
         self.deltaw = w
@@ -1262,7 +1255,7 @@ class Waveguide(SiEPIC_PDK_Base):
         sigma_ne=0.05,
         sigma_ng=0.05,
         sigma_nd=0.0001,
-        **kwargs
+        **kwargs,
     ):
         if polarization not in ["TE", "TM"]:
             raise ValueError(
@@ -1271,16 +1264,7 @@ class Waveguide(SiEPIC_PDK_Base):
                 )
             )
 
-        pins_pos = {
-                    'pin1': {
-                        'x': 0.0,
-                        'y': 0.0
-                    },
-                    'pin2': {
-                        'x': length * 1e6,
-                        'y': 0.0
-                    }
-                }
+        pins_pos = {"pin1": {"x": 0.0, "y": 0.0}, "pin2": {"x": length * 1e6, "y": 0.0}}
 
         # TODO: TM calculations
         if polarization == "TM":
@@ -1298,47 +1282,15 @@ class Waveguide(SiEPIC_PDK_Base):
             pins_pos=pins_pos,
         )
 
-        for key1 in self.pins_pos.keys():
-            for key2 in self.pins_pos.keys():
-                self.relative_coords[f'{key1}_{key2}'] = {
-                    'x': self.pins_pos[f'{key1}']['x'] - self.pins_pos[f'{key2}']['x'],
-                    'y': self.pins_pos[f'{key1}']['y'] - self.pins_pos[f'{key2}']['y']
-                }
-
-        x_values = np.asarray([self.pins_pos[k]['x'] for k in self.pins_pos])
-        y_values = np.asarray([self.pins_pos[k]['y'] for k in self.pins_pos])
-
-        self.x = x_values.mean()
-        self.y = y_values.mean()
-
-        for i, _ in enumerate(self.pins):
-            self.coords_wrt_origin[f'pin{i+1}'] = {
-                'x': self.pins_pos[f'pin{i+1}']['x'] - self.x,
-                'y': self.pins_pos[f'pin{i+1}']['y'] - self.y
-            }
-
-        self._unfix_component()
-
-        self.coords_wrt_origin = {
-            'pin1': {
-                'x': None,
-                'y': None
-            },
-            'pin2': {
-                'x': None,
-                'y': None
-            }
-        }
-
-        coords = [(self.pins_pos[val]['x'], self.pins_pos[val]['y']) for val in self.pins_pos]
-        self.polygon = LineString(coords)
         self.device = Device(self.name)
-        self.device_ref = Device(f'{self.name}_ref').add_ref(self.device)
+        self.device_ref = Device(f"{self.name}_ref").add_ref(self.device)
 
         self.regenerate_monte_carlo_parameters()
 
     def _update_polygon(self):
-        self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
+        self.coords = [
+            (self.pins_pos[pin]["x"], self.pins_pos[pin]["y"]) for pin in self.pins_pos
+        ]
         self.polygon = LineString(tuple(self.coords))
 
     def on_args_changed(self):
@@ -1351,8 +1303,8 @@ class Waveguide(SiEPIC_PDK_Base):
                 widths = []
                 heights = []
                 for d in available:
-                    widths.append(d['width'])
-                    heights.append(d['height'])
+                    widths.append(d["width"])
+                    heights.append(d["height"])
 
                 lam0_all = []
                 ne_all = []
@@ -1380,10 +1332,30 @@ class Waveguide(SiEPIC_PDK_Base):
                 ng_all = np.asarray(ng_all).astype(float)
                 nd_all = np.asarray(nd_all).astype(float)
 
-                self.lam0 = interp.griddata((widths, heights), lam0_all, (self.width * 1e9, self.height * 1e9), method='cubic')
-                self.ne = interp.griddata((widths, heights), ne_all, (self.width * 1e9, self.height * 1e9), method='cubic')
-                self.ng = interp.griddata((widths, heights), ng_all, (self.width * 1e9, self.height * 1e9), method='cubic')
-                self.nd = interp.griddata((widths, heights), nd_all, (self.width * 1e9, self.height * 1e9), method='cubic')
+                self.lam0 = interp.griddata(
+                    (widths, heights),
+                    lam0_all,
+                    (self.width * 1e9, self.height * 1e9),
+                    method="cubic",
+                )
+                self.ne = interp.griddata(
+                    (widths, heights),
+                    ne_all,
+                    (self.width * 1e9, self.height * 1e9),
+                    method="cubic",
+                )
+                self.ng = interp.griddata(
+                    (widths, heights),
+                    ng_all,
+                    (self.width * 1e9, self.height * 1e9),
+                    method="cubic",
+                )
+                self.nd = interp.griddata(
+                    (widths, heights),
+                    nd_all,
+                    (self.width * 1e9, self.height * 1e9),
+                    method="cubic",
+                )
 
                 self.enable_autoupdate()
 
@@ -1392,7 +1364,8 @@ class Waveguide(SiEPIC_PDK_Base):
 
             available = self._source_argsets()
             normalized = [
-                {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()} for d in available
+                {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()}
+                for d in available
             ]
             idx = self._get_matched_args(normalized, self.args)
 
@@ -1469,8 +1442,8 @@ class Waveguide(SiEPIC_PDK_Base):
         self.nominal_width = self.width
         self.nominal_height = self.height
 
-        w = self.width + kwargs.get('corr_w') * 1e-9
-        h = self.height + kwargs.get('corr_t') * 1e-9
+        w = self.width + kwargs.get("corr_w") * 1e-9
+        h = self.height + kwargs.get("corr_t") * 1e-9
 
         self.layout_aware = True
         self.width = w
@@ -1527,18 +1500,9 @@ class YBranch(SiEPIC_PDK_Base):
 
     pin_count = 3
     pins_pos = {
-        'pin1': {
-            'x': -7.4,
-            'y': 0.0
-        },
-        'pin2': {
-            'x': 7.4,
-            'y': 2.75
-        },
-        'pin3': {
-            'x': 7.4,
-            'y': -2.75
-        }
+        "pin1": {"x": -7.4, "y": 0.0},
+        "pin2": {"x": 7.4, "y": 2.75},
+        "pin3": {"x": 7.4, "y": -2.75},
     }
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "y_branch_source"
@@ -1556,7 +1520,14 @@ class YBranch(SiEPIC_PDK_Base):
         r"(?:\.sparam)"
     )
 
-    def __init__(self, thickness=220e-9, width=500e-9, polarization="TE", pins_pos=pins_pos, **kwargs):
+    def __init__(
+        self,
+        thickness=220e-9,
+        width=500e-9,
+        polarization="TE",
+        pins_pos=pins_pos,
+        **kwargs,
+    ):
         if polarization not in ["TE", "TM"]:
             raise ValueError(
                 "Unknown polarization value '{}', must be one of 'TE' or 'TM'".format(
@@ -1564,12 +1535,18 @@ class YBranch(SiEPIC_PDK_Base):
                 )
             )
         super().__init__(
-            **kwargs, thickness=thickness, width=width, polarization=polarization, pins_pos=pins_pos,
+            **kwargs,
+            thickness=thickness,
+            width=width,
+            polarization=polarization,
+            pins_pos=pins_pos,
         )
         self._unfix_component()
 
     def _update_polygon(self):
-        self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
+        self.coords = [
+            (self.pins_pos[pin]["x"], self.pins_pos[pin]["y"]) for pin in self.pins_pos
+        ]
         try:
             self.polygon = Polygon(tuple(self.coords))
         except ValueError:  # throws ValueError if there are <3 pins
@@ -1587,12 +1564,15 @@ class YBranch(SiEPIC_PDK_Base):
                 s_params = []
                 for idx in range(0, len(available)):
                     d = available[idx]
-                    widths.append(d['width'])
-                    heights.append(d['thickness'])
+                    widths.append(d["width"])
+                    heights.append(d["thickness"])
                     valid_args = available[idx]
                     sparams = parser.read_params(self._get_file(valid_args))
                     sparams = list(
-                        filter(lambda sparams: sparams["mode"] == self.polarization, sparams)
+                        filter(
+                            lambda sparams: sparams["mode"] == self.polarization,
+                            sparams,
+                        )
                     )
                     self._f, s = parser.build_matrix(sparams)
 
@@ -1608,7 +1588,12 @@ class YBranch(SiEPIC_PDK_Base):
                 for dimidx in range(dim):
                     s_list.append(s_params[dimidx][:][:][:])
                 s_list = np.asarray(s_list, dtype=complex)
-                self._s = interp.griddata((widths, heights), s_list, (self.width * 1e9, self.thickness * 1e9), method='cubic')
+                self._s = interp.griddata(
+                    (widths, heights),
+                    s_list,
+                    (self.width * 1e9, self.thickness * 1e9),
+                    method="cubic",
+                )
 
                 self.freq_range = (self._f[0], self._f[-1])
 
@@ -1619,7 +1604,8 @@ class YBranch(SiEPIC_PDK_Base):
 
             available = self._source_argsets()
             normalized = [
-                {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()} for d in available
+                {k: round(str2float(v) * 1e-9, 21) for k, v in d.items()}
+                for d in available
             ]
             idx = self._get_matched_args(normalized, self.args)
 
@@ -1656,8 +1642,8 @@ class YBranch(SiEPIC_PDK_Base):
         self.nominal_width = self.width
         self.nominal_thickness = self.thickness
 
-        w = self.width + kwargs.get('corr_w') * 1e-9
-        t = self.thickness + kwargs.get('corr_t') * 1e-9
+        w = self.width + kwargs.get("corr_w") * 1e-9
+        t = self.thickness + kwargs.get("corr_t") * 1e-9
 
         self.layout_aware = True
         self.width = w

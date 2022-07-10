@@ -19,11 +19,9 @@ they form a circuit. There are three ways to connect components:
 """
 
 import os
-from typing import ClassVar, Dict, List, Optional, Tuple, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from phidl import quickplot
-from shapely.geometry import Polygon
 from phidl.geometry import Device
 
 from simphony.connect import create_block_diagonal, innerconnect_s
@@ -33,6 +31,7 @@ from simphony.pins import Pin, PinList
 
 if TYPE_CHECKING:
     from simphony.die import Die
+
 
 class Model:
     """The basic element type describing the model for a component with
@@ -67,8 +66,8 @@ class Model:
         *,
         freq_range: Optional[Tuple[Optional[float], Optional[float]]] = None,
         pins: Optional[List[Pin]] = None,
-        pins_pos = {},
-        die = None
+        pins_pos={},
+        die=None,
     ) -> None:
         """Initializes an instance of the model.
 
@@ -125,68 +124,43 @@ class Model:
                         f"{name}.pin_count or {name}.pins needs to be defined."
                     )
 
-        self.x = 0  # initial x-coordinate
-        self.y = 0  # initial y-coordinate
-        self.relative_coords = {}   # holds the relative distances between the co-oridnates
-        self.coords_wrt_origin = {}  # holds the relative distances between the pins and the origin
-
-        # try to compute relative_coords, coords_wrt_origin and polygon
-        # unless KeyError is thrown, in which case, assign None
-        try:
-            for pin1 in self.pins:
-                for pin2 in self.pins:
-                    self.relative_coords[f'{pin1.name}_{pin2.name}'] = {
-                        'x': self.pins_pos[f'{pin1.name}']['x'] - self.pins_pos[f'{pin2.name}']['x'],
-                        'y': self.pins_pos[f'{pin1.name}']['y'] - self.pins_pos[f'{pin2.name}']['y']
-                    }
-
-            for pin in self.pins:
-                self.coords_wrt_origin[f'{pin.name}'] = {
-                    'x': self.pins_pos[f'{pin.name}']['x'] - self.x,
-                    'y': self.pins_pos[f'{pin.name}']['y'] - self.y
-                }
-
-            # unfix the component
-            self._unfix_component()
-
-            self.coords = [(self.pins_pos[pin]['x'], self.pins_pos[pin]['y']) for pin in self.pins_pos]
-            try:
-                self.polygon = Polygon(tuple(self.coords))  # used for checking if the components are intersecting
-            except ValueError:  # throws ValueError if there are <3 pins
-                self.polygon = None
-
-        except KeyError:
-            self.coords = self.polygon = None
-
         # compute origin
-        x_values = np.asarray([self.pins_pos[k]['x'] for k in self.pins_pos])
-        y_values = np.asarray([self.pins_pos[k]['y'] for k in self.pins_pos])
-
-        if len(x_values) > 0 and len(y_values) > 0:
-            self.x = x_values.mean()
-            self.y = y_values.mean()
+        x_values = np.asarray([self.pins_pos[k]["x"] for k in self.pins_pos])
+        y_values = np.asarray([self.pins_pos[k]["y"] for k in self.pins_pos])
 
         R = Device(self.name)
-        points = [(x_values.min(), y_values.min()), (x_values.max(), y_values.min()), (x_values.max(), y_values.max()), (x_values.min(), y_values.max())]
+        points = [
+            (x_values.min(), y_values.min()),
+            (x_values.max(), y_values.min()),
+            (x_values.max(), y_values.max()),
+            (x_values.min(), y_values.max()),
+        ]
         self.polygons = R.add_polygon(points=points)
         self.device_ports = {}
 
         for pin in self.pins:
-            x = self.pins_pos[f'{pin.name}']['x']
-            y = self.pins_pos[f'{pin.name}']['y']
+            x = self.pins_pos[f"{pin.name}"]["x"]
+            y = self.pins_pos[f"{pin.name}"]["y"]
 
             orientation = [0 if x > ((x_values.min() + x_values.max()) / 2) else 180][0]
 
             try:
-                self.device_ports[pin.name] = R.add_port(name=pin.name, midpoint=[x, y], width = 0.5* self.width * 1e6, orientation=orientation)
+                self.device_ports[pin.name] = R.add_port(
+                    name=pin.name,
+                    midpoint=[x, y],
+                    width=0.5 * self.width * 1e6,
+                    orientation=orientation,
+                )
             except AttributeError:
                 try:
-                    self.device_ports[pin.name] = R.add_port(name=pin.name, midpoint=[x, y], width = 5, orientation=orientation)
+                    self.device_ports[pin.name] = R.add_port(
+                        name=pin.name, midpoint=[x, y], width=5, orientation=orientation
+                    )
                 except ValueError:
                     pass
 
         self.device = R
-        self.device_ref = Device(f'{self.name}_ref').add_ref(self.device)
+        self.device_ref = Device(f"{self.name}_ref").add_ref(self.device)
         self.die: "Die" = die
 
         self.circuit = Circuit(self)
@@ -308,28 +282,38 @@ class Model:
         # if origin is not None, Layout-Aware Simulation class has requested to
         # re-arrange the component. Modify the origin, and update pins' positions accordinly.
         if origin is not None:
-            self.x = origin['x']
-            self.y = origin['y']
+            self.x = origin["x"]
+            self.y = origin["y"]
 
             for p in self.pins:
-                if self.coords_wrt_origin[p.name]['x'] is not None:
-                    self.pins_pos[p.name]['x'] = self.x + self.coords_wrt_origin[p.name]['x']
-                if self.coords_wrt_origin[p.name]['y'] is not None:
-                    self.pins_pos[p.name]['y'] = self.y + self.coords_wrt_origin[p.name]['y']
+                if self.coords_wrt_origin[p.name]["x"] is not None:
+                    self.pins_pos[p.name]["x"] = (
+                        self.x + self.coords_wrt_origin[p.name]["x"]
+                    )
+                if self.coords_wrt_origin[p.name]["y"] is not None:
+                    self.pins_pos[p.name]["y"] = (
+                        self.y + self.coords_wrt_origin[p.name]["y"]
+                    )
 
-        # if ignore_pin is not None, one of the pins has been moved. 
+        # if ignore_pin is not None, one of the pins has been moved.
         # Move the other pins to keep the relative positions of the
         # pins consistent, and recompute origin.
         elif ignore_pin is not None and self.fixed is False:
             for p in self.pins_pos.keys():
                 if p is not ignore_pin.name:
-                    if self.relative_coords[f'{ignore_pin.name}_{p}']['x'] is not None:
-                        self.pins_pos[p]['x'] = self.pins_pos[ignore_pin.name]['x'] + self.relative_coords[f'{ignore_pin.name}_{p}']['x']
-                    if self.relative_coords[f'{ignore_pin.name}_{p}']['y'] is not None:
-                        self.pins_pos[p]['y'] = self.pins_pos[ignore_pin.name]['y'] + self.relative_coords[f'{ignore_pin.name}_{p}']['y']
+                    if self.relative_coords[f"{ignore_pin.name}_{p}"]["x"] is not None:
+                        self.pins_pos[p]["x"] = (
+                            self.pins_pos[ignore_pin.name]["x"]
+                            + self.relative_coords[f"{ignore_pin.name}_{p}"]["x"]
+                        )
+                    if self.relative_coords[f"{ignore_pin.name}_{p}"]["y"] is not None:
+                        self.pins_pos[p]["y"] = (
+                            self.pins_pos[ignore_pin.name]["y"]
+                            + self.relative_coords[f"{ignore_pin.name}_{p}"]["y"]
+                        )
 
-            x_values = np.asarray([self.pins_pos[k]['x'] for k in self.pins_pos])
-            y_values = np.asarray([self.pins_pos[k]['y'] for k in self.pins_pos])
+            x_values = np.asarray([self.pins_pos[k]["x"] for k in self.pins_pos])
+            y_values = np.asarray([self.pins_pos[k]["y"] for k in self.pins_pos])
 
             self.x = x_values.mean()
             self.y = y_values.mean()
@@ -687,8 +671,8 @@ class Subcircuit(Model):
                             pin._component = self
                 if pin._isconnected(include_simulators=False) is False:
                     pins_pos[pin.name] = {
-                        'x': component.pins_pos[pin.name]['x'],
-                        'y': component.pins_pos[pin.name]['y']
+                        "x": component.pins_pos[pin.name]["x"],
+                        "y": component.pins_pos[pin.name]["y"],
                     }
 
         if len(pins) == 0:
@@ -698,7 +682,9 @@ class Subcircuit(Model):
 
         self._wrapped_circuit = circuit
 
-        super().__init__(**kwargs, freq_range=freq_range, name=name, pins=pins, pins_pos=pins_pos)
+        super().__init__(
+            **kwargs, freq_range=freq_range, name=name, pins=pins, pins_pos=pins_pos
+        )
 
     def _s_parameters(
         self,
@@ -758,7 +744,10 @@ class Subcircuit(Model):
 
                 # convert to numpy array for the rest of the function
                 s_params = np.array(s_params)
-            elif s_parameters_method == "monte_carlo_s_parameters" or "layout_aware_monte_carlo_s_parameters":
+            elif (
+                s_parameters_method == "monte_carlo_s_parameters"
+                or "layout_aware_monte_carlo_s_parameters"
+            ):
                 # don't cache Monte Carlo scattering parameters
                 s_params = getattr(component, s_parameters_method)(freqs)
 

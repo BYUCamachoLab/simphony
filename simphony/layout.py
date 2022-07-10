@@ -15,6 +15,7 @@ import os
 from typing import TYPE_CHECKING, List, Optional
 
 import numpy as np
+
 from simphony.formatters import CircuitFormatter, CircuitJSONFormatter
 
 if TYPE_CHECKING:
