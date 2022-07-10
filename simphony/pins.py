@@ -82,9 +82,7 @@ class Pin:
         # let the components know that a new connection was established
         self._component._on_connect(pin._component)
 
-        if None not in (self._component.die , pin._component.die) and (self._component.die != pin._component.die):
-            raise RuntimeError(f'The components {pin._component} and {pin._connection._component} are not in the same die.')
-        elif self._component.die is not None:
+        if self._component.die is not None:
             self._component.die.connect(self._component, pin._component, self, pin)
                 
     def disconnect(self) -> None:

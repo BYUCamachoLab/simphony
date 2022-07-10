@@ -68,7 +68,7 @@ class Model:
         freq_range: Optional[Tuple[Optional[float], Optional[float]]] = None,
         pins: Optional[List[Pin]] = None,
         pins_pos = {},
-        die = None,
+        die = None
     ) -> None:
         """Initializes an instance of the model.
 
@@ -190,8 +190,6 @@ class Model:
         self.device_ref = Device(f'{self.name}_ref').add_ref(self.device)
         print(f'{self.name} model defined device ref\n')
         self.die: "Die" = die
-        if self.die is not None:
-            self.die.add_component([self])
 
         self.circuit = Circuit(self)
 
@@ -635,7 +633,6 @@ class Subcircuit(Model):
         name: str = "",
         *,
         permanent: bool = True,
-        die=None,
         **kwargs,
     ) -> None:
         """Initializes a subcircuit from the given circuit.
@@ -703,7 +700,7 @@ class Subcircuit(Model):
 
         self._wrapped_circuit = circuit
 
-        super().__init__(**kwargs, freq_range=freq_range, name=name, pins=pins, pins_pos=pins_pos, die=die)
+        super().__init__(**kwargs, freq_range=freq_range, name=name, pins=pins, pins_pos=pins_pos)
 
     def _s_parameters(
         self,

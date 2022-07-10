@@ -188,7 +188,7 @@ class Circuit(list):
         another circuit."""
         from simphony.models import Subcircuit
 
-        return Subcircuit(self, **kwargs, name=name, die=self.die)
+        return Subcircuit(self, **kwargs, name=name)
 
     @staticmethod
     def from_file(
