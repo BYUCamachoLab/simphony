@@ -672,7 +672,7 @@ class HalfRing(SiEPIC_PDK_Base):
             couple_length=couple_length,
             pins_pos=pins_pos,
         )
-        self.fixed - False
+
         R = Device(self.name)
         x_values = np.asarray([self.pins_pos[k]["x"] for k in self.pins_pos])
         y_values = np.asarray([self.pins_pos[k]["y"] for k in self.pins_pos])
