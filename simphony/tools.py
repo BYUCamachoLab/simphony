@@ -10,6 +10,8 @@ This package contains handy functions useful across simphony submodules
 and to the average user.
 """
 
+from cmath import rect
+import numpy as np
 import re
 
 from scipy.constants import c as SPEED_OF_LIGHT
@@ -27,6 +29,38 @@ MATH_SUFFIXES = {
     "G": "e9",
     "T": "e12",
 }
+
+
+def add_polar(c1, c2):
+    """Adds two polar coordinates together.
+
+    Parameters
+    ----------
+    c1 : (float, float)
+        First polar coordinate
+    c2 : (float, float)
+        Second polar coordinate
+
+    Returns
+    -------
+    result : (float, float)
+        The resulting polar coordinate"""
+    r1, phi1 = c1
+    r2, phi2 = c2
+
+    # add the vectors in rectangular form
+    sum = rect(r1, phi1) + rect(r2, phi2)
+    mag = np.abs(sum)
+    angle = np.angle(sum)
+
+    # calculate how many times the original vectors wrapped around
+    # then add the biggest amount back to our phase
+    # this simulates the steady-state in time-domain
+    wrapped1 = (phi1 // (2 * np.pi)) * (2 * np.pi)
+    wrapped2 = (phi2 // (2 * np.pi)) * (2 * np.pi)
+    biggest = max(wrapped1, wrapped2)
+
+    return (mag, angle + biggest)
 
 
 def str2float(num):

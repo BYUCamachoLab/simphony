@@ -11,18 +11,17 @@ used within the context. Devices include theoretical sources and detectors.
 """
 
 from cmath import rect
-from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple
+from typing import TYPE_CHECKING, Callable, ClassVar, List, Optional, Tuple, Union
 
 import numpy as np
-from scipy.constants import epsilon_0, h, mu_0, c
+from scipy.constants import h
 from scipy.signal import butter, sosfiltfilt
 
 from simphony import Model
-from simphony.tools import wl2freq
+from simphony.tools import add_polar, wl2freq
 
 if TYPE_CHECKING:
     from simphony.layout import Circuit
-
 
 # this variable keeps track of the current simulation context (if any)
 context = None
@@ -85,7 +84,6 @@ class Simulation:
         """
         self.circuit = None
         self.detectors = []
-        self.eta = np.sqrt(mu_0 / (epsilon_0 * 11.68))  # 11.68 is silicon's
         self.freqs = np.array([])
         self.fs = fs
         self.noise = False
@@ -198,6 +196,9 @@ class Simulation:
         # get the scattering parameters
         self.s_params = self.s_parameters(self.freqs)
 
+        # calculate the time-steps for modulation
+        t = np.linspace(0, (self.num_samples - 1) / self.fs, self.num_samples)
+
         # construct the signals determined by the detectors
         signals = []
         for detector in self.detectors:
@@ -207,32 +208,97 @@ class Simulation:
                 output_index = self.circuit.get_pin_index(pin._connection)
 
                 # figure out how the sources interfere
-                transmissions = 0
+                transmissions = np.zeros(
+                    (self.shape[0], self.shape[1], self.num_samples, 2)
+                )
                 for i, pin in enumerate(self.circuit.pins):
                     # calculate transmissions for every source connected to
                     # the circuit
-                    for source in self.sources:
-                        if source.index == i:
+
+                    # find the source that corresponds to this pin
+                    source = None
+                    for s in self.sources:
+                        if s.index == i:
+                            source = s
                             break
                     else:
                         continue
 
-                    # calculate how much this source contributes to the output field
+                    # lookup how much this source contributes to the output field
                     scattering = self.s_params[:, output_index, source.index]
-                    contributions = scattering[:, np.newaxis] * nprect(
-                        np.sqrt(source._coupled_powers * 2 * self.eta),
-                        source.phase,
-                    )
+
+                    # convert to polar coordinates if necessary
+                    # NOTE: complex values should be stored as a tuple. this conversion
+                    # is for backwards compatibility with siepic library. once that gets
+                    # updated, we can remove this, although it will be a breaking change
+                    if np.shape(scattering[0]) != (2,):
+                        scattering = np.column_stack(
+                            (np.abs(scattering), np.angle(scattering))
+                        )
+
+                    if not source.modfn:
+                        # no modulation
+                        contributions = np.stack(
+                            (
+                                scattering[:, 0, np.newaxis]
+                                * np.sqrt(source._coupled_powers),
+                                scattering[:, 1, np.newaxis]
+                                + np.repeat(source.phase, self.shape[1]),
+                            ),
+                            axis=-1,
+                        )
+                        contributions = contributions[:, :, np.newaxis] + np.zeros(
+                            (self.num_samples, 2)
+                        )
+                    else:
+                        contributions = scattering[:, np.newaxis] + np.zeros(
+                            (self.shape[1], 2)
+                        )
+                        contributions = contributions[:, :, np.newaxis] + np.zeros(
+                            (self.num_samples, 2)
+                        )
+                        for i, freq in enumerate(self.freqs):
+                            for j, power in enumerate(source._coupled_powers):
+                                angle = scattering[i, 1]
+                                offset = angle / (2 * np.pi * freq)
+                                t = np.linspace(
+                                    offset,
+                                    offset + (self.num_samples - 1) / self.fs,
+                                    self.num_samples,
+                                )
+
+                                mod = source.modfn(freq, power, t)
+                                if np.shape(mod)[0] == 2:
+                                    contributions[i, j] = np.stack(
+                                        (
+                                            contributions[i, j, 0, 0] * np.sqrt(mod[0]),
+                                            contributions[i, j, 0, 1]
+                                            + source.phase
+                                            + mod[1],
+                                        ),
+                                        axis=-1,
+                                    )
+                                else:
+                                    contributions[i, j] = np.stack(
+                                        (
+                                            contributions[i, j, 0, 0] * np.sqrt(mod),
+                                            contributions[i, j, 0, 1]
+                                            + np.repeat(source.phase, self.num_samples),
+                                        ),
+                                        axis=-1,
+                                    )
 
                     # add all of the different source contributions together
-                    contributions = contributions[:, :, np.newaxis] + np.zeros(
-                        self.num_samples
-                    )
-                    transmissions += contributions
+                    for i in range(self.shape[0]):
+                        for j in range(self.shape[1]):
+                            for k in range(self.num_samples):
+                                transmissions[i, j, k] = add_polar(
+                                    transmissions[i, j, k], contributions[i, j, k]
+                                )
 
                 # convert the output fields to powers
                 self.transmissions.append(transmissions)
-                powers.append((np.abs(transmissions) ** 2 / (2 * self.eta)))
+                powers.append((transmissions[:, :, :, 0] ** 2))
 
             # send the powers through the detectors to convert to signals
             signals.extend(detector._detect(powers))
@@ -312,7 +378,10 @@ class Simulation:
 
         # remove the extra sample if we added one
         if _num_samples != num_samples:
-            return signals[:, :, :num_samples]
+            if signals.ndim == 4:
+                return signals[:, :, :, :num_samples]
+            elif signals.ndim == 3:
+                return signals[:, :, :num_samples]
         else:
             return signals
 
@@ -419,6 +488,7 @@ class Laser(Source):
         self.coupling_ratio = from_db(-np.abs(coupling_loss))
         self.freqs = np.array([])
         self.index = 0
+        self.modfn = None
         self.phase = phase
         self.powers = np.array([])
         self.rin = -np.abs(rin)
@@ -467,6 +537,26 @@ class Laser(Source):
                 size=self.context.num_samples
             )
             return self.rin_dists[i, j]
+
+    def modulate(
+        self,
+        fn: Callable[
+            [float, float, np.array], Union[np.array, Tuple[np.array, np.array]]
+        ],
+    ) -> "Laser":
+        """Modulates the laser.
+
+        Parameters
+        ----------
+        fn :
+            The function that defines the modulation. fn(freq, power, t).
+            It takes the base power and a numpy array of time steps and returns what the
+            actual power should be at at each time (numpy array).
+
+            The values in the array can either be a float, to modulate power,
+            or a tuple with (power, phase) to modulate phase.
+        """
+        self.modfn = fn
 
     def powersweep(self, start: float, end: float, num: int = 500) -> "Laser":
         """Sets the powers to sweep during simulation.
@@ -561,14 +651,11 @@ class Detector(SimulationModel):
                         rin = source.get_rin(self._get_bandwidth()[0])
                         dist = source.get_rin_dist(i, j)
 
-                        # calculate the standard deviation of the RIN noise
-                        std = (
-                            from_db(to_db(power[i][j][0]) + rin, 20)
-                            if power[i][j][0]
-                            else 0
-                        )
-
-                        noise += std * dist
+                        for k in range(self.context.num_samples):
+                            if power[i][j][k] > 0:
+                                noise[k] = (
+                                    from_db(to_db(power[i][j][k]) + rin) * dist[k]
+                                )
 
                     # store the RIN noise for later use
                     self.rin_dists[i][j] = noise
@@ -578,24 +665,21 @@ class Detector(SimulationModel):
                         size=self.context.num_samples
                     )
 
-                    # power[i][j] has the correct shape but all of the values
-                    # are the raw power. so we get one of those values and
-                    # calculate the corresponding photon number. we then
-                    # take a photon number distribution and convert it to power
-                    # which we then use as our samples.
-                    power[i][j] = hffs * self.context.rng.poisson(
-                        power[i][j][0] / hffs, self.context.num_samples
-                    )
+                    # add the shot noise
+                    for k in range(self.context.num_samples):
+                        power[i][j][k] += hffs * self.context.rng.poisson(
+                            power[i][j][k] / hffs
+                        )
 
         # amplify the signal
         signal = (power + self.rin_dists) * self.conversion_gain
 
-        # add electrical noise on top
-        signal += self.noise_dists
-
         # filter the signal
         if self.context.num_samples > 1:
             signal = self._filter(signal)
+
+        # add electrical noise on top
+        signal += self.noise_dists
 
         # wrap the signal back up
         return np.array([signal])
@@ -610,10 +694,10 @@ class Detector(SimulationModel):
         """
         bw = self._get_bandwidth()
         sos = (
-            butter(6, bw[2], "lowpass", fs=self.context.fs, output="sos")
+            butter(1, bw[2], "lowpass", fs=self.context.fs, output="sos")
             if bw[1] == 0
             else butter(
-                6,
+                1,
                 [
                     bw[1],
                     bw[2],
@@ -663,9 +747,6 @@ class DifferentialDetector(Detector):
         rf_high_fc=1e9,
         rf_low_fc=0,
         rf_noise=0,
-        mod_freq=0,
-        mod_ampl=0,
-        dl=0,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -683,9 +764,6 @@ class DifferentialDetector(Detector):
         self.rf_high_fc = rf_high_fc
         self.rf_low_fc = rf_low_fc
         self.rf_noise = rf_noise
-        self.mod_freq = mod_freq
-        self.mod_ampl = mod_ampl
-        self.dl = dl
         self.rf_noise_dists = np.array([])
         self.rf_rin_dists1 = np.array([])
         self.rf_rin_dists2 = np.array([])
@@ -719,9 +797,6 @@ class DifferentialDetector(Detector):
                     rf_noise1 = np.zeros(self.context.num_samples)
                     rf_noise2 = np.zeros(self.context.num_samples)
 
-                    p1_init = p1[i][j][0]
-                    p2_init = p2[i][j][0]
-
                     # every source will contribute different noise
                     for source in self.context.sources:
                         # get the RIN specs from the laser to ensure that the
@@ -730,29 +805,39 @@ class DifferentialDetector(Detector):
                         rf_rin = source.get_rin(self._get_rf_bandwidth()[0])
                         dist = source.get_rin_dist(i, j)
 
-                        # if the two powers are different, we need to adjust
-                        # the CMRR to account for the difference
+                        for k in range(self.context.num_samples):
+                            # if the two powers are different, we need to adjust
+                            # the CMRR to account for the difference
+                            cmrr = self.rf_cmrr  # CMRR from path length
+                            sum = p1[i][j][k] + p2[i][j][k]
+                            diff = np.abs(p1[i][j][k] - p2[i][j][k])
+                            if diff:
+                                cmrr2 = -to_db(sum / diff)  # CMRR from power difference
+                                cmrr = (
+                                    cmrr
+                                    if cmrr == -np.inf
+                                    else (
+                                        0
+                                        if cmrr2 == 0
+                                        else (1 / (1 / cmrr + 1 / cmrr2))
+                                    )
+                                )
 
-                        cmrr = self.rf_cmrr # CMRR from path length
-                        sum = p1[i][j][0] + p2[i][j][0]
-                        diff = np.abs(p1[i][j][0] - p2[i][j][0])
-                        if diff:
-                            cmrr2 = -to_db(sum/diff) # CMRR from power difference
-                            cmrr = cmrr if cmrr == -np.inf else to_db(
-                                (1/(1/from_db(cmrr) + 1/from_db(cmrr2)))
-                            )
+                            # only calculate the noise if there is power
+                            if p1[i][j][k] > 0:
+                                p1db = to_db(p1[i][j][k])
+                                monitor_noise1[k] = (
+                                    from_db(p1db + monitor_rin, 20) * dist[k]
+                                )
+                                rf_noise1[k] = from_db(p1db + rf_rin + cmrr) * dist[k]
 
-                        # only calculate the noise if there is power
-                        if p1[i][j][0] > 0:
-                            p1db = to_db(p1[i][j][0])
-                            monitor_noise1 += from_db(p1db + monitor_rin, 20) * dist
-                            rf_noise1 += from_db(p1db + rf_rin + cmrr, 20) * dist
-
-                        # only calculate the noise if there is power
-                        if p2[i][j][0] > 0:
-                            p2db = to_db(p2[i][j][0])
-                            monitor_noise2 += from_db(p2db + monitor_rin, 20) * dist
-                            rf_noise2 += from_db(p2db + rf_rin + cmrr, 20) * dist
+                            # only calculate the noise if there is power
+                            if p2[i][j][k] > 0:
+                                p2db = to_db(p2[i][j][k])
+                                monitor_noise2[k] = (
+                                    from_db(p2db + monitor_rin, 20) * dist[k]
+                                )
+                                rf_noise2[k] = from_db(p2db + rf_rin + cmrr) * dist[k]
 
                     # store the RIN noise for later use
                     self.monitor_rin_dists1[i][j] = monitor_noise1
@@ -770,30 +855,14 @@ class DifferentialDetector(Detector):
                         size=self.context.num_samples
                     )
 
-                    # p1[i][j] has the correct shape but all of the values
-                    # are the raw power. so we get one of those values and
-                    # calculate the corresponding photon number. we then
-                    # take a photon number distribution and convert it to power
-                    # which we then use as our samples.
-                    p1[i][j] = hffs * self.context.rng.poisson(
-                        p1_init / hffs, self.context.num_samples
-                    )
-
-                    # we do the same for the second signal
-                    p2[i][j] = hffs * self.context.rng.poisson(
-                        p2_init / hffs, self.context.num_samples
-                    )
-
-        # add the modulated signal to the input powers
-        if self.mod_ampl > 0:
-            i, j = 0, 0
-            t = np.linspace(0, (len(p1[i][j])-1)/self.context.fs, len(p1[i][j]))
-            p1_ampl = self.mod_ampl * p1[i][j][0] / source.powers[0]
-            p1[i][j] += p1_ampl * np.cos(2 * np.pi * self.mod_freq * t)
-            p2_ampl = self.mod_ampl * p2[i][j][0] / source.powers[0]
-            p2_phase = 2 * np.pi * self.dl * self.mod_freq / c
-
-            p2[i][j] += self.mod_ampl * p2_ampl * np.cos(2 * np.pi * self.mod_freq * t + p2_phase)
+                    # add the shot noise
+                    for k in range(self.context.num_samples):
+                        p1[i][j][k] += hffs * self.context.rng.poisson(
+                            p1[i][j][k] / hffs
+                        )
+                        p2[i][j][k] += hffs * self.context.rng.poisson(
+                            p2[i][j][k] / hffs
+                        )
 
         # return the outputs
         return (
@@ -813,10 +882,10 @@ class DifferentialDetector(Detector):
             The bandwidth of the filter. (difference, low_fc, high_fc)
         """
         sos = (
-            butter(6, bw[2], "lowpass", fs=self.context.fs, output="sos")
+            butter(1, bw[2], "lowpass", fs=self.context.fs, output="sos")
             if bw[1] == 0
             else butter(
-                6,
+                1,
                 [
                     bw[1],
                     bw[2],
@@ -872,12 +941,12 @@ class DifferentialDetector(Detector):
         # amplify the signal
         signal = (power + rin_dists) * self.monitor_conversion_gain
 
-        # add the electrical noise after amplification
-        signal += self.monitor_noise_dists
-
         # filter the signal
         if self.context.num_samples > 1:
             signal = self._monitor_filter(signal)
+
+        # add the electrical noise after amplification
+        signal += self.monitor_noise_dists
 
         return signal
 
@@ -903,19 +972,18 @@ class DifferentialDetector(Detector):
         # amplify the difference.
         # we don't subtract RIN dists because that would be a CMRR of infinity.
         # when we generated the RIN, we took the CMRR into account so at this
-        # point, all we need to do is add them after the quantum signals have
+        # point, all we need to do is add them after the signals have
         # been diffed.
         signal = (
             (p1 - p2) + (self.rf_rin_dists1 + self.rf_rin_dists2)
         ) * self.rf_conversion_gain
 
-
-        # add the electrical signal after amplification
-        signal += self.rf_noise_dists
-
         # filter the difference
         if self.context.num_samples > 1:
             signal = self._rf_filter(signal)
+
+        # add the electrical signal after amplification
+        signal += self.rf_noise_dists
 
         return signal
 
