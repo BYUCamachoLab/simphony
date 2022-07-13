@@ -1,5 +1,4 @@
 from typing import TYPE_CHECKING, List, Tuple
-from unicodedata import name
 
 import numpy as np
 import phidl.routing as pr
@@ -165,7 +164,7 @@ class Die(Device):
         them.
         """
 
-        # Do nothing if the other pin of Waveguide is not connected to anything or if 
+        # Do nothing if the other pin of Waveguide is not connected to anything or if
         # it is connected to a Simulation, Subcircuit, Laser, Detector
         if None in (pin1._connection, pin_._connection) or isinstance(
             pin_._component, (Subcircuit, Simulation, Laser, Detector)
@@ -297,9 +296,15 @@ class Die(Device):
             component2,
             (siepic.Waveguide, Subcircuit, Simulation, Laser, Detector),
         ):
-            self.device_grid_refs[self.device_list.index(component1.device)].center = [0, 0]
-            
-            self.device_grid_refs[self.device_list.index(component2.device)].center = [0, 0]
+            self.device_grid_refs[self.device_list.index(component1.device)].center = [
+                0,
+                0,
+            ]
+
+            self.device_grid_refs[self.device_list.index(component2.device)].center = [
+                0,
+                0,
+            ]
 
     def distribute_devices(
         self, direction="x", shape=None, spacing=10, separation=True

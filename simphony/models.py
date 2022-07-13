@@ -163,6 +163,27 @@ class Model:
         self.device_ports = {}
 
         # Add ports to device
+        self._define_ports(x_values, R)
+
+        # Set origin if specified
+        if originx != 0 or originy != 0:
+            R.x = originx * 1e6
+            R.y = originy * 1e6
+
+        # Set device
+        self.device = R
+        self.device_ref = Device(f"{self.name}_ref").add_ref(self.device, alias=self)
+
+        # Set die
+        self.die: "Die" = None
+
+        # Set circuit
+        self.circuit = Circuit(self)
+
+    def _define_ports(self, x_values, R):
+        """
+        Defines the ports for the device. Only to be called by `__init__`.
+        """
         for pin in self.pins:
             x = self.pins_pos[f"{pin.name}"]["x"]
             y = self.pins_pos[f"{pin.name}"]["y"]
@@ -183,21 +204,6 @@ class Model:
                     )
                 except ValueError:
                     pass
-
-        # Set origin if specified
-        if originx != 0 or originy != 0:
-            R.x = originx * 1e6
-            R.y = originy * 1e6
-
-        # Set device
-        self.device = R
-        self.device_ref = Device(f"{self.name}_ref").add_ref(self.device, alias=self)
-
-        # Set die
-        self.die: "Die" = None
-
-        # Set circuit
-        self.circuit = Circuit(self)
 
     def __str__(self) -> str:
         name = self.name or f"{self.__class__.__name__} component"

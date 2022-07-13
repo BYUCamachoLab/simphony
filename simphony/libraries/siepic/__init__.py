@@ -1496,7 +1496,7 @@ class Waveguide(SiEPIC_PDK_Base):
         K = (
             2 * np.pi * ne / lam0
             + (ng / SPEED_OF_LIGHT) * (w - w0)
-            - (nd * lam0 ** 2 / (4 * np.pi * SPEED_OF_LIGHT)) * ((w - w0) ** 2)
+            - (nd * lam0**2 / (4 * np.pi * SPEED_OF_LIGHT)) * ((w - w0) ** 2)
         )
 
         for x in range(0, len(freqs)):  # build s-matrix from K and waveguide length

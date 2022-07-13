@@ -14,7 +14,7 @@ from cmath import rect
 from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple
 
 import numpy as np
-from scipy.constants import c, epsilon_0, h, mu_0
+from scipy.constants import epsilon_0, h, mu_0
 from scipy.linalg import cholesky, lu
 from scipy.signal import butter, sosfiltfilt
 
@@ -279,7 +279,7 @@ class Simulation:
             for k in range(n):
 
                 corr_val = np.exp(
-                    -((x[k] - x[i]) ** 2 + (y[k] - y[i]) ** 2) / (0.5 * (l ** 2))
+                    -((x[k] - x[i]) ** 2 + (y[k] - y[i]) ** 2) / (0.5 * (l**2))
                 )
 
                 corr_matrix_w[i][k] = corr_matrix_w[k][i] = corr_val
@@ -349,18 +349,22 @@ class Simulation:
             if not isinstance(component, (Laser, Detector))
         ]  # get all components except the Laser and Detector
 
-        dies = [component.die for component in components if not isinstance(component, siepic.Waveguide)]
+        dies = [
+            component.die
+            for component in components
+            if not isinstance(component, siepic.Waveguide)
+        ]
         if len(set(dies)) != 1:
             raise ValueError("All components must be on the same die.")
         die = dies[0]
-        
+
         coords = {}
         for ref in die.device_grid.references:
             if ref.parent.name in [c.name for c in components]:
                 coords[ref.parent] = {"x": ref.x, "y": ref.y}
             else:
                 for c in components:
-                    if c.name == ref.parent.name.rpartition('_')[-1]:
+                    if c.name == ref.parent.name.rpartition("_")[-1]:
                         coords[c] = {"x": ref.x, "y": ref.y}
                         print(coords[c])
 

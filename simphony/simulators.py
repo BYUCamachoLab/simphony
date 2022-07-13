@@ -238,7 +238,7 @@ class LayoutAwareMonteCarloSweepSimulator(SweepSimulator):
             for k in range(n):
 
                 corr_val = np.exp(
-                    -((x[k] - x[i]) ** 2 + (y[k] - y[i]) ** 2) / (0.5 * (l ** 2))
+                    -((x[k] - x[i]) ** 2 + (y[k] - y[i]) ** 2) / (0.5 * (l**2))
                 )
 
                 corr_matrix_w[i][k] = corr_matrix_w[k][i] = corr_val
