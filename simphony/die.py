@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, List, Tuple
+from unicodedata import name
 
 import numpy as np
 import phidl.routing as pr
@@ -98,6 +99,11 @@ class Die(Device):
 
             # Route the waveguides together
             self._route_waveguides(component1, component2, pin1, pin_)
+
+            for i, ref in enumerate(self.device_grid.references):
+                if ref.parent.name == component2.device.name:
+                    self.device_grid.references.pop(i)
+
         elif not isinstance(
             pin1._connection._component,
             (siepic.Waveguide, Subcircuit, Simulation, Laser, Detector),
@@ -154,13 +160,13 @@ class Die(Device):
 
     def _route_waveguides(self, component1, component2, pin1, pin_) -> None:
         """
-        Waveguide routing routine. This function sees the ports' orientations and
+        Waveguide routing routine. This function looks at the ports' orientations and
         positions and decides what sort of Waveguide bend is needed, and how to connect
         them.
         """
 
-        # Do nothing if the Waveguide is not connected to anything or if it is connected
-        # to a Simulation, Subcircuit, Laser, Detector
+        # Do nothing if the other pin of Waveguide is not connected to anything or if 
+        # it is connected to a Simulation, Subcircuit, Laser, Detector
         if None in (pin1._connection, pin_._connection) or isinstance(
             pin_._component, (Subcircuit, Simulation, Laser, Detector)
         ):
@@ -212,7 +218,10 @@ class Die(Device):
         else:
             route_path = self._connect_parallel_ports(component2, pin_, port1, port2)
 
+        route_path.name = f"wg_{pin_._component.device.name}"
         self.device_grid.add_ref(route_path)
+
+        self.device_list.remove(component2.device)
 
     def _connect_parallel_ports(self, component2, pin_, port1, port2) -> Device:
         """
@@ -263,6 +272,33 @@ class Die(Device):
             )
 
         return route_path
+
+    def _disconnect(self, component1, component2):
+        """
+        Disconnect the devices in the grid as the pins are disconnected.
+
+        Attributes
+        ----------
+        component1 :
+            One of the connection components
+        component2 :
+            The other connection component
+        """
+        if isinstance(component2, siepic.Waveguide):
+
+            # Disconnect components connected by the waveguide
+            ref: DeviceReference
+            for i, ref in enumerate(self.device_grid.references):
+                if ref.parent.name == f"wg_{component2.name}":
+                    self.device_grid.references.pop(i)
+
+        elif not isinstance(
+            component2,
+            (siepic.Waveguide, Subcircuit, Simulation, Laser, Detector),
+        ):
+            self.device_grid_refs[self.device_list.index(component1.device)].center = [0, 0]
+            
+            self.device_grid_refs[self.device_list.index(component2.device)].center = [0, 0]
 
     def distribute_devices(
         self, direction="x", shape=None, spacing=10, separation=True

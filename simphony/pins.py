@@ -95,6 +95,9 @@ class Pin:
 
             # let the components know that a connection was disconnected
             self._component._on_disconnect(pin._component)
+            
+            if self._component.die is not None:
+                self._component.die._disconnect(self._component, pin._component)
 
     def rename(self, name: str) -> None:
         """Renames the pin."""
