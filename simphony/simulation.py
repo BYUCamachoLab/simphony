@@ -11,25 +11,15 @@ used within the context. Devices include theoretical sources and detectors.
 """
 
 from cmath import rect
-from operator import index
-from random import shuffle
 from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple
-from weakref import KeyedRef
 
 import numpy as np
-import phidl.path as pp
-import phidl.routing as pr
-from matplotlib import pyplot as plt
-from phidl import Device, quickplot, set_quickplot_options
-from phidl.device_layout import DeviceReference
-from phidl.geometry import grid, packer
 from scipy.constants import c, epsilon_0, h, mu_0
 from scipy.linalg import cholesky, lu
 from scipy.signal import butter, sosfiltfilt
 
 from simphony import Model
 from simphony.libraries import siepic
-from simphony.models import Subcircuit
 from simphony.tools import wl2freq
 
 if TYPE_CHECKING:
@@ -327,7 +317,6 @@ class Simulation:
         l: float = 4.5e-3,
         runs: int = 10,
         num_samples: int = 1,
-        **kwargs,
     ) -> Tuple[np.array, np.array]:
         """Runs the layout-aware Monte Carlo sweep simulation for the circuit.
 
@@ -360,35 +349,20 @@ class Simulation:
             if not isinstance(component, (Laser, Detector))
         ]  # get all components except the Laser and Detector
 
-        dies = [component.die for component in components]
+        dies = [component.die for component in components if not isinstance(component, siepic.Waveguide)]
         if len(set(dies)) != 1:
             raise ValueError("All components must be on the same die.")
-
-        # while the two checks are True, run the workflow to rearrange components
-        # until a suitable layout has been found.
-        # while(intersects and waveguide_incorrect):
-        #     waveguide_incorrect = self._update_layout()
-
-        #     intersects, component1, component2 = self._check_intersection()
-
-        #     if waveguide_incorrect or intersects:
-        #         # if the waveguide length is incorrect or the components are intersecting, rearrange components
-        #         # and recompute layout
-        #         component2._fix_component()
-        #         self._shift_components(component1)
-        #         self._update_layout()
-
-        # get co-ordinates assuming a suitable layout has been found
+        die = dies[0]
+        
         coords = {}
-        ref: DeviceReference
-        for component in components:
-            if isinstance(component, siepic.Waveguide):
-                for ref in component.die.device_grid.references:
-                    if ref.parent == component.device:
-                        coords[component] = {"x": ref.x, "y": ref.y}
+        for ref in die.device_grid.references:
+            if ref.parent.name in [c.name for c in components]:
+                coords[ref.parent] = {"x": ref.x, "y": ref.y}
             else:
-                coords[component] = {"x": component.device.x, "y": component.device.y}
-        # coords = {component: {'x': component.device.x, 'y': component.device.y} for component in components if not isinstance(component, siepic.Waveguide)}
+                for c in components:
+                    if c.name == ref.parent.name.rpartition('_')[-1]:
+                        coords[c] = {"x": ref.x, "y": ref.y}
+                        print(coords[c])
 
         # compute correlated samples
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(
