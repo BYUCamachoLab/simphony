@@ -50,6 +50,12 @@ class Model:
     pins :
         A tuple of all the default pin names of the device. Must be set if
         pin_count is not.
+    pins_pos:
+        A dict of all the default pin positions of the component.
+    originx :
+        The x-coordinate of the component's origin. Defaults to 0.
+    originy :
+        The y-coordinate of the component's origin. Defaults to 0.
     """
 
     freq_range: ClassVar[Tuple[Optional[float], Optional[float]]]
@@ -67,7 +73,8 @@ class Model:
         freq_range: Optional[Tuple[Optional[float], Optional[float]]] = None,
         pins: Optional[List[Pin]] = None,
         pins_pos={},
-        die=None,
+        originx=0,
+        originy=0,
     ) -> None:
         """Initializes an instance of the model.
 
@@ -83,6 +90,12 @@ class Model:
             The pins for the model. If not specified, the pins will be
             be initialized from cls.pins. If that is not specified,
             cls.pin_count number of pins will be initialized.
+        pins_pos:
+            A dict of all the default pin positions of the component.
+        originx :
+            The x-coordinate of the component's origin. Defaults to 0.
+        originy :
+            The y-coordinate of the component's origin. Defaults to 0.
 
         Raises
         ------
@@ -104,7 +117,6 @@ class Model:
                 self.freq_range = (0, float("inf"))
 
         self.name = name
-        self.pins_pos = pins_pos
         # initiate the Pin objects for the instance. resolution order:
         # 1. pins (list of Pin objects)
         # 2. cls.pins (tuple of pin names)
@@ -124,20 +136,33 @@ class Model:
                         f"{name}.pin_count or {name}.pins needs to be defined."
                     )
 
+        # Set the pin positions. If not specified during instantiation, default to 0.
+        self.pins_pos = {}
+        if pins_pos != {}:
+            self.pins_pos = pins_pos
+        else:
+            for pin in self.pins:
+                self.pins_pos[pin.name] = {"x": 0, "y": 0}
+
         # compute origin
         x_values = np.asarray([self.pins_pos[k]["x"] for k in self.pins_pos])
         y_values = np.asarray([self.pins_pos[k]["y"] for k in self.pins_pos])
 
-        R = Device(self.name)
-        points = [
-            (x_values.min(), y_values.min()),
-            (x_values.max(), y_values.min()),
-            (x_values.max(), y_values.max()),
-            (x_values.min(), y_values.max()),
-        ]
+        # Instantiate device and add polygons
+        R = Device(name=self.name)
+        try:
+            points = [
+                (x_values.min(), y_values.min()),
+                (x_values.max(), y_values.min()),
+                (x_values.max(), y_values.max()),
+                (x_values.min(), y_values.max()),
+            ]
+        except ValueError:
+            points = [(0, 0), (0, 0), (0, 0), (0, 0)]
         self.polygons = R.add_polygon(points=points)
         self.device_ports = {}
 
+        # Add ports to device
         for pin in self.pins:
             x = self.pins_pos[f"{pin.name}"]["x"]
             y = self.pins_pos[f"{pin.name}"]["y"]
@@ -159,10 +184,19 @@ class Model:
                 except ValueError:
                     pass
 
-        self.device = R
-        self.device_ref = Device(f"{self.name}_ref").add_ref(self.device)
-        self.die: "Die" = die
+        # Set origin if specified
+        if originx != 0 or originy != 0:
+            R.x = originx * 1e6
+            R.y = originy * 1e6
 
+        # Set device
+        self.device = R
+        self.device_ref = Device(f"{self.name}_ref").add_ref(self.device, alias=self)
+
+        # Set die
+        self.die: "Die" = None
+
+        # Set circuit
         self.circuit = Circuit(self)
 
     def __str__(self) -> str:
@@ -273,68 +307,6 @@ class Model:
                 component = pin._connection._component
                 if circuit._add(component):
                     component._on_disconnect_recursive(circuit)
-
-    def _compute_pos_and_origin(self, ignore_pin: Pin = None, origin: dict = None):
-        """
-        Compute the pins' positions and origin.
-        """
-
-        # if origin is not None, Layout-Aware Simulation class has requested to
-        # re-arrange the component. Modify the origin, and update pins' positions accordinly.
-        if origin is not None:
-            self.x = origin["x"]
-            self.y = origin["y"]
-
-            for p in self.pins:
-                if self.coords_wrt_origin[p.name]["x"] is not None:
-                    self.pins_pos[p.name]["x"] = (
-                        self.x + self.coords_wrt_origin[p.name]["x"]
-                    )
-                if self.coords_wrt_origin[p.name]["y"] is not None:
-                    self.pins_pos[p.name]["y"] = (
-                        self.y + self.coords_wrt_origin[p.name]["y"]
-                    )
-
-        # if ignore_pin is not None, one of the pins has been moved.
-        # Move the other pins to keep the relative positions of the
-        # pins consistent, and recompute origin.
-        elif ignore_pin is not None and self.fixed is False:
-            for p in self.pins_pos.keys():
-                if p is not ignore_pin.name:
-                    if self.relative_coords[f"{ignore_pin.name}_{p}"]["x"] is not None:
-                        self.pins_pos[p]["x"] = (
-                            self.pins_pos[ignore_pin.name]["x"]
-                            + self.relative_coords[f"{ignore_pin.name}_{p}"]["x"]
-                        )
-                    if self.relative_coords[f"{ignore_pin.name}_{p}"]["y"] is not None:
-                        self.pins_pos[p]["y"] = (
-                            self.pins_pos[ignore_pin.name]["y"]
-                            + self.relative_coords[f"{ignore_pin.name}_{p}"]["y"]
-                        )
-
-            x_values = np.asarray([self.pins_pos[k]["x"] for k in self.pins_pos])
-            y_values = np.asarray([self.pins_pos[k]["y"] for k in self.pins_pos])
-
-            self.x = x_values.mean()
-            self.y = y_values.mean()
-
-    def _update_polygon(self, rand_x: int = 0, rand_y: int = 0):
-        """
-        Updates the polygon of the component.
-        """
-        pass
-
-    def _fix_component(self):
-        """
-        Fix the component in place in the circuit, disabling pin co-ordinates changes.
-        """
-        self.fixed = True
-
-    def _unfix_component(self):
-        """
-        Unfix the component, enabling pin co-ordinates changes.
-        """
-        self.fixed = False
 
     def connect(self, component_or_pin: Union["Model", Pin]) -> "Model":
         """Connects the next available (unconnected) pin from this component to
@@ -466,7 +438,7 @@ class Model:
 
     def update_variations(self, **kwargs):
         """Update width and thickness variations for the component using correlated
-        samples."""
+        samples. This is used for layout-aware Monte Carlo runs."""
         pass
 
     def rename_pins(self, *names: str) -> None:

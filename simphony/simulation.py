@@ -269,86 +269,6 @@ class Simulation:
             "monte_carlo_s_parameters" if flag else "s_parameters"
         )
 
-    def _update_layout(self):
-        """
-        Updates the x- and y- co-ordinates of all the components in the circuit.
-        """
-        components = [
-            component
-            for component in self.circuit._get_components()
-            if not isinstance(component, (Laser, Detector))
-        ]  # get all components except Lasers and Detectors
-
-        # first component in the circuit is fixed while the other components are rearranged and
-        # pin positions are updated
-        components[0]._fix_component()
-        for component in components[1:]:
-
-            for p in component.pins:
-
-                # update positions of pins which are not unconnected or connected to a Laser or Detector
-                if (
-                    p._connection is not None
-                    and not isinstance(p._connection._component, Laser)
-                    and not isinstance(p._connection._component, Detector)
-                ):
-                    update_pos = p._connection._component.pins_pos
-
-                    # update positions
-                    component.pins_pos[p.name] = update_pos[p._connection.name]
-
-                    # update positions of the other pins of the component and the origin of the component
-                    p._component._compute_pos_and_origin(ignore_pin=p)
-
-                    # update the component polygon
-                    p._component._update_polygon()
-
-                # once 2 pins have been updated, we know the positions of all the other pins, if any.
-                if component.pins.index(p) == 1:
-
-                    if isinstance(component, siepic.Waveguide):
-
-                        # check if the waveguide lengths are correct, i.e., still the same as they were during instantiation
-                        A = np.array(
-                            (
-                                component.pins_pos["pin1"]["x"],
-                                component.pins_pos["pin1"]["y"],
-                            )
-                        )
-                        B = np.array(
-                            (
-                                component.pins_pos["pin2"]["x"],
-                                component.pins_pos["pin2"]["y"],
-                            )
-                        )
-
-                        A_B = np.linalg.norm(A - B)
-                        if round(A_B) != component.length * 1e6:
-                            # return True if the waveguide length is incorrect
-                            return True
-
-                    # break and move on to the next component, if any
-                    break
-
-        # return False if all the waveguide lengths are correct
-        return False
-
-    def _shift_components(self, component: Model):
-        """
-        Randomly rearrange the components in the circuit.
-        """
-        component._unfix_component()
-        rand_x = np.random.randint(
-            1000
-        )  # assume a die size of 1000 um. FIXME this could be done better.
-        rand_y = np.random.randint(1000)
-
-        # recompute pins positions based off origin
-        component._compute_pos_and_origin(origin={"x": rand_x, "y": rand_y})
-
-        # update the polygon for the component
-        component._update_polygon()
-
     def _compute_correlated_samples(self, coords, sigmaw, sigmat, l, runs):
         x = [0] * len(coords)
         y = [0] * len(coords)
@@ -400,113 +320,6 @@ class Simulation:
         corr_sample_matrix_t = np.dot(l_t, X)
         return corr_sample_matrix_w, corr_sample_matrix_t
 
-    def _check_intersection(self):
-        """
-        Check if any of the components in the circuit are intersecting. SiEPIC Waveguides are ignored.
-        """
-        components = [
-            component
-            for component in self.circuit._get_components()
-            if not isinstance(component, (Laser, Detector))
-        ]
-        for component1 in components:
-            for component2 in components:
-                if (
-                    component1 != component2
-                    and not isinstance((component1, component2), siepic.Waveguide)
-                    and None not in (component1.polygon, component2.polygon)
-                    and component1.polygon.intersects(component2.polygon)
-                ):
-                    return (True, component1, component2)
-
-        return (False, component1, component2)
-
-    def route_devices(self):
-        components = [
-            component
-            for component in self.circuit._get_components()
-            if not isinstance(component, (type(self), Subcircuit, Laser, Detector))
-        ]
-        components2 = [
-            None if isinstance(component, siepic.Waveguide) else component
-            for component in components
-        ]
-
-        self.device = Device()
-        self.circuit_ref = DeviceReference(self.device)
-        self.device_list = []
-        self.device_refs = []
-        for component in components:
-            self.device_refs.append(self.device.add_ref(component.device))
-            self.device_list.append(component.device)
-        # self.circuit_grid: Device  = grid(self.device_list, (10,10), True, ((len(components)) // 2, len(components) - (len(components)) // 2))
-        self.circuit_grid = packer(self.device_list, sort_by_area=False)
-
-        all_connected = False
-        while not all_connected:
-            for device, component in zip(self.circuit_grid, components):
-                component.device_ports = device.ports
-            for i, (device, component2, component) in enumerate(
-                zip(self.circuit_grid[0].references, components2, components)
-            ):
-                if component2 is None and None not in (
-                    component.pins[0]._connection,
-                    component.pins[1]._connection,
-                ):
-                    port1 = component.pins[0]._connection._component.device_ports[
-                        component.pins[0]._connection.name
-                    ]
-                    port2 = component.pins[1]._connection._component.device_ports[
-                        component.pins[1]._connection.name
-                    ]
-                    # ==================================
-                    #  NOTE DO NOT REMOVE THESE LINES!!!
-                    # ==================================
-                    # dot = np.dot(port1.normal, port2.normal.T)
-                    # if round((dot[0,0] + dot[1,1]) - (dot[1,0] + dot[0,1])) == 0 and np.intersect1d(port1.normal, port2.normal) is not []:
-                    #     route_path = pr.route_smooth(port1, port2, path_type='L')
-                    # elif round((dot[0,0] + dot[1,1]) - (dot[1,0] + dot[0,1])) == 0 and np.intersect1d(port1.normal, port2.normal) is []:
-                    #     route_path = pr.route_smooth(port1, port2, path_type='J', length1=component.length * 1e6 / 4, length2=component.length * 1e6 / 4)
-                    # elif round((dot[0,0] + dot[1,1]) - (dot[1,0] + dot[0,1])) != 0 and np.intersect1d(port1.normal, port2.normal) is not []:
-                    #     route_path = pr.route_smooth(port1, port2, path_type='U', radius=1, width=component.width * 1e6, length1=component.length * 1e6 / 3)
-                    # elif round((dot[0,0] + dot[1,1]) - (dot[1,0] + dot[0,1])) != 0 and np.intersect1d(port1.normal, port2.normal) is []:
-                    #     route_path = pr.route_smooth(port1, port2, path_type='C', length1=component.length * 1e6 / 5, lengtth2=component.length * 1e6 / 5, left1=component.length * 1e6 / 5)
-                    route_path = pr.route_smooth(
-                        port1,
-                        port2,
-                        radius=1,
-                        width=component.width * 1e6,
-                        length=component.length * 1e6,
-                    )
-                    print("At waveguide")
-                    self.device.add_ref(route_path)
-                elif component2 is not None:
-                    for pin in component2.pins:
-                        if not isinstance(
-                            pin._connection._component,
-                            (siepic.Waveguide, Subcircuit, Laser, Detector),
-                        ):
-                            self.device_refs[i].connect(
-                                device.ports[pin.name],
-                                components2[
-                                    components2.index(
-                                        component2.pins[pin.name]._connection._component
-                                    )
-                                ].device.ports[
-                                    component2.pins[pin.name]._connection.name
-                                ],
-                            )
-                    set_quickplot_options(label_aliases=True)
-                    quickplot(self.device)
-                    print(f"{component.name}")
-                    plt.show()
-            all_connected = True
-        print("All connected")
-
-        set_quickplot_options(label_aliases=True)
-        quickplot(self.device)
-        plt.show()
-
     def layout_aware_simulation(
         self,
         sigmaw: float = 5,
@@ -540,8 +353,6 @@ class Simulation:
             taken, they will vary based on simulated noise.
         """
         results = []  # store results
-        intersects = True  # check for intersections between components
-        waveguide_incorrect = True  # check for incorrect waveguide lengths
 
         components = [
             component

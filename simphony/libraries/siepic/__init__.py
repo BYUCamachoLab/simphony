@@ -268,7 +268,7 @@ class SiEPIC_PDK_Base(Model):
     # -------------------------------------------------------------------------
 
     def __init__(self, **kwargs):
-        model_params = ("name", "freq_range", "pins", "pins_pos", "die")
+        model_params = ("name", "freq_range", "pins", "pins_pos", "originx", "originy")
         model_args = {param: kwargs.get(param, None) for param in model_params}
         model_args["name"] = (
             model_args["name"] if model_args["name"] is not None else ""
@@ -520,9 +520,23 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
         r"(?:\.sparam)"
     )
 
-    def __init__(self, thickness=220e-9, width=500e-9, pins_pos=pins_pos, **kwargs):
-        super().__init__(**kwargs, thickness=thickness, width=width, pins_pos=pins_pos)
-        self._unfix_component()
+    def __init__(
+        self,
+        thickness=220e-9,
+        width=500e-9,
+        pins_pos=pins_pos,
+        originx=0,
+        originy=0,
+        **kwargs,
+    ):
+        super().__init__(
+            **kwargs,
+            thickness=thickness,
+            width=width,
+            pins_pos=pins_pos,
+            originx=originx,
+            originy=originy,
+        )
 
     def on_args_changed(self):
         try:
@@ -548,9 +562,7 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
                 heights = np.asarray(heights, dtype=np.double)
 
                 dim = len(s_params)
-                s_list = []
-                for dimidx in range(dim):
-                    s_list.append(s_params[dimidx][:][:][:])
+                s_list = [s_params[dimidx][:][:][:] for dimidx in range(dim)]
                 s_list = np.asarray(s_list, dtype=complex)
                 self._s = interp.griddata(
                     (widths, heights),
@@ -661,6 +673,8 @@ class HalfRing(SiEPIC_PDK_Base):
         thickness=220e-9,
         couple_length=0.0,
         pins_pos=pins_pos,
+        originx=0,
+        originy=0,
         **kwargs,
     ):  # sourcery skip: remove-redundant-if
         super().__init__(
@@ -671,18 +685,12 @@ class HalfRing(SiEPIC_PDK_Base):
             thickness=thickness,
             couple_length=couple_length,
             pins_pos=pins_pos,
+            originx=originx,
+            originy=originy,
         )
 
         R = Device(self.name)
         x_values = np.asarray([self.pins_pos[k]["x"] for k in self.pins_pos])
-        y_values = np.asarray([self.pins_pos[k]["y"] for k in self.pins_pos])
-        points = [
-            (x_values.min(), y_values.min()),
-            (x_values.max(), y_values.min()),
-            (x_values.max(), y_values.max()),
-            (x_values.min(), y_values.max()),
-        ]
-        self.polygons = R.add_polygon(points=points)
         self.device_ports = {}
 
         for pin in self.pins:
@@ -706,7 +714,7 @@ class HalfRing(SiEPIC_PDK_Base):
                 )
 
         self.device = R
-        self.device_ref = Device(f"{self.name}_ref").add_ref(self.device)
+        self.device_ref = Device(f"{self.name}_ref").add_ref(self.device, alias=self)
 
     def on_args_changed(self):
         try:
@@ -829,18 +837,17 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
         r"(?:m\.sparam)"
     )
 
-    def __init__(self, gap=200e-9, Lc=10e-6, pins_pos=pins_pos, **kwargs):
-        super().__init__(**kwargs, gap=gap, Lc=Lc, pins_pos=pins_pos)
-        self._unfix_component()
-
-    def _update_polygon(self):
-        self.coords = [
-            (self.pins_pos[pin]["x"], self.pins_pos[pin]["y"]) for pin in self.pins_pos
-        ]
-        try:
-            self.polygon = Polygon(tuple(self.coords))
-        except ValueError:  # throws ValueError if there are <3 pins
-            self.polygon = None
+    def __init__(
+        self, gap=200e-9, Lc=10e-6, pins_pos=pins_pos, originx=0, originy=0, **kwargs
+    ):
+        super().__init__(
+            **kwargs,
+            gap=gap,
+            Lc=Lc,
+            pins_pos=pins_pos,
+            originx=originx,
+            originy=originy,
+        )
 
     def on_args_changed(self):
         try:
@@ -954,9 +961,25 @@ class Terminator(SiEPIC_PDK_Base):
         r"(?:_TE.sparam)"
     )
 
-    def __init__(self, w1=500e-9, w2=60e-9, L=10e-6, pins_pos=pins_pos, **kwargs):
-        super().__init__(**kwargs, w1=w1, w2=w2, L=L, pins_pos=pins_pos)
-        self._unfix_component()
+    def __init__(
+        self,
+        w1=500e-9,
+        w2=60e-9,
+        L=10e-6,
+        pins_pos=pins_pos,
+        originx=0,
+        originy=0,
+        **kwargs,
+    ):
+        super().__init__(
+            **kwargs,
+            w1=w1,
+            w2=w2,
+            L=L,
+            pins_pos=pins_pos,
+            originx=originx,
+            originy=originy,
+        )
 
     def on_args_changed(self):
         self.suspend_autoupdate()
@@ -1030,7 +1053,14 @@ class GratingCoupler(SiEPIC_PDK_Base):
     )
 
     def __init__(
-        self, thickness=220e-9, deltaw=0, polarization="TE", pins_pos=pins_pos, **kwargs
+        self,
+        thickness=220e-9,
+        deltaw=0,
+        polarization="TE",
+        pins_pos=pins_pos,
+        originx=0,
+        originy=0,
+        **kwargs,
     ):
         super().__init__(
             **kwargs,
@@ -1038,10 +1068,9 @@ class GratingCoupler(SiEPIC_PDK_Base):
             deltaw=deltaw,
             polarization=polarization,
             pins_pos=pins_pos,
+            originx=originx,
+            originy=originy,
         )
-
-        self.polygon = None
-        self._unfix_component()
 
     def on_args_changed(self):
         try:
@@ -1255,6 +1284,8 @@ class Waveguide(SiEPIC_PDK_Base):
         sigma_ne=0.05,
         sigma_ng=0.05,
         sigma_nd=0.0001,
+        originx=0,
+        originy=0,
         **kwargs,
     ):
         if polarization not in ["TE", "TM"]:
@@ -1280,18 +1311,14 @@ class Waveguide(SiEPIC_PDK_Base):
             sigma_ng=sigma_ng,
             sigma_nd=sigma_nd,
             pins_pos=pins_pos,
+            originx=originx,
+            originy=originy,
         )
 
         self.device = Device(self.name)
-        self.device_ref = Device(f"{self.name}_ref").add_ref(self.device)
+        self.device_ref = Device(f"{self.name}_ref").add_ref(self.device, alias=self)
 
         self.regenerate_monte_carlo_parameters()
-
-    def _update_polygon(self):
-        self.coords = [
-            (self.pins_pos[pin]["x"], self.pins_pos[pin]["y"]) for pin in self.pins_pos
-        ]
-        self.polygon = LineString(tuple(self.coords))
 
     def on_args_changed(self):
         try:
@@ -1526,6 +1553,8 @@ class YBranch(SiEPIC_PDK_Base):
         width=500e-9,
         polarization="TE",
         pins_pos=pins_pos,
+        originx=0,
+        originy=0,
         **kwargs,
     ):
         if polarization not in ["TE", "TM"]:
@@ -1540,17 +1569,9 @@ class YBranch(SiEPIC_PDK_Base):
             width=width,
             polarization=polarization,
             pins_pos=pins_pos,
+            originx=originx,
+            originy=originy,
         )
-        self._unfix_component()
-
-    def _update_polygon(self):
-        self.coords = [
-            (self.pins_pos[pin]["x"], self.pins_pos[pin]["y"]) for pin in self.pins_pos
-        ]
-        try:
-            self.polygon = Polygon(tuple(self.coords))
-        except ValueError:  # throws ValueError if there are <3 pins
-            self.polygon = None
 
     def on_args_changed(self):
 
