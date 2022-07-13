@@ -221,7 +221,8 @@ class Die(Device):
         route_path.name = f"wg_{pin_._component.device.name}"
         self.device_grid.add_ref(route_path)
 
-        self.device_list.remove(component2.device)
+        if not isinstance(component2, siepic.Waveguide):
+            self.device_list.remove(component2.device)
 
     def _connect_parallel_ports(self, component2, pin_, port1, port2) -> Device:
         """
@@ -399,7 +400,6 @@ class Die(Device):
             show_ports=show_ports,
             show_subports=show_subports,
             label_aliases=label_aliases,
-            font_size=font_size,
         )
 
         # Plot the layout
