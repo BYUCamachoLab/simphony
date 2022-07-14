@@ -638,12 +638,6 @@ class HalfRing(SiEPIC_PDK_Base):
     """
 
     pin_count = 4
-    pins_pos = {
-        "pin1": {"x": 0, "y": 0},
-        "pin2": {"x": 5.0, "y": 10.7},
-        "pin3": {"x": 25.0, "y": 10.7},
-        "pin4": {"x": 30.0, "y": 0.0},
-    }
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "ebeam_dc_halfring_straight"
     )
@@ -672,11 +666,17 @@ class HalfRing(SiEPIC_PDK_Base):
         width=500e-9,
         thickness=220e-9,
         couple_length=0.0,
-        pins_pos=pins_pos,
         originx=0,
         originy=0,
         **kwargs,
-    ):  # sourcery skip: remove-redundant-if
+    ):  
+        pins_pos = {
+            "pin1": {"x": 0, "y": 0},
+            "pin2": {"x": 5.0, "y": (gap * 1e6 + radius * 1e6 + 2 * width * 1e6)},
+            "pin3": {"x": 5.0 + (2 * radius * 1e6), "y": (gap * 1e6 + radius * 1e6 + 2 * width * 1e6)},
+            "pin4": {"x": 10.0 + (2 * radius * 1e6), "y": 0.0},
+        }
+
         super().__init__(
             **kwargs,
             gap=gap,
@@ -691,27 +691,30 @@ class HalfRing(SiEPIC_PDK_Base):
 
         R = Device(self.name)
         x_values = np.asarray([self.pins_pos[k]["x"] for k in self.pins_pos])
+        y_values = np.asarray([self.pins_pos[k]["y"] for k in self.pins_pos])
+
+        points = [
+                (x_values.min(), y_values.min()),
+                (x_values.max(), y_values.min()),
+                (x_values.max(), y_values.max()),
+                (x_values.min(), y_values.max()),
+            ]
+        self.polygons = R.add_polygon(points=points)
+
         self.device_ports = {}
+        pin_orientations = [180, 90, 90, 0]
+        for i, pin in enumerate(self.pins):
+            x = self.pins_pos[f"{pin.name}"]["x"]
+            y = self.pins_pos[f"{pin.name}"]["y"]
 
-        for pin in self.pins:
-            for i, _ in enumerate(self.pins):
-                x = self.pins_pos[f"pin{i+1}"]["x"]
-                y = self.pins_pos[f"pin{i+1}"]["y"]
-
-            orientation = [0 if x > ((x_values.min() + x_values.max()) / 2) else 180][0]
-            if pin.name == "pin2" or "pin3":
-                orientation = 90
-            try:
-                self.device_ports[pin.name] = R.add_port(
-                    name=pin.name,
-                    midpoint=[x, y],
-                    width=self.width * 1e6,
-                    orientation=orientation,
-                )
-            except AttributeError:
-                self.device_ports[pin.name] = R.add_port(
-                    name=pin.name, midpoint=[x, y], width=5, orientation=orientation
-                )
+            orientation = pin_orientations[i]
+            print(orientation)
+            self.device_ports[pin.name] = R.add_port(
+                name=pin.name,
+                midpoint=[x, y],
+                width=self.width * 1e6,
+                orientation=orientation,
+            )
 
         self.device = R
         self.device_ref = Device(f"{self.name}_ref").add_ref(self.device, alias=self)
