@@ -366,7 +366,6 @@ class Simulation:
                 for c in components:
                     if c.name == ref.parent.name.rpartition("_")[-1]:
                         coords[c] = {"x": ref.x, "y": ref.y}
-                        print(coords[c])
 
         # compute correlated samples
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(

@@ -708,7 +708,6 @@ class HalfRing(SiEPIC_PDK_Base):
             y = self.pins_pos[f"{pin.name}"]["y"]
 
             orientation = pin_orientations[i]
-            print(orientation)
             self.device_ports[pin.name] = R.add_port(
                 name=pin.name,
                 midpoint=[x, y],

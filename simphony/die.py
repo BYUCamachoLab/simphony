@@ -273,6 +273,60 @@ class Die(Device):
 
         return route_path
 
+    def _interface(self, component1, component2, pin1, pin2):
+        for port1 in self.device_grid_refs[self.device_list.index(component1.device)].ports:
+            for port2 in self.device_grid_refs[self.device_list.index(component2.device)].ports:
+                if port1 == port2:
+                    if (
+                        self.device_grid_refs[self.device_list.index(component2.device)]
+                        .parent.ports[pin2.name]
+                        .orientation
+                        == 0
+                        or 180
+                    ):
+                        overlap = (
+                            np.linalg.norm(
+                                self.device_grid_refs[self.device_list.index(component2.device)]
+                                .parent.ports[pin2.name]
+                                .midpoint
+                                + self.device_grid_refs[
+                                    self.device_list.index(component1.device)
+                                ]
+                                .parent.ports[pin1.name]
+                                .midpoint
+                            )
+                            + self.spacing[0]
+                            )
+                    elif (
+                        self.device_grid_refs[self.device_list.index(component2.device)]
+                        .parent.ports[pin2.name]
+                        .orientation
+                        == 90
+                        or 270
+                    ):
+                            overlap = (
+                                np.linalg.norm(
+                                    self.device_grid_refs[self.device_list.index(component2.device)]
+                                    .parent.ports[pin2.name]
+                                    .midpoint
+                                    + self.device_grid_refs[
+                                        self.device_list.index(component1.device)
+                                    ]
+                                    .parent.ports[pin1.name]
+                                    .midpoint
+                                )
+                                + self.spacing[1]
+                            )
+                    self.device_grid_refs[self.device_list.index(component1.device)].connect(
+                        self.device_grid_refs[
+                            self.device_list.index(component1.device)
+                        ].parent.ports[pin1.name],
+                        self.device_grid_refs[
+                            self.device_list.index(component2.device)
+                        ].parent.ports[pin2.name],
+                        overlap=overlap,
+                    )
+
     def _disconnect(self, component1, component2):
         """
         Disconnect the devices in the grid as the pins are disconnected.

@@ -101,7 +101,17 @@ class Pin:
 
     def rename(self, name: str) -> None:
         """Renames the pin."""
+        current_name = self.name
+
         self.name = name
+        print(f'name={name}')
+        try:
+            for port in self._component.die.device_grid_refs[self._component.die.device_grid.references.index(self._component.device)].parent.ports:
+                print(port, current_name, name)
+                if port == current_name:
+                    port = name
+        except AttributeError: # no die
+            pass
 
 
 class PinList(list):

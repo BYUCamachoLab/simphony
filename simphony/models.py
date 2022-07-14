@@ -340,7 +340,7 @@ class Model:
             for componentpin in component.pins:
                 if selfpin.name[0:3] != "pin" and selfpin.name == componentpin.name:
                     selfpin.connect(componentpin)
-
+                    self.die._interface(self, component, selfpin, componentpin)
         return self
 
     def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
@@ -453,9 +453,14 @@ class Model:
         The first pin is renamed to the first value passed in, the
         second pin is renamed to the second value, etc.
         """
+        pin_names = [pin.name for pin in self.pins]
         self.pins.rename(*names)
-        self.pins_pos = dict(zip([*names], list(self.pins_pos.values())))
-        self.device_ports = dict(zip([*names], list(self.device_ports.values())))
+        names = [*names]
+        for i, name in enumerate(names):
+            if name is not None:
+                self.pins_pos[name] = self.pins_pos.pop(pin_names[i])
+                self.device_ports[name] = self.device_ports.pop(pin_names[i])
+                self.device.ports[name] = self.device.ports.pop(pin_names[i])
 
     def s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns scattering parameters for the element with its given
