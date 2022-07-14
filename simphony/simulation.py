@@ -517,7 +517,7 @@ class Laser(Source):
         bandwidth :
             The bandwidth of the detector in Hz.
         """
-        return 0 if self.rin == -np.inf else to_db(from_db(self.rin) * bandwidth)
+        return -np.inf if self.rin == -np.inf else to_db(from_db(self.rin) * bandwidth)
 
     def get_rin_dist(self, i: int, j: int) -> List[float]:
         """Returns the normal distribution used for the i,j key. If this is the
@@ -667,7 +667,7 @@ class Detector(SimulationModel):
 
                     # add the shot noise
                     for k in range(self.context.num_samples):
-                        power[i][j][k] += hffs * self.context.rng.poisson(
+                        power[i][j][k] = hffs * self.context.rng.poisson(
                             power[i][j][k] / hffs
                         )
 
@@ -857,10 +857,10 @@ class DifferentialDetector(Detector):
 
                     # add the shot noise
                     for k in range(self.context.num_samples):
-                        p1[i][j][k] += hffs * self.context.rng.poisson(
+                        p1[i][j][k] = hffs * self.context.rng.poisson(
                             p1[i][j][k] / hffs
                         )
-                        p2[i][j][k] += hffs * self.context.rng.poisson(
+                        p2[i][j][k] = hffs * self.context.rng.poisson(
                             p2[i][j][k] / hffs
                         )
 
