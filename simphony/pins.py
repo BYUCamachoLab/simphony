@@ -83,7 +83,6 @@ class Pin:
         self._component._on_connect(pin._component)
 
         if self._component.die is not None:
-            print('here')
             self._component.die._connect(self._component, pin._component, self, pin)
 
     def disconnect(self) -> None:
@@ -105,10 +104,8 @@ class Pin:
         current_name = self.name
 
         self.name = name
-        print(f'name={name}')
         try:
             for port in self._component.die.device_grid_refs[self._component.die.device_grid.references.index(self._component.device)].parent.ports:
-                print(port, current_name, name)
                 if port == current_name:
                     port = name
         except AttributeError: # no die
