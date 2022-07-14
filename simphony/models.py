@@ -340,7 +340,7 @@ class Model:
             for componentpin in component.pins:
                 if selfpin.name[0:3] != "pin" and selfpin.name == componentpin.name:
                     selfpin.connect(componentpin)
-                    self.die._interface(self, component, selfpin, componentpin)
+                    # self.die._interface(self, component, selfpin, componentpin)
         return self
 
     def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
