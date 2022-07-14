@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING, List, Tuple
+from matplotlib import pyplot as plt
 
 import numpy as np
 import phidl.routing as pr
@@ -99,63 +100,92 @@ class Die(Device):
             # Route the waveguides together
             self._route_waveguides(component1, component2, pin1, pin_)
 
-            for i, ref in enumerate(self.device_grid.references):
-                if ref.parent.name == component2.device.name:
-                    self.device_grid.references.pop(i)
+            # for i, ref in enumerate(self.device_grid.references):
+            #     if ref.parent.name == component2.device.name:
+            #         self.device_grid.references.pop(i)
 
         elif not isinstance(
             pin1._connection._component,
             (siepic.Waveguide, Subcircuit, Simulation, Laser, Detector),
         ):
             if (
-                self.device_grid_refs[self.device_list.index(component2.device)]
-                .parent.ports[pin2.name]
+                self.device_grid.references[self.device_list.index(component2.device)]
+                .ports[pin2.name]
                 .orientation
-                == 0
-                or 180
+                in (0, 180)
             ):
                 overlap = (
                     np.linalg.norm(
                         self.device_grid_refs[self.device_list.index(component2.device)]
-                        .parent.ports[pin2.name]
+                        .ports[pin2.name]
                         .midpoint
                         + self.device_grid_refs[
                             self.device_list.index(component1.device)
                         ]
-                        .parent.ports[pin1.name]
+                        .ports[pin1.name]
                         .midpoint
                     )
                     + self.spacing[0]
                 )
             elif (
-                self.device_grid_refs[self.device_list.index(component2.device)]
-                .parent.ports[pin2.name]
+                self.device_grid.references[self.device_list.index(component2.device)]
+                .ports[pin2.name]
                 .orientation
-                == 90
-                or 270
+                in (90, 270)
             ):
-                overlap = (
-                    np.linalg.norm(
+                overlapx = (
                         self.device_grid_refs[self.device_list.index(component2.device)]
-                        .parent.ports[pin2.name]
-                        .midpoint
-                        + self.device_grid_refs[
+                        .ports[pin2.name]
+                        .x
+                        - self.device_grid_refs[
                             self.device_list.index(component1.device)
                         ]
-                        .parent.ports[pin1.name]
-                        .midpoint
+                        .ports[pin1.name]
+                        .x
                     )
-                    + self.spacing[1]
+                + self.spacing[0]
+
+                self.device_grid.references[self.device_list.index(component1.device)].connect(
+                    self.device_grid.references[
+                        self.device_list.index(component1.device)
+                    ].ports[pin1.name],
+                    self.device_grid.references[
+                        self.device_list.index(component2.device)
+                    ].ports[pin2.name],
+                    overlap=overlapx,
                 )
-            self.device_grid_refs[self.device_list.index(component1.device)].connect(
-                self.device_grid_refs[
-                    self.device_list.index(component1.device)
-                ].parent.ports[pin1.name],
-                self.device_grid_refs[
-                    self.device_list.index(component2.device)
-                ].parent.ports[pin2.name],
-                overlap=overlap,
-            )
+                overlapy = (
+                        self.device_grid_refs[self.device_list.index(component2.device)]
+                        .ports[pin2.name]
+                        .y
+                        - self.device_grid_refs[
+                            self.device_list.index(component1.device)
+                        ]
+                        .ports[pin1.name]
+                        .y
+                    )
+                + self.spacing[1]
+                self.device_grid.references[self.device_list.index(component1.device)].connect(
+                    self.device_grid.references[
+                        self.device_list.index(component1.device)
+                    ].ports[pin1.name],
+                    self.device_grid.references[
+                        self.device_list.index(component2.device)
+                    ].ports[pin2.name],
+                    overlap=overlapy,
+                )
+
+            # if ((pin1x != pin2x) or (pin1y != pin2y)):
+
+            #     self.device_grid_refs[self.device_list.index(component1.device)].connect(
+            #         self.device_grid_refs[
+            #             self.device_list.index(component1.device)
+            #         ].parent.ports[pin1.name],
+            #         self.device_grid_refs[
+            #             self.device_list.index(component2.device)
+            #         ].parent.ports[pin2.name],
+            #         overlap=,
+            #     )
 
     def _route_waveguides(self, component1, component2, pin1, pin_) -> None:
         """
@@ -192,36 +222,24 @@ class Die(Device):
             round((dot[0, 0] + dot[1, 1]) - (dot[1, 0] + dot[0, 1])) == -1
             and np.intersect1d(port1.normal, port2.normal) is not []
         ):
-            route_path = (
-                pr.route_smooth(
-                    port1,
-                    port2,
-                    path_type="straight",
-                    radius=1,
-                    width=pin_._component.width * 1e6,
-                )
-                if np.linalg.norm(port1.midpoint - port2.midpoint)
-                == component2.length * 1e6
-                else pr.route_smooth(
-                    port1,
-                    port2,
-                    path_type="C",
-                    length1=component2.length * 1e6 / 5,
-                    length2=component2.length * 1e6 / 5,
-                    left1=component2.length * 1e6 / 5,
-                    radius=1,
-                    width=pin_._component.width * 1e6,
-                )
-            )
-
-        else:
-            route_path = self._connect_parallel_ports(component2, pin_, port1, port2)
+            if np.linalg.norm(port1.midpoint - port2.midpoint) == component2.length * 1e6:
+                route_path =pr.route_smooth(
+                                port1,
+                                port2,
+                                path_type="straight",
+                                radius=1,
+                                width=pin_._component.width * 1e6,
+                            )
+                
+            else:
+                route_path = self._connect_parallel_ports(component2, pin_, port1, port2)
 
         route_path.name = f"wg_{pin_._component.device.name}"
         self.device_grid.add_ref(route_path)
 
-        if not isinstance(component2, siepic.Waveguide):
-            self.device_list.remove(component2.device)
+
+        # if not isinstance(component2, siepic.Waveguide):
+        #     self.device_list.remove(component2.device)
 
     def _connect_parallel_ports(self, component2, pin_, port1, port2) -> Device:
         """
@@ -229,11 +247,12 @@ class Die(Device):
         a 'C' connection.
         """
         if np.intersect1d(port1.normal, port2.normal) is not []:
+            print('U connection')
             route_path = pr.route_smooth(
                 port1,
                 port2,
                 path_type="U",
-                radius=1,
+                radius=0.01,
                 width=pin_._component.width * 1e6,
                 length1=component2.length * 1e6 / 3,
             )
@@ -272,60 +291,6 @@ class Die(Device):
             )
 
         return route_path
-
-    def _interface(self, component1, component2, pin1, pin2):
-        for port1 in self.device_grid_refs[self.device_list.index(component1.device)].ports:
-            for port2 in self.device_grid_refs[self.device_list.index(component2.device)].ports:
-                if port1 == port2:
-                    if (
-                        self.device_grid_refs[self.device_list.index(component2.device)]
-                        .parent.ports[pin2.name]
-                        .orientation
-                        == 0
-                        or 180
-                    ):
-                        overlap = (
-                            np.linalg.norm(
-                                self.device_grid_refs[self.device_list.index(component2.device)]
-                                .parent.ports[pin2.name]
-                                .midpoint
-                                + self.device_grid_refs[
-                                    self.device_list.index(component1.device)
-                                ]
-                                .parent.ports[pin1.name]
-                                .midpoint
-                            )
-                            + self.spacing[0]
-                            )
-                    elif (
-                        self.device_grid_refs[self.device_list.index(component2.device)]
-                        .parent.ports[pin2.name]
-                        .orientation
-                        == 90
-                        or 270
-                    ):
-                            overlap = (
-                                np.linalg.norm(
-                                    self.device_grid_refs[self.device_list.index(component2.device)]
-                                    .parent.ports[pin2.name]
-                                    .midpoint
-                                    + self.device_grid_refs[
-                                        self.device_list.index(component1.device)
-                                    ]
-                                    .parent.ports[pin1.name]
-                                    .midpoint
-                                )
-                                + self.spacing[1]
-                            )
-                    self.device_grid_refs[self.device_list.index(component1.device)].connect(
-                        self.device_grid_refs[
-                            self.device_list.index(component1.device)
-                        ].parent.ports[pin1.name],
-                        self.device_grid_refs[
-                            self.device_list.index(component2.device)
-                        ].parent.ports[pin2.name],
-                        overlap=overlap,
-                    )
 
     def _disconnect(self, component1, component2):
         """
@@ -437,7 +402,7 @@ class Die(Device):
             self.device_grid_refs: DeviceReference = self.device_grid.references
 
     def visualize(
-        self, show_ports=True, show_subports=False, label_aliases=True, font_size=8
+        self, show_ports=True, label_aliases=True, font_size=8
     ):
         """
         Visualize the layout. This opens a new matplotlib window with the layout drawing.
@@ -457,9 +422,10 @@ class Die(Device):
         # Set plot parameters
         set_quickplot_options(
             show_ports=show_ports,
-            show_subports=show_subports,
+            show_subports=show_ports,
             label_aliases=label_aliases,
         )
 
         # Plot the layout
         quickplot(self.device_grid.references)
+        plt.show()
