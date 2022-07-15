@@ -16,9 +16,11 @@ from typing import TYPE_CHECKING, Callable, ClassVar, List, Optional, Tuple, Uni
 import numpy as np
 
 from scipy.constants import h
+from scipy.linalg import cholesky, lu
 from scipy.signal import butter, sosfiltfilt
 
 from simphony import Model
+from simphony.libraries import siepic
 from simphony.tools import add_polar, wl2freq
 
 from scipy.constants import h
