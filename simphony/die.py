@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 class Die():
     """
-    A Die object. It can hold the `device`attributes of components.
+    A Die object. It can hold the `device` attributes of components.
     It can also automatically route the devices when components
     are connected to each other.
 
