@@ -19,7 +19,6 @@ from scipy.linalg import cholesky, lu
 from scipy.signal import butter, sosfiltfilt
 
 from simphony import Model
-from simphony.libraries import siepic
 from simphony.tools import wl2freq
 
 if TYPE_CHECKING:
@@ -264,7 +263,11 @@ class Simulation:
         y = [0] * len(coords)
 
         # get x and y co-ordinates
-        components = self.circuit._get_components()[:-2]
+        components = [
+            component
+            for component in self.circuit._get_components()
+            if not isinstance(component, (Laser, Detector))
+        ]
         if len(coords) != len(components):
             raise ValueError(
                 'Incorrect number of component coordinates passed to argument "coords".'
@@ -352,7 +355,6 @@ class Simulation:
         dies = [
             component.die
             for component in components
-            if not isinstance(component, siepic.Waveguide)
         ]
         if len(set(dies)) != 1:
             raise ValueError("All components must be on the same die.")
@@ -362,10 +364,6 @@ class Simulation:
         for ref in die.device_grid.references:
             if ref.parent.name in [c.name for c in components]:
                 coords[ref.parent] = {"x": ref.x, "y": ref.y}
-            else:
-                for c in components:
-                    if c.name == ref.parent.name.rpartition("_")[-1]:
-                        coords[c] = {"x": ref.x, "y": ref.y}
 
         # compute correlated samples
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(
@@ -484,9 +482,13 @@ class SimulationModel(Model):
     """
 
     def __init__(self, *args, **kwargs) -> None:
-        pins_pos = {"pin1": {"x": 0, "y": 0}}
-        self.pins_pos = pins_pos
-        super().__init__(*args, **kwargs, pins_pos=pins_pos)
+        if 'pin_pos' not in kwargs.keys():
+            pins_pos = {"pin1": {"x": 0, "y": 0}}
+            self.pins_pos = pins_pos
+            super().__init__(*args, **kwargs)
+        else:
+            pins_pos = kwargs['pin_pos']
+            super().__init__(*args, **kwargs, pins_pos=pins_pos)
         self.context = Simulation.get_context()
 
     def _on_connect(self, *args, **kwargs):
@@ -808,7 +810,7 @@ class DifferentialDetector(Detector):
         rf_noise=0,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(pins_pos={'pin1': {'x': 0, 'y': 0}, 'pin2': {'x':0, 'y': 0}}, *args, **kwargs)
 
         # initialize parameters
         self.monitor_conversion_gain = monitor_conversion_gain
