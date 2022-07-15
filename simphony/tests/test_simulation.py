@@ -5,6 +5,7 @@
 import numpy as np
 import pytest
 
+from simphony.die import Die
 from simphony.libraries import siepic
 from simphony.simulation import Detector, DifferentialDetector, Laser, Simulation
 from simphony.tools import wl2freq
@@ -23,6 +24,17 @@ def mzi():
     y_recombiner.multiconnect(gc_output, wg_short, wg_long)
 
     return (gc_input, gc_output)
+
+@pytest.fixture
+def mzi_unconnected():
+    gc_input = siepic.GratingCoupler()
+    y_splitter = siepic.YBranch()
+    wg_long = siepic.Waveguide(length=150e-6)
+    wg_short = siepic.Waveguide(length=50e-6)
+    y_recombiner = siepic.YBranch()
+    gc_output = siepic.GratingCoupler()
+
+    return (gc_input, y_splitter, wg_long, wg_short, y_recombiner, gc_output)
 
 
 @pytest.fixture
@@ -253,10 +265,17 @@ class TestSimulation:
 
         assert np.allclose(data1[0][0], data2[0][0], rtol=0, atol=1e-11)
 
-    def test_layout_aware(self, mzi):
-        gc_input, gc_output = mzi
+    def test_layout_aware(self, mzi_unconnected):
+        gc_input, y_splitter, wg_long, wg_short, y_recombiner, gc_output = mzi_unconnected
 
-        data = None
+        die = Die()
+        die.add_components([gc_input, y_splitter, wg_long, y_recombiner, gc_output, wg_short])
+
+        die.distribute_devices(direction='grid', shape=(3,2), spacing=(5,10))
+
+        y_splitter.multiconnect(gc_input, wg_long, wg_short)
+        y_recombiner.multiconnect(gc_output, wg_short, wg_long)
+
         with Simulation(fs=10e9, seed=117) as sim:
             Laser(power=1e-3, wl=1550e-9).connect(gc_input)
             Detector().connect(gc_output)
