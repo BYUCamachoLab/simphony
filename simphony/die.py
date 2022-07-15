@@ -98,30 +98,28 @@ class Die():
             # Route the waveguides together
             self._route_waveguides(component1, component2, pin1, pin_)
 
-            # for i, ref in enumerate(self.device_grid.references):
-            #     if ref.parent.name == component2.device.name:
-            #         self.device_grid.references.pop(i)
-
         elif not isinstance(
             pin1._connection._component,
             (siepic.Waveguide, Subcircuit, Simulation, Laser, Detector),
         ):
+
             if (
                 self.device_grid.references[self.device_list.index(component2.device)]
                 .ports[pin2.name]
                 .orientation
                 in (0, 180)
             ):
+
                 overlapx = (
-                        self.device_grid_refs[self.device_list.index(component2.device)]
-                        .ports[pin2.name]
-                        .x
-                        - self.device_grid_refs[
-                            self.device_list.index(component1.device)
-                        ]
-                        .ports[pin1.name]
-                        .x
-                    )
+                            self.device_grid_refs[self.device_list.index(component2.device)]
+                            .ports[pin2.name]
+                            .x
+                            - self.device_grid_refs[
+                                self.device_list.index(component1.device)
+                            ]
+                            .ports[pin1.name]
+                            .x
+                            )
                 + self.spacing[0]
 
                 self.device_grid.references[self.device_list.index(component1.device)].connect(
@@ -145,6 +143,7 @@ class Die():
                         .y
                     )
                 + self.spacing[1]
+
                 self.device_grid.references[self.device_list.index(component1.device)].connect(
                     self.device_grid.references[
                         self.device_list.index(component1.device)
@@ -182,6 +181,7 @@ class Die():
                     ].ports[pin2.name],
                     overlap=overlapx,
                 )
+
                 overlapy = (
                         self.device_grid_refs[self.device_list.index(component2.device)]
                         .ports[pin2.name]
@@ -193,6 +193,7 @@ class Die():
                         .y
                     )
                 + self.spacing[1]
+
                 self.device_grid.references[self.device_list.index(component1.device)].connect(
                     self.device_grid.references[
                         self.device_list.index(component1.device)
@@ -202,18 +203,6 @@ class Die():
                     ].ports[pin2.name],
                     overlap=overlapy,
                 )
-
-            # if ((pin1x != pin2x) or (pin1y != pin2y)):
-
-            #     self.device_grid_refs[self.device_list.index(component1.device)].connect(
-            #         self.device_grid_refs[
-            #             self.device_list.index(component1.device)
-            #         ].parent.ports[pin1.name],
-            #         self.device_grid_refs[
-            #             self.device_list.index(component2.device)
-            #         ].parent.ports[pin2.name],
-            #         overlap=,
-            #     )
 
     def _route_waveguides(self, component1, component2, pin1, pin_) -> None:
         """
@@ -251,6 +240,7 @@ class Die():
             round((dot[0, 0] + dot[1, 1]) - (dot[1, 0] + dot[0, 1])) == -1
             and np.intersect1d(port1.normal, port2.normal) is not []
         ):
+
             if np.linalg.norm(port1.midpoint - port2.midpoint) == component2.length * 1e6:
                 route_path = pr.route_smooth(
                                 port1,
@@ -259,6 +249,7 @@ class Die():
                                 radius=1,
                                 width=pin_._component.width * 1e6,
                             )
+
             else:
                 route_path = pr.route_smooth(
                                 port1,
@@ -277,17 +268,12 @@ class Die():
         route_path.name = f"wg_{pin_._component.device.name}"
         self.device_grid.add_ref(route_path)
 
-
-        # if not isinstance(component2, siepic.Waveguide):
-        #     self.device_list.remove(component2.device)
-
     def _connect_parallel_ports(self, component2, pin_, port1, port2) -> Device:
         """
         Connect parallel ports. These can either be a 'U' connection or
         a 'C' connection.
         """
         if np.intersect1d(port1.normal, port2.normal) is not []:
-            print('U connection')
             route_path = pr.route_smooth(
                 port1,
                 port2,
@@ -296,6 +282,7 @@ class Die():
                 width=pin_._component.width * 1e6,
                 length1=component2.length * 1e6 / 3,
             )
+
         elif np.intersect1d(port1.normal, port2.normal) is []:
             route_path = pr.route_smooth(
                 port1,
@@ -319,6 +306,7 @@ class Die():
             route_path = pr.route_smooth(
                 port1, port2, path_type="L", radius=1, width=pin_._component.width * 1e6
             )
+
         elif np.intersect1d(port1.normal, port2.normal) is []:
             route_path = pr.route_smooth(
                 port1,
@@ -355,6 +343,7 @@ class Die():
             component2,
             (siepic.Waveguide, Subcircuit, Simulation, Laser, Detector),
         ):
+
             self.device_grid_refs[self.device_list.index(component1.device)].center = [
                 0,
                 0,
