@@ -947,7 +947,7 @@ class Terminator(SiEPIC_PDK_Base):
     """
 
     pin_count = 1
-    pins_pos = {"pin1": {"x": 0.0, "y": 0.0}}
+    pins_pos = {"pin1": {"x": 0.0, "y": 0.0}, "pin2": {"x": -10.9, "y": 10.0}}
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "ebeam_terminator_te1550"
     )
