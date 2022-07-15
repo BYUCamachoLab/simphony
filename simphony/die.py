@@ -16,10 +16,10 @@ if TYPE_CHECKING:
     from simphony.pins import Pin
 
 
-class Die(Device):
+class Die():
     """
-    A Die object. It is built on top of PHIDL's Device class, and can hold the `device`
-    attributes of components. It can also automatically route the devices when components
+    A Die object. It can hold the `device`attributes of components.
+    It can also automatically route the devices when components
     are connected to each other.
 
     Attributes
@@ -32,11 +32,9 @@ class Die(Device):
 
         self.device_grid: Device = Device(
             name=f"{name}_grid"
-        )  # Holds every device in the die if arranged in a grid
+        )  # Holds every device in the die in a grid
+        self.device_grid_refs: List[DeviceReference] = []  # Holds references to the grid
         self.device_list: List[Device] = []  # List of devices in the die
-        self.device_refs: List[
-            DeviceReference
-        ] = []  # Holds references to every device in self.device
         self.spacing: Tuple = ()  # Spacing in between components
         super().__init__(name=name, *args, **kwargs)
 
@@ -57,7 +55,7 @@ class Die(Device):
 
             # Add component's `device` attribute to `device_grid` and store the
             # corresponding DeviceReference
-            self.device_refs.append(
+            self.device_grid_refs.append(
                 self.device_grid.add_ref(component.device, alias=component)
             )
 
@@ -88,7 +86,7 @@ class Die(Device):
         """
 
         # If component2 is a SiEPIC Waveguide, route the two
-        # components it is connecte to together
+        # components it is connected to together
         if isinstance(component2, siepic.Waveguide):
 
             # pin_ is the other Waveguide pin that is not pin2
@@ -114,19 +112,48 @@ class Die(Device):
                 .orientation
                 in (0, 180)
             ):
-                overlap = (
-                    np.linalg.norm(
+                overlapx = (
                         self.device_grid_refs[self.device_list.index(component2.device)]
                         .ports[pin2.name]
-                        .midpoint
-                        + self.device_grid_refs[
+                        .x
+                        - self.device_grid_refs[
                             self.device_list.index(component1.device)
                         ]
                         .ports[pin1.name]
-                        .midpoint
+                        .x
                     )
-                    + self.spacing[0]
+                + self.spacing[0]
+
+                self.device_grid.references[self.device_list.index(component1.device)].connect(
+                    self.device_grid.references[
+                        self.device_list.index(component1.device)
+                    ].ports[pin1.name],
+                    self.device_grid.references[
+                        self.device_list.index(component2.device)
+                    ].ports[pin2.name],
+                    overlap=overlapx,
                 )
+                overlapy = (
+                        self.device_grid_refs[self.device_list.index(component2.device)]
+                        .ports[pin2.name]
+                        .y
+                        - self.device_grid_refs[
+                            self.device_list.index(component1.device)
+                        ]
+                        .ports[pin1.name]
+                        .y
+                    )
+                + self.spacing[1]
+                self.device_grid.references[self.device_list.index(component1.device)].connect(
+                    self.device_grid.references[
+                        self.device_list.index(component1.device)
+                    ].ports[pin1.name],
+                    self.device_grid.references[
+                        self.device_list.index(component2.device)
+                    ].ports[pin2.name],
+                    overlap=overlapy,
+                )
+
             elif (
                 self.device_grid.references[self.device_list.index(component2.device)]
                 .ports[pin2.name]
@@ -231,8 +258,8 @@ class Die(Device):
                                 width=pin_._component.width * 1e6,
                             )
                 
-            else:
-                route_path = self._connect_parallel_ports(component2, pin_, port1, port2)
+        else:
+            route_path = self._connect_parallel_ports(component2, pin_, port1, port2)
 
         route_path.name = f"wg_{pin_._component.device.name}"
         self.device_grid.add_ref(route_path)
@@ -400,6 +427,28 @@ class Die(Device):
             # Update `device_grid` and `device_grid_refs` attributes
             self.device_grid = device_grid
             self.device_grid_refs: DeviceReference = self.device_grid.references
+
+    def move(self, *components: "Model", distance=(0,0)):
+        """
+        Move the components in the Die.
+
+        Attributes
+        ----------
+        components :
+            The components to move. Can be a single component, or a list of components.
+        distance (x, y):
+            The distance to move the components. Must be a tuple of integers/floats.
+        """
+        components = [*components]
+        if len({c.die for c in components}) > 1:
+            raise ValueError("Cannot move components from different dies.")
+
+        # Move the components
+        for component in components:
+            self.device_grid_refs[self.device_list.index(component.device)].center += [
+                distance[0],
+                distance[1],
+            ]
 
     def visualize(
         self, show_ports=True, label_aliases=True, font_size=8
