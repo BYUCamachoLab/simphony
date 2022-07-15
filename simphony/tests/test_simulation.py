@@ -25,6 +25,7 @@ def mzi():
 
     return (gc_input, gc_output)
 
+
 @pytest.fixture
 def mzi_unconnected():
     gc_input = siepic.GratingCoupler()
@@ -266,12 +267,21 @@ class TestSimulation:
         assert np.allclose(data1[0][0], data2[0][0], rtol=0, atol=1e-11)
 
     def test_layout_aware(self, mzi_unconnected):
-        gc_input, y_splitter, wg_long, wg_short, y_recombiner, gc_output = mzi_unconnected
+        (
+            gc_input,
+            y_splitter,
+            wg_long,
+            wg_short,
+            y_recombiner,
+            gc_output,
+        ) = mzi_unconnected
 
         die = Die()
-        die.add_components([gc_input, y_splitter, wg_long, y_recombiner, gc_output, wg_short])
+        die.add_components(
+            [gc_input, y_splitter, wg_long, y_recombiner, gc_output, wg_short]
+        )
 
-        die.distribute_devices(direction='grid', shape=(3,2), spacing=(5,10))
+        die.distribute_devices(direction="grid", shape=(3, 2), spacing=(5, 10))
 
         y_splitter.multiconnect(gc_input, wg_long, wg_short)
         y_recombiner.multiconnect(gc_output, wg_short, wg_long)
