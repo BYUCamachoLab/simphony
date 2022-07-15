@@ -42,8 +42,9 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-import numpy as npy
+import numpy as np
 
+from simphony.tools import add_polar
 
 # Functions operating on s-parameter matrices
 def connect_s(A, k, B, l):
@@ -56,11 +57,11 @@ def connect_s(A, k, B, l):
     Parameters
     -----------
     A : :class:`numpy.ndarray`
-            S-parameter matrix of `A`, shape is fxnxn
+            S-parameter matrix of `A`, shape is fxnxn(x2)
     k : int
             port index on `A` (port indices start from 0)
     B : :class:`numpy.ndarray`
-            S-parameter matrix of `B`, shape is fxnxn
+            S-parameter matrix of `B`, shape is fxnxn(x2)
     l : int
             port index on `B`
     Returns
@@ -90,15 +91,22 @@ def connect_s(A, k, B, l):
 
 
 def create_block_diagonal(A, B):
-    """merges an fxnxn matrix with an fxmxm matrix to form a fx(n+m)x(n+m)
+    """merges an fxnxn(x2) matrix with an fxmxm(x2) matrix to form a fx(n+m)x(n+m)(x2)
     block diagonal matrix."""
     nf = A.shape[0]  # num frequency points
     nA = A.shape[1]  # num ports on A
     nB = B.shape[1]  # num ports on B
     nC = nA + nB  # num ports on C
 
+    # if complex values are in rectangular, convert to polar
+    if A.ndim == 3:
+        A = np.stack((np.abs(A), np.angle(A)), axis=-1)
+
+    if B.ndim == 3:
+        B = np.stack((np.abs(B), np.angle(B)), axis=-1)
+
     # create composite matrix, appending each sub-matrix diagonally
-    C = npy.zeros((nf, nC, nC), dtype="complex")
+    C = np.zeros((nf, nC, nC, 2))
     C[:, :nA, :nA] = A.copy()
     C[:, nA:, nA:] = B.copy()
 
@@ -115,7 +123,7 @@ def innerconnect_s(A, k, l):
     Parameters
     -----------
     A : :class:`numpy.ndarray`
-        S-parameter matrix of `A`, shape is fxnxn
+        S-parameter matrix of `A`, shape is fxnxnx2
     k : int
         port index on `A` (port indices start from 0)
     l : int
@@ -135,25 +143,64 @@ def innerconnect_s(A, k, l):
     .. [#] Filipsson, Gunnar; , "A New General Computer Algorithm for S-Matrix Calculation of Interconnected Multiports," Microwave Conference, 1981. 11th European , vol., no., pp.700-704, 7-11 Sept. 1981. URL: http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=4131699&isnumber=4131585
     """
 
-    if k > A.shape[-1] - 1 or l > A.shape[-1] - 1:
+    if k > A.shape[1] - 1 or l > A.shape[1] - 1:
         raise (ValueError("port indices are out of range"))
 
     nA = A.shape[1]  # num of ports on input s-matrix
     # create an empty s-matrix, to store the result
-    C = npy.zeros(shape=A.shape, dtype="complex")
+    C = np.zeros(A.shape)
 
     # loop through ports and calulates resultant s-parameters
     for i in range(nA):
         for j in range(nA):
-            C[:, i, j] = A[:, i, j] + (
-                A[:, k, j] * A[:, i, l] * (1 - A[:, l, k])
-                + A[:, l, j] * A[:, i, k] * (1 - A[:, k, l])
-                + A[:, k, j] * A[:, l, l] * A[:, i, k]
-                + A[:, l, j] * A[:, k, k] * A[:, i, l]
-            ) / ((1 - A[:, k, l]) * (1 - A[:, l, k]) - A[:, k, k] * A[:, l, l])
+            term1 = np.stack(
+                (
+                    A[:, k, j, 0] * A[:, i, l, 0] * (1 - A[:, l, k, 0]),
+                    A[:, k, j, 1] + A[:, i, l, 1] + (1 - A[:, l, k, 1]),
+                ),
+                axis=-1,
+            )
+            term2 = np.stack(
+                (
+                    A[:, l, j, 0] * A[:, i, k, 0] * (1 - A[:, k, l, 0]),
+                    A[:, l, j, 1] + A[:, i, k, 1] + (1 - A[:, k, l, 1]),
+                ),
+                axis=-1,
+            )
+            term3 = np.stack(
+                (
+                    A[:, k, j, 0] * A[:, l, l, 0] * A[:, i, k, 0],
+                    A[:, k, j, 1] + A[:, l, l, 1] + A[:, i, k, 1],
+                ),
+                axis=-1,
+            )
+            term4 = np.stack(
+                (
+                    A[:, l, j, 0] * A[:, k, k, 0] * A[:, i, l, 0],
+                    A[:, l, j, 1] + A[:, k, k, 1] + A[:, i, l, 1],
+                ),
+                axis=-1,
+            )
+            term5 = np.stack(
+                (
+                    (1 - A[:, k, l, 0]) * (1 - A[:, l, k, 0]),
+                    (1 - A[:, k, l, 1]) + (1 - A[:, l, k, 1]),
+                ),
+                axis=-1,
+            )
+            term6 = np.stack(
+                (A[:, k, k, 0] * A[:, l, l, 0], A[:, k, k, 1] + A[:, l, l, 1]), axis=-1
+            )
+            for m in range(A.shape[0]):
+                term7 = add_polar(
+                    add_polar(add_polar(term1[m], term2[m]), term3[m]), term4[m]
+                )
+                term8 = add_polar(term5[m], (term6[m, 0], -term6[m, 1]))
+                term9 = (term7[0] / term8[0], term7[1] - term8[1])
+                C[m, i, j] = add_polar(A[m, i, j], term9)
 
     # remove ports that were `connected`
-    C = npy.delete(C, (k, l), 1)
-    C = npy.delete(C, (k, l), 2)
+    C = np.delete(C, (k, l), 1)
+    C = np.delete(C, (k, l), 2)
 
     return C
