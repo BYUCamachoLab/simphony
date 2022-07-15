@@ -53,5 +53,12 @@ class TestDie:
         y_recombiner["pin2"].connect(wg_short)
 
         assert die.device_grid.references[0].center != gc_input.device.center
-        assert die.device_grid.references[1].center == y_splitter.device.center
+        assert die.device_grid.references[1].center != y_splitter.device.center
+        assert die.device_grid.references[2].center != wg_long.device.center
+        assert die.device_grid.references[3].center != y_recombiner.device.center
+        assert die.device_grid.references[4].center != gc_output.device.center
+        assert die.device_grid.references[5].center != wg_short.device.center
+
+        assert die.device_grid.references[0].ports['pin1'].center == die.device_grid.references[1].ports['pin1'].center
+        assert die.device_grid.references[3].ports['pin1'].center == die.device_grid.references[4].ports['pin1'].center
         
