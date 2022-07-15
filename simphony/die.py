@@ -14,10 +14,10 @@ is correct.
 """
 
 from typing import TYPE_CHECKING, List, Tuple
-from matplotlib import pyplot as plt
 
 import numpy as np
 import phidl.routing as pr
+from matplotlib import pyplot as plt
 from phidl import quickplot, set_quickplot_options
 from phidl.device_layout import Device, DeviceReference
 from phidl.geometry import grid
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from simphony.pins import Pin
 
 
-class Die():
+class Die:
     """
     A Die object. It can hold the `device` attributes of components.
     It can also automatically route the devices when components
@@ -45,10 +45,13 @@ class Die():
 
     def __init__(self, name: str = "", *args, **kwargs):
 
+        self.components_list: List["Model"] = []
         self.device_grid: Device = Device(
             name=f"{name}_grid"
         )  # Holds every device in the die in a grid
-        self.device_grid_refs: List[DeviceReference] = []  # Holds references to the grid
+        self.device_grid_refs: List[
+            DeviceReference
+        ] = []  # Holds references to the grid
         self.device_list: List[Device] = []  # List of devices in the die
         self.spacing: Tuple = ()  # Spacing in between components
         self.name = name  # Name of the die
@@ -64,6 +67,9 @@ class Die():
         """
         for i, component in enumerate(components):
 
+            # Add component to die
+            self.components_list.append(component)
+
             # Add component's `device` attribute to a list to
             # keep track of all the devices in the Die
             self.device_list.append(component.device)
@@ -71,7 +77,7 @@ class Die():
             # Add component's `device` attribute to `device_grid` and store the
             # corresponding DeviceReference
             self.device_grid_refs.append(
-                self.device_grid.add_ref(component.device, alias=component)
+                self.device_grid.add_ref(component.device, alias=component.name)
             )
 
             # Update center position if it is different during instantiation
@@ -118,26 +124,23 @@ class Die():
             (siepic.Waveguide, Subcircuit, Simulation, Laser, Detector),
         ):
 
-            if (
-                self.device_grid.references[self.device_list.index(component2.device)]
-                .ports[pin2.name]
-                .orientation
-                in (0, 180)
-            ):
+            if self.device_grid.references[
+                self.device_list.index(component2.device)
+            ].ports[pin2.name].orientation in (0, 180):
 
                 overlapx = (
                     self.device_grid_refs[self.device_list.index(component2.device)]
                     .ports[pin2.name]
                     .x
-                    - self.device_grid_refs[
-                        self.device_list.index(component1.device)
-                    ]
+                    - self.device_grid_refs[self.device_list.index(component1.device)]
                     .ports[pin1.name]
                     .x
                 )
-                + self.spacing[0]
+                +self.spacing[0]
 
-                self.device_grid.references[self.device_list.index(component1.device)].connect(
+                self.device_grid.references[
+                    self.device_list.index(component1.device)
+                ].connect(
                     self.device_grid.references[
                         self.device_list.index(component1.device)
                     ].ports[pin1.name],
@@ -151,15 +154,15 @@ class Die():
                     self.device_grid_refs[self.device_list.index(component2.device)]
                     .ports[pin2.name]
                     .y
-                    - self.device_grid_refs[
-                        self.device_list.index(component1.device)
-                    ]
+                    - self.device_grid_refs[self.device_list.index(component1.device)]
                     .ports[pin1.name]
                     .y
                 )
-                + self.spacing[1]
+                +self.spacing[1]
 
-                self.device_grid.references[self.device_list.index(component1.device)].connect(
+                self.device_grid.references[
+                    self.device_list.index(component1.device)
+                ].connect(
                     self.device_grid.references[
                         self.device_list.index(component1.device)
                     ].ports[pin1.name],
@@ -169,25 +172,22 @@ class Die():
                     overlap=overlapy,
                 )
 
-            elif (
-                self.device_grid.references[self.device_list.index(component2.device)]
-                .ports[pin2.name]
-                .orientation
-                in (90, 270)
-            ):
+            elif self.device_grid.references[
+                self.device_list.index(component2.device)
+            ].ports[pin2.name].orientation in (90, 270):
                 overlapx = (
                     self.device_grid_refs[self.device_list.index(component2.device)]
                     .ports[pin2.name]
                     .x
-                    - self.device_grid_refs[
-                        self.device_list.index(component1.device)
-                    ]
+                    - self.device_grid_refs[self.device_list.index(component1.device)]
                     .ports[pin1.name]
                     .x
                 )
-                + self.spacing[0]
+                +self.spacing[0]
 
-                self.device_grid.references[self.device_list.index(component1.device)].connect(
+                self.device_grid.references[
+                    self.device_list.index(component1.device)
+                ].connect(
                     self.device_grid.references[
                         self.device_list.index(component1.device)
                     ].ports[pin1.name],
@@ -201,15 +201,15 @@ class Die():
                     self.device_grid_refs[self.device_list.index(component2.device)]
                     .ports[pin2.name]
                     .y
-                    - self.device_grid_refs[
-                        self.device_list.index(component1.device)
-                    ]
+                    - self.device_grid_refs[self.device_list.index(component1.device)]
                     .ports[pin1.name]
                     .y
                 )
-                + self.spacing[1]
+                +self.spacing[1]
 
-                self.device_grid.references[self.device_list.index(component1.device)].connect(
+                self.device_grid.references[
+                    self.device_list.index(component1.device)
+                ].connect(
                     self.device_grid.references[
                         self.device_list.index(component1.device)
                     ].ports[pin1.name],
@@ -255,7 +255,10 @@ class Die():
             and np.intersect1d(port1.normal, port2.normal) is not []
         ):
 
-            if np.linalg.norm(port1.midpoint - port2.midpoint) == component2.length * 1e6:
+            if (
+                np.linalg.norm(port1.midpoint - port2.midpoint)
+                == component2.length * 1e6
+            ):
                 route_path = pr.route_smooth(
                     port1,
                     port2,
@@ -279,8 +282,8 @@ class Die():
         else:
             route_path = self._connect_parallel_ports(component2, pin_, port1, port2)
 
-        route_path.name = f"wg_{pin_._component.device.name}"
-        self.device_grid.add_ref(route_path)
+        route_path.name = f"wg_{pin_._component.name}"
+        self.device_grid.add_ref(route_path, alias=route_path.name)
 
     def _connect_parallel_ports(self, component2, pin_, port1, port2) -> Device:
         """
@@ -437,10 +440,11 @@ class Die():
             )
 
             # Update alias names
-            names = [name for name, _ in self.device_grid.aliases.items()]
-            device_grid.aliases = dict(zip(names, list(device_grid.aliases.values())))
+            for i in range(len(self.device_grid.aliases)):
+                device_grid.aliases[
+                    self.device_grid.references[i].parent.name
+                ] = device_grid.references[i]
 
-            # Update `device_grid` and `device_grid_refs` attributes
             self.device_grid = device_grid
             self.device_grid_refs: DeviceReference = self.device_grid.references
 
@@ -467,7 +471,8 @@ class Die():
             ]
 
     def visualize(
-        self, show_ports=True, label_aliases=True, font_size=8
+        self,
+        show_ports=True,
     ):
         """
         Visualize the layout. This opens a new matplotlib window with the layout drawing.
@@ -488,9 +493,9 @@ class Die():
         set_quickplot_options(
             show_ports=show_ports,
             show_subports=show_ports,
-            label_aliases=label_aliases,
+            label_aliases=False,
         )
 
         # Plot the layout
-        quickplot(self.device_grid.references)
+        quickplot(self.device_grid)
         plt.show()
