@@ -90,9 +90,10 @@ class TestDie:
             for ref2 in die.device_grid.references:
                 if (
                     ref1 != ref2
-                    and ref1.parent.name[:2] not in "wg"
-                    and ref2.parent.name[:2] != "wg"
+                    and ref1.parent.name[:2] not in ("wg", "Un")
+                    and ref2.parent.name[:2] not in ("wg", "Un")
                 ):
+                    print(ref1.parent.name[:2])
                     assert not np.allclose(ref1.center, ref2.center)
 
     def test_move(self, mzi):
