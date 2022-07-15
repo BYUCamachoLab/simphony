@@ -64,7 +64,9 @@ die.add_components([wg_input, ring1, wg_connect1, ring2, wg_connect2, ring3, ter
 
 # %%
 die.distribute_devices(direction='grid', shape=(8,2), spacing=(80,5))
+
 die.visualize(show_ports=True)
+
 
 # %%
 ring1.interface(halfring1)
@@ -82,6 +84,10 @@ halfring3["term"].connect(terminator3)
 die.visualize(show_ports=True)
 
 # %%
+die.move(ring2, halfring2, terminator2, distance=(0, -1.5))
+die.move(ring3, halfring3, terminator3, distance=(0, -3))
+
+# %%
 ring1["in"].connect(wg_input["pin1"])
 ring1["pass"].connect(wg_connect1["pin1"])
 halfring1["out"].connect(wg_out1["pin1"])
@@ -95,4 +101,4 @@ ring3["pass"].connect(wg_out3["pin1"])
 halfring3["out"].connect(terminator)
 
 # %%
-die.visualize(show_ports=False)
+die.visualize(show_ports=True)
