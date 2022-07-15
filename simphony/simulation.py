@@ -353,10 +353,7 @@ class Simulation:
             if not isinstance(component, (Laser, Detector))
         ]  # get all components except the Laser and Detector
 
-        dies = [
-            component.die
-            for component in components
-        ]
+        dies = [component.die for component in components]
         if len(set(dies)) != 1:
             raise ValueError("All components must be on the same die.")
         die = dies[0]
@@ -365,10 +362,29 @@ class Simulation:
         coords = {}
         ref_names = np.array([ref.parent.name for ref in die.device_grid.references])
         for component in components:
-            if component.device.name in ref_names and not isinstance(component, siepic.Waveguide):
-                coords[component] = {'x': die.device_grid.references[die.device_list.index(component.device)].x, 'y': die.device_grid.references[die.device_list.index(component.device)].y}
-            elif isinstance(component, siepic.Waveguide) and f'wg_{component.device.name}' in ref_names:
-                coords[component] = {'x': die.device_grid.references[np.where(ref_names == f'wg_{component.device.name}')[0][0]].x, 'y': die.device_grid.references[np.where(ref_names == f'wg_{component.device.name}')[0][0]].y}
+            if component.device.name in ref_names and not isinstance(
+                component, siepic.Waveguide
+            ):
+                coords[component] = {
+                    "x": die.device_grid.references[
+                        die.device_list.index(component.device)
+                    ].x,
+                    "y": die.device_grid.references[
+                        die.device_list.index(component.device)
+                    ].y,
+                }
+            elif (
+                isinstance(component, siepic.Waveguide)
+                and f"wg_{component.device.name}" in ref_names
+            ):
+                coords[component] = {
+                    "x": die.device_grid.references[
+                        np.where(ref_names == f"wg_{component.device.name}")[0][0]
+                    ].x,
+                    "y": die.device_grid.references[
+                        np.where(ref_names == f"wg_{component.device.name}")[0][0]
+                    ].y,
+                }
 
         # compute correlated samples
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(
@@ -487,12 +503,12 @@ class SimulationModel(Model):
     """
 
     def __init__(self, *args, **kwargs) -> None:
-        if 'pin_pos' not in kwargs.keys():
+        if "pin_pos" not in kwargs.keys():
             pins_pos = {"pin1": {"x": 0, "y": 0}}
             self.pins_pos = pins_pos
             super().__init__(*args, **kwargs)
         else:
-            pins_pos = kwargs['pin_pos']
+            pins_pos = kwargs["pin_pos"]
             super().__init__(*args, **kwargs, pins_pos=pins_pos)
         self.context = Simulation.get_context()
 
@@ -815,7 +831,11 @@ class DifferentialDetector(Detector):
         rf_noise=0,
         **kwargs,
     ):
-        super().__init__(pins_pos={'pin1': {'x': 0, 'y': 0}, 'pin2': {'x':0, 'y': 0}}, *args, **kwargs)
+        super().__init__(
+            pins_pos={"pin1": {"x": 0, "y": 0}, "pin2": {"x": 0, "y": 0}},
+            *args,
+            **kwargs,
+        )
 
         # initialize parameters
         self.monitor_conversion_gain = monitor_conversion_gain

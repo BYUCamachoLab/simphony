@@ -145,7 +145,9 @@ class Model:
                 self.pins_pos[pin.name] = {"x": 0, "y": 0}
 
         if [p.name for p in self.pins] != list(self.pins_pos.keys()):
-            self.pins_pos = dict(zip([p.name for p in self.pins], self.pins_pos.values()))
+            self.pins_pos = dict(
+                zip([p.name for p in self.pins], self.pins_pos.values())
+            )
 
         # compute origin
         x_values = np.asarray([self.pins_pos[k]["x"] for k in self.pins_pos])
@@ -160,7 +162,7 @@ class Model:
                 (x_values.max(), y_values.max()),
                 (x_values.min(), y_values.max()),
             ]
-        except ValueError:
+        except ValueError:  # if there are no pins
             points = [(0, 0), (0, 0), (0, 0), (0, 0)]
         self.polygons = R.add_polygon(points=points)
         self.device_ports = {}
@@ -658,11 +660,24 @@ class Subcircuit(Model):
                             pin_names[pin.name] = True
                             pin._component = self
 
-                        if [p.name for p in component.pins] != list(component.pins_pos.keys()):
-                            component.pins_pos = dict(zip([p.name for p in component.pins], component.pins_pos.values()))
+                        if [p.name for p in component.pins] != list(
+                            component.pins_pos.keys()
+                        ):
+                            component.pins_pos = dict(
+                                zip(
+                                    [p.name for p in component.pins],
+                                    component.pins_pos.values(),
+                                )
+                            )
 
-                        pins_pos.update({pin.name: {"x": component.pins_pos[pin.name]["x"], "y": component.pins_pos[pin.name]["y"]}})
-
+                        pins_pos.update(
+                            {
+                                pin.name: {
+                                    "x": component.pins_pos[pin.name]["x"],
+                                    "y": component.pins_pos[pin.name]["y"],
+                                }
+                            }
+                        )
 
         if len(pins) == 0:
             raise ValueError(
