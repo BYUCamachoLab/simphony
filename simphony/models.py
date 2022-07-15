@@ -159,7 +159,9 @@ class Model:
 
         # Set device
         self.device = R
-        self.device_ref = Device(f"{self.name}_ref").add_ref(self.device, alias=self)
+        self.device_ref = Device(f"{self.name}_ref").add_ref(
+            self.device, alias=self.name
+        )
 
         # Set die
         self.die: "Die" = None

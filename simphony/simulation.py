@@ -271,7 +271,7 @@ class Simulation:
         ]
         if len(coords) != len(components):
             raise ValueError(
-                'Incorrect number of component coordinates passed to argument "coords".'
+                f'Incorrect number of component coordinates passed to argument "coords". Expected {len(components)}, got {len(coords)}'
             )
 
         n = len(self.circuit._get_components()) - 2
@@ -283,7 +283,7 @@ class Simulation:
             for k in range(n):
 
                 corr_val = np.exp(
-                    -((x[k] - x[i]) ** 2 + (y[k] - y[i]) ** 2) / (0.5 * (l**2))
+                    -((x[k] - x[i]) ** 2 + (y[k] - y[i]) ** 2) / (0.5 * (l ** 2))
                 )
 
                 corr_matrix_w[i][k] = corr_matrix_w[k][i] = corr_val
@@ -362,7 +362,7 @@ class Simulation:
         coords = {}
         ref_names = np.array([ref.parent.name for ref in die.device_grid.references])
         for component in components:
-            if component.device.name in ref_names and not isinstance(
+            if component.name in ref_names and not isinstance(
                 component, siepic.Waveguide
             ):
                 coords[component] = {
@@ -373,16 +373,13 @@ class Simulation:
                         die.device_list.index(component.device)
                     ].y,
                 }
-            elif (
-                isinstance(component, siepic.Waveguide)
-                and f"wg_{component.device.name}" in ref_names
-            ):
+            elif isinstance(component, siepic.Waveguide):
                 coords[component] = {
                     "x": die.device_grid.references[
-                        np.where(ref_names == f"wg_{component.device.name}")[0][0]
+                        np.where(ref_names == f"wg_{component.name}")[0][0]
                     ].x,
                     "y": die.device_grid.references[
-                        np.where(ref_names == f"wg_{component.device.name}")[0][0]
+                        np.where(ref_names == f"wg_{component.name}")[0][0]
                     ].y,
                 }
 

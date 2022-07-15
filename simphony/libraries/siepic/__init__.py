@@ -692,7 +692,7 @@ class HalfRing(SiEPIC_PDK_Base):
             originy=originy,
         )
 
-        R = Device(self.name)
+        R = Device()
         x_values = np.asarray([self.pins_pos[k]["x"] for k in self.pins_pos])
         y_values = np.asarray([self.pins_pos[k]["y"] for k in self.pins_pos])
 
@@ -719,7 +719,9 @@ class HalfRing(SiEPIC_PDK_Base):
             )
 
         self.device = R
-        self.device_ref = Device(f"{self.name}_ref").add_ref(self.device, alias=self)
+        self.device_ref = Device(f"{self.name}_ref").add_ref(
+            self.device, alias=self.name
+        )
 
     def on_args_changed(self):
         try:
@@ -1133,18 +1135,14 @@ class GratingCoupler(SiEPIC_PDK_Base):
         deltaws = []
         s_params = []
         for d in available:
-            _, thickness, deltaw = [
-                (key, d.get(key)) for key in self._args_keys
-            ]
+            _, thickness, deltaw = [(key, d.get(key)) for key in self._args_keys]
             thicknesses.append(round(str2float(thickness[1]) * 1e-9, 15))
             deltaws.append(round(str2float(deltaw[1]) * 1e-9, 15))
 
         if self.polarization == "TE":
             for idx in range(round(len(thicknesses) / 2)):
                 valid_args = available[idx]
-                params = np.genfromtxt(
-                    self._get_file(valid_args), delimiter="\t"
-                )
+                params = np.genfromtxt(self._get_file(valid_args), delimiter="\t")
                 self._f = params[:, 0]
                 s = np.zeros((len(self._f), 2, 2), dtype="complex128")
                 s[:, 0, 0] = params[:, 1] * np.exp(1j * params[:, 2])
@@ -1178,9 +1176,7 @@ class GratingCoupler(SiEPIC_PDK_Base):
         elif self.polarization == "TM":
             for idx in range(round(len(thicknesses) / 2) + 1, len(thicknesses)):
                 valid_args = available[idx]
-                params = np.genfromtxt(
-                    self._get_file(valid_args), delimiter="\t"
-                )
+                params = np.genfromtxt(self._get_file(valid_args), delimiter="\t")
                 self._f = params[:, 0]
                 s = np.zeros((len(self._f), 2, 2), dtype="complex128")
                 s[:, 0, 0] = params[:, 1] * np.exp(1j * params[:, 2])
@@ -1203,9 +1199,7 @@ class GratingCoupler(SiEPIC_PDK_Base):
             s_list = np.asarray(s_list, dtype=complex)
             self._s = interp.griddata(
                 (
-                    thicknesses[
-                        round(len(thicknesses) / 2) + 1, len(thicknesses)
-                    ],
+                    thicknesses[round(len(thicknesses) / 2) + 1, len(thicknesses)],
                     deltaws[round(len(thicknesses) / 2) + 1, len(thicknesses)],
                 ),
                 s_list,
@@ -1326,8 +1320,12 @@ class Waveguide(SiEPIC_PDK_Base):
             originy=originy,
         )
 
-        self.device = Device(self.name)
-        self.device_ref = Device(f"{self.name}_ref").add_ref(self.device, alias=self)
+        R = Device()
+        R.aliases = {self.name: R}
+        self.device = R
+        self.device_ref = Device(f"{self.name}_ref").add_ref(
+            self.device, alias=self.name
+        )
 
         self.regenerate_monte_carlo_parameters()
 
@@ -1507,7 +1505,7 @@ class Waveguide(SiEPIC_PDK_Base):
         K = (
             2 * np.pi * ne / lam0
             + (ng / SPEED_OF_LIGHT) * (w - w0)
-            - (nd * lam0**2 / (4 * np.pi * SPEED_OF_LIGHT)) * ((w - w0) ** 2)
+            - (nd * lam0 ** 2 / (4 * np.pi * SPEED_OF_LIGHT)) * ((w - w0) ** 2)
         )
 
         for x in range(0, len(freqs)):  # build s-matrix from K and waveguide length
