@@ -36,7 +36,7 @@ class Die():
         self.device_grid_refs: List[DeviceReference] = []  # Holds references to the grid
         self.device_list: List[Device] = []  # List of devices in the die
         self.spacing: Tuple = ()  # Spacing in between components
-        super().__init__(name=name, *args, **kwargs)
+        self.name=name # Name of the die
 
     def add_components(self, components: List["Model"]):
         """
@@ -133,6 +133,7 @@ class Die():
                     ].ports[pin2.name],
                     overlap=overlapx,
                 )
+
                 overlapy = (
                         self.device_grid_refs[self.device_list.index(component2.device)]
                         .ports[pin2.name]
@@ -246,14 +247,26 @@ class Die():
             route_path = self._connect_orthogonal_ports(component2, pin_, port1, port2)
 
         elif (
+            
             round((dot[0, 0] + dot[1, 1]) - (dot[1, 0] + dot[0, 1])) == -1
             and np.intersect1d(port1.normal, port2.normal) is not []
         ):
             if np.linalg.norm(port1.midpoint - port2.midpoint) == component2.length * 1e6:
-                route_path =pr.route_smooth(
+                route_path = pr.route_smooth(
                                 port1,
                                 port2,
                                 path_type="straight",
+                                radius=1,
+                                width=pin_._component.width * 1e6,
+                            )
+            else:
+                route_path = pr.route_smooth(
+                                port1,
+                                port2,
+                                path_type="C",
+                                length1=component2.length * 1e6 / 5,
+                                length2=component2.length * 1e6 / 5,
+                                left1=component2.length * 1e6 / 5,
                                 radius=1,
                                 width=pin_._component.width * 1e6,
                             )
