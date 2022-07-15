@@ -1,3 +1,18 @@
+# Copyright © Simphony Project Contributors
+# Licensed under the terms of the MIT License
+# (see simphony/__init__.py for details)
+
+"""
+simphony.die
+===========
+
+This module contains the Die class, which is used to represent a die. A Die instance should be 
+used before a Layout Aware Monte Carlo simulation is run. The user must add the necessary components
+to the Die, distribute them, and connect them before the simulation is run. It is good practice to
+verify the layout using Die().visualize() before running the simulation to ensure that the layout
+is correct.
+"""
+
 from typing import TYPE_CHECKING, List, Tuple
 from matplotlib import pyplot as plt
 
