@@ -75,7 +75,6 @@ install_requires = [
     "numpy>=1.19.5",
     "parsimonious>=0.8.1",
     "phidl",
-    "shapely",
 ]
 
 extras_require = {
