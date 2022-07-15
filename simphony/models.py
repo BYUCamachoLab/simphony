@@ -144,6 +144,9 @@ class Model:
             for pin in self.pins:
                 self.pins_pos[pin.name] = {"x": 0, "y": 0}
 
+        if [p.name for p in self.pins] != list(self.pins_pos.keys()):
+            self.pins_pos = dict(zip([p.name for p in self.pins], self.pins_pos.values()))
+
         # compute origin
         x_values = np.asarray([self.pins_pos[k]["x"] for k in self.pins_pos])
         y_values = np.asarray([self.pins_pos[k]["y"] for k in self.pins_pos])
@@ -457,9 +460,12 @@ class Model:
         names = [*names]
         for i, name in enumerate(names):
             if name is not None:
-                self.pins_pos[name] = self.pins_pos.pop(pin_names[i])
-                self.device_ports[name] = self.device_ports.pop(pin_names[i])
-                self.device.ports[name] = self.device.ports.pop(pin_names[i])
+                try:
+                    self.pins_pos[name] = self.pins_pos.pop(pin_names[i])
+                    self.device_ports[name] = self.device_ports.pop(pin_names[i])
+                    self.device.ports[name] = self.device.ports.pop(pin_names[i])
+                except KeyError:
+                    pass
 
     def s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns scattering parameters for the element with its given
@@ -651,11 +657,12 @@ class Subcircuit(Model):
                         if permanent:
                             pin_names[pin.name] = True
                             pin._component = self
-                if pin._isconnected(include_simulators=False) is False:
-                    pins_pos[pin.name] = {
-                        "x": component.pins_pos[pin.name]["x"],
-                        "y": component.pins_pos[pin.name]["y"],
-                    }
+
+                        if [p.name for p in component.pins] != list(component.pins_pos.keys()):
+                            component.pins_pos = dict(zip([p.name for p in component.pins], component.pins_pos.values()))
+
+                        pins_pos.update({pin.name: {"x": component.pins_pos[pin.name]["x"], "y": component.pins_pos[pin.name]["y"]}})
+
 
         if len(pins) == 0:
             raise ValueError(
