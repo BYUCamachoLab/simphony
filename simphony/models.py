@@ -138,16 +138,7 @@ class Model:
 
         # Set the pin positions. If not specified during instantiation, default to 0.
         self.pins_pos = {}
-        if pins_pos != {}:
-            self.pins_pos = pins_pos
-        else:
-            for pin in self.pins:
-                self.pins_pos[pin.name] = {"x": 0, "y": 0}
-
-        if [p.name for p in self.pins] != list(self.pins_pos.keys()):
-            self.pins_pos = dict(
-                zip([p.name for p in self.pins], self.pins_pos.values())
-            )
+        self._set_pins_pos(pins_pos)
 
         # compute origin
         x_values = np.asarray([self.pins_pos[k]["x"] for k in self.pins_pos])
@@ -155,18 +146,9 @@ class Model:
 
         # Instantiate device and add polygons
         R = Device(name=self.name)
-        try:
-            points = [
-                (x_values.min(), y_values.min()),
-                (x_values.max(), y_values.min()),
-                (x_values.max(), y_values.max()),
-                (x_values.min(), y_values.max()),
-            ]
-        except ValueError:  # if there are no pins
-            points = [(0, 0), (0, 0), (0, 0), (0, 0)]
-        self.polygons = R.add_polygon(points=points)
-        self.device_ports = {}
+        self._add_polygon(x_values, y_values, R)
 
+        self.device_ports = {}
         # Add ports to device
         self._define_ports(x_values, R)
 
@@ -184,6 +166,30 @@ class Model:
 
         # Set circuit
         self.circuit = Circuit(self)
+
+    def _set_pins_pos(self, pins_pos):
+        if pins_pos != {}:
+            self.pins_pos = pins_pos
+        else:
+            for pin in self.pins:
+                self.pins_pos[pin.name] = {"x": 0, "y": 0}
+
+        if [p.name for p in self.pins] != list(self.pins_pos.keys()):
+            self.pins_pos = dict(
+                zip([p.name for p in self.pins], self.pins_pos.values())
+            )
+
+    def _add_polygon(self, x_values, y_values, R):
+        try:
+            points = [
+                (x_values.min(), y_values.min()),
+                (x_values.max(), y_values.min()),
+                (x_values.max(), y_values.max()),
+                (x_values.min(), y_values.max()),
+            ]
+        except ValueError:  # if there are no pins
+            points = [(0, 0), (0, 0), (0, 0), (0, 0)]
+        self.polygons = R.add_polygon(points=points)
 
     def _define_ports(self, x_values, R):
         """

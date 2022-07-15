@@ -6,7 +6,7 @@
 simphony.die
 ===========
 
-This module contains the Die class, which is used to represent a die. A Die instance should be 
+This module contains the Die class, which is used to represent a die. A Die instance should be
 used before a Layout Aware Monte Carlo simulation is run. The user must add the necessary components
 to the Die, distribute them, and connect them before the simulation is run. It is good practice to
 verify the layout using Die().visualize() before running the simulation to ensure that the layout
@@ -51,7 +51,7 @@ class Die():
         self.device_grid_refs: List[DeviceReference] = []  # Holds references to the grid
         self.device_list: List[Device] = []  # List of devices in the die
         self.spacing: Tuple = ()  # Spacing in between components
-        self.name=name # Name of the die
+        self.name = name  # Name of the die
 
     def add_components(self, components: List["Model"]):
         """
@@ -126,15 +126,15 @@ class Die():
             ):
 
                 overlapx = (
-                            self.device_grid_refs[self.device_list.index(component2.device)]
-                            .ports[pin2.name]
-                            .x
-                            - self.device_grid_refs[
-                                self.device_list.index(component1.device)
-                            ]
-                            .ports[pin1.name]
-                            .x
-                            )
+                    self.device_grid_refs[self.device_list.index(component2.device)]
+                    .ports[pin2.name]
+                    .x
+                    - self.device_grid_refs[
+                        self.device_list.index(component1.device)
+                    ]
+                    .ports[pin1.name]
+                    .x
+                )
                 + self.spacing[0]
 
                 self.device_grid.references[self.device_list.index(component1.device)].connect(
@@ -148,15 +148,15 @@ class Die():
                 )
 
                 overlapy = (
-                        self.device_grid_refs[self.device_list.index(component2.device)]
-                        .ports[pin2.name]
-                        .y
-                        - self.device_grid_refs[
-                            self.device_list.index(component1.device)
-                        ]
-                        .ports[pin1.name]
-                        .y
-                    )
+                    self.device_grid_refs[self.device_list.index(component2.device)]
+                    .ports[pin2.name]
+                    .y
+                    - self.device_grid_refs[
+                        self.device_list.index(component1.device)
+                    ]
+                    .ports[pin1.name]
+                    .y
+                )
                 + self.spacing[1]
 
                 self.device_grid.references[self.device_list.index(component1.device)].connect(
@@ -176,15 +176,15 @@ class Die():
                 in (90, 270)
             ):
                 overlapx = (
-                        self.device_grid_refs[self.device_list.index(component2.device)]
-                        .ports[pin2.name]
-                        .x
-                        - self.device_grid_refs[
-                            self.device_list.index(component1.device)
-                        ]
-                        .ports[pin1.name]
-                        .x
-                    )
+                    self.device_grid_refs[self.device_list.index(component2.device)]
+                    .ports[pin2.name]
+                    .x
+                    - self.device_grid_refs[
+                        self.device_list.index(component1.device)
+                    ]
+                    .ports[pin1.name]
+                    .x
+                )
                 + self.spacing[0]
 
                 self.device_grid.references[self.device_list.index(component1.device)].connect(
@@ -198,15 +198,15 @@ class Die():
                 )
 
                 overlapy = (
-                        self.device_grid_refs[self.device_list.index(component2.device)]
-                        .ports[pin2.name]
-                        .y
-                        - self.device_grid_refs[
-                            self.device_list.index(component1.device)
-                        ]
-                        .ports[pin1.name]
-                        .y
-                    )
+                    self.device_grid_refs[self.device_list.index(component2.device)]
+                    .ports[pin2.name]
+                    .y
+                    - self.device_grid_refs[
+                        self.device_list.index(component1.device)
+                    ]
+                    .ports[pin1.name]
+                    .y
+                )
                 + self.spacing[1]
 
                 self.device_grid.references[self.device_list.index(component1.device)].connect(
@@ -251,32 +251,31 @@ class Die():
             route_path = self._connect_orthogonal_ports(component2, pin_, port1, port2)
 
         elif (
-            
             round((dot[0, 0] + dot[1, 1]) - (dot[1, 0] + dot[0, 1])) == -1
             and np.intersect1d(port1.normal, port2.normal) is not []
         ):
 
             if np.linalg.norm(port1.midpoint - port2.midpoint) == component2.length * 1e6:
                 route_path = pr.route_smooth(
-                                port1,
-                                port2,
-                                path_type="straight",
-                                radius=1,
-                                width=pin_._component.width * 1e6,
-                            )
+                    port1,
+                    port2,
+                    path_type="straight",
+                    radius=1,
+                    width=pin_._component.width * 1e6,
+                )
 
             else:
                 route_path = pr.route_smooth(
-                                port1,
-                                port2,
-                                path_type="C",
-                                length1=component2.length * 1e6 / 5,
-                                length2=component2.length * 1e6 / 5,
-                                left1=component2.length * 1e6 / 5,
-                                radius=1,
-                                width=pin_._component.width * 1e6,
-                            )
-                
+                    port1,
+                    port2,
+                    path_type="C",
+                    length1=component2.length * 1e6 / 5,
+                    length2=component2.length * 1e6 / 5,
+                    left1=component2.length * 1e6 / 5,
+                    radius=1,
+                    width=pin_._component.width * 1e6,
+                )
+
         else:
             route_path = self._connect_parallel_ports(component2, pin_, port1, port2)
 
@@ -445,7 +444,7 @@ class Die():
             self.device_grid = device_grid
             self.device_grid_refs: DeviceReference = self.device_grid.references
 
-    def move(self, *components: "Model", distance=(0,0)):
+    def move(self, *components: "Model", distance=(0, 0)):
         """
         Move the components in the Die.
 
