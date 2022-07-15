@@ -34,7 +34,7 @@ class TestDie:
         assert len(die.device_grid.references) == 6
         assert len(die.device_grid_refs) == 6
 
-    def test_connections(self):
+    def test_connections(self, mzi):
         die = Die()
         gc_input,  y_splitter, wg_long, y_recombiner, gc_output, wg_short = mzi
 
@@ -61,4 +61,26 @@ class TestDie:
 
         assert die.device_grid.references[0].ports['pin1'].center == die.device_grid.references[1].ports['pin1'].center
         assert die.device_grid.references[3].ports['pin1'].center == die.device_grid.references[4].ports['pin1'].center
-        
+
+    def test_distribute_devices(self, mzi):
+        die = Die()
+        gc_input,  y_splitter, wg_long, y_recombiner, gc_output, wg_short = mzi
+
+        die.add_components(gc_input.circuit._get_components())
+
+        die.distribute_devices(direction='grid', shape=(3,2), spacing=(5,10))
+
+        for ref1 in die.device_grid.references:
+            for ref2 in die.device_grid.references:
+                if ref1 != ref2:
+                    assert ref1.center != ref2.center
+
+    def test_move(self, mzi):
+        die = Die()
+        gc_input,  _, _, _, _, _ = mzi
+
+        die.add_components([gc_input])
+
+        die.move(gc_input, distance=(5,0))
+
+        assert die.device_grid.references[0].center != [0.0, 0.0]
