@@ -19,6 +19,7 @@ from scipy.linalg import cholesky, lu
 from scipy.signal import butter, sosfiltfilt
 
 from simphony import Model
+from simphony.libraries import siepic
 from simphony.tools import wl2freq
 
 if TYPE_CHECKING:
@@ -360,10 +361,14 @@ class Simulation:
             raise ValueError("All components must be on the same die.")
         die = dies[0]
 
+        # Extract co-ordinates from die
         coords = {}
-        for ref in die.device_grid.references:
-            if ref.parent.name in [c.name for c in components]:
-                coords[ref.parent] = {"x": ref.x, "y": ref.y}
+        ref_names = np.array([ref.parent.name for ref in die.device_grid.references])
+        for component in components:
+            if component.device.name in ref_names and not isinstance(component, siepic.Waveguide):
+                coords[component] = {'x': die.device_grid.references[die.device_list.index(component.device)].x, 'y': die.device_grid.references[die.device_list.index(component.device)].y}
+            elif isinstance(component, siepic.Waveguide) and f'wg_{component.device.name}' in ref_names:
+                coords[component] = {'x': die.device_grid.references[np.where(ref_names == f'wg_{component.device.name}')[0][0]].x, 'y': die.device_grid.references[np.where(ref_names == f'wg_{component.device.name}')[0][0]].y}
 
         # compute correlated samples
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(
