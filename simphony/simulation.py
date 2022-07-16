@@ -23,13 +23,6 @@ from simphony import Model
 from simphony.libraries import siepic
 from simphony.tools import add_polar, wl2freq
 
-from scipy.constants import h
-from scipy.signal import butter, sosfiltfilt
-
-from simphony import Model
-from simphony.tools import add_polar, wl2freq
-
-
 if TYPE_CHECKING:
     from simphony.layout import Circuit
 
