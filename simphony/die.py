@@ -45,7 +45,6 @@ class Die:
 
     def __init__(self, name: str = "", *args, **kwargs):
 
-        self.components_list: List["Model"] = []
         self.device_grid: Device = Device(
             name=f"{name}_grid"
         )  # Holds every device in the die in a grid
@@ -66,9 +65,6 @@ class Die:
             List of components of type `Model` to add.
         """
         for i, component in enumerate(components):
-
-            # Add component to die
-            self.components_list.append(component)
 
             # Add component's `device` attribute to a list to
             # keep track of all the devices in the Die
@@ -480,13 +476,7 @@ class Die:
         Attributes
         ----------
         show_ports :
-            Whether to show the ports on the layout.
-        show_subports :
-            Whether to show the subports on the layout.
-        label_aliases :
-            Whether to label the components on the layout.
-        font_size :
-            The font size of the labels.
+            Whether to show the ports on the layouts.
         """
 
         # Set plot parameters
