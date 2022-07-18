@@ -355,6 +355,8 @@ class Simulation:
         requested, noise will be injected into the system. If only one sample
         is requested, the returned value will be purely theoretical.
 
+        Note that the filtering might not work correctly if your number of samples is too small.
+
         Parameters
         ----------
         num_samples :
@@ -827,7 +829,7 @@ class DifferentialDetector(Detector):
                             if p1[i][j][k] > 0:
                                 p1db = to_db(p1[i][j][k])
                                 monitor_noise1[k] = (
-                                    from_db(p1db + monitor_rin, 20) * dist[k]
+                                    from_db(p1db + monitor_rin) * dist[k]
                                 )
                                 rf_noise1[k] = from_db(p1db + rf_rin + cmrr) * dist[k]
 
@@ -835,7 +837,7 @@ class DifferentialDetector(Detector):
                             if p2[i][j][k] > 0:
                                 p2db = to_db(p2[i][j][k])
                                 monitor_noise2[k] = (
-                                    from_db(p2db + monitor_rin, 20) * dist[k]
+                                    from_db(p2db + monitor_rin) * dist[k]
                                 )
                                 rf_noise2[k] = from_db(p2db + rf_rin + cmrr) * dist[k]
 
