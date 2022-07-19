@@ -63,6 +63,26 @@ def add_polar(c1, c2):
     return (mag, angle + biggest)
 
 
+def mul_polar(c1, c2):
+    """Multiplies two polar coordinates together.
+
+    Parameters
+    ----------
+    c1 : (float, float)
+        First polar coordinate
+    c2 : (float, float)
+        Second polar coordinate
+
+    Returns
+    -------
+    result : (float, float)
+        The resulting polar coordinate"""
+    r1, phi1 = c1
+    r2, phi2 = c2
+
+    return (r1 * r2, phi1 + phi2)
+
+
 def str2float(num):
     """Converts a number represented as a string to a float. Can include
     suffixes (such as 'u' for micro, 'k' for kilo, etc.).

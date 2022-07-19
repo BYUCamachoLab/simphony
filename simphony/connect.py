@@ -44,7 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import numpy as np
 
-from simphony.tools import add_polar
+from simphony.tools import add_polar, mul_polar
 
 # Functions operating on s-parameter matrices
 def connect_s(A, k, B, l):
@@ -151,53 +151,28 @@ def innerconnect_s(A, k, l):
     C = np.zeros(A.shape)
 
     # loop through ports and calulates resultant s-parameters
-    for i in range(nA):
-        for j in range(nA):
-            term1 = np.stack(
-                (
-                    A[:, k, j, 0] * A[:, i, l, 0] * (1 - A[:, l, k, 0]),
-                    A[:, k, j, 1] + A[:, i, l, 1] + (1 - A[:, l, k, 1]),
-                ),
-                axis=-1,
-            )
-            term2 = np.stack(
-                (
-                    A[:, l, j, 0] * A[:, i, k, 0] * (1 - A[:, k, l, 0]),
-                    A[:, l, j, 1] + A[:, i, k, 1] + (1 - A[:, k, l, 1]),
-                ),
-                axis=-1,
-            )
-            term3 = np.stack(
-                (
-                    A[:, k, j, 0] * A[:, l, l, 0] * A[:, i, k, 0],
-                    A[:, k, j, 1] + A[:, l, l, 1] + A[:, i, k, 1],
-                ),
-                axis=-1,
-            )
-            term4 = np.stack(
-                (
-                    A[:, l, j, 0] * A[:, k, k, 0] * A[:, i, l, 0],
-                    A[:, l, j, 1] + A[:, k, k, 1] + A[:, i, l, 1],
-                ),
-                axis=-1,
-            )
-            term5 = np.stack(
-                (
-                    (1 - A[:, k, l, 0]) * (1 - A[:, l, k, 0]),
-                    (1 - A[:, k, l, 1]) + (1 - A[:, l, k, 1]),
-                ),
-                axis=-1,
-            )
-            term6 = np.stack(
-                (A[:, k, k, 0] * A[:, l, l, 0], A[:, k, k, 1] + A[:, l, l, 1]), axis=-1
-            )
-            for m in range(A.shape[0]):
-                term7 = add_polar(
-                    add_polar(add_polar(term1[m], term2[m]), term3[m]), term4[m]
+    for h in range(A.shape[0]):
+        for i in range(nA):
+            for j in range(nA):
+                term1 = mul_polar(
+                    mul_polar(A[h, k, j], A[h, i, l]),
+                    (1 - A[h, l, k, 0], A[h, l, k, 1]),
                 )
-                term8 = add_polar(term5[m], (term6[m, 0], -term6[m, 1]))
+                term2 = mul_polar(
+                    mul_polar(A[h, l, j], A[h, i, k]),
+                    (1 - A[h, k, l, 0], A[h, k, l, 1]),
+                )
+                term3 = mul_polar(mul_polar(A[h, k, j], A[h, l, l]), A[h, i, k])
+                term4 = mul_polar(mul_polar(A[h, l, j], A[h, k, k]), A[h, i, l])
+                term5 = mul_polar(
+                    (1 - A[h, k, l, 0], A[h, k, l, 1]),
+                    (1 - A[h, l, k, 0], A[h, l, k, 1]),
+                )
+                term6 = mul_polar(A[h, k, k], A[h, l, l])
+                term7 = add_polar(add_polar(add_polar(term1, term2), term3), term4)
+                term8 = add_polar(term5, (-term6[0], term6[1]))
                 term9 = (term7[0] / term8[0], term7[1] - term8[1])
-                C[m, i, j] = add_polar(A[m, i, j], term9)
+                C[h, i, j] = add_polar(A[h, i, j], term9)
 
     # remove ports that were `connected`
     C = np.delete(C, (k, l), 1)
