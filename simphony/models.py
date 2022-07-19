@@ -470,12 +470,11 @@ class Model:
         names = [*names]
         for i, name in enumerate(names):
             if name is not None:
-                try:
-                    self.pins_pos[name] = self.pins_pos.pop(pin_names[i])
-                    self.device_ports[name] = self.device_ports.pop(pin_names[i])
-                    self.device.ports[name] = self.device.ports.pop(pin_names[i])
-                except KeyError:
-                    pass
+                self.pins_pos[name] = self.pins_pos.pop(pin_names[i])
+                self.device.ports[name] = self.device.ports.pop(pin_names[i])
+                self.device.ports[name].name = name
+                if self.die is not None:
+                    self.die.device_grid[self.die.device_list.index(self)].ports[i] = name
 
     def s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns scattering parameters for the element with its given
