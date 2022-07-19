@@ -671,8 +671,8 @@ class HalfRing(SiEPIC_PDK_Base):
         **kwargs,
     ):
         pins_pos = {
-            "pin1": {"x": 0, "y": 0},
-            "pin2": {"x": 5.0, "y": (gap * 1e6 + radius * 1e6 + 2 * width * 1e6)},
+            "pin2": {"x": 0, "y": 0},
+            "pin1": {"x": 5.0, "y": (gap * 1e6 + radius * 1e6 + 2 * width * 1e6)},
             "pin3": {
                 "x": 5.0 + (2 * radius * 1e6),
                 "y": (gap * 1e6 + radius * 1e6 + 2 * width * 1e6),
