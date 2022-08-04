@@ -113,21 +113,21 @@ def create_block_diagonal(A, B):
     return C
 
 
-def innerconnect_s(A, k, l):
+def innerconnect_s(S, k, l):
     """
     connect two ports of a single n-port network's s-matrix.
-    Specifically, connect port `k`  to port `l` on `A`. This results in
+    Specifically, connect port `k`  to port `l` on `S`. This results in
     a (n-2)-port network.  This     function operates on, and returns
     s-matrices. The function :func:`innerconnect` operates on
     :class:`Network` types.
     Parameters
     -----------
-    A : :class:`numpy.ndarray`
-        S-parameter matrix of `A`, shape is fxnxnx2
+    S : :class:`numpy.ndarray`
+        S-parameter matrix of `S`, shape is fxnxnx2
     k : int
-        port index on `A` (port indices start from 0)
+        port index on `S` (port indices start from 0)
     l : int
-        port index on `A`
+        port index on `S`
     Returns
     -------
     C : :class:`numpy.ndarray`
@@ -143,36 +143,36 @@ def innerconnect_s(A, k, l):
     .. [#] Filipsson, Gunnar; , "A New General Computer Algorithm for S-Matrix Calculation of Interconnected Multiports," Microwave Conference, 1981. 11th European , vol., no., pp.700-704, 7-11 Sept. 1981. URL: http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=4131699&isnumber=4131585
     """
 
-    if k > A.shape[1] - 1 or l > A.shape[1] - 1:
+    if k > S.shape[1] - 1 or l > S.shape[1] - 1:
         raise (ValueError("port indices are out of range"))
 
-    nA = A.shape[1]  # num of ports on input s-matrix
+    nS = S.shape[1]  # num of ports on input s-matrix
     # create an empty s-matrix, to store the result
-    C = np.zeros(A.shape)
+    C = np.zeros(S.shape)
 
     # loop through ports and calulates resultant s-parameters
-    for h in range(A.shape[0]):
-        for i in range(nA):
-            for j in range(nA):
+    for h in range(S.shape[0]):
+        for i in range(nS):
+            for j in range(nS):
                 term1 = mul_polar(
-                    mul_polar(A[h, k, j], A[h, i, l]),
-                    (1 - A[h, l, k, 0], A[h, l, k, 1]),
+                    mul_polar(S[h, i, l], S[h, k, j]),
+                    add_polar((1, 0), (-S[h, l, k, 0], S[h, l, k, 1])),
                 )
-                term2 = mul_polar(
-                    mul_polar(A[h, l, j], A[h, i, k]),
-                    (1 - A[h, k, l, 0], A[h, k, l, 1]),
+                term2 = mul_polar(mul_polar(S[h, i, l], S[h, k, k]), S[h, l, j])
+                term3 = mul_polar(
+                    mul_polar(S[h, i, k], S[h, l, j]),
+                    add_polar((1, 0), (-S[h, k, l, 0], S[h, k, l, 1])),
                 )
-                term3 = mul_polar(mul_polar(A[h, k, j], A[h, l, l]), A[h, i, k])
-                term4 = mul_polar(mul_polar(A[h, l, j], A[h, k, k]), A[h, i, l])
+                term4 = mul_polar(mul_polar(S[h, i, k], S[h, l, l]), S[h, k, j])
                 term5 = mul_polar(
-                    (1 - A[h, k, l, 0], A[h, k, l, 1]),
-                    (1 - A[h, l, k, 0], A[h, l, k, 1]),
+                    add_polar((1, 0), (-S[h, k, l, 0], S[h, k, l, 1])),
+                    add_polar((1, 0), (-S[h, l, k, 0], S[h, l, k, 1])),
                 )
-                term6 = mul_polar(A[h, k, k], A[h, l, l])
+                term6 = mul_polar(S[h, k, k], S[h, l, l])
                 term7 = add_polar(add_polar(add_polar(term1, term2), term3), term4)
                 term8 = add_polar(term5, (-term6[0], term6[1]))
                 term9 = (term7[0] / term8[0], term7[1] - term8[1])
-                C[h, i, j] = add_polar(A[h, i, j], term9)
+                C[h, i, j] = add_polar(S[h, i, j], term9)
 
     # remove ports that were `connected`
     C = np.delete(C, (k, l), 1)
