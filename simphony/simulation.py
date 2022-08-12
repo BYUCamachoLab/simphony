@@ -11,20 +11,19 @@ used within the context. Devices include theoretical sources and detectors.
 """
 
 from cmath import rect
-from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple
+from typing import TYPE_CHECKING, ClassVar, List, Optional, Tuple, Union
 
 import numpy as np
+from gdsfactory import Component
+from gdsfactory.types import Route
 from scipy.constants import epsilon_0, h, mu_0
 from scipy.linalg import cholesky, lu
 from scipy.signal import butter, sosfiltfilt
 
 from simphony import Model
+from simphony.layout import Circuit
 from simphony.libraries import siepic
 from simphony.tools import wl2freq
-
-if TYPE_CHECKING:
-    from simphony.layout import Circuit
-
 
 # this variable keeps track of the current simulation context (if any)
 context = None
@@ -316,6 +315,7 @@ class Simulation:
 
     def layout_aware_simulation(
         self,
+        component_or_circuit: Union[Component, Circuit],
         sigmaw: float = 5,
         sigmat: float = 2,
         l: float = 4.5e-3,
@@ -326,18 +326,15 @@ class Simulation:
 
         Parameters
         ----------
+        component_or_circuit :
+            The component or circuit to run the simulation on. Can either
+            be a gdsfactory Component or Simphony Circuit object.
         sigmaw :
             Standard deviation of width variations (default 5)
         sigmat :
             Standard deviation of thickness variations (default 2)
         l :
             Correlation length (m) (default 4.5e-3)
-        dB :
-            Returns the power ratios in deciBels when True.
-        mode :
-            Whether to return frequencies or wavelengths for the corresponding
-            power ratios. Defaults to whatever values were passed in upon
-            instantiation.
         runs :
             The number of Monte Carlo iterations to run (default 10).
         num_samples:
@@ -347,41 +344,41 @@ class Simulation:
         """
         results = []  # store results
 
-        components = [
-            component
-            for component in self.circuit._get_components()
-            if not isinstance(component, (Laser, Detector))
-        ]  # get all components except the Laser and Detector
+        if isinstance(component_or_circuit, Component):
+            components = [
+                component
+                for component in self.circuit._get_components()
+                if not isinstance(component, (Laser, Detector))
+            ]  # get all components except the Laser and Detector
+            gfcomponents = [
+                c.path if isinstance(c, siepic.Waveguide) else c.component
+                for c in components
+            ]  # get all gdsfactory component attributes
 
-        dies = [component.die for component in components]
-        if len(set(dies)) != 1:
-            raise ValueError("All components must be on the same die.")
-        die = dies[0]
+            # Extract co-ordinates
+            coords = {
+                component: {
+                    "x": (gfcomponents[i].ports[0].x + gfcomponents[i].ports[-1].x) / 2,
+                    "y": (gfcomponents[i].ports[0].y + gfcomponents[i].ports[-1].y) / 2,
+                }
+                if isinstance(component, siepic.Waveguide)
+                else {"x": gfcomponents[i].x, "y": gfcomponents[i].y}
+                for i, component in enumerate(components)
+            }
+        elif isinstance(component_or_circuit, Circuit):
+            components = [
+                component
+                for component in self.circuit._get_components()
+                if not isinstance(component, (Laser, Detector))
+            ]  # get all components except the Laser and Detector
+            gfcomponents = [
+                c.component for c in components
+            ]  # get all gdsfactory component attributes
 
-        # Extract co-ordinates from die
-        coords = {}
-        ref_names = np.array([ref.parent.name for ref in die.device_grid.references])
-        for component in components:
-            if component.name in ref_names and not isinstance(
-                component, siepic.Waveguide
-            ):
-                coords[component] = {
-                    "x": die.device_grid.references[
-                        die.device_list.index(component.device)
-                    ].x,
-                    "y": die.device_grid.references[
-                        die.device_list.index(component.device)
-                    ].y,
-                }
-            elif isinstance(component, siepic.Waveguide):
-                coords[component] = {
-                    "x": die.device_grid.references[
-                        np.where(ref_names == f"wg_{component.name}")[0][0]
-                    ].x,
-                    "y": die.device_grid.references[
-                        np.where(ref_names == f"wg_{component.name}")[0][0]
-                    ].y,
-                }
+            coords = {
+                component: {"x": gfcomponents[i].x, "y": gfcomponents[i].y}
+                for i, component in enumerate(components)
+            }
 
         # compute correlated samples
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(
@@ -500,13 +497,7 @@ class SimulationModel(Model):
     """
 
     def __init__(self, *args, **kwargs) -> None:
-        if "pin_pos" not in kwargs.keys():
-            pins_pos = {"pin1": {"x": 0, "y": 0}}
-            self.pins_pos = pins_pos
-            super().__init__(*args, **kwargs)
-        else:
-            pins_pos = kwargs["pin_pos"]
-            super().__init__(*args, **kwargs, pins_pos=pins_pos)
+        super().__init__(*args, **kwargs)
         self.context = Simulation.get_context()
 
     def _on_connect(self, *args, **kwargs):
@@ -829,7 +820,6 @@ class DifferentialDetector(Detector):
         **kwargs,
     ):
         super().__init__(
-            pins_pos={"pin1": {"x": 0, "y": 0}, "pin2": {"x": 0, "y": 0}},
             *args,
             **kwargs,
         )
