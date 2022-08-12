@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING, Union
 if TYPE_CHECKING:
     from simphony.models import Model
 
+from gdsfactory.types import ComponentReference
+
 
 class Pin:
     """This class represents an individual pin on a component.
@@ -60,7 +62,12 @@ class Pin:
             self._connection._component, Simulator
         ) and not isinstance(self._connection._component, SimulationModel)
 
-    def connect(self, pin_or_component: Union["Pin", "Model"]) -> None:
+    def connect(
+        self,
+        pin_or_component: Union["Pin", "Model"],
+        component1_ref: ComponentReference = None,
+        component2_ref: ComponentReference = None,
+    ) -> None:
         """Connects this pin to the pin/component that is passed in.
 
         If a component instance is passed in, this pin will connect to
@@ -82,8 +89,16 @@ class Pin:
         # let the components know that a new connection was established
         self._component._on_connect(pin._component)
 
-        if self._component.die is not None:
-            self._component.die._connect(self._component, pin._component, self, pin)
+        if None not in (component1_ref, component2_ref):
+            if (
+                component1_ref.parent.name is self._component.name
+                and component2_ref.parent.name is pin._component.name
+            ):
+                component1_ref.connect(self.name, component2_ref.ports[pin.name])
+            else:
+                raise ValueError(
+                    f"Invalid component reference(s) passed. {component1_ref}, {component2_ref}, {self._component.name}, {pin._component.name}"
+                )
 
     def disconnect(self) -> None:
         """Disconnects this pin to whatever it is connected to."""
@@ -96,22 +111,11 @@ class Pin:
             # let the components know that a connection was disconnected
             self._component._on_disconnect(pin._component)
 
-            if self._component.die is not None:
-                self._component.die._disconnect(self._component, pin._component)
-
     def rename(self, name: str) -> None:
         """Renames the pin."""
-        current_name = self.name
-
+        if self._component.component.ports:
+            self._component.component.ports[name] = self._component.component.ports.pop(self.name)
         self.name = name
-        try:
-            for port in self._component.die.device_grid_refs[
-                self._component.die.device_grid.references.index(self._component.device)
-            ].parent.ports:
-                if port == current_name:
-                    port = name
-        except AttributeError:  # no die
-            pass
 
 
 class PinList(list):
