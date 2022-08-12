@@ -80,9 +80,11 @@ import warnings
 from bisect import bisect_left
 from collections import namedtuple
 
+import gdsfactory as gf
 import numpy as np
 import scipy.interpolate as interp
-from phidl import Device
+import ubcpdk
+from gdsfactory.types import Route
 from scipy.constants import c as SPEED_OF_LIGHT
 
 from simphony import Model
@@ -268,7 +270,7 @@ class SiEPIC_PDK_Base(Model):
     # -------------------------------------------------------------------------
 
     def __init__(self, **kwargs):
-        model_params = ("name", "freq_range", "pins", "pins_pos", "originx", "originy")
+        model_params = ("name", "freq_range", "pins", "component")
         model_args = {param: kwargs.get(param, None) for param in model_params}
         model_args["name"] = (
             model_args["name"] if model_args["name"] is not None else ""
@@ -503,12 +505,6 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
     """
 
     pin_count = 4
-    pins_pos = {
-        "pin1": {"x": -35.45, "y": 2.35},
-        "pin2": {"x": -35.45, "y": -2.35},
-        "pin3": {"x": 35.3, "y": 2.35},
-        "pin4": {"x": 35.3, "y": -2.35},
-    }
     _base_path = os.path.join(os.path.dirname(__file__), "source_data", "bdc_TE_source")
     _base_file = string.Template("bdc_Thickness =${thickness} width=${width}.sparam")
     _args_keys = ["thickness", "width"]
@@ -524,18 +520,15 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
         self,
         thickness=220e-9,
         width=500e-9,
-        pins_pos=pins_pos,
-        originx=0,
-        originy=0,
         **kwargs,
     ):
+        gf.clear_cache()
+
         super().__init__(
             **kwargs,
             thickness=thickness,
             width=width,
-            pins_pos=pins_pos,
-            originx=originx,
-            originy=originy,
+            component=gf.components.coupler(gap=0.2, length=50.55, dy=4.7),
         )
 
     def on_args_changed(self):
@@ -666,19 +659,9 @@ class HalfRing(SiEPIC_PDK_Base):
         width=500e-9,
         thickness=220e-9,
         couple_length=0.0,
-        originx=0,
-        originy=0,
         **kwargs,
     ):
-        pins_pos = {
-            "pin1": {"x": 0, "y": 0},
-            "pin2": {"x": 5.0, "y": (gap * 1e6 + radius * 1e6 + 2 * width * 1e6)},
-            "pin3": {
-                "x": 5.0 + (2 * radius * 1e6),
-                "y": (gap * 1e6 + radius * 1e6 + 2 * width * 1e6),
-            },
-            "pin4": {"x": 10.0 + (2 * radius * 1e6), "y": 0.0},
-        }
+        gf.clear_cache()
 
         super().__init__(
             **kwargs,
@@ -687,40 +670,9 @@ class HalfRing(SiEPIC_PDK_Base):
             width=width,
             thickness=thickness,
             couple_length=couple_length,
-            pins_pos=pins_pos,
-            originx=originx,
-            originy=originy,
-        )
-
-        R = Device()
-        x_values = np.asarray([self.pins_pos[k]["x"] for k in self.pins_pos])
-        y_values = np.asarray([self.pins_pos[k]["y"] for k in self.pins_pos])
-
-        points = [
-            (x_values.min(), y_values.min()),
-            (x_values.max(), y_values.min()),
-            (x_values.max(), y_values.max()),
-            (x_values.min(), y_values.max()),
-        ]
-        self.polygons = R.add_polygon(points=points)
-
-        self.device_ports = {}
-        pin_orientations = [180, 90, 90, 0]
-        for i, pin in enumerate(self.pins):
-            x = self.pins_pos[f"{pin.name}"]["x"]
-            y = self.pins_pos[f"{pin.name}"]["y"]
-
-            orientation = pin_orientations[i]
-            self.device_ports[pin.name] = R.add_port(
-                name=pin.name,
-                midpoint=[x, y],
-                width=self.width * 1e6,
-                orientation=orientation,
-            )
-
-        self.device = R
-        self.device_ref = Device(f"{self.name}_ref").add_ref(
-            self.device, alias=self.name
+            component=gf.components.coupler_ring(
+                gap=gap * 1e6, length_x=couple_length * 1e6, radius=radius * 1e6
+            ),
         )
 
     def on_args_changed(self):
@@ -825,12 +777,6 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
     """
 
     pin_count = 4
-    pins_pos = {
-        "pin1": {"x": 0.0, "y": 10.0},
-        "pin2": {"x": 0.0, "y": 0.0},
-        "pin3": {"x": 45.278, "y": 10.0},
-        "pin4": {"x": 45.278, "y": 0.0},
-    }
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "ebeam_dc_te1550"
     )
@@ -844,16 +790,14 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
         r"(?:m\.sparam)"
     )
 
-    def __init__(
-        self, gap=200e-9, Lc=10e-6, pins_pos=pins_pos, originx=0, originy=0, **kwargs
-    ):
+    def __init__(self, gap=200e-9, Lc=10e-6, **kwargs):
+        gf.clear_cache()
+
         super().__init__(
             **kwargs,
             gap=gap,
             Lc=Lc,
-            pins_pos=pins_pos,
-            originx=originx,
-            originy=originy,
+            component=gf.components.coupler(gap=gap * 1e6, length=Lc * 1e6, dy=10),
         )
 
     def on_args_changed(self):
@@ -952,7 +896,6 @@ class Terminator(SiEPIC_PDK_Base):
     """
 
     pin_count = 1
-    pins_pos = {"pin1": {"x": 0.0, "y": 0.0}, "pin2": {"x": -10.9, "y": 10.0}}
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "ebeam_terminator_te1550"
     )
@@ -973,19 +916,16 @@ class Terminator(SiEPIC_PDK_Base):
         w1=500e-9,
         w2=60e-9,
         L=10e-6,
-        pins_pos=pins_pos,
-        originx=0,
-        originy=0,
         **kwargs,
     ):
+        gf.clear_cache()
+
         super().__init__(
             **kwargs,
             w1=w1,
             w2=w2,
             L=L,
-            pins_pos=pins_pos,
-            originx=originx,
-            originy=originy,
+            component=gf.components.taper2(width1=0, width2=10),
         )
 
     def on_args_changed(self):
@@ -1043,7 +983,6 @@ class GratingCoupler(SiEPIC_PDK_Base):
     """
 
     pin_count = 2
-    pins_pos = {"pin1": {"x": 0.0, "y": 0.0}, "pin2": {"x": -20.4, "y": 0.0}}
     _base_path = os.path.join(os.path.dirname(__file__), "source_data", "gc_source")
     _base_file = string.Template(
         "GC_${polarization}1550_thickness=${thickness} deltaw=${deltaw}.txt"
@@ -1064,20 +1003,23 @@ class GratingCoupler(SiEPIC_PDK_Base):
         thickness=220e-9,
         deltaw=0,
         polarization="TE",
-        pins_pos=pins_pos,
-        originx=0,
-        originy=0,
         **kwargs,
     ):
+        gf.clear_cache()
+
         super().__init__(
             **kwargs,
             thickness=thickness,
             deltaw=deltaw,
             polarization=polarization,
-            pins_pos=pins_pos,
-            originx=originx,
-            originy=originy,
+            component=gf.components.grating_coupler_te(),
         )
+
+        # swap ports to match Simphony's pin order
+        port1 = self.component.ports["pin1"]
+        self.component.ports["pin1"] = self.component.ports["pin2"]
+        self.component.ports["pin2"] = port1
+        # self.component.rotate(180)
 
     def on_args_changed(self):
         try:
@@ -1165,8 +1107,8 @@ class GratingCoupler(SiEPIC_PDK_Base):
             s_list = np.asarray(s_list, dtype=complex)
             self._s = interp.griddata(
                 (
-                    thicknesses[0: round(len(thicknesses) / 2)],
-                    deltaws[0: round(len(deltaws) / 2)],
+                    thicknesses[0 : round(len(thicknesses) / 2)],
+                    deltaws[0 : round(len(deltaws) / 2)],
                 ),
                 s_list,
                 (self.thickness, self.deltaw),
@@ -1289,8 +1231,6 @@ class Waveguide(SiEPIC_PDK_Base):
         sigma_ne=0.05,
         sigma_ng=0.05,
         sigma_nd=0.0001,
-        originx=0,
-        originy=0,
         **kwargs,
     ):
         if polarization not in ["TE", "TM"]:
@@ -1300,12 +1240,10 @@ class Waveguide(SiEPIC_PDK_Base):
                 )
             )
 
-        pins_pos = {"pin1": {"x": 0.0, "y": 0.0}, "pin2": {"x": length * 1e6, "y": 0.0}}
-
         # TODO: TM calculations
         if polarization == "TM":
             raise NotImplementedError
-        self.pins_pos = pins_pos
+
         super().__init__(
             **kwargs,
             length=length,
@@ -1315,17 +1253,9 @@ class Waveguide(SiEPIC_PDK_Base):
             sigma_ne=sigma_ne,
             sigma_ng=sigma_ng,
             sigma_nd=sigma_nd,
-            pins_pos=pins_pos,
-            originx=originx,
-            originy=originy,
         )
 
-        R = Device()
-        R.aliases = {self.name: R}
-        self.device = R
-        self.device_ref = Device(f"{self.name}_ref").add_ref(
-            self.device, alias=self.name
-        )
+        self.path: Route = None
 
         self.regenerate_monte_carlo_parameters()
 
@@ -1535,11 +1465,6 @@ class YBranch(SiEPIC_PDK_Base):
     """
 
     pin_count = 3
-    pins_pos = {
-        "pin1": {"x": -7.4, "y": 0.0},
-        "pin2": {"x": 7.4, "y": 2.75},
-        "pin3": {"x": 7.4, "y": -2.75},
-    }
     _base_path = os.path.join(
         os.path.dirname(__file__), "source_data", "y_branch_source"
     )
@@ -1561,11 +1486,10 @@ class YBranch(SiEPIC_PDK_Base):
         thickness=220e-9,
         width=500e-9,
         polarization="TE",
-        pins_pos=pins_pos,
-        originx=0,
-        originy=0,
         **kwargs,
     ):
+        gf.clear_cache()
+
         if polarization not in ["TE", "TM"]:
             raise ValueError(
                 "Unknown polarization value '{}', must be one of 'TE' or 'TM'".format(
@@ -1577,9 +1501,7 @@ class YBranch(SiEPIC_PDK_Base):
             thickness=thickness,
             width=width,
             polarization=polarization,
-            pins_pos=pins_pos,
-            originx=originx,
-            originy=originy,
+            component=ubcpdk.components.y_splitter(),
         )
 
     def on_args_changed(self):
