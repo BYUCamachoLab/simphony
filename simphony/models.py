@@ -22,15 +22,12 @@ import os
 from typing import TYPE_CHECKING, ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from phidl.geometry import Device
+from gdsfactory import Component, ComponentReference
 
 from simphony.connect import create_block_diagonal, innerconnect_s
 from simphony.formatters import ModelFormatter, ModelJSONFormatter
 from simphony.layout import Circuit
 from simphony.pins import Pin, PinList
-
-if TYPE_CHECKING:
-    from simphony.die import Die
 
 
 class Model:
@@ -50,12 +47,8 @@ class Model:
     pins :
         A tuple of all the default pin names of the device. Must be set if
         pin_count is not.
-    pins_pos:
-        A dict of all the default pin positions of the component.
-    originx :
-        The x-coordinate of the component's origin. Defaults to 0.
-    originy :
-        The y-coordinate of the component's origin. Defaults to 0.
+    component :
+        A gdsfactory Component object which is a representation of this component (optional).
     """
 
     freq_range: ClassVar[Tuple[Optional[float], Optional[float]]]
@@ -72,9 +65,7 @@ class Model:
         *,
         freq_range: Optional[Tuple[Optional[float], Optional[float]]] = None,
         pins: Optional[List[Pin]] = None,
-        pins_pos={},
-        originx=0,
-        originy=0,
+        component: Component = None,
     ) -> None:
         """Initializes an instance of the model.
 
@@ -90,12 +81,8 @@ class Model:
             The pins for the model. If not specified, the pins will be
             be initialized from cls.pins. If that is not specified,
             cls.pin_count number of pins will be initialized.
-        pins_pos:
-            A dict of all the default pin positions of the component.
-        originx :
-            The x-coordinate of the component's origin. Defaults to 0.
-        originy :
-            The y-coordinate of the component's origin. Defaults to 0.
+        component :
+            A gdsfactory Component object for this component (optional).
 
         Raises
         ------
@@ -136,87 +123,17 @@ class Model:
                         f"{name}.pin_count or {name}.pins needs to be defined."
                     )
 
-        # Set the pin positions. If not specified during instantiation, default to 0.
-        self.pins_pos = {}
-        self._set_pins_pos(pins_pos)
+        if component is not None:
+            self.component = component
+        else:
+            self.component = Component()
+        self.component.name = name
 
-        # compute origin
-        x_values = np.asarray([self.pins_pos[k]["x"] for k in self.pins_pos])
-        y_values = np.asarray([self.pins_pos[k]["y"] for k in self.pins_pos])
-
-        # Instantiate device and add polygons
-        R = Device(name=self.name)
-        self._add_polygon(x_values, y_values, R)
-
-        self.device_ports = {}
-        # Add ports to device
-        self._define_ports(x_values, R)
-
-        # Set origin if specified
-        if originx != 0 or originy != 0:
-            R.x = originx * 1e6
-            R.y = originy * 1e6
-
-        # Set device
-        self.device = R
-        self.device_ref = Device(f"{self.name}_ref").add_ref(
-            self.device, alias=self.name
-        )
-
-        # Set die
-        self.die: "Die" = None
+        pin_names = [pin.name for pin in self.pins]
+        self.component.ports = dict(list(zip(pin_names, self.component.ports.values())))
 
         # Set circuit
         self.circuit = Circuit(self)
-
-    def _set_pins_pos(self, pins_pos):
-        if pins_pos != {}:
-            self.pins_pos = pins_pos
-        else:
-            for pin in self.pins:
-                self.pins_pos[pin.name] = {"x": 0, "y": 0}
-
-        if [p.name for p in self.pins] != list(self.pins_pos.keys()):
-            self.pins_pos = dict(
-                zip([p.name for p in self.pins], self.pins_pos.values())
-            )
-
-    def _add_polygon(self, x_values, y_values, R):
-        try:
-            points = [
-                (x_values.min(), y_values.min()),
-                (x_values.max(), y_values.min()),
-                (x_values.max(), y_values.max()),
-                (x_values.min(), y_values.max()),
-            ]
-        except ValueError:  # if there are no pins
-            points = [(0, 0), (0, 0), (0, 0), (0, 0)]
-        self.polygons = R.add_polygon(points=points)
-
-    def _define_ports(self, x_values, R):
-        """
-        Defines the ports for the device. Only to be called by `__init__`.
-        """
-        for pin in self.pins:
-            x = self.pins_pos[f"{pin.name}"]["x"]
-            y = self.pins_pos[f"{pin.name}"]["y"]
-
-            orientation = [0 if x > ((x_values.min() + x_values.max()) / 2) else 180][0]
-
-            try:
-                self.device_ports[pin.name] = R.add_port(
-                    name=pin.name,
-                    midpoint=[x, y],
-                    width=0.5 * self.width * 1e6,
-                    orientation=orientation,
-                )
-            except AttributeError:
-                try:
-                    self.device_ports[pin.name] = R.add_port(
-                        name=pin.name, midpoint=[x, y], width=5, orientation=orientation
-                    )
-                except ValueError:
-                    pass
 
     def __str__(self) -> str:
         name = self.name or f"{self.__class__.__name__} component"
@@ -327,7 +244,12 @@ class Model:
                 if circuit._add(component):
                     component._on_disconnect_recursive(circuit)
 
-    def connect(self, component_or_pin: Union["Model", Pin]) -> "Model":
+    def connect(
+        self,
+        component_or_pin: Union["Model", Pin],
+        component1_ref: ComponentReference = None,
+        component2_ref: ComponentReference = None,
+    ) -> "Model":
         """Connects the next available (unconnected) pin from this component to
         the component/pin passed in as the argument.
 
@@ -335,7 +257,13 @@ class Model:
         component is connected to the first available pin from the other
         component.
         """
-        self._get_next_unconnected_pin().connect(component_or_pin)
+        if None in (component1_ref, component2_ref):
+            self._get_next_unconnected_pin().connect(component_or_pin)
+        else:
+            self._get_next_unconnected_pin().connect(
+                component_or_pin, component1_ref, component2_ref
+            )
+
         return self
 
     def disconnect(self) -> None:
@@ -343,16 +271,28 @@ class Model:
         for pin in self.pins:
             pin.disconnect()
 
-    def interface(self, component: "Model") -> "Model":
+    def interface(
+        self,
+        component: "Model",
+        component1_ref: ComponentReference = None,
+        component2_ref: ComponentReference = None,
+    ) -> "Model":
         """Interfaces this component to the component passed in by connecting
         pins with the same names.
 
         Only pins that have been renamed will be connected.
         """
-        for selfpin in self.pins:
-            for componentpin in component.pins:
-                if selfpin.name[0:3] != "pin" and selfpin.name == componentpin.name:
-                    selfpin.connect(componentpin)
+        if None in (component1_ref, component2_ref):
+            for selfpin in self.pins:
+                for componentpin in component.pins:
+                    if selfpin.name[0:3] != "pin" and selfpin.name == componentpin.name:
+                        selfpin.connect(componentpin)
+        else:
+            for selfpin in self.pins:
+                for componentpin in component.pins:
+                    if selfpin.name[0:3] != "pin" and selfpin.name == componentpin.name:
+                        selfpin.connect(componentpin, component1_ref, component2_ref)
+
         return self
 
     def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
@@ -465,17 +405,7 @@ class Model:
         The first pin is renamed to the first value passed in, the
         second pin is renamed to the second value, etc.
         """
-        pin_names = [pin.name for pin in self.pins]
         self.pins.rename(*names)
-        names = [*names]
-        for i, name in enumerate(names):
-            if name is not None:
-                try:
-                    self.pins_pos[name] = self.pins_pos.pop(pin_names[i])
-                    self.device_ports[name] = self.device_ports.pop(pin_names[i])
-                    self.device.ports[name] = self.device.ports.pop(pin_names[i])
-                except KeyError:
-                    pass
 
     def s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns scattering parameters for the element with its given
@@ -642,7 +572,6 @@ class Subcircuit(Model):
         freq_range = [0, float("inf")]
         pins = []
         pin_names = {}
-        pins_pos = {}
 
         for component in circuit:
             # calculate the frequency range for the subcircuit
@@ -668,25 +597,6 @@ class Subcircuit(Model):
                             pin_names[pin.name] = True
                             pin._component = self
 
-                        if [p.name for p in component.pins] != list(
-                            component.pins_pos.keys()
-                        ):
-                            component.pins_pos = dict(
-                                zip(
-                                    [p.name for p in component.pins],
-                                    component.pins_pos.values(),
-                                )
-                            )
-
-                        pins_pos.update(
-                            {
-                                pin.name: {
-                                    "x": component.pins_pos[pin.name]["x"],
-                                    "y": component.pins_pos[pin.name]["y"],
-                                }
-                            }
-                        )
-
         if len(pins) == 0:
             raise ValueError(
                 "A subcircuit needs to contain at least one unconnected pin."
@@ -695,7 +605,10 @@ class Subcircuit(Model):
         self._wrapped_circuit = circuit
 
         super().__init__(
-            **kwargs, freq_range=freq_range, name=name, pins=pins, pins_pos=pins_pos
+            **kwargs,
+            freq_range=freq_range,
+            name=name,
+            pins=pins,
         )
 
     def _s_parameters(
