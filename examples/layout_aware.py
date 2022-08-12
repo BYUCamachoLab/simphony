@@ -7,64 +7,90 @@ layout_aware.py
 ---------------
 
 Author: Skandan Chandrasekar
-Modified: July 15, 2022
+Modified: August 10, 2022
 
 A script that walks the user through the process of running layout-aware Monte Carlo simulations.
 """
-import matplotlib.pyplot as plt
 
-from simphony.die import Die
+
+# import necessary modules
+import gdsfactory as gf
+import matplotlib.pyplot as plt
+import numpy as np
+
 from simphony.libraries import siepic
 from simphony.simulation import Detector, Laser, Simulation
 
-# first we initialize all of the components in the MZI circuit
-gc_input = siepic.GratingCoupler(name="gcinput")
-y_splitter = siepic.YBranch(name="ysplit")
-wg_long = siepic.Waveguide(length=150e-6, name="wglong")
-wg_short = siepic.Waveguide(length=50e-6, name="wgshort")
-y_recombiner = siepic.YBranch(name="yrecombiner")
-gc_output = siepic.GratingCoupler(name="gcoutput")
+# instantiate components
+ysplitter = siepic.YBranch(name="ysplitter")
+gcinput = siepic.GratingCoupler(name="gcinput")
+gcoutput = siepic.GratingCoupler(name="gcoutput")
+yrecombiner = siepic.YBranch(name="yrecombiner")
+wg_long = siepic.Waveguide(name="wg_long", length=150e-6)
+wg_short = siepic.Waveguide(name="wg_short", length=50e-6)
 
-# next, we instantiate a Die object
-die = Die(name="die1")
 
-# then, we throw in the components into the Die
-die.add_components([gc_input, y_splitter, wg_long, gc_output, y_recombiner, wg_short])
+# define a PCell using simphony components
+@gf.cell
+def mzi():
+    c = gf.Component("mzi")
 
-# we then distribute the devices in the die in a grid
-# we can specify the number of rows and columns using
-# the `shape` argument, and the spacing between devices
-die.distribute_devices(direction="grid", shape=(3, 2), spacing=(5, 10))
+    ysplit = c << ysplitter.component
 
-# we can visualize the grid arrangement
-die.visualize()
+    gcin = c << gcinput.component
 
-# We connect the components like we would usually.
-# Simphony will take care of the routing and
-# device connections for us.
+    gcout = c << gcoutput.component
 
-y_splitter["pin1"].connect(gc_input["pin1"])
+    yrecomb = c << yrecombiner.component
 
-y_recombiner["pin1"].connect(gc_output["pin1"])
+    yrecomb.move(destination=(0, -55.5))
+    gcout.move(destination=(-20.4, -55.5))
+    gcin.move(destination=(-20.4, 0))
 
-y_splitter["pin2"].connect(wg_long)
-y_recombiner["pin3"].connect(wg_long)
+    gcinput["pin1"].connect(ysplitter, gcin, ysplit)
+    gcoutput["pin1"].connect(yrecombiner["pin1"], gcout, yrecomb)
+    ysplitter["pin2"].connect(wg_long)
+    yrecombiner["pin3"].connect(wg_long)
+    ysplitter["pin3"].connect(wg_short)
+    yrecombiner["pin2"].connect(wg_short)
 
-y_splitter["pin3"].connect(wg_short)
-y_recombiner["pin2"].connect(wg_short)
+    wg_long_ref = gf.routing.get_route_from_steps(
+        ysplit.ports["pin2"],
+        yrecomb.ports["pin3"],
+        steps=[{"dx": 91.75 / 2}, {"dy": -61}],
+    )
+    wg_short_ref = gf.routing.get_route_from_steps(
+        ysplit.ports["pin3"],
+        yrecomb.ports["pin2"],
+        steps=[{"dx": 47.25 / 2}, {"dy": -50}],
+    )
 
-# visualize after connecting
-die.visualize(show_ports=False)
+    wg_long.path = wg_long_ref
+    wg_short.path = wg_short_ref
 
-# Run the layout aware monte carlo computation
+    c.add(wg_long_ref.references)
+    c.add(wg_short_ref.references)
+
+    c.add_port("o1", port=gcin.ports["pin2"])
+    c.add_port("o2", port=gcout.ports["pin2"])
+
+    return c
+
+
+c = mzi()
+c.show()
+c.to_3d().show("gl")
+
+
 with Simulation() as sim:
-    l = Laser(power=1)
+    l = Laser(name="laser", power=1)
     l.freqsweep(187370000000000.0, 199862000000000.0)
-    l.connect(gc_input["pin2"])
-    d = Detector()
-    d.connect(gc_output["pin2"])
+    l.connect(gcinput.pins["pin2"])
 
-    results = sim.layout_aware_simulation()
+    d = Detector(name="detector")
+    d.connect(gcoutput.pins["pin2"])
+
+    results = sim.layout_aware_simulation(c)
 
 # Plot the results
 f = l.freqs
