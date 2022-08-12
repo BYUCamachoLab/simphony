@@ -3,9 +3,10 @@
 # (see simphony/__init__.py for details)
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from simphony.libraries import siepic
-from simphony.simulators import MonteCarloSweepSimulator, SweepSimulator
+from simphony.simulation import Detector, Laser, Simulation
 
 # first we initialize all of the components in the MZI circuit
 gc_input = siepic.GratingCoupler()
@@ -33,32 +34,62 @@ y_splitter["pin3"].connect(wg_short)
 # if None is passed in, the corresponding pin is skipped
 y_recombiner.multiconnect(gc_output, wg_short, wg_long)
 
-# instantiate the sweep simulator and connect it to our circuit
-# the first simulator pin connects to the input, the second to the output
-simulator = SweepSimulator(1500e-9, 1600e-9)
-simulator.multiconnect(gc_input, gc_output)
+# do a simple sweep simulation
+theoretical = None
+with Simulation() as sim:
+    l = Laser(power=20e-3)
+    l.wlsweep(1500e-9, 1600e-9)
+    l.connect(gc_input)
+    Detector().connect(gc_output)
 
-# simulate and plot the results
-f, p = simulator.simulate()
-plt.plot(f, p)
+    theoretical = sim.sample()
+
+plt.plot(sim.freqs, theoretical[:, 0, 0])
 plt.title("MZI")
 plt.tight_layout()
 plt.show()
 
-# run a Monte Carlo simulation by disconnecting the previous simulator and
-# instantiating a MonteCarloSweepSimulator
-simulator.disconnect()
-simulator = MonteCarloSweepSimulator(1500e-9, 1600e-9)
-simulator.multiconnect(gc_input, gc_output)
+# if we specify multiple samples, noise gets added to the simulation
+with Simulation() as sim:
+    l = Laser(power=20e-3)
+    l.wlsweep(1500e-9, 1600e-9)
+    l.connect(gc_input)
+    Detector().connect(gc_output)
 
-# plot the values for 10 runs
-results = simulator.simulate(runs=10)
-for f, p in results:
-    plt.plot(f, p)
+    # we get 101 samples even though we only use 3 because
+    # filtering requires at least 21 samples and the results
+    # get better with more samples and 101 isn't much slower
+    # than 21
+    noisy = sim.sample(101)
 
-# redraw the first results since they contain the ideal values
-f, p = results[0]
-plt.plot(f, p, "k")
+plt.plot(sim.freqs, noisy[:, 0, 0], label="Noisy 1")
+plt.plot(sim.freqs, noisy[:, 0, 1], label="Noisy 2")
+plt.plot(sim.freqs, noisy[:, 0, 2], label="Noisy 3")
+plt.plot(sim.freqs, theoretical[:, 0, 0], "k", label="Theoretical")
+plt.legend()
+plt.title("MZI")
+plt.tight_layout()
+plt.show()
+
+# do some monte carlo simulations
+for n in range(10):
+    print(f"Monte Carlo Run {n}")
+    # note that after each run, we have to regenerate the MC parameters
+    for component in gc_input.circuit:
+        component.regenerate_monte_carlo_parameters()
+
+    with Simulation() as sim:
+        l = Laser(power=20e-3)
+        l.wlsweep(1500e-9, 1600e-9)
+        l.connect(gc_input)
+        Detector().connect(gc_output)
+
+        sim.monte_carlo(True)
+        d = sim.sample()
+
+        plt.plot(sim.freqs, d[:, 0, 0], label=f"Run {n}")
+
+plt.plot(sim.freqs, theoretical[:, 0, 0], "k", label="Theoretical")
 plt.title("MZI Monte Carlo")
 plt.tight_layout()
 plt.show()
