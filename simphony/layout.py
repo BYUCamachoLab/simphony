@@ -55,7 +55,6 @@ class Circuit(list):
             The first component of a circuit
         """
         super().__init__([component])
-        self.die = component.die
 
     def __str__(self) -> str:
         return self._str_recursive(components=self._get_components()).rstrip()
