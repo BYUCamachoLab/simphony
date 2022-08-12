@@ -278,36 +278,36 @@ class CircuitSiEPICFormatter(CircuitFormatter):
             "ebeam_bdc_te1550": {
                 "name": "BidirectionalCoupler",
                 "parameters": {
-                    "lay_x": "originx",
-                    "lay_y": "originy",
+                    "lay_x": "component.x",
+                    "lay_y": "component.y",
                 },
             },
             "ebeam_dc_halfring_straight": {
                 "name": "HalfRing",
                 "parameters": {
-                    "lay_x": "originx",
-                    "lay_y": "originy",
+                    "lay_x": "component.x",
+                    "lay_y": "component.y",
                 },
             },
             "ebeam_dc_te1550": {
                 "name": "DirectionalCoupler",
                 "parameters": {
-                    "lay_x": "originx",
-                    "lay_y": "originy",
+                    "lay_x": "component.x",
+                    "lay_y": "component.y",
                 },
             },
             "ebeam_gc_te1550": {
                 "name": "GratingCoupler",
                 "parameters": {
-                    "lay_x": "originx",
-                    "lay_y": "originy",
+                    "lay_x": "component.x",
+                    "lay_y": "component.y",
                 },
             },
             "ebeam_terminator_te1550": {
                 "name": "Terminator",
                 "parameters": {
-                    "lay_x": "originx",
-                    "lay_y": "originy",
+                    "lay_x": "component.x",
+                    "lay_y": "component.y",
                 },
             },
             "ebeam_wg_integral_1550": {
@@ -315,15 +315,15 @@ class CircuitSiEPICFormatter(CircuitFormatter):
                 "parameters": {
                     "wg_length": "length",
                     "wg_width": "width",
-                    "lay_x": "originx",
-                    "lay_y": "originy",
+                    "lay_x": "component.x",
+                    "lay_y": "component.y",
                 },
             },
             "ebeam_y_1550": {
                 "name": "YBranch",
                 "parameters": {
-                    "lay_x": "originx",
-                    "lay_y": "originy",
+                    "lay_x": "component.x",
+                    "lay_y": "component.y",
                 },
             },
         },
