@@ -20,6 +20,7 @@ from scipy.linalg import cholesky, lu
 from scipy.signal import butter, sosfiltfilt
 
 from simphony import Model
+from simphony.layout import Circuit
 from simphony.libraries import siepic
 from simphony.tools import add_polar, wl2freq
 
