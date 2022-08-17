@@ -76,6 +76,7 @@ changed, that turns into a lot of extra (needless) file loading.
 import os
 import re
 import string
+import sys
 import warnings
 from bisect import bisect_left
 from collections import namedtuple
@@ -1501,7 +1502,7 @@ class YBranch(SiEPIC_PDK_Base):
             thickness=thickness,
             width=width,
             polarization=polarization,
-            component=ubcpdk.components.y_splitter(),
+            component=gf.read.from_gdspaths(sys.path[-1].join(["/simphony/libraries/siepic/source_data/ebeam_y_1550.gds"])),
         )
 
     def on_args_changed(self):
