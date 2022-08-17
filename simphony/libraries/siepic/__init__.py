@@ -84,7 +84,6 @@ from collections import namedtuple
 import gdsfactory as gf
 import numpy as np
 import scipy.interpolate as interp
-import ubcpdk
 from gdsfactory.types import Route
 from scipy.constants import c as SPEED_OF_LIGHT
 
