@@ -22,7 +22,12 @@ import os
 from typing import TYPE_CHECKING, ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from gdsfactory import Component, ComponentReference
+
+try:
+    from gdsfactory import Component, ComponentReference
+    _has_gf = True
+except ImportError:
+    _has_gf = False
 
 from simphony.connect import create_block_diagonal, innerconnect_s
 from simphony.formatters import ModelFormatter, ModelJSONFormatter
@@ -65,7 +70,6 @@ class Model:
         *,
         freq_range: Optional[Tuple[Optional[float], Optional[float]]] = None,
         pins: Optional[List[Pin]] = None,
-        component: Component = None,
     ) -> None:
         """Initializes an instance of the model.
 
@@ -123,14 +127,9 @@ class Model:
                         f"{name}.pin_count or {name}.pins needs to be defined."
                     )
 
-        if component is not None:
-            self.component = component
-        else:
+        if _has_gf:
             self.component = Component()
-        self.component.name = name
-
-        pin_names = [pin.name for pin in self.pins]
-        self.component.ports = dict(list(zip(pin_names, self.component.ports.values())))
+            self.component.name = name
 
         # Set circuit
         self.circuit = Circuit(self)
@@ -247,8 +246,8 @@ class Model:
     def connect(
         self,
         component_or_pin: Union["Model", Pin],
-        component1_ref: ComponentReference = None,
-        component2_ref: ComponentReference = None,
+        component1_ref: "ComponentReference" = None,
+        component2_ref: "ComponentReference" = None,
     ) -> "Model":
         """Connects the next available (unconnected) pin from this component to
         the component/pin passed in as the argument.
@@ -259,10 +258,12 @@ class Model:
         """
         if None in (component1_ref, component2_ref):
             self._get_next_unconnected_pin().connect(component_or_pin)
-        else:
+        elif _has_gf:
             self._get_next_unconnected_pin().connect(
                 component_or_pin, component1_ref, component2_ref
             )
+        else:
+            raise ImportError("gdsfactory must be installed to connect gdsfactory components. Try `pip install gdsfactory`.")
 
         return self
 
@@ -274,8 +275,8 @@ class Model:
     def interface(
         self,
         component: "Model",
-        component1_ref: ComponentReference = None,
-        component2_ref: ComponentReference = None,
+        component1_ref: "ComponentReference" = None,
+        component2_ref: "ComponentReference" = None,
     ) -> "Model":
         """Interfaces this component to the component passed in by connecting
         pins with the same names.
@@ -287,12 +288,13 @@ class Model:
                 for componentpin in component.pins:
                     if selfpin.name[0:3] != "pin" and selfpin.name == componentpin.name:
                         selfpin.connect(componentpin)
-        else:
+        elif _has_gf:
             for selfpin in self.pins:
                 for componentpin in component.pins:
                     if selfpin.name[0:3] != "pin" and selfpin.name == componentpin.name:
                         selfpin.connect(componentpin, component1_ref, component2_ref)
-
+        else:
+            raise ImportError("gdsfactory must be installed to connect gdsfactory components. Try `pip install gdsfactory`.")
         return self
 
     def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":

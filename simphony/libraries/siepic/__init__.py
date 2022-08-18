@@ -74,6 +74,7 @@ changed, that turns into a lot of extra (needless) file loading.
 """
 
 import os
+import pathlib
 import re
 import string
 import sys
@@ -81,10 +82,14 @@ import warnings
 from bisect import bisect_left
 from collections import namedtuple
 
-import gdsfactory as gf
+try:
+    import gdsfactory as gf
+    from gdsfactory.types import Route
+    _has_gf = True
+except ImportError:
+    _has_gf = False
 import numpy as np
 import scipy.interpolate as interp
-from gdsfactory.types import Route
 from scipy.constants import c as SPEED_OF_LIGHT
 
 from simphony import Model
@@ -270,7 +275,7 @@ class SiEPIC_PDK_Base(Model):
     # -------------------------------------------------------------------------
 
     def __init__(self, **kwargs):
-        model_params = ("name", "freq_range", "pins", "component")
+        model_params = ("name", "freq_range", "pins")
         model_args = {param: kwargs.get(param, None) for param in model_params}
         model_args["name"] = (
             model_args["name"] if model_args["name"] is not None else ""
@@ -522,14 +527,20 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
         width=500e-9,
         **kwargs,
     ):
-        gf.clear_cache()
-
         super().__init__(
             **kwargs,
             thickness=thickness,
             width=width,
-            component=gf.components.coupler(gap=0.2, length=50.55, dy=4.7),
         )
+        
+        if _has_gf:
+            gf.clear_cache()
+            self.component=gf.components.coupler(gap=0.2, length=50.55, dy=4.7, width=width * 1e6)
+            self.component.name = self.name
+            pin_names = [pin.name for pin in self.pins]
+            for i, port in enumerate(self.component.ports.values()):
+                port.name = pin_names[i]
+            self.component.ports = dict(zip(pin_names, self.component.ports.values()))
 
     def on_args_changed(self):
         try:
@@ -661,7 +672,6 @@ class HalfRing(SiEPIC_PDK_Base):
         couple_length=0.0,
         **kwargs,
     ):
-        gf.clear_cache()
 
         super().__init__(
             **kwargs,
@@ -670,10 +680,18 @@ class HalfRing(SiEPIC_PDK_Base):
             width=width,
             thickness=thickness,
             couple_length=couple_length,
-            component=gf.components.coupler_ring(
-                gap=gap * 1e6, length_x=couple_length * 1e6, radius=radius * 1e6
-            ),
         )
+
+        if _has_gf:
+            gf.clear_cache()
+            self.component=gf.components.coupler_ring(
+                gap=gap * 1e6, length_x=couple_length * 1e6, radius=radius * 1e6, width=width * 1e6,
+                )
+            self.component.name = self.name
+            pin_names = [pin.name for pin in self.pins]
+            for i, port in enumerate(self.component.ports.values()):
+                port.name = pin_names[i]
+            self.component.ports = dict(zip(pin_names, self.component.ports.values()))
 
     def on_args_changed(self):
         try:
@@ -791,14 +809,21 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
     )
 
     def __init__(self, gap=200e-9, Lc=10e-6, **kwargs):
-        gf.clear_cache()
 
         super().__init__(
             **kwargs,
             gap=gap,
             Lc=Lc,
-            component=gf.components.coupler(gap=gap * 1e6, length=Lc * 1e6, dy=10),
         )
+
+        if _has_gf:
+            gf.clear_cache()
+            self.component=gf.components.coupler(gap=gap * 1e6, length=Lc * 1e6, dy=10)
+            self.component.name = self.name
+            pin_names = [pin.name for pin in self.pins]
+            for i, port in enumerate(self.component.ports.values()):
+                port.name = pin_names[i]
+            self.component.ports = dict(zip(pin_names, self.component.ports.values()))
 
     def on_args_changed(self):
         try:
@@ -918,15 +943,22 @@ class Terminator(SiEPIC_PDK_Base):
         L=10e-6,
         **kwargs,
     ):
-        gf.clear_cache()
 
         super().__init__(
             **kwargs,
             w1=w1,
             w2=w2,
             L=L,
-            component=gf.components.taper2(width1=0, width2=10),
         )
+
+        if _has_gf:
+            gf.clear_cache()
+            self.component=gf.components.taper(width1=0, width2=10, with_two_ports=False)
+            self.component.name = self.name
+            pin_names = [pin.name for pin in self.pins]
+            for i, port in enumerate(self.component.ports.values()):
+                port.name = pin_names[i]
+            self.component.ports = dict(zip(pin_names, self.component.ports.values()))
 
     def on_args_changed(self):
         self.suspend_autoupdate()
@@ -1005,21 +1037,25 @@ class GratingCoupler(SiEPIC_PDK_Base):
         polarization="TE",
         **kwargs,
     ):
-        gf.clear_cache()
 
         super().__init__(
             **kwargs,
             thickness=thickness,
             deltaw=deltaw,
             polarization=polarization,
-            component=gf.components.grating_coupler_te(),
         )
 
-        # swap ports to match Simphony's pin order
-        port1 = self.component.ports["pin1"]
-        self.component.ports["pin1"] = self.component.ports["pin2"]
-        self.component.ports["pin2"] = port1
-        # self.component.rotate(180)
+        if _has_gf:
+            gf.clear_cache()
+            self.component = gf.components.grating_coupler_te()
+            self.component.name = self.name
+            pin_names = [pin.name for pin in self.pins]
+            for i, port in enumerate(self.component.ports.values()):
+                port.name = pin_names[i]
+            self.component.ports = dict(zip(pin_names, self.component.ports.values()))
+            port1 = self.component.ports["pin1"]
+            self.component.ports["pin1"] = self.component.ports["pin2"]
+            self.component.ports["pin2"] = port1
 
     def on_args_changed(self):
         try:
@@ -1255,7 +1291,8 @@ class Waveguide(SiEPIC_PDK_Base):
             sigma_nd=sigma_nd,
         )
 
-        self.path: Route = None
+        if _has_gf:
+            self.path: Route = None
 
         self.regenerate_monte_carlo_parameters()
 
@@ -1488,8 +1525,6 @@ class YBranch(SiEPIC_PDK_Base):
         polarization="TE",
         **kwargs,
     ):
-        gf.clear_cache()
-
         if polarization not in ["TE", "TM"]:
             raise ValueError(
                 "Unknown polarization value '{}', must be one of 'TE' or 'TM'".format(
@@ -1501,11 +1536,17 @@ class YBranch(SiEPIC_PDK_Base):
             thickness=thickness,
             width=width,
             polarization=polarization,
-            component=gf.read.from_gdspaths(sys.path[-1].join(["/simphony/libraries/siepic/source_data/ebeam_y_1550.gds"])),
         )
 
-    def on_args_changed(self):
+        if _has_gf:
+            gf.clear_cache()
+            self.component = gf.read.import_gds(pathlib.Path(__file__).joinpath("../source_data/ebeam_y_1550.gds"))
+            self.component.name = self.name
+            self.component.ports[self.pins[0].name] = gf.Port(self.pins[0].name, 180, center=(-7.4, 0), width=width * 1e6, layer="PORT", parent=self.component)
+            self.component.ports[self.pins[1].name] = gf.Port(self.pins[1].name, 0, center=(7.4, 2.75), width=width * 1e6, layer="PORT", parent=self.component)
+            self.component.ports[self.pins[2].name] = gf.Port(self.pins[2].name, 0, center=(7.4, -2.75), width=width * 1e6, layer="PORT", parent=self.component)
 
+    def on_args_changed(self):
         try:
             if self.layout_aware:
                 self.suspend_autoupdate()

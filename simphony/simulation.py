@@ -14,7 +14,11 @@ from cmath import rect
 from typing import TYPE_CHECKING, Callable, ClassVar, List, Optional, Tuple, Union
 
 import numpy as np
-from gdsfactory import Component
+try:
+    from gdsfactory import Component
+    _has_gf = True
+except ImportError:
+    _has_gf = False
 from scipy.constants import h
 from scipy.linalg import cholesky, lu
 from scipy.signal import butter, sosfiltfilt
@@ -380,11 +384,12 @@ class Simulation:
         # generate correlation samples
         corr_sample_matrix_w = np.dot(l_w, X)
         corr_sample_matrix_t = np.dot(l_t, X)
-        return corr_sample_matrix_w, corr_sample_matrix_t
+
+        return (corr_sample_matrix_w, corr_sample_matrix_t)
 
     def layout_aware_simulation(
         self,
-        component_or_circuit: Union[Component, Circuit],
+        component_or_circuit: Union["Component", Circuit],
         sigmaw: float = 5,
         sigmat: float = 2,
         l: float = 4.5e-3,
@@ -413,7 +418,7 @@ class Simulation:
         """
         results = []  # store results
 
-        if isinstance(component_or_circuit, Component):
+        if _has_gf and isinstance(component_or_circuit, Component):
             components = [
                 component
                 for component in self.circuit._get_components()
@@ -448,6 +453,8 @@ class Simulation:
                 component: {"x": gfcomponents[i].x, "y": gfcomponents[i].y}
                 for i, component in enumerate(components)
             }
+        else:
+            raise ValueError("component_or_circuit must be qa gdsfactory component or a Simphony Circuit object.")
 
         # compute correlated samples
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(

@@ -15,8 +15,11 @@ from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from simphony.models import Model
-
-from gdsfactory.types import ComponentReference
+try:
+    from gdsfactory.types import ComponentReference
+    _has_gf = True
+except ImportError:
+    _has_gf = False
 
 
 class Pin:
@@ -65,8 +68,8 @@ class Pin:
     def connect(
         self,
         pin_or_component: Union["Pin", "Model"],
-        component1_ref: ComponentReference = None,
-        component2_ref: ComponentReference = None,
+        component1_ref: "ComponentReference" = None,
+        component2_ref: "ComponentReference" = None,
     ) -> None:
         """Connects this pin to the pin/component that is passed in.
 
@@ -90,15 +93,19 @@ class Pin:
         self._component._on_connect(pin._component)
 
         if None not in (component1_ref, component2_ref):
-            if (
-                component1_ref.parent.name is self._component.name
-                and component2_ref.parent.name is pin._component.name
-            ):
-                component1_ref.connect(self.name, component2_ref.ports[pin.name])
+            if _has_gf:
+                if (
+                    component1_ref.parent.name is self._component.name
+                    and component2_ref.parent.name is pin._component.name
+                ):
+                    component1_ref.connect(self.name, component2_ref.ports[pin.name])
+                else:
+                    raise ValueError(
+                        f"Invalid component reference(s) passed. {component1_ref}, {component2_ref}, {self._component.name}, {pin._component.name}"
+                    )
             else:
-                raise ValueError(
-                    f"Invalid component reference(s) passed. {component1_ref}, {component2_ref}, {self._component.name}, {pin._component.name}"
-                )
+                raise ImportError("gdsfactory is not installed. Try `pip install gdsfactory`.")
+
 
     def disconnect(self) -> None:
         """Disconnects this pin to whatever it is connected to."""
