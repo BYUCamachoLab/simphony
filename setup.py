@@ -74,11 +74,11 @@ install_requires = [
     "scipy>=1.5.4",
     "numpy>=1.19.5",
     "parsimonious>=0.8.1",
-    "gdsfactory>=5.18.3",
 ]
 
 extras_require = {
     "test": ["pytest"],
+    "gdsfactory": ["gdsfactory"],
 }
 
 if "setuptools" in sys.modules:
