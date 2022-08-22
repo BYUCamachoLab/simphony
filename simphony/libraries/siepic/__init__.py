@@ -1108,82 +1108,83 @@ class GratingCoupler(SiEPIC_PDK_Base):
         self.freq_range = (self._f[0], self._f[-1])
 
     def _update_lay_aware_true(self):
-        available = self._source_argsets()
-        thicknesses = []
-        deltaws = []
-        s_params = []
-        for d in available:
-            _, thickness, deltaw = [(key, d.get(key)) for key in self._args_keys]
-            thicknesses.append(round(str2float(thickness[1]) * 1e-9, 15))
-            deltaws.append(round(str2float(deltaw[1]) * 1e-9, 15))
+        pass
+        # available = self._source_argsets()
+        # thicknesses = []
+        # deltaws = []
+        # s_params = []
+        # for d in available:
+        #     _, thickness, deltaw = [(key, d.get(key)) for key in self._args_keys]
+        #     thicknesses.append(round(str2float(thickness[1]) * 1e-9, 15))
+        #     deltaws.append(round(str2float(deltaw[1]) * 1e-9, 15))
 
-        if self.polarization == "TE":
-            for idx in range(round(len(thicknesses) / 2)):
-                valid_args = available[idx]
-                params = np.genfromtxt(self._get_file(valid_args), delimiter="\t")
-                self._f = params[:, 0]
-                s = np.zeros((len(self._f), 2, 2), dtype="complex128")
-                s[:, 0, 0] = params[:, 1] * np.exp(1j * params[:, 2])
-                s[:, 0, 1] = params[:, 3] * np.exp(1j * params[:, 4])
-                s[:, 1, 0] = params[:, 5] * np.exp(1j * params[:, 6])
-                s[:, 1, 1] = params[:, 7] * np.exp(1j * params[:, 8])
+        # if self.polarization == "TE":
+        #     for idx in range(round(len(thicknesses) / 2)):
+        #         valid_args = available[idx]
+        #         params = np.genfromtxt(self._get_file(valid_args), delimiter="\t")
+        #         self._f = params[:, 0]
+        #         s = np.zeros((len(self._f), 2, 2), dtype="complex128")
+        #         s[:, 0, 0] = params[:, 1] * np.exp(1j * params[:, 2])
+        #         s[:, 0, 1] = params[:, 3] * np.exp(1j * params[:, 4])
+        #         s[:, 1, 0] = params[:, 5] * np.exp(1j * params[:, 6])
+        #         s[:, 1, 1] = params[:, 7] * np.exp(1j * params[:, 8])
 
-                self._f = self._f[::-1]
-                s = s[::-1]
-                s_params.append(s)
+        #         self._f = self._f[::-1]
+        #         s = s[::-1]
+        #         s_params.append(s)
 
-            s_params = np.asarray(s_params, dtype=object)
-            thicknesses = np.asarray(thicknesses, dtype=float)
-            deltaws = np.asarray(deltaws, dtype=float)
+        #     s_params = np.asarray(s_params, dtype=object)
+        #     thicknesses = np.asarray(thicknesses, dtype=float)
+        #     deltaws = np.asarray(deltaws, dtype=float)
 
-            dim = len(s_params)
-            s_list = []
-            for dimidx in range(dim):
-                s_list.append(s_params[dimidx][:][:][:])
-            s_list = np.asarray(s_list, dtype=complex)
-            self._s = interp.griddata(
-                (
-                    thicknesses[0 : round(len(thicknesses) / 2)],
-                    deltaws[0 : round(len(deltaws) / 2)],
-                ),
-                s_list,
-                (self.thickness, self.deltaw),
-                method="cubic",
-            )
+        #     dim = len(s_params)
+        #     for dimidx in range(dim):
+        #         print(f'[s_params[dimidx][:][:][:])
+        #         s_list.append(s_params[dimidx][:][:][:])
+        #     s_list = np.asarray(s_list, dtype=complex)
+        #     self._s = interp.griddata(
+        #         (
+        #             thicknesses[0 : round(len(thicknesses) / 2)],
+        #             deltaws[0 : round(len(deltaws) / 2)],
+        #         ),
+        #         s_list,
+        #         (self.thickness, self.deltaw),
+        #         method="cubic",
+        #     )
 
-        elif self.polarization == "TM":
-            for idx in range(round(len(thicknesses) / 2) + 1, len(thicknesses)):
-                valid_args = available[idx]
-                params = np.genfromtxt(self._get_file(valid_args), delimiter="\t")
-                self._f = params[:, 0]
-                s = np.zeros((len(self._f), 2, 2), dtype="complex128")
-                s[:, 0, 0] = params[:, 1] * np.exp(1j * params[:, 2])
-                s[:, 0, 1] = params[:, 3] * np.exp(1j * params[:, 4])
-                s[:, 1, 0] = params[:, 5] * np.exp(1j * params[:, 6])
-                s[:, 1, 1] = params[:, 7] * np.exp(1j * params[:, 8])
+        # elif self.polarization == "TM":
+        #     for idx in range(round(len(thicknesses) / 2) + 1, len(thicknesses)):
+        #         valid_args = available[idx]
+        #         params = np.genfromtxt(self._get_file(valid_args), delimiter="\t")
+        #         self._f = params[:, 0]
+        #         s = np.zeros((len(self._f), 2, 2), dtype="complex128")
+        #         s[:, 0, 0] = params[:, 1] * np.exp(1j * params[:, 2])
+        #         s[:, 0, 1] = params[:, 3] * np.exp(1j * params[:, 4])
+        #         s[:, 1, 0] = params[:, 5] * np.exp(1j * params[:, 6])
+        #         s[:, 1, 1] = params[:, 7] * np.exp(1j * params[:, 8])
 
-                self._f = self._f[::-1]
-                s = s[::-1]
-                s_params.append(s)
+        #         self._f = self._f[::-1]
+        #         s = s[::-1]
+        #         s_params.append(s)
 
-            s_params = np.asarray(s_params, dtype=object)
-            thicknesses = np.asarray(thicknesses, dtype=float)
-            deltaws = np.asarray(deltaws, dtype=float)
+        #     s_params = np.asarray(s_params, dtype=object)
+        #     thicknesses = np.asarray(thicknesses, dtype=float)
+        #     deltaws = np.asarray(deltaws, dtype=float)
 
-            dim = len(s_params)
-            s_list = []
-            for dimidx in range(dim):
-                s_list.append(s_params[dimidx][:][:][:])
-            s_list = np.asarray(s_list, dtype=complex)
-            self._s = interp.griddata(
-                (
-                    thicknesses[round(len(thicknesses) / 2) + 1, len(thicknesses)],
-                    deltaws[round(len(thicknesses) / 2) + 1, len(thicknesses)],
-                ),
-                s_list,
-                (self.thickness, self.deltaw),
-                method="cubic",
-            )
+        #     dim = len(s_params)
+        #     s_list = []
+        #     for dimidx in range(dim):
+        #         s_list.append(s_params[dimidx][:][:][:])
+        #     s_list = np.asarray(s_list, dtype=complex)
+        #     self._s = interp.griddata(
+        #         (
+        #             thicknesses[round(len(thicknesses) / 2) + 1, len(thicknesses)],
+        #             deltaws[round(len(thicknesses) / 2) + 1, len(thicknesses)],
+        #         ),
+        #         s_list,
+        #         (self.thickness, self.deltaw),
+        #         method="cubic",
+        #     )
 
     def s_parameters(self, freqs):
         return interpolate(freqs, self._f, self._s)
@@ -1540,7 +1541,7 @@ class YBranch(SiEPIC_PDK_Base):
 
         if _has_gf:
             gf.clear_cache()
-            self.component = gf.read.import_gds(pathlib.Path(__file__).joinpath("../source_data/ebeam_y_1550.gds"))
+            self.component = gf.read.import_gds(os.path.join(os.path.dirname(__file__), 'source_data/ebeam_y_1550.gds'))
             self.component.name = self.name
             self.component.ports[self.pins[0].name] = gf.Port(self.pins[0].name, 180, center=(-7.4, 0), width=width * 1e6, layer="PORT", parent=self.component)
             self.component.ports[self.pins[1].name] = gf.Port(self.pins[1].name, 0, center=(7.4, 2.75), width=width * 1e6, layer="PORT", parent=self.component)
