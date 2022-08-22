@@ -120,8 +120,11 @@ class Pin:
 
     def rename(self, name: str) -> None:
         """Renames the pin."""
-        if self._component.component.ports:
-            self._component.component.ports[name] = self._component.component.ports.pop(self.name)
+        try:
+            if self._component.component.ports:
+                self._component.component.ports[name] = self._component.component.ports.pop(self.name)
+        except AttributeError:
+            pass
         self.name = name
 
 
