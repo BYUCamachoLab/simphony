@@ -26,11 +26,9 @@ from scipy.linalg import cholesky, lu
 from scipy.signal import butter, sosfiltfilt
 
 from simphony import Model
+from simphony.layout import Circuit
 from simphony.libraries import siepic
 from simphony.tools import add_polar, wl2freq
-
-if TYPE_CHECKING:
-    from simphony.layout import Circuit
 
 # this variable keeps track of the current simulation context (if any)
 context = None
@@ -257,7 +255,7 @@ class Simulation:
             self.transmissions.append(transmissions)
             powers.append((transmissions[:, :, :, 0] ** 2))
 
-            return powers
+        return powers
 
     def _get_signals(self) -> np.ndarray:
         """Get the signals in the order set by the detectors. Each signal is a

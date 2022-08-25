@@ -700,7 +700,7 @@ class Subcircuit(Model):
                 continue
 
             # get the s_params from the cache if possible
-            s_params = self.__get_s_params_from_cache(s_parameters_method, freqs)
+            s_params = self.__get_s_params_from_cache(component, freqs, s_parameters_method)
 
             # merge the s_params into the block diagonal matrix
             if s_block is None:
