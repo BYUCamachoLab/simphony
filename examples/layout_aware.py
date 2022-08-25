@@ -77,8 +77,8 @@ def mzi():
 
 
 c = mzi()
-c.show() # open in KLayout
-c.to_3d().show("gl") # 3D visualization
+c.show()  # open in KLayout
+c.to_3d().show("gl")  # 3D visualization
 
 
 # run the layout aware simulation

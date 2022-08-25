@@ -146,7 +146,7 @@ class TestCircuitSiEPICFormatter:
         )
 
         mzi42 = Circuit.from_file(spi, formatter=CircuitSiEPICFormatter())
-        
+
         _, p1 = mzi4._get_components()[-1].simulate()
 
         mzi42._get_components()[-1].freqs = freqs
