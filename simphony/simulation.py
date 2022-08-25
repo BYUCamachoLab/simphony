@@ -11,7 +11,7 @@ used within the context. Devices include theoretical sources and detectors.
 """
 
 from cmath import rect
-from typing import TYPE_CHECKING, Callable, ClassVar, List, Optional, Tuple, Union
+from typing import Callable, ClassVar, List, Optional, Tuple, Union
 
 import numpy as np
 
