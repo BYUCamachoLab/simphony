@@ -595,7 +595,10 @@ class Subcircuit(Model):
 
             # merge the s_params into the block diagonal matrix
             if s_block is None:
-                s_block = s_params
+                if s_params.ndim == 3:
+                    s_block = np.stack((np.abs(s_params), np.angle(s_params)), axis=-1)
+                else:
+                    s_block = s_params
             else:
                 s_block = create_block_diagonal(s_block, s_params)
 

@@ -100,7 +100,7 @@ class Simulator(Model):
         input = self.circuit.pins.index(self.pins["to_input"]._connection)
         output = self.circuit.pins.index(self.pins["to_output"]._connection)
 
-        return (freqs, power_ratios[:, input, output])
+        return (freqs, power_ratios[:, input, output, 0])
 
     @classmethod
     def clear_scache(cls) -> None:
