@@ -19,7 +19,7 @@ they form a circuit. There are three ways to connect components:
 """
 
 import os
-from typing import TYPE_CHECKING, ClassVar, Dict, List, Optional, Tuple, Union
+from typing import ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -613,6 +613,61 @@ class Subcircuit(Model):
             pins=pins,
         )
 
+    def __get_s_params_from_cache(self, component, freqs: "np.array", s_parameters_method: str = "s_parameters"):
+        """Get the s_params from the cache if possible."""
+        if s_parameters_method == "s_parameters":
+            # each frequency has a different s-matrix, so we need to cache
+            # the s-matrices by frequency as well as component
+            s_params = []
+            for freq in freqs:
+                try:
+                    # use the cached s-matrix if available
+                    s_matrix = self.__class__.scache[component][freq]
+                except KeyError:
+                    # make sure the frequency dict is created
+                    if component not in self.__class__.scache:
+                        self.__class__.scache[component] = {}
+
+                    # store the s-matrix for the frequency and component
+                    s_matrix = getattr(component, s_parameters_method)(
+                        np.array([freq])
+                    )[0]
+                    self.__class__.scache[component][freq] = s_matrix
+
+                # add the s-matrix to our list of s-matrices
+                s_params.append(s_matrix)
+
+            # convert to numpy array for the rest of the function
+            return np.array(s_params)
+        elif (
+            s_parameters_method == "monte_carlo_s_parameters"
+            or "layout_aware_monte_carlo_s_parameters"
+        ):
+            # don't cache Monte Carlo scattering parameters
+            return getattr(component, s_parameters_method)(freqs)
+
+    def __compute_s_block(self, s_block, available_pins, all_pins):
+        """Use the subnetwork growth algorithm for each connection."""
+        for pin in all_pins:
+            # make sure pins only get connected once
+            # and pins connected to simulators get skipped
+            if (
+                pin._isconnected(include_simulators=False)
+                and pin in available_pins
+                and pin._connection in available_pins
+            ):
+                # the pin indices in available_pins lines up with the row/column
+                # indices in the matrix. as the matrix shrinks, we remove pins
+                # from available_pins so the indices always line up
+                k = available_pins.index(pin)
+                l = available_pins.index(pin._connection)
+
+                s_block = innerconnect_s(s_block, k, l)
+
+                available_pins.remove(pin)
+                available_pins.remove(pin._connection)
+        return s_block
+
     def _s_parameters(
         self,
         freqs: "np.array",
@@ -641,42 +696,11 @@ class Subcircuit(Model):
         # merge all of the s_params into one giant block diagonal matrix
         for component in self._wrapped_circuit:
             # simulators don't have scattering parameters
-            if isinstance(component, Simulator) or isinstance(
-                component, SimulationModel
-            ):
+            if isinstance(component, (Simulator, SimulationModel)):
                 continue
 
             # get the s_params from the cache if possible
-            if s_parameters_method == "s_parameters":
-                # each frequency has a different s-matrix, so we need to cache
-                # the s-matrices by frequency as well as component
-                s_params = []
-                for freq in freqs:
-                    try:
-                        # use the cached s-matrix if available
-                        s_matrix = self.__class__.scache[component][freq]
-                    except KeyError:
-                        # make sure the frequency dict is created
-                        if component not in self.__class__.scache:
-                            self.__class__.scache[component] = {}
-
-                        # store the s-matrix for the frequency and component
-                        s_matrix = getattr(component, s_parameters_method)(
-                            np.array([freq])
-                        )[0]
-                        self.__class__.scache[component][freq] = s_matrix
-
-                    # add the s-matrix to our list of s-matrices
-                    s_params.append(s_matrix)
-
-                # convert to numpy array for the rest of the function
-                s_params = np.array(s_params)
-            elif (
-                s_parameters_method == "monte_carlo_s_parameters"
-                or "layout_aware_monte_carlo_s_parameters"
-            ):
-                # don't cache Monte Carlo scattering parameters
-                s_params = getattr(component, s_parameters_method)(freqs)
+            s_params = self.__get_s_params_from_cache(s_parameters_method, freqs)
 
             # merge the s_params into the block diagonal matrix
             if s_block is None:
@@ -692,26 +716,7 @@ class Subcircuit(Model):
             available_pins += component.pins
 
         # use the subnetwork growth algorithm for each connection
-        for pin in all_pins:
-            # make sure pins only get connected once
-            # and pins connected to simulators get skipped
-            if (
-                pin._isconnected(include_simulators=False)
-                and pin in available_pins
-                and pin._connection in available_pins
-            ):
-                # the pin indices in available_pins lines up with the row/column
-                # indices in the matrix. as the matrix shrinks, we remove pins
-                # from available_pins so the indices always line up
-                k = available_pins.index(pin)
-                l = available_pins.index(pin._connection)
-
-                s_block = innerconnect_s(s_block, k, l)
-
-                available_pins.remove(pin)
-                available_pins.remove(pin._connection)
-
-        return s_block
+        return self.__compute_s_block(s_block, available_pins, all_pins)
 
     def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns the Monte Carlo scattering parameters for the subcircuit."""

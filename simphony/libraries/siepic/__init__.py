@@ -74,10 +74,8 @@ changed, that turns into a lot of extra (needless) file loading.
 """
 
 import os
-import pathlib
 import re
 import string
-import sys
 import warnings
 from bisect import bisect_left
 from collections import namedtuple
@@ -532,10 +530,10 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
             thickness=thickness,
             width=width,
         )
-        
+
         if _has_gf:
             gf.clear_cache()
-            self.component=gf.components.coupler(gap=0.2, length=50.55, dy=4.7, width=width * 1e6)
+            self.component = gf.components.coupler(gap=0.2, length=50.55, dy=4.7, width=width * 1e6)
             self.component.name = self.name
             pin_names = [pin.name for pin in self.pins]
             for i, port in enumerate(self.component.ports.values()):
@@ -684,9 +682,7 @@ class HalfRing(SiEPIC_PDK_Base):
 
         if _has_gf:
             gf.clear_cache()
-            self.component=gf.components.coupler_ring(
-                gap=gap * 1e6, length_x=couple_length * 1e6, radius=radius * 1e6, width=width * 1e6,
-                )
+            self.component = gf.components.coupler_ring(gap=gap * 1e6, length_x=couple_length * 1e6, radius=radius * 1e6, width=width * 1e6,)
             self.component.name = self.name
             pin_names = [pin.name for pin in self.pins]
             for i, port in enumerate(self.component.ports.values()):
@@ -818,7 +814,7 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
 
         if _has_gf:
             gf.clear_cache()
-            self.component=gf.components.coupler(gap=gap * 1e6, length=Lc * 1e6, dy=10)
+            self.component = gf.components.coupler(gap=gap * 1e6, length=Lc * 1e6, dy=10)
             self.component.name = self.name
             pin_names = [pin.name for pin in self.pins]
             for i, port in enumerate(self.component.ports.values()):
@@ -953,7 +949,7 @@ class Terminator(SiEPIC_PDK_Base):
 
         if _has_gf:
             gf.clear_cache()
-            self.component=gf.components.taper(width1=0, width2=10, with_two_ports=False)
+            self.component = gf.components.taper(width1=0, width2=10, with_two_ports=False)
             self.component.name = self.name
             pin_names = [pin.name for pin in self.pins]
             for i, port in enumerate(self.component.ports.values()):

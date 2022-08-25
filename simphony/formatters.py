@@ -398,7 +398,6 @@ class CircuitSiEPICFormatter(CircuitFormatter):
                     else "freq"
                 )
 
-        
                 simulator = SweepSimulator(start, stop, points)
                 simulator.mode = mode
                 simulator.multiconnect(subcircuit[output], subcircuit[input])

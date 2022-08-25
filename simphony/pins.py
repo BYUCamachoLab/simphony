@@ -106,7 +106,6 @@ class Pin:
             else:
                 raise ImportError("gdsfactory is not installed. Try `pip install gdsfactory`.")
 
-
     def disconnect(self) -> None:
         """Disconnects this pin to whatever it is connected to."""
         if self._isconnected():

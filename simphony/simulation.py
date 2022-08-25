@@ -14,8 +14,10 @@ from cmath import rect
 from typing import TYPE_CHECKING, Callable, ClassVar, List, Optional, Tuple, Union
 
 import numpy as np
+
 try:
     from gdsfactory import Component
+
     _has_gf = True
 except ImportError:
     _has_gf = False
@@ -24,7 +26,6 @@ from scipy.linalg import cholesky, lu
 from scipy.signal import butter, sosfiltfilt
 
 from simphony import Model
-from simphony.layout import Circuit
 from simphony.libraries import siepic
 from simphony.tools import add_polar, wl2freq
 
@@ -161,6 +162,103 @@ class Simulation:
 
         return expanded
 
+    def __compute_contributions_no_mod(self, t, scattering):
+        contributions = scattering[:, np.newaxis] + np.zeros((self.shape[1], 2))
+        return contributions[:, :, np.newaxis] + np.zeros((self.num_samples, 2))
+
+    def __compute_contributions_with_mod(self, t, contributions, scattering, source):
+        for i, freq in enumerate(self.freqs):
+            for j, power in enumerate(source._coupled_powers):
+                angle = scattering[i, 1]
+                offset = angle / (2 * np.pi * freq)
+                t = np.linspace(
+                    offset,
+                    offset + (self.num_samples - 1) / self.fs,
+                    self.num_samples,
+                )
+
+                mod = source.modfn(freq, power, t)
+                if np.shape(mod)[0] == 2:
+                    contributions[i, j] = np.stack(
+                        (
+                            contributions[i, j, 0, 0] * np.sqrt(mod[0]),
+                            contributions[i, j, 0, 1] + source.phase + mod[1],
+                        ),
+                        axis=-1,
+                    )
+                else:
+                    contributions[i, j] = np.stack(
+                        (
+                            contributions[i, j, 0, 0] * np.sqrt(mod),
+                            contributions[i, j, 0, 1]
+                            + np.repeat(source.phase, self.num_samples),
+                        ),
+                        axis=-1,
+                    )
+        return contributions
+
+    def __compute_detector_power(self, t, detector):
+        powers = []
+        for pin in detector.pins:
+            output_index = self.circuit.get_pin_index(pin._connection)
+
+            # figure out how the sources interfere
+            transmissions = np.zeros(
+                (self.shape[0], self.shape[1], self.num_samples, 2)
+            )
+            for i, pin in enumerate(self.circuit.pins):
+                # calculate transmissions for every source connected to
+                # the circuit
+
+                # find the source that corresponds to this pin
+                source = None
+                for s in self.sources:
+                    if s.index == i:
+                        source = s
+                        break
+                else:
+                    continue
+
+                # lookup how much this source contributes to the output field
+                scattering = self.s_params[:, output_index, source.index]
+
+                # convert to polar coordinates if necessary
+                # NOTE: complex values should be stored as a tuple. this conversion
+                # is for backwards compatibility with siepic library. once that gets
+                # updated, we can remove this, although it will be a breaking change
+                if np.shape(scattering[0]) != (2,):
+                    scattering = np.column_stack(
+                        (np.abs(scattering), np.angle(scattering))
+                    )
+
+                if not source.modfn:
+                    # no modulation
+                    contributions = self.__compute_contributions_no_mod(t, scattering)
+                else:
+                    contributions = scattering[:, np.newaxis] + np.zeros(
+                        (self.shape[1], 2)
+                    )
+                    contributions = contributions[:, :, np.newaxis] + np.zeros(
+                        (self.num_samples, 2)
+                    )
+                    contributions = self.__compute_contributions_with_mod(
+                        t, contributions, scattering, source
+                    )
+
+                # add all of the different source contributions together
+                for i in range(self.shape[0]):
+                    for j in range(self.shape[1]):
+                        for k in range(self.num_samples):
+                            transmissions[i, j, k] = add_polar(
+                                transmissions[i, j, k], contributions[i, j, k]
+                            )
+
+            # convert the output fields to powers
+            self.transmissions.append(transmissions)
+            powers.append((transmissions[:, :, :, 0] ** 2))
+
+            return powers
+
     def _get_signals(self) -> np.ndarray:
         """Get the signals in the order set by the detectors. Each signal is a
         multi-dimensional array. The first index corresponds to frequency. The
@@ -211,103 +309,7 @@ class Simulation:
         signals = []
         for detector in self.detectors:
             # calculate the power detected at each detector pin
-            powers = []
-            for pin in detector.pins:
-                output_index = self.circuit.get_pin_index(pin._connection)
-
-                # figure out how the sources interfere
-                transmissions = np.zeros(
-                    (self.shape[0], self.shape[1], self.num_samples, 2)
-                )
-                for i, pin in enumerate(self.circuit.pins):
-                    # calculate transmissions for every source connected to
-                    # the circuit
-
-                    # find the source that corresponds to this pin
-                    source = None
-                    for s in self.sources:
-                        if s.index == i:
-                            source = s
-                            break
-                    else:
-                        continue
-
-                    # lookup how much this source contributes to the output field
-                    scattering = self.s_params[:, output_index, source.index]
-
-                    # convert to polar coordinates if necessary
-                    # NOTE: complex values should be stored as a tuple. this conversion
-                    # is for backwards compatibility with siepic library. once that gets
-                    # updated, we can remove this, although it will be a breaking change
-                    if np.shape(scattering[0]) != (2,):
-                        scattering = np.column_stack(
-                            (np.abs(scattering), np.angle(scattering))
-                        )
-
-                    if not source.modfn:
-                        # no modulation
-                        contributions = np.stack(
-                            (
-                                scattering[:, 0, np.newaxis]
-                                * np.sqrt(source._coupled_powers),
-                                scattering[:, 1, np.newaxis]
-                                + np.repeat(source.phase, self.shape[1]),
-                            ),
-                            axis=-1,
-                        )
-                        contributions = contributions[:, :, np.newaxis] + np.zeros(
-                            (self.num_samples, 2)
-                        )
-                    else:
-                        contributions = scattering[:, np.newaxis] + np.zeros(
-                            (self.shape[1], 2)
-                        )
-                        contributions = contributions[:, :, np.newaxis] + np.zeros(
-                            (self.num_samples, 2)
-                        )
-                        for i, freq in enumerate(self.freqs):
-                            for j, power in enumerate(source._coupled_powers):
-                                angle = scattering[i, 1]
-                                offset = angle / (2 * np.pi * freq)
-                                t = np.linspace(
-                                    offset,
-                                    offset + (self.num_samples - 1) / self.fs,
-                                    self.num_samples,
-                                )
-
-                                mod = source.modfn(freq, power, t)
-                                if np.shape(mod)[0] == 2:
-                                    contributions[i, j] = np.stack(
-                                        (
-                                            contributions[i, j, 0, 0] * np.sqrt(mod[0]),
-                                            contributions[i, j, 0, 1]
-                                            + source.phase
-                                            + mod[1],
-                                        ),
-                                        axis=-1,
-                                    )
-                                else:
-                                    contributions[i, j] = np.stack(
-                                        (
-                                            contributions[i, j, 0, 0] * np.sqrt(mod),
-                                            contributions[i, j, 0, 1]
-                                            + np.repeat(source.phase, self.num_samples),
-                                        ),
-                                        axis=-1,
-                                    )
-
-                    # add all of the different source contributions together
-                    for i in range(self.shape[0]):
-                        for j in range(self.shape[1]):
-                            for k in range(self.num_samples):
-                                transmissions[i, j, k] = add_polar(
-                                    transmissions[i, j, k], contributions[i, j, k]
-                                )
-
-                # convert the output fields to powers
-                self.transmissions.append(transmissions)
-                powers.append((transmissions[:, :, :, 0] ** 2))
-
+            powers = self.__compute_detector_power(t, detector)
             # send the powers through the detectors to convert to signals
             signals.extend(detector._detect(powers))
 
@@ -355,7 +357,7 @@ class Simulation:
             for k in range(n):
 
                 corr_val = np.exp(
-                    -((x[k] - x[i]) ** 2 + (y[k] - y[i]) ** 2) / (0.5 * (l ** 2))
+                    -((x[k] - x[i]) ** 2 + (y[k] - y[i]) ** 2) / (0.5 * (l**2))
                 )
 
                 corr_matrix_w[i][k] = corr_matrix_w[k][i] = corr_val
@@ -454,7 +456,9 @@ class Simulation:
                 for i, component in enumerate(components)
             }
         else:
-            raise ValueError("component_or_circuit must be qa gdsfactory component or a Simphony Circuit object.")
+            raise ValueError(
+                "component_or_circuit must be qa gdsfactory component or a Simphony Circuit object."
+            )
 
         # compute correlated samples
         corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(

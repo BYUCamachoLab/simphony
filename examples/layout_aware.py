@@ -16,7 +16,6 @@ A script that walks the user through the process of running layout-aware Monte C
 # import necessary modules
 import gdsfactory as gf
 import matplotlib.pyplot as plt
-import numpy as np
 
 from simphony.libraries import siepic
 from simphony.simulation import Detector, Laser, Simulation
