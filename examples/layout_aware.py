@@ -77,10 +77,11 @@ def mzi():
 
 
 c = mzi()
-c.show()
-c.to_3d().show("gl")
+c.show() # open in KLayout
+c.to_3d().show("gl") # 3D visualization
 
 
+# run the layout aware simulation
 with Simulation() as sim:
     l = Laser(name="laser", power=1)
     l.freqsweep(187370000000000.0, 199862000000000.0)
