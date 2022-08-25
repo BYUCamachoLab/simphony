@@ -1,10 +1,11 @@
 bump2version>=1.0.0
-flake8>=5.0.4
-numpy
+flake8>=3.9.2
+matplotlib>=3.3.4
+numpy>=1.19.5
 parsimonious==0.8.1
 pre-commit>=2.12.1
-pytest>=7.1.2
-scipy
-sphinx>=5.1.1
+pytest>=6.2.4
+scipy>=1.5.4
+sphinx>=3.0.3
 sphinx_rtd_theme==0.4.3
 tox>=3.23.1
