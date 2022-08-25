@@ -4,7 +4,7 @@ numpy
 parsimonious==0.8.1
 pre-commit>=2.12.1
 pytest>=7.1.2
-scipy>=1.9.0
+scipy
 sphinx>=5.1.1
 sphinx_rtd_theme==0.4.3
 tox>=3.23.1
