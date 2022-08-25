@@ -54,8 +54,8 @@ on the condition that the two lengths are different).
   gc_output = siepic.GratingCoupler(name="gcoutput")
 
 We then use the components' ``component`` attributes to create the layout.
-The ``component`` attributes are ``gdsfactory.Component`` objects, and so can be used to 
-layout a circuit. We will next define a Parametric Cell (PCell) for the MZI. We will connect
+The ``component`` attributes are ``gdsfactory.Component`` objects, and so can be used to create a 
+layout. We will next define a Parametric Cell (PCell) for the MZI. We will connect
 the components to form a circuit, route the Waveguides using ``gdsfactory's`` routing functions.
 
 ::
