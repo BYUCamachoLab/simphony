@@ -358,7 +358,7 @@ class CircuitSiEPICFormatter(CircuitFormatter):
     def parse(self, string: str) -> "Circuit":
         from simphony.models import Subcircuit
         from simphony.plugins.siepic import load_spi_from_string
-        from simphony.simulation import Simulation, Laser, Detector
+        from simphony.simulators import SweepSimulator
 
         data = load_spi_from_string(string)
 
@@ -385,25 +385,23 @@ class CircuitSiEPICFormatter(CircuitFormatter):
             subcircuit.rename_pins(*sub["ports"])
 
         # setup a SweepSimulator if one is active
-        # for analysis in data["analyses"]:
-        #     if analysis["definition"]["input_parameter"] == "start_and_stop":
-        #         _, input = analysis["params"]["input"][0].split(",")
-        #         _, output = analysis["params"]["output"].split(",")
-        #         start = analysis["params"]["start"]
-        #         stop = analysis["params"]["stop"]
-        #         points = int(analysis["params"]["number_of_points"])
-        #         mode = (
-        #             "wl"
-        #             if analysis["definition"]["input_unit"] == "wavelength"
-        #             else "freq"
-        #         )
+        for analysis in data["analyses"]:
+            if analysis["definition"]["input_parameter"] == "start_and_stop":
+                _, input = analysis["params"]["input"][0].split(",")
+                _, output = analysis["params"]["output"].split(",")
+                start = analysis["params"]["start"]
+                stop = analysis["params"]["stop"]
+                points = int(analysis["params"]["number_of_points"])
+                mode = (
+                    "wl"
+                    if analysis["definition"]["input_unit"] == "wavelength"
+                    else "freq"
+                )
 
-        #         with Simulation() as sim:
-        #             laser = Laser()
-        #             laser.freqs = np.linspace(start, stop, points)
-        #             laser.connect(subcircuit[input])
-        #             detector = Detector()
-        #             detector.connect(subcircuit[output])
+        
+                simulator = SweepSimulator(start, stop, points)
+                simulator.mode = mode
+                simulator.multiconnect(subcircuit[output], subcircuit[input])
 
         # no reason to include the subcircuit component for now
         return subcircuit._wrapped_circuit
