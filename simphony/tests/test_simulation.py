@@ -321,7 +321,7 @@ class TestSimulation:
 
         assert np.allclose(data1[0][0], data2[0][0], rtol=0, atol=1e-11)
 
-    def test_layout_aware(self, mzi, mzi_gf):
+    def test_layout_aware(self, mzi_gf):
         c, gc_input, gc_output = mzi_gf
 
         with Simulation(fs=10e9, seed=117) as sim:
