@@ -949,7 +949,7 @@ class Terminator(SiEPIC_PDK_Base):
 
         if _has_gf:
             gf.clear_cache()
-            self.component = gf.components.taper(width1=0, width2=10, with_two_ports=False)
+            self.component = gf.components.taper(width1=w1 * 1e6, width2=w2 * 1e6, with_two_ports=False)
             self.component.name = self.name
             pin_names = [pin.name for pin in self.pins]
             for i, port in enumerate(self.component.ports.values()):
