@@ -109,5 +109,7 @@ for sample in run:
         for data in data_list:
             p.append(data)
 plt.plot(f, p, "k")
-plt.title("MZI Layout Aware Monte Carlo")
+plt.xlabel("Frequency (Hz)")
+plt.ylabel("Power Ratios")
+plt.title("MZI Location - Aware Monte Carlo")
 plt.show()
