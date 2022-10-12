@@ -44,3 +44,23 @@ The documentation is hosted [online](https://simphonyphotonics.readthedocs.io/en
 
 Changelogs can be found in docs/changelog/. There is a changelog file for
 each released version of the software.
+
+## Bibtex citation
+
+```
+@article{DBLP:journals/corr/abs-2009-05146,
+  author    = {Sequoia Ploeg and
+               Hyrum Gunther and
+               Ryan M. Camacho},
+  title     = {Simphony: An open-source photonic integrated circuit simulation framework},
+  journal   = {CoRR},
+  volume    = {abs/2009.05146},
+  year      = {2020},
+  url       = {https://arxiv.org/abs/2009.05146},
+  eprinttype = {arXiv},
+  eprint    = {2009.05146},
+  timestamp = {Thu, 17 Sep 2020 12:49:52 +0200},
+  biburl    = {https://dblp.org/rec/journals/corr/abs-2009-05146.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+```
