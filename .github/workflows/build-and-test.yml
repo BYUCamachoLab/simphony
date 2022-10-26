@@ -19,12 +19,18 @@ jobs:
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --ignore=E501,E741,W503,W605 --max-complexity=12 --statistics
       - name: Run Tox
-        run: tox -e py${{ matrix.tox-env }}
+        run: tox -e ${{ matrix.tox-env[${{ matrix.python-version }}] }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ['3.7', '3.8', '3.9', '3.10', '3.11.0']
-        tox-env: ['py37', 'py38', 'py39', 'py310', 'py311']
+        tox-env:
+          - 3.7: py37
+          - 3.8: py38
+          - 3.9: py39
+          - 3.10: py310
+          - 3.11: py311
+
 name: build and test
 on:
   pull_request:
