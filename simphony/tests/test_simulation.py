@@ -84,19 +84,20 @@ def mzi_gf():
 
         return (c, gc_input, gc_output)
 
-
-    @pytest.fixture
-    def mzi_unconnected():
-        gc_input = siepic.GratingCoupler()
-        y_splitter = siepic.YBranch()
-        wg_long = siepic.Waveguide(length=150e-6)
-        wg_short = siepic.Waveguide(length=50e-6)
-        y_recombiner = siepic.YBranch()
-        gc_output = siepic.GratingCoupler()
-
-        return (gc_input, y_splitter, wg_long, wg_short, y_recombiner, gc_output)
-
     return
+
+
+@pytest.fixture
+def mzi_unconnected():
+    gc_input = siepic.GratingCoupler()
+    y_splitter = siepic.YBranch()
+    wg_long = siepic.Waveguide(length=150e-6)
+    wg_short = siepic.Waveguide(length=50e-6)
+    y_recombiner = siepic.YBranch()
+    gc_output = siepic.GratingCoupler()
+
+    return (gc_input, y_splitter, wg_long, wg_short, y_recombiner, gc_output)
+
 
 
 @pytest.fixture
