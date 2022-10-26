@@ -25,11 +25,11 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ['3.7', '3.8', '3.9', '3.10', '3.11.0']
         tox-env:
-          - 3.7: py37
-          - 3.8: py38
-          - 3.9: py39
-          - 3.10: py310
-          - 3.11: py311
+          - '3.7': py37
+          - '3.8': py38
+          - '3.9': py39
+          - '3.10': py310
+          - '3.11.0': py311
 
 name: build and test
 on:
