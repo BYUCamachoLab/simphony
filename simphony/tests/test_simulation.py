@@ -99,7 +99,6 @@ def mzi_unconnected():
     return (gc_input, y_splitter, wg_long, wg_short, y_recombiner, gc_output)
 
 
-
 @pytest.fixture
 def oh():
     x1 = siepic.GratingCoupler(name="x1")
