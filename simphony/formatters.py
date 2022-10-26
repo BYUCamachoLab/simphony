@@ -275,19 +275,57 @@ class CircuitSiEPICFormatter(CircuitFormatter):
 
     mappings = {
         "simphony.libraries.siepic": {
-            "ebeam_bdc_te1550": {"name": "BidirectionalCoupler", "parameters": {}},
-            "ebeam_dc_halfring_straight": {"name": "HalfRing", "parameters": {}},
-            "ebeam_dc_te1550": {"name": "DirectionalCoupler", "parameters": {}},
-            "ebeam_gc_te1550": {"name": "GratingCoupler", "parameters": {}},
-            "ebeam_terminator_te1550": {"name": "Terminator", "parameters": {}},
+            "ebeam_bdc_te1550": {
+                "name": "BidirectionalCoupler",
+                "parameters": {
+                    "lay_x": "component.x",
+                    "lay_y": "component.y",
+                },
+            },
+            "ebeam_dc_halfring_straight": {
+                "name": "HalfRing",
+                "parameters": {
+                    "lay_x": "component.x",
+                    "lay_y": "component.y",
+                },
+            },
+            "ebeam_dc_te1550": {
+                "name": "DirectionalCoupler",
+                "parameters": {
+                    "lay_x": "component.x",
+                    "lay_y": "component.y",
+                },
+            },
+            "ebeam_gc_te1550": {
+                "name": "GratingCoupler",
+                "parameters": {
+                    "lay_x": "component.x",
+                    "lay_y": "component.y",
+                },
+            },
+            "ebeam_terminator_te1550": {
+                "name": "Terminator",
+                "parameters": {
+                    "lay_x": "component.x",
+                    "lay_y": "component.y",
+                },
+            },
             "ebeam_wg_integral_1550": {
                 "name": "Waveguide",
                 "parameters": {
                     "wg_length": "length",
                     "wg_width": "width",
+                    "lay_x": "component.x",
+                    "lay_y": "component.y",
                 },
             },
-            "ebeam_y_1550": {"name": "YBranch", "parameters": {}},
+            "ebeam_y_1550": {
+                "name": "YBranch",
+                "parameters": {
+                    "lay_x": "component.x",
+                    "lay_y": "component.y",
+                },
+            },
         },
     }
 
@@ -360,9 +398,9 @@ class CircuitSiEPICFormatter(CircuitFormatter):
                     else "freq"
                 )
 
-                simulator = SweepSimulator(start, stop, points)
-                simulator.mode = mode
-                simulator.multiconnect(subcircuit[output], subcircuit[input])
+        simulator = SweepSimulator(start, stop, points)
+        simulator.mode = mode
+        simulator.multiconnect(subcircuit[output], subcircuit[input])
 
         # no reason to include the subcircuit component for now
         return subcircuit._wrapped_circuit

@@ -23,6 +23,12 @@ from typing import ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
+try:
+    from gdsfactory import Component, ComponentReference
+    _has_gf = True
+except ImportError:
+    _has_gf = False
+
 from simphony.connect import create_block_diagonal, innerconnect_s
 from simphony.formatters import ModelFormatter, ModelJSONFormatter
 from simphony.layout import Circuit
@@ -46,6 +52,8 @@ class Model:
     pins :
         A tuple of all the default pin names of the device. Must be set if
         pin_count is not.
+    component :
+        A gdsfactory Component object which is a representation of this component (optional).
     """
 
     freq_range: ClassVar[Tuple[Optional[float], Optional[float]]]
@@ -77,6 +85,8 @@ class Model:
             The pins for the model. If not specified, the pins will be
             be initialized from cls.pins. If that is not specified,
             cls.pin_count number of pins will be initialized.
+        component :
+            A gdsfactory Component object for this component (optional).
 
         Raises
         ------
@@ -85,8 +95,6 @@ class Model:
         NotImplementedError
             when pins is None and cls.pin_count and cls.pins are undefined.
         """
-        self.circuit = Circuit(self)
-
         # set the frequency range for the instance. resolution order:
         # 1. freq_range
         # 2. cls.freq_range
@@ -100,7 +108,6 @@ class Model:
                 self.freq_range = (0, float("inf"))
 
         self.name = name
-
         # initiate the Pin objects for the instance. resolution order:
         # 1. pins (list of Pin objects)
         # 2. cls.pins (tuple of pin names)
@@ -119,6 +126,13 @@ class Model:
                     raise NotImplementedError(
                         f"{name}.pin_count or {name}.pins needs to be defined."
                     )
+
+        if _has_gf:
+            self.component = Component()
+            self.component.name = name
+
+        # Set circuit
+        self.circuit = Circuit(self)
 
     def __str__(self) -> str:
         name = self.name or f"{self.__class__.__name__} component"
@@ -229,7 +243,12 @@ class Model:
                 if circuit._add(component):
                     component._on_disconnect_recursive(circuit)
 
-    def connect(self, component_or_pin: Union["Model", Pin]) -> "Model":
+    def connect(
+        self,
+        component_or_pin: Union["Model", Pin],
+        component1_ref: "ComponentReference" = None,
+        component2_ref: "ComponentReference" = None,
+    ) -> "Model":
         """Connects the next available (unconnected) pin from this component to
         the component/pin passed in as the argument.
 
@@ -237,7 +256,15 @@ class Model:
         component is connected to the first available pin from the other
         component.
         """
-        self._get_next_unconnected_pin().connect(component_or_pin)
+        if None in (component1_ref, component2_ref):
+            self._get_next_unconnected_pin().connect(component_or_pin)
+        elif _has_gf:
+            self._get_next_unconnected_pin().connect(
+                component_or_pin, component1_ref, component2_ref
+            )
+        else:
+            raise ImportError("gdsfactory must be installed to connect gdsfactory components. Try `pip install gdsfactory`.")
+
         return self
 
     def disconnect(self) -> None:
@@ -245,20 +272,54 @@ class Model:
         for pin in self.pins:
             pin.disconnect()
 
-    def interface(self, component: "Model") -> "Model":
+    def interface(
+        self,
+        component: "Model",
+        component1_ref: "ComponentReference" = None,
+        component2_ref: "ComponentReference" = None,
+    ) -> "Model":
         """Interfaces this component to the component passed in by connecting
         pins with the same names.
 
         Only pins that have been renamed will be connected.
         """
-        for selfpin in self.pins:
-            for componentpin in component.pins:
-                if selfpin.name[0:3] != "pin" and selfpin.name == componentpin.name:
-                    selfpin.connect(componentpin)
-
+        if None in (component1_ref, component2_ref):
+            for selfpin in self.pins:
+                for componentpin in component.pins:
+                    if selfpin.name[0:3] != "pin" and selfpin.name == componentpin.name:
+                        selfpin.connect(componentpin)
+        elif _has_gf:
+            for selfpin in self.pins:
+                for componentpin in component.pins:
+                    if selfpin.name[0:3] != "pin" and selfpin.name == componentpin.name:
+                        selfpin.connect(componentpin, component1_ref, component2_ref)
+        else:
+            raise ImportError("gdsfactory must be installed to connect gdsfactory components. Try `pip install gdsfactory`.")
         return self
 
     def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
+        """Implements the monte carlo routine for the given Model.
+
+        If no monte carlo routine is defined, the default behavior returns the
+        result of a call to ``s_parameters()``.
+
+        Parameters
+        ----------
+        freqs : np.array
+            The frequency range to generate monte carlo s-parameters over.
+
+        Returns
+        -------
+        s : np.ndarray
+            The scattering parameters corresponding to the frequency range.
+            Its shape should be (the number of frequency points x ports x ports).
+            If the scattering parameters are requested for only a single
+            frequency, for example, and the device has 4 ports, the shape
+            returned by ``monte_carlo_s_parameters`` would be (1, 4, 4).
+        """
+        return self.s_parameters(freqs)
+
+    def layout_aware_monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Implements the monte carlo routine for the given Model.
 
         If no monte carlo routine is defined, the default behavior returns the
@@ -309,7 +370,7 @@ class Model:
         circuit; they will be more or less consistent within a single small
         circuit.
 
-        The ``MonteCarloSweepSimulation`` calls this function once per run over
+        The ``MonteCarloSweepSimulator`` calls this function once per run over
         the circuit.
 
         Notes
@@ -317,6 +378,27 @@ class Model:
         This function should not accept any parameters, but may act on instance
         or class attributes.
         """
+        pass
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        """Reassigns dimension parameters to the nominal values for the component.
+
+        If a monte carlo method is not implemented for a given model, this
+        method does nothing. However, it can optionally be implemented so that
+        parameters are reassigned for every run.
+
+        The ``LayoutAwareMonteCarloSweepSimulator`` calls this function once per run per component.
+
+        Notes
+        -----
+        This function should not accept any parameters, but may act on instance
+        or class attributes.
+        """
+        pass
+
+    def update_variations(self, **kwargs):
+        """Update width and thickness variations for the component using correlated
+        samples. This is used for layout-aware Monte Carlo runs."""
         pass
 
     def rename_pins(self, *names: str) -> None:
@@ -524,7 +606,67 @@ class Subcircuit(Model):
 
         self._wrapped_circuit = circuit
 
-        super().__init__(**kwargs, freq_range=freq_range, name=name, pins=pins)
+        super().__init__(
+            **kwargs,
+            freq_range=freq_range,
+            name=name,
+            pins=pins,
+        )
+
+    def __get_s_params_from_cache(self, component, freqs: "np.array", s_parameters_method: str = "s_parameters"):
+        """Get the s_params from the cache if possible."""
+        if s_parameters_method == "s_parameters":
+            # each frequency has a different s-matrix, so we need to cache
+            # the s-matrices by frequency as well as component
+            s_params = []
+            for freq in freqs:
+                try:
+                    # use the cached s-matrix if available
+                    s_matrix = self.__class__.scache[component][freq]
+                except KeyError:
+                    # make sure the frequency dict is created
+                    if component not in self.__class__.scache:
+                        self.__class__.scache[component] = {}
+
+                    # store the s-matrix for the frequency and component
+                    s_matrix = getattr(component, s_parameters_method)(
+                        np.array([freq])
+                    )[0]
+                    self.__class__.scache[component][freq] = s_matrix
+
+                # add the s-matrix to our list of s-matrices
+                s_params.append(s_matrix)
+
+            # convert to numpy array for the rest of the function
+            return np.array(s_params)
+        elif (
+            s_parameters_method == "monte_carlo_s_parameters"
+            or "layout_aware_monte_carlo_s_parameters"
+        ):
+            # don't cache Monte Carlo scattering parameters
+            return getattr(component, s_parameters_method)(freqs)
+
+    def __compute_s_block(self, s_block, available_pins, all_pins):
+        """Use the subnetwork growth algorithm for each connection."""
+        for pin in all_pins:
+            # make sure pins only get connected once
+            # and pins connected to simulators get skipped
+            if (
+                pin._isconnected(include_simulators=False)
+                and pin in available_pins
+                and pin._connection in available_pins
+            ):
+                # the pin indices in available_pins lines up with the row/column
+                # indices in the matrix. as the matrix shrinks, we remove pins
+                # from available_pins so the indices always line up
+                k = available_pins.index(pin)
+                l = available_pins.index(pin._connection)
+
+                s_block = innerconnect_s(s_block, k, l)
+
+                available_pins.remove(pin)
+                available_pins.remove(pin._connection)
+        return s_block
 
     def _s_parameters(
         self,
@@ -554,39 +696,11 @@ class Subcircuit(Model):
         # merge all of the s_params into one giant block diagonal matrix
         for component in self._wrapped_circuit:
             # simulators don't have scattering parameters
-            if isinstance(component, Simulator) or isinstance(
-                component, SimulationModel
-            ):
+            if isinstance(component, (Simulator, SimulationModel)):
                 continue
 
             # get the s_params from the cache if possible
-            if s_parameters_method == "s_parameters":
-                # each frequency has a different s-matrix, so we need to cache
-                # the s-matrices by frequency as well as component
-                s_params = []
-                for freq in freqs:
-                    try:
-                        # use the cached s-matrix if available
-                        s_matrix = self.__class__.scache[component][freq]
-                    except KeyError:
-                        # make sure the frequency dict is created
-                        if component not in self.__class__.scache:
-                            self.__class__.scache[component] = {}
-
-                        # store the s-matrix for the frequency and component
-                        s_matrix = getattr(component, s_parameters_method)(
-                            np.array([freq])
-                        )[0]
-                        self.__class__.scache[component][freq] = s_matrix
-
-                    # add the s-matrix to our list of s-matrices
-                    s_params.append(s_matrix)
-
-                # convert to numpy array for the rest of the function
-                s_params = np.array(s_params)
-            elif s_parameters_method == "monte_carlo_s_parameters":
-                # don't cache Monte Carlo scattering parameters
-                s_params = getattr(component, s_parameters_method)(freqs)
+            s_params = self.__get_s_params_from_cache(component, freqs, s_parameters_method)
 
             # merge the s_params into the block diagonal matrix
             if s_block is None:
@@ -602,35 +716,41 @@ class Subcircuit(Model):
             available_pins += component.pins
 
         # use the subnetwork growth algorithm for each connection
-        for pin in all_pins:
-            # make sure pins only get connected once
-            # and pins connected to simulators get skipped
-            if (
-                pin._isconnected(include_simulators=False)
-                and pin in available_pins
-                and pin._connection in available_pins
-            ):
-                # the pin indices in available_pins lines up with the row/column
-                # indices in the matrix. as the matrix shrinks, we remove pins
-                # from available_pins so the indices always line up
-                k = available_pins.index(pin)
-                l = available_pins.index(pin._connection)
-
-                s_block = innerconnect_s(s_block, k, l)
-
-                available_pins.remove(pin)
-                available_pins.remove(pin._connection)
-
-        return s_block
+        return self.__compute_s_block(s_block, available_pins, all_pins)
 
     def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns the Monte Carlo scattering parameters for the subcircuit."""
         return self._s_parameters(freqs, "monte_carlo_s_parameters")
 
+    def layout_aware_monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
+        """Returns the Monte Carlo scattering parameters for the subcircuit."""
+        return self._s_parameters(freqs, "layout_aware_monte_carlo_s_parameters")
+
     def regenerate_monte_carlo_parameters(self) -> None:
         """Regenerates parameters used to generate Monte Carlo s-matrices."""
         for component in self._wrapped_circuit:
             component.regenerate_monte_carlo_parameters()
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        """Reassigns dimension parameters to the nominal values for the component.
+
+        If a monte carlo method is not implemented for a given model, this
+        method does nothing. However, it can optionally be implemented so that
+        parameters are reassigned for every run.
+
+        The ``LayoutAwareMonteCarloSweepSimulator`` calls this function once per run per component.
+
+        Notes
+        -----
+        This function should not accept any parameters, but may act on instance
+        or class attributes.
+        """
+        for component in self._wrapped_circuit:
+            component.regenerate_layout_aware_monte_carlo_parameters()
+
+    def update_variations(self, **kwargs):
+        for component in self._wrapped_circuit:
+            component.update_variations(**kwargs)
 
     def s_parameters(self, freqs: "np.array") -> "np.ndarray":
         """Returns the scattering parameters for the subcircuit."""

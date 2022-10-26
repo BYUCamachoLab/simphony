@@ -3,7 +3,6 @@
 # (see simphony/__init__.py for details)
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 from simphony.libraries import siepic
 from simphony.simulation import Detector, Laser, Simulation
