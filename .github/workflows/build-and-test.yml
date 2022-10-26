@@ -19,7 +19,7 @@ jobs:
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --ignore=E501,E741,W503,W605 --max-complexity=12 --statistics
       - name: Run Tox
-        run: if [ ${{ matrix.python-version }} == "3.11.0" ]; then tox -e py; else tox -e py311; fi
+        run: if [ ${{ matrix.python-version }} == "3.11.0" ]; then tox -e py311; else tox -e py; fi
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
