@@ -2,7 +2,11 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-import gdsfactory as gf
+try:
+    import gdsfactory as gf
+    _has_gf = True
+except ImportError:
+    _has_gf = False
 import numpy as np
 import pytest
 
@@ -28,57 +32,59 @@ def mzi():
 
 @pytest.fixture
 def mzi_gf():
+    if _has_gf:
+        gc_input = siepic.GratingCoupler(name="gc_input")
+        y_splitter = siepic.YBranch(name="y_splitter")
+        wg_long = siepic.Waveguide(name="wg_long", length=150e-6)
+        wg_short = siepic.Waveguide(name="wg_short", length=50e-6)
+        y_recombiner = siepic.YBranch(name="y_recombiner")
+        gc_output = siepic.GratingCoupler(name="gc_output")
 
-    gc_input = siepic.GratingCoupler(name="gc_input")
-    y_splitter = siepic.YBranch(name="y_splitter")
-    wg_long = siepic.Waveguide(name="wg_long", length=150e-6)
-    wg_short = siepic.Waveguide(name="wg_short", length=50e-6)
-    y_recombiner = siepic.YBranch(name="y_recombiner")
-    gc_output = siepic.GratingCoupler(name="gc_output")
+        c = gf.Component("mzi")
 
-    c = gf.Component("mzi")
+        ysplit = c << y_splitter.component
 
-    ysplit = c << y_splitter.component
+        gcin = c << gc_input.component
 
-    gcin = c << gc_input.component
+        gcout = c << gc_output.component
 
-    gcout = c << gc_output.component
+        yrecomb = c << y_recombiner.component
 
-    yrecomb = c << y_recombiner.component
+        yrecomb.move(destination=(0, -55.5))
+        gcout.move(destination=(-20.4, -55.5))
+        gcin.move(destination=(-20.4, 0))
 
-    yrecomb.move(destination=(0, -55.5))
-    gcout.move(destination=(-20.4, -55.5))
-    gcin.move(destination=(-20.4, 0))
+        gc_input["pin2"].connect(y_splitter, gcin, ysplit)
+        gc_output["pin2"].connect(y_recombiner["pin1"], gcout, yrecomb)
+        y_splitter["pin2"].connect(wg_long)
+        y_recombiner["pin3"].connect(wg_long)
+        y_splitter["pin3"].connect(wg_short)
+        y_recombiner["pin2"].connect(wg_short)
 
-    gc_input["pin2"].connect(y_splitter, gcin, ysplit)
-    gc_output["pin2"].connect(y_recombiner["pin1"], gcout, yrecomb)
-    y_splitter["pin2"].connect(wg_long)
-    y_recombiner["pin3"].connect(wg_long)
-    y_splitter["pin3"].connect(wg_short)
-    y_recombiner["pin2"].connect(wg_short)
+        wg_long_ref = gf.routing.get_route_from_steps(
+            ysplit.ports["pin2"],
+            yrecomb.ports["pin3"],
+            steps=[{"dx": 91.75 / 2}, {"dy": -61}],
+        )
+        wg_short_ref = gf.routing.get_route_from_steps(
+            ysplit.ports["pin3"],
+            yrecomb.ports["pin2"],
+            steps=[{"dx": 47.25 / 2}, {"dy": -50}],
+        )
 
-    wg_long_ref = gf.routing.get_route_from_steps(
-        ysplit.ports["pin2"],
-        yrecomb.ports["pin3"],
-        steps=[{"dx": 91.75 / 2}, {"dy": -61}],
-    )
-    wg_short_ref = gf.routing.get_route_from_steps(
-        ysplit.ports["pin3"],
-        yrecomb.ports["pin2"],
-        steps=[{"dx": 47.25 / 2}, {"dy": -50}],
-    )
+        wg_long.path = wg_long_ref
+        print(wg_long.path)
+        wg_short.path = wg_short_ref
 
-    wg_long.path = wg_long_ref
-    print(wg_long.path)
-    wg_short.path = wg_short_ref
+        c.add(wg_long_ref.references)
+        c.add(wg_short_ref.references)
 
-    c.add(wg_long_ref.references)
-    c.add(wg_short_ref.references)
+        c.add_port("o1", port=gcin.ports["pin2"])
+        c.add_port("o2", port=gcout.ports["pin2"])
 
-    c.add_port("o1", port=gcin.ports["pin2"])
-    c.add_port("o2", port=gcout.ports["pin2"])
+        return (c, gc_input, gc_output)
 
-    return (c, gc_input, gc_output)
+    return
 
 
 @pytest.fixture
@@ -322,6 +328,8 @@ class TestSimulation:
         assert np.allclose(data1[0][0], data2[0][0], rtol=0, atol=1e-11)
 
     def test_layout_aware(self, mzi_gf):
+        if not _has_gf:
+            return
         c, gc_input, gc_output = mzi_gf
 
         with Simulation(fs=10e9, seed=117) as sim:
