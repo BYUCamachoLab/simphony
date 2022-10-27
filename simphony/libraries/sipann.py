@@ -209,21 +209,6 @@ class GapFuncSymmetric(SipannWrapper):
             **kwargs
         )
 
-    def update_variations(self, **kwargs):
-        self.nominal_width = self.params["width"]
-        self.nominal_thickness = self.params["thickness"]
-
-        w = self.params["width"] + kwargs.get("corr_w")
-        h = self.params["thickness"] + kwargs.get("corr_t")
-
-        self.layout_aware = True
-        self.params["width"] = w
-        self.params["thickness"] = h
-
-    def regenerate_layout_aware_monte_carlo_parameters(self):
-        self.params["width"] = self.nominal_width
-        self.params["thickness"] = self.nominal_thickness
-
 
 class GapFuncAntiSymmetric(SipannWrapper):
     r"""Antisymmetric directional coupler, meaning both waveguides are
@@ -316,21 +301,6 @@ class GapFuncAntiSymmetric(SipannWrapper):
             **kwargs
         )
 
-    def update_variations(self, **kwargs):
-        self.nominal_width = self.params["width"]
-        self.nominal_thickness = self.params["thickness"]
-
-        w = self.params["width"] + kwargs.get("corr_w")
-        h = self.params["thickness"] + kwargs.get("corr_t")
-
-        self.layout_aware = True
-        self.params["width"] = w
-        self.params["thickness"] = h
-
-    def regenerate_layout_aware_monte_carlo_parameters(self):
-        self.params["width"] = self.nominal_width
-        self.params["thickness"] = self.nominal_thickness
-
 
 class HalfRing(SipannWrapper):
     r"""Half of a ring resonator.
@@ -390,21 +360,6 @@ class HalfRing(SipannWrapper):
             sigmas,
             **kwargs
         )
-
-    def update_variations(self, **kwargs):
-        self.nominal_width = self.params["width"]
-        self.nominal_thickness = self.params["thickness"]
-
-        w = self.params["width"] + kwargs.get("corr_w")
-        h = self.params["thickness"] + kwargs.get("corr_t")
-
-        self.layout_aware = True
-        self.params["width"] = w
-        self.params["thickness"] = h
-
-    def regenerate_layout_aware_monte_carlo_parameters(self):
-        self.params["width"] = self.nominal_width
-        self.params["thickness"] = self.nominal_thickness
 
 
 class HalfRacetrack(SipannWrapper):
@@ -476,21 +431,6 @@ class HalfRacetrack(SipannWrapper):
             **kwargs
         )
 
-    def update_variations(self, **kwargs):
-        self.nominal_width = self.params["width"]
-        self.nominal_thickness = self.params["thickness"]
-
-        w = self.params["width"] + kwargs.get("corr_w")
-        h = self.params["thickness"] + kwargs.get("corr_t")
-
-        self.layout_aware = True
-        self.params["width"] = w
-        self.params["thickness"] = h
-
-    def regenerate_layout_aware_monte_carlo_parameters(self):
-        self.params["width"] = self.nominal_width
-        self.params["thickness"] = self.nominal_thickness
-
 
 class StraightCoupler(SipannWrapper):
     """Straight directional coupler, both waveguides run parallel.
@@ -547,21 +487,6 @@ class StraightCoupler(SipannWrapper):
             sigmas,
             **kwargs
         )
-
-    def update_variations(self, **kwargs):
-        self.nominal_width = self.params["width"]
-        self.nominal_thickness = self.params["thickness"]
-
-        w = self.params["width"] + kwargs.get("corr_w")
-        h = self.params["thickness"] + kwargs.get("corr_t")
-
-        self.layout_aware = True
-        self.params["width"] = w
-        self.params["thickness"] = h
-
-    def regenerate_layout_aware_monte_carlo_parameters(self):
-        self.params["width"] = self.nominal_width
-        self.params["thickness"] = self.nominal_thickness
 
 
 class Standard(SipannWrapper):
@@ -640,21 +565,6 @@ class Standard(SipannWrapper):
             **kwargs
         )
 
-    def update_variations(self, **kwargs):
-        self.nominal_width = self.params["width"]
-        self.nominal_thickness = self.params["thickness"]
-
-        w = self.params["width"] + kwargs.get("corr_w")
-        h = self.params["thickness"] + kwargs.get("corr_t")
-
-        self.layout_aware = True
-        self.params["width"] = w
-        self.params["thickness"] = h
-
-    def regenerate_layout_aware_monte_carlo_parameters(self):
-        self.params["width"] = self.nominal_width
-        self.params["thickness"] = self.nominal_thickness
-
 
 class DoubleHalfRing(SipannWrapper):
     r"""Two equally sized half-rings coupling along their edges.
@@ -716,21 +626,6 @@ class DoubleHalfRing(SipannWrapper):
             sigmas,
             **kwargs
         )
-
-    def update_variations(self, **kwargs):
-        self.nominal_width = self.params["width"]
-        self.nominal_thickness = self.params["thickness"]
-
-        w = self.params["width"] + kwargs.get("corr_w")
-        h = self.params["thickness"] + kwargs.get("corr_t")
-
-        self.layout_aware = True
-        self.params["width"] = w
-        self.params["thickness"] = h
-
-    def regenerate_layout_aware_monte_carlo_parameters(self):
-        self.params["width"] = self.nominal_width
-        self.params["thickness"] = self.nominal_thickness
 
 
 class AngledHalfRing(SipannWrapper):
@@ -801,21 +696,6 @@ class AngledHalfRing(SipannWrapper):
             **kwargs
         )
 
-    def update_variations(self, **kwargs):
-        self.nominal_width = self.params["width"]
-        self.nominal_thickness = self.params["thickness"]
-
-        w = self.params["width"] + kwargs.get("corr_w")
-        h = self.params["thickness"] + kwargs.get("corr_t")
-
-        self.layout_aware = True
-        self.params["width"] = w
-        self.params["thickness"] = h
-
-    def regenerate_layout_aware_monte_carlo_parameters(self):
-        self.params["width"] = self.nominal_width
-        self.params["thickness"] = self.nominal_thickness
-
 
 class Waveguide(SipannWrapper):
     """Lossless model for a straight waveguide. Main use case is for playing
@@ -863,21 +743,6 @@ class Waveguide(SipannWrapper):
             sigmas,
             **kwargs
         )
-
-    def update_variations(self, **kwargs):
-        self.nominal_width = self.params["width"]
-        self.nominal_thickness = self.params["thickness"]
-
-        w = self.params["width"] + kwargs.get("corr_w")
-        h = self.params["thickness"] + kwargs.get("corr_t")
-
-        self.layout_aware = True
-        self.params["width"] = w
-        self.params["thickness"] = h
-
-    def regenerate_layout_aware_monte_carlo_parameters(self):
-        self.params["width"] = self.nominal_width
-        self.params["thickness"] = self.nominal_thickness
 
 
 class Racetrack(SipannWrapper):
@@ -947,21 +812,6 @@ class Racetrack(SipannWrapper):
             sigmas,
             **kwargs
         )
-
-    def update_variations(self, **kwargs):
-        self.nominal_width = self.params["width"]
-        self.nominal_thickness = self.params["thickness"]
-
-        w = self.params["width"] + kwargs.get("corr_w")
-        h = self.params["thickness"] + kwargs.get("corr_t")
-
-        self.layout_aware = True
-        self.params["width"] = w
-        self.params["thickness"] = h
-
-    def regenerate_layout_aware_monte_carlo_parameters(self):
-        self.params["width"] = self.nominal_width
-        self.params["thickness"] = self.nominal_thickness
 
 
 class PremadeCoupler(SipannWrapper):

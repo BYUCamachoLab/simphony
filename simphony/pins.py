@@ -14,12 +14,7 @@ makes sure all components belong to the same ``Circuit`` instance.
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
-    from simphony.models import Model
-try:
-    from gdsfactory.types import ComponentReference
-    _has_gf = True
-except ImportError:
-    _has_gf = False
+    from simphony import Model
 
 
 class Pin:
@@ -68,12 +63,7 @@ class Pin:
             self._connection._component, Simulator
         ) and not isinstance(self._connection._component, SimulationModel)
 
-    def connect(
-        self,
-        pin_or_component: Union["Pin", "Model"],
-        component1_ref: "ComponentReference" = None,
-        component2_ref: "ComponentReference" = None,
-    ) -> None:
+    def connect(self, pin_or_component: Union["Pin", "Model"]) -> None:
         """Connects this pin to the pin/component that is passed in.
 
         If a component instance is passed in, this pin will connect to
@@ -95,20 +85,6 @@ class Pin:
         # let the components know that a new connection was established
         self._component._on_connect(pin._component)
 
-        if None not in (component1_ref, component2_ref):
-            if _has_gf:
-                if (
-                    component1_ref.parent.name is self._component.name
-                    and component2_ref.parent.name is pin._component.name
-                ):
-                    component1_ref.connect(self.name, component2_ref.ports[pin.name])
-                else:
-                    raise ValueError(
-                        f"Invalid component reference(s) passed. {component1_ref}, {component2_ref}, {self._component.name}, {pin._component.name}"
-                    )
-            else:
-                raise ImportError("gdsfactory is not installed. Try `pip install gdsfactory`.")
-
     def disconnect(self) -> None:
         """Disconnects this pin to whatever it is connected to."""
         if self._isconnected():
@@ -122,11 +98,6 @@ class Pin:
 
     def rename(self, name: str) -> None:
         """Renames the pin."""
-        try:
-            if self._component.component.ports:
-                self._component.component.ports[name] = self._component.component.ports.pop(self.name)
-        except AttributeError:
-            pass
         self.name = name
 
 

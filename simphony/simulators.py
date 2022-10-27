@@ -83,10 +83,7 @@ class Simulator(Model):
 
         # if the scattering parameters for the circuit are cached, use those
         try:
-            if (
-                s_parameters_method == "monte_carlo_s_parameters"
-                or "layout_aware_monte_carlo_s_parameters"
-            ):
+            if s_parameters_method == "monte_carlo_s_parameters":
                 raise RuntimeError("No caching for Monte Carlo simulations.")
 
             s_params = self.__class__.scache[self.circuit]
