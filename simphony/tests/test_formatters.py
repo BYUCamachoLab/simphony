@@ -147,4 +147,10 @@ class TestCircuitSiEPICFormatter:
 
         mzi42 = Circuit.from_file(spi, formatter=CircuitSiEPICFormatter())
 
-        assert np.allclose(mzi4.s_parameters(freqs), mzi42.s_parameters(freqs))
+        _, p1 = mzi4._get_components()[-1].simulate()
+
+        mzi42._get_components()[-1].freqs = freqs
+
+        _, p2 = mzi42._get_components()[-1].simulate()
+
+        assert np.allclose(p1, p2)

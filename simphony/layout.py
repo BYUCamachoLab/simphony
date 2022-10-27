@@ -14,11 +14,11 @@ other, they will make sure that they belong to the same ``Circuit`` instance.
 import os
 from typing import TYPE_CHECKING, List, Optional
 
+import numpy as np
+
 from simphony.formatters import CircuitFormatter, CircuitJSONFormatter
 
 if TYPE_CHECKING:
-    import numpy as np
-
     from simphony import Model
     from simphony.models import Subcircuit
     from simphony.pins import Pin

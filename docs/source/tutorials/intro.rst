@@ -133,8 +133,8 @@ order to preserve the original circuit.
 Let's run a simple sweep simulation on the circuit we have
 created: ::
 
-  from simphony.simulators import SweepSimulation
-  simulation = SweepSimulation(1500e-9, 1600e-9)
+  from simphony.simulators import SweepSimulator
+  simulation = SweepSimulator(1500e-9, 1600e-9)
   simulation.multiconnect(component1['input'], component2['pin2'])
   result = simulation.simulate()
 

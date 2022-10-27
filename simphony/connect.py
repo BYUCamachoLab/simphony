@@ -46,6 +46,7 @@ import numpy as np
 
 from simphony.tools import add_polar, mul_polar
 
+
 # Functions operating on s-parameter matrices
 def connect_s(A, k, B, l):
     """

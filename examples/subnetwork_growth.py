@@ -98,6 +98,7 @@ To get the transmission from input to output in the s-matrix, the indexing is
 
 import matplotlib.pyplot as plt
 import numpy as np
+
 from simphony.connect import connect_s, innerconnect_s
 from simphony.libraries import siepic, sipann
 from simphony.tools import wl2freq
