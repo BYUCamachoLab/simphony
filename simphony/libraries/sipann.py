@@ -209,6 +209,21 @@ class GapFuncSymmetric(SipannWrapper):
             **kwargs
         )
 
+    def update_variations(self, **kwargs):
+        self.nominal_width = self.params["width"]
+        self.nominal_thickness = self.params["thickness"]
+
+        w = self.params["width"] + kwargs.get("corr_w")
+        h = self.params["thickness"] + kwargs.get("corr_t")
+
+        self.layout_aware = True
+        self.params["width"] = w
+        self.params["thickness"] = h
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        self.params["width"] = self.nominal_width
+        self.params["thickness"] = self.nominal_thickness
+
 
 class GapFuncAntiSymmetric(SipannWrapper):
     """Antisymmetric directional coupler, meaning both waveguides are
@@ -301,6 +316,21 @@ class GapFuncAntiSymmetric(SipannWrapper):
             **kwargs
         )
 
+    def update_variations(self, **kwargs):
+        self.nominal_width = self.params["width"]
+        self.nominal_thickness = self.params["thickness"]
+
+        w = self.params["width"] + kwargs.get("corr_w")
+        h = self.params["thickness"] + kwargs.get("corr_t")
+
+        self.layout_aware = True
+        self.params["width"] = w
+        self.params["thickness"] = h
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        self.params["width"] = self.nominal_width
+        self.params["thickness"] = self.nominal_thickness
+
 
 class HalfRing(SipannWrapper):
     """Half of a ring resonator.
@@ -343,12 +373,6 @@ class HalfRing(SipannWrapper):
 
     pin_count = 4
 
-    def __hash__(self) -> int:
-
-        """Gets a hash for the HalfRing component based on component type, and component parameters."""
-
-        return hash(hash(type(self)) + hash(self.model.gap) + hash(self.model.radius) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.sw_angle))
-
     def __init__(
         self,
         width: Union[float, np.array],
@@ -366,6 +390,21 @@ class HalfRing(SipannWrapper):
             sigmas,
             **kwargs
         )
+
+    def update_variations(self, **kwargs):
+        self.nominal_width = self.params["width"]
+        self.nominal_thickness = self.params["thickness"]
+
+        w = self.params["width"] + kwargs.get("corr_w")
+        h = self.params["thickness"] + kwargs.get("corr_t")
+
+        self.layout_aware = True
+        self.params["width"] = w
+        self.params["thickness"] = h
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        self.params["width"] = self.nominal_width
+        self.params["thickness"] = self.nominal_thickness
 
 
 class HalfRacetrack(SipannWrapper):
@@ -413,12 +452,6 @@ class HalfRacetrack(SipannWrapper):
 
     pin_count = 4
 
-    def __hash__(self) -> int:
-
-        """Gets a hash for the HalfRacetrack component based on component type, and component parameters."""
-
-        return hash(hash(type(self)) + hash(self.model.gap) + hash(self.model.radius) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.length) + hash(self.model.sw_angle))
-
     def __init__(
         self,
         width: Union[float, np.array],
@@ -442,6 +475,21 @@ class HalfRacetrack(SipannWrapper):
             sigmas,
             **kwargs
         )
+
+    def update_variations(self, **kwargs):
+        self.nominal_width = self.params["width"]
+        self.nominal_thickness = self.params["thickness"]
+
+        w = self.params["width"] + kwargs.get("corr_w")
+        h = self.params["thickness"] + kwargs.get("corr_t")
+
+        self.layout_aware = True
+        self.params["width"] = w
+        self.params["thickness"] = h
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        self.params["width"] = self.nominal_width
+        self.params["thickness"] = self.nominal_thickness
 
 
 class StraightCoupler(SipannWrapper):
@@ -482,12 +530,6 @@ class StraightCoupler(SipannWrapper):
 
     pin_count = 4
 
-    def __hash__(self) -> int:
-
-        """Gets a hash for the StraightCoupler component based on component type, and component parameters."""
-
-        return hash(hash(type(self)) + hash(self.model.gap) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.length) + hash(self.model.sw_angle))
-
     def __init__(
         self,
         width: Union[float, np.array],
@@ -505,6 +547,21 @@ class StraightCoupler(SipannWrapper):
             sigmas,
             **kwargs
         )
+
+    def update_variations(self, **kwargs):
+        self.nominal_width = self.params["width"]
+        self.nominal_thickness = self.params["thickness"]
+
+        w = self.params["width"] + kwargs.get("corr_w")
+        h = self.params["thickness"] + kwargs.get("corr_t")
+
+        self.layout_aware = True
+        self.params["width"] = w
+        self.params["thickness"] = h
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        self.params["width"] = self.nominal_width
+        self.params["thickness"] = self.nominal_thickness
 
 
 class Standard(SipannWrapper):
@@ -557,12 +614,6 @@ class Standard(SipannWrapper):
 
     pin_count = 4
 
-    def __hash__(self) -> int:
-
-        """Gets a hash for the standard-shaped directional coupler component based on component type, and component parameters."""
-
-        return hash(hash(type(self)) + hash(self.model.gap) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.length) + hash(self.model.sw_angle))
-
     def __init__(
         self,
         width: Union[float, np.array],
@@ -588,6 +639,21 @@ class Standard(SipannWrapper):
             sigmas,
             **kwargs
         )
+
+    def update_variations(self, **kwargs):
+        self.nominal_width = self.params["width"]
+        self.nominal_thickness = self.params["thickness"]
+
+        w = self.params["width"] + kwargs.get("corr_w")
+        h = self.params["thickness"] + kwargs.get("corr_t")
+
+        self.layout_aware = True
+        self.params["width"] = w
+        self.params["thickness"] = h
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        self.params["width"] = self.nominal_width
+        self.params["thickness"] = self.nominal_thickness
 
 
 class DoubleHalfRing(SipannWrapper):
@@ -633,12 +699,6 @@ class DoubleHalfRing(SipannWrapper):
 
     pin_count = 4
 
-    def __hash__(self) -> int:
-
-        """Gets a hash for the DoubleHalfRing component based on component type, gap, radius, thickness, couple length, and width."""
-
-        return hash(hash(type(self)) + hash(self.model.gap) + hash(self.model.radius) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.sw_angle))
-
     def __init__(
         self,
         width: Union[float, np.array],
@@ -656,6 +716,21 @@ class DoubleHalfRing(SipannWrapper):
             sigmas,
             **kwargs
         )
+
+    def update_variations(self, **kwargs):
+        self.nominal_width = self.params["width"]
+        self.nominal_thickness = self.params["thickness"]
+
+        w = self.params["width"] + kwargs.get("corr_w")
+        h = self.params["thickness"] + kwargs.get("corr_t")
+
+        self.layout_aware = True
+        self.params["width"] = w
+        self.params["thickness"] = h
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        self.params["width"] = self.nominal_width
+        self.params["thickness"] = self.nominal_thickness
 
 
 class AngledHalfRing(SipannWrapper):
@@ -707,12 +782,6 @@ class AngledHalfRing(SipannWrapper):
 
     pin_count = 4
 
-    def __hash__(self) -> int:
-
-        """Gets a hash for the AngledHalfRing component based on component type, gap, radius, thickness, couple length, and width."""
-
-        return hash(hash(type(self)) + hash(self.model.gap) + hash(self.model.radius) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.theta) + hash(self.model.sw_angle))
-
     def __init__(
         self,
         width: Union[float, np.array],
@@ -731,6 +800,21 @@ class AngledHalfRing(SipannWrapper):
             sigmas,
             **kwargs
         )
+
+    def update_variations(self, **kwargs):
+        self.nominal_width = self.params["width"]
+        self.nominal_thickness = self.params["thickness"]
+
+        w = self.params["width"] + kwargs.get("corr_w")
+        h = self.params["thickness"] + kwargs.get("corr_t")
+
+        self.layout_aware = True
+        self.params["width"] = w
+        self.params["thickness"] = h
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        self.params["width"] = self.nominal_width
+        self.params["thickness"] = self.nominal_thickness
 
 
 class Waveguide(SipannWrapper):
@@ -780,11 +864,20 @@ class Waveguide(SipannWrapper):
             **kwargs
         )
 
-    def __hash__(self) -> int:
+    def update_variations(self, **kwargs):
+        self.nominal_width = self.params["width"]
+        self.nominal_thickness = self.params["thickness"]
 
-        """Gets a hash for the staright waveguide component based on component type, gap, radius, thickness, couple length, and width."""
+        w = self.params["width"] + kwargs.get("corr_w")
+        h = self.params["thickness"] + kwargs.get("corr_t")
 
-        return hash(hash(type(self)) + hash(self.model.thickness) + hash(self.model.width) + hash(self.model.length) + hash(self.model.sw_angle))
+        self.layout_aware = True
+        self.params["width"] = w
+        self.params["thickness"] = h
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        self.params["width"] = self.nominal_width
+        self.params["thickness"] = self.nominal_thickness
 
 
 class Racetrack(SipannWrapper):
@@ -831,12 +924,6 @@ class Racetrack(SipannWrapper):
 
     pin_count = 2
 
-    def __hash__(self) -> int:
-
-        """Gets a hash for the Racetrack component based on component type, gap, radius, thickness, couple length, and width."""
-
-        return hash(hash(type(self)) + hash(self.gap) + hash(self.radius) + hash(self.thickness) + hash(self.width) + + hash(self.length) + hash(self.sw_angle) + hash(self.sigmas))
-
     def __init__(
         self,
         width: Union[float, np.array],
@@ -861,6 +948,21 @@ class Racetrack(SipannWrapper):
             **kwargs
         )
 
+    def update_variations(self, **kwargs):
+        self.nominal_width = self.params["width"]
+        self.nominal_thickness = self.params["thickness"]
+
+        w = self.params["width"] + kwargs.get("corr_w")
+        h = self.params["thickness"] + kwargs.get("corr_t")
+
+        self.layout_aware = True
+        self.params["width"] = w
+        self.params["thickness"] = h
+
+    def regenerate_layout_aware_monte_carlo_parameters(self):
+        self.params["width"] = self.nominal_width
+        self.params["thickness"] = self.nominal_thickness
+
 
 class PremadeCoupler(SipannWrapper):
     """Loads premade couplers.
@@ -878,12 +980,6 @@ class PremadeCoupler(SipannWrapper):
     """
 
     pin_count = 4
-
-    def __hash__(self) -> int:
-
-        """Gets a hash value for the premade coupler component based on type, and 'split' parameter value."""
-
-        return hash(hash(type(self)) + hash(self.split))
 
     def __init__(self, split: int, sigmas: Dict[str, float] = dict(), **kwargs) -> None:
         """Loads the premade coupler based on the given split value.

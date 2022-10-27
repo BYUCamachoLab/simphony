@@ -78,6 +78,7 @@ install_requires = [
 
 extras_require = {
     "test": ["pytest"],
+    "gdsfactory": ["gdsfactory"],
 }
 
 if "setuptools" in sys.modules:

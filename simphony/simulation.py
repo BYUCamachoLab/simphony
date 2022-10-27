@@ -11,17 +11,24 @@ used within the context. Devices include theoretical sources and detectors.
 """
 
 from cmath import rect
-from typing import TYPE_CHECKING, Callable, ClassVar, List, Optional, Tuple, Union
+from typing import Callable, ClassVar, List, Optional, Tuple, Union
 
 import numpy as np
+
+try:
+    from gdsfactory import Component
+
+    _has_gf = True
+except ImportError:
+    _has_gf = False
 from scipy.constants import h
+from scipy.linalg import cholesky, lu
 from scipy.signal import butter, sosfiltfilt
 
 from simphony import Model
+from simphony.layout import Circuit
+from simphony.libraries import siepic
 from simphony.tools import add_polar, wl2freq
-
-if TYPE_CHECKING:
-    from simphony.layout import Circuit
 
 # this variable keeps track of the current simulation context (if any)
 context = None
@@ -153,6 +160,103 @@ class Simulation:
 
         return expanded
 
+    def __compute_contributions_no_mod(self, t, scattering):
+        contributions = scattering[:, np.newaxis] + np.zeros((self.shape[1], 2))
+        return contributions[:, :, np.newaxis] + np.zeros((self.num_samples, 2))
+
+    def __compute_contributions_with_mod(self, t, contributions, scattering, source):
+        for i, freq in enumerate(self.freqs):
+            for j, power in enumerate(source._coupled_powers):
+                angle = scattering[i, 1]
+                offset = angle / (2 * np.pi * freq)
+                t = np.linspace(
+                    offset,
+                    offset + (self.num_samples - 1) / self.fs,
+                    self.num_samples,
+                )
+
+                mod = source.modfn(freq, power, t)
+                if np.shape(mod)[0] == 2:
+                    contributions[i, j] = np.stack(
+                        (
+                            contributions[i, j, 0, 0] * np.sqrt(mod[0]),
+                            contributions[i, j, 0, 1] + source.phase + mod[1],
+                        ),
+                        axis=-1,
+                    )
+                else:
+                    contributions[i, j] = np.stack(
+                        (
+                            contributions[i, j, 0, 0] * np.sqrt(mod),
+                            contributions[i, j, 0, 1]
+                            + np.repeat(source.phase, self.num_samples),
+                        ),
+                        axis=-1,
+                    )
+        return contributions
+
+    def __compute_detector_power(self, t, detector):
+        powers = []
+        for pin in detector.pins:
+            output_index = self.circuit.get_pin_index(pin._connection)
+
+            # figure out how the sources interfere
+            transmissions = np.zeros(
+                (self.shape[0], self.shape[1], self.num_samples, 2)
+            )
+            for i, pin in enumerate(self.circuit.pins):
+                # calculate transmissions for every source connected to
+                # the circuit
+
+                # find the source that corresponds to this pin
+                source = None
+                for s in self.sources:
+                    if s.index == i:
+                        source = s
+                        break
+                else:
+                    continue
+
+                # lookup how much this source contributes to the output field
+                scattering = self.s_params[:, output_index, source.index]
+
+                # convert to polar coordinates if necessary
+                # NOTE: complex values should be stored as a tuple. this conversion
+                # is for backwards compatibility with siepic library. once that gets
+                # updated, we can remove this, although it will be a breaking change
+                if np.shape(scattering[0]) != (2,):
+                    scattering = np.column_stack(
+                        (np.abs(scattering), np.angle(scattering))
+                    )
+
+                if not source.modfn:
+                    # no modulation
+                    contributions = self.__compute_contributions_no_mod(t, scattering)
+                else:
+                    contributions = scattering[:, np.newaxis] + np.zeros(
+                        (self.shape[1], 2)
+                    )
+                    contributions = contributions[:, :, np.newaxis] + np.zeros(
+                        (self.num_samples, 2)
+                    )
+                    contributions = self.__compute_contributions_with_mod(
+                        t, contributions, scattering, source
+                    )
+
+                # add all of the different source contributions together
+                for i in range(self.shape[0]):
+                    for j in range(self.shape[1]):
+                        for k in range(self.num_samples):
+                            transmissions[i, j, k] = add_polar(
+                                transmissions[i, j, k], contributions[i, j, k]
+                            )
+
+            # convert the output fields to powers
+            self.transmissions.append(transmissions)
+            powers.append((transmissions[:, :, :, 0] ** 2))
+
+        return powers
+
     def _get_signals(self) -> np.ndarray:
         """Get the signals in the order set by the detectors. Each signal is a
         multi-dimensional array. The first index corresponds to frequency. The
@@ -203,103 +307,7 @@ class Simulation:
         signals = []
         for detector in self.detectors:
             # calculate the power detected at each detector pin
-            powers = []
-            for pin in detector.pins:
-                output_index = self.circuit.get_pin_index(pin._connection)
-
-                # figure out how the sources interfere
-                transmissions = np.zeros(
-                    (self.shape[0], self.shape[1], self.num_samples, 2)
-                )
-                for i, pin in enumerate(self.circuit.pins):
-                    # calculate transmissions for every source connected to
-                    # the circuit
-
-                    # find the source that corresponds to this pin
-                    source = None
-                    for s in self.sources:
-                        if s.index == i:
-                            source = s
-                            break
-                    else:
-                        continue
-
-                    # lookup how much this source contributes to the output field
-                    scattering = self.s_params[:, output_index, source.index]
-
-                    # convert to polar coordinates if necessary
-                    # NOTE: complex values should be stored as a tuple. this conversion
-                    # is for backwards compatibility with siepic library. once that gets
-                    # updated, we can remove this, although it will be a breaking change
-                    if np.shape(scattering[0]) != (2,):
-                        scattering = np.column_stack(
-                            (np.abs(scattering), np.angle(scattering))
-                        )
-
-                    if not source.modfn:
-                        # no modulation
-                        contributions = np.stack(
-                            (
-                                scattering[:, 0, np.newaxis]
-                                * np.sqrt(source._coupled_powers),
-                                scattering[:, 1, np.newaxis]
-                                + np.repeat(source.phase, self.shape[1]),
-                            ),
-                            axis=-1,
-                        )
-                        contributions = contributions[:, :, np.newaxis] + np.zeros(
-                            (self.num_samples, 2)
-                        )
-                    else:
-                        contributions = scattering[:, np.newaxis] + np.zeros(
-                            (self.shape[1], 2)
-                        )
-                        contributions = contributions[:, :, np.newaxis] + np.zeros(
-                            (self.num_samples, 2)
-                        )
-                        for i, freq in enumerate(self.freqs):
-                            for j, power in enumerate(source._coupled_powers):
-                                angle = scattering[i, 1]
-                                offset = angle / (2 * np.pi * freq)
-                                t = np.linspace(
-                                    offset,
-                                    offset + (self.num_samples - 1) / self.fs,
-                                    self.num_samples,
-                                )
-
-                                mod = source.modfn(freq, power, t)
-                                if np.shape(mod)[0] == 2:
-                                    contributions[i, j] = np.stack(
-                                        (
-                                            contributions[i, j, 0, 0] * np.sqrt(mod[0]),
-                                            contributions[i, j, 0, 1]
-                                            + source.phase
-                                            + mod[1],
-                                        ),
-                                        axis=-1,
-                                    )
-                                else:
-                                    contributions[i, j] = np.stack(
-                                        (
-                                            contributions[i, j, 0, 0] * np.sqrt(mod),
-                                            contributions[i, j, 0, 1]
-                                            + np.repeat(source.phase, self.num_samples),
-                                        ),
-                                        axis=-1,
-                                    )
-
-                    # add all of the different source contributions together
-                    for i in range(self.shape[0]):
-                        for j in range(self.shape[1]):
-                            for k in range(self.num_samples):
-                                transmissions[i, j, k] = add_polar(
-                                    transmissions[i, j, k], contributions[i, j, k]
-                                )
-
-                # convert the output fields to powers
-                self.transmissions.append(transmissions)
-                powers.append((transmissions[:, :, :, 0] ** 2))
-
+            powers = self.__compute_detector_power(t, detector)
             # send the powers through the detectors to convert to signals
             signals.extend(detector._detect(powers))
 
@@ -322,6 +330,164 @@ class Simulation:
         self.s_parameters_method = (
             "monte_carlo_s_parameters" if flag else "s_parameters"
         )
+
+    def _compute_correlated_samples(self, coords, sigmaw, sigmat, l, runs):
+        x = [0] * len(coords)
+        y = [0] * len(coords)
+
+        # get x and y co-ordinates
+        components = [
+            component
+            for component in self.circuit._get_components()
+            if not isinstance(component, (Laser, Detector))
+        ]
+        if len(coords) != len(components):
+            raise ValueError(
+                f'Incorrect number of component coordinates passed to argument "coords". Expected {len(components)}, got {len(coords)}'
+            )
+
+        n = len(self.circuit._get_components()) - 2
+        corr_matrix_w = np.zeros((n, n))
+        corr_matrix_t = np.zeros((n, n))
+
+        # generate correlation values
+        for i in range(n):
+            for k in range(n):
+
+                corr_val = np.exp(
+                    -((x[k] - x[i]) ** 2 + (y[k] - y[i]) ** 2) / (0.5 * (l**2))
+                )
+
+                corr_matrix_w[i][k] = corr_matrix_w[k][i] = corr_val
+                corr_matrix_t[i][k] = corr_matrix_t[k][i] = corr_val
+
+        cov_matrix_w = np.zeros((n, n))
+        cov_matrix_t = np.zeros((n, n))
+        # generate covariance matrix
+        for i in range(n):
+            for k in range(n):
+                cov_matrix_w[i][k] = sigmaw * corr_matrix_w[i][k] * sigmaw
+                cov_matrix_t[i][k] = sigmat * corr_matrix_t[i][k] * sigmat
+
+        try:
+            # perform Cholesky decomposition on the covariance matrices
+            l_w = cholesky(cov_matrix_w, lower=True)
+            l_t = cholesky(cov_matrix_t, lower=True)
+        except np.linalg.LinAlgError:
+            # if matrix is not positive-definite, do LU decomposition
+            _, l_w, _ = lu(cov_matrix_w)
+            _, l_t, _ = lu(cov_matrix_t)
+
+        # generate random distribution with mean 0 and standard deviation of 1, size: no. of elements x no. of runs
+        X = np.random.multivariate_normal(np.zeros(n), np.eye(n, n), runs).T
+
+        # generate correlation samples
+        corr_sample_matrix_w = np.dot(l_w, X)
+        corr_sample_matrix_t = np.dot(l_t, X)
+
+        return (corr_sample_matrix_w, corr_sample_matrix_t)
+
+    def layout_aware_simulation(
+        self,
+        component_or_circuit: Union["Component", Circuit],
+        sigmaw: float = 5,
+        sigmat: float = 2,
+        l: float = 4.5e-3,
+        runs: int = 10,
+        num_samples: int = 1,
+    ) -> Tuple[np.array, np.array]:
+        """Runs the layout-aware Monte Carlo sweep simulation for the circuit.
+
+        Parameters
+        ----------
+        component_or_circuit :
+            The component or circuit to run the simulation on. Can either
+            be a gdsfactory Component or Simphony Circuit object.
+        sigmaw :
+            Standard deviation of width variations (default 5)
+        sigmat :
+            Standard deviation of thickness variations (default 2)
+        l :
+            Correlation length (m) (default 4.5e-3)
+        runs :
+            The number of Monte Carlo iterations to run (default 10).
+        num_samples:
+            The number of samples to take. If only one sample is taken, it will
+            be the theoretical value of the circuit. If more than one sample is
+            taken, they will vary based on simulated noise.
+        """
+        results = []  # store results
+
+        if _has_gf and isinstance(component_or_circuit, Component):
+            components = [
+                component
+                for component in self.circuit._get_components()
+                if not isinstance(component, (Laser, Detector))
+            ]  # get all components except the Laser and Detector
+            gfcomponents = [
+                c.path if isinstance(c, siepic.Waveguide) else c.component
+                for c in components
+            ]  # get all gdsfactory component attributes
+
+            # Extract co-ordinates
+            coords = {
+                component: {
+                    "x": (gfcomponents[i].ports[0].x + gfcomponents[i].ports[-1].x) / 2,
+                    "y": (gfcomponents[i].ports[0].y + gfcomponents[i].ports[-1].y) / 2,
+                }
+                if isinstance(component, siepic.Waveguide)
+                else {"x": gfcomponents[i].x, "y": gfcomponents[i].y}
+                for i, component in enumerate(components)
+            }
+        elif isinstance(component_or_circuit, Circuit):
+            components = [
+                component
+                for component in self.circuit._get_components()
+                if not isinstance(component, (Laser, Detector))
+            ]  # get all components except the Laser and Detector
+            gfcomponents = [
+                c.component for c in components
+            ]  # get all gdsfactory component attributes
+
+            coords = {
+                component: {"x": gfcomponents[i].x, "y": gfcomponents[i].y}
+                for i, component in enumerate(components)
+            }
+        else:
+            raise ValueError(
+                "component_or_circuit must be qa gdsfactory component or a Simphony Circuit object."
+            )
+
+        # compute correlated samples
+        corr_sample_matrix_w, corr_sample_matrix_t = self._compute_correlated_samples(
+            coords, sigmaw, sigmat, l, runs
+        )
+
+        n = len(components)
+        for i in range(runs):
+            # use s_parameters for the first run, then monte_carlo_* for the rest
+
+            # update component parameters
+            [
+                components[idx].update_variations(
+                    corr_w=corr_sample_matrix_w[idx][i],
+                    corr_t=corr_sample_matrix_t[idx][i],
+                )
+                for idx in range(n)
+            ]
+
+            self.s_parameters_method = (
+                "layout_aware_monte_carlo_s_parameters" if i else "s_parameters"
+            )
+
+            results.append(self.sample(num_samples=num_samples))
+
+            [
+                components[idx].regenerate_layout_aware_monte_carlo_parameters()
+                for idx in range(n)
+            ]
+
+        return results
 
     def s_parameters(self, freqs: np.array) -> np.ndarray:
         """Gets the scattering parameters for the specified frequencies.
@@ -751,7 +917,10 @@ class DifferentialDetector(Detector):
         rf_noise=0,
         **kwargs,
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            *args,
+            **kwargs,
+        )
 
         # initialize parameters
         self.monitor_conversion_gain = monitor_conversion_gain
