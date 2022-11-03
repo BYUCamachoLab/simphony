@@ -245,11 +245,7 @@ class SpiceVisitor(NodeVisitor):
         return {"name": name, "model": model, "ports": ports, "params": params}
 
     def visit_ports(self, node, visited_children):
-        # ports       = ((external / internal) ws?)+
-        ports = []
-        for port in visited_children:
-            ports.append(port[0][0])
-        return ports
+        return [port[0][0] for port in visited_children]
 
     def visit_external(self, node, visited_children):
         # external    = ~r"([-\w]+(detector|laser)[\d]?)"

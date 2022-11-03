@@ -226,9 +226,7 @@ class CircuitJSONFormatter:
         data = {"components": [], "connections": []}
         for i, component in enumerate(circuit):
             # skip simulators
-            if isinstance(component, Simulator) or isinstance(
-                component, SimulationModel
-            ):
+            if isinstance(component, (Simulator, SimulationModel)):
                 continue
 
             # get a representation for each component
@@ -259,9 +257,7 @@ class CircuitJSONFormatter:
         data = json.loads(string)
 
         # load all of the components
-        components = []
-        for string in data["components"]:
-            components.append(Model.from_string(string, formatter=ModelJSONFormatter()))
+        components = [Model.from_string(string, formatter=ModelJSONFormatter()) for string in data["components"]]
 
         # connect the components to each other
         for i, j, k, l in data["connections"]:
@@ -275,57 +271,19 @@ class CircuitSiEPICFormatter(CircuitFormatter):
 
     mappings = {
         "simphony.libraries.siepic": {
-            "ebeam_bdc_te1550": {
-                "name": "BidirectionalCoupler",
-                "parameters": {
-                    "lay_x": "component.x",
-                    "lay_y": "component.y",
-                },
-            },
-            "ebeam_dc_halfring_straight": {
-                "name": "HalfRing",
-                "parameters": {
-                    "lay_x": "component.x",
-                    "lay_y": "component.y",
-                },
-            },
-            "ebeam_dc_te1550": {
-                "name": "DirectionalCoupler",
-                "parameters": {
-                    "lay_x": "component.x",
-                    "lay_y": "component.y",
-                },
-            },
-            "ebeam_gc_te1550": {
-                "name": "GratingCoupler",
-                "parameters": {
-                    "lay_x": "component.x",
-                    "lay_y": "component.y",
-                },
-            },
-            "ebeam_terminator_te1550": {
-                "name": "Terminator",
-                "parameters": {
-                    "lay_x": "component.x",
-                    "lay_y": "component.y",
-                },
-            },
+            "ebeam_bdc_te1550": {"name": "BidirectionalCoupler", "parameters": {}},
+            "ebeam_dc_halfring_straight": {"name": "HalfRing", "parameters": {}},
+            "ebeam_dc_te1550": {"name": "DirectionalCoupler", "parameters": {}},
+            "ebeam_gc_te1550": {"name": "GratingCoupler", "parameters": {}},
+            "ebeam_terminator_te1550": {"name": "Terminator", "parameters": {}},
             "ebeam_wg_integral_1550": {
                 "name": "Waveguide",
                 "parameters": {
                     "wg_length": "length",
                     "wg_width": "width",
-                    "lay_x": "component.x",
-                    "lay_y": "component.y",
                 },
             },
-            "ebeam_y_1550": {
-                "name": "YBranch",
-                "parameters": {
-                    "lay_x": "component.x",
-                    "lay_y": "component.y",
-                },
-            },
+            "ebeam_y_1550": {"name": "YBranch", "parameters": {}},
         },
     }
 
@@ -347,10 +305,7 @@ class CircuitSiEPICFormatter(CircuitFormatter):
         mapping = self.__class__.mappings[self.pdk.__name__][component["model"]]
 
         # remap the parameter values so they match the components' API
-        parameters = {}
-        for k, v in component["params"].items():
-            if k in mapping["parameters"]:
-                parameters[mapping["parameters"][k]] = v
+        parameters = {mapping["parameters"][k]: v for k, v in component["params"].items() if k in mapping["parameters"]}
 
         # instantiate the model and pass in the corrected parameters
         return getattr(self.pdk, mapping["name"])(**parameters)
@@ -398,9 +353,9 @@ class CircuitSiEPICFormatter(CircuitFormatter):
                     else "freq"
                 )
 
-        simulator = SweepSimulator(start, stop, points)
-        simulator.mode = mode
-        simulator.multiconnect(subcircuit[output], subcircuit[input])
+                simulator = SweepSimulator(start, stop, points)
+                simulator.mode = mode
+                simulator.multiconnect(subcircuit[output], subcircuit[input])
 
         # no reason to include the subcircuit component for now
         return subcircuit._wrapped_circuit

@@ -122,11 +122,3 @@ class TestSubcircuitExtension:
 
         assert [pin.name for pin in brancher.pins] == ["pin3"]
         assert brancher["pin3"]._connection == wg3["pin1"]
-
-
-class TestModelComponent:
-    def testcomponent(self, y1):
-        y2 = siepic.YBranch(name="y2")
-
-        if hasattr(y1, "component"):
-            assert y1.component != y2.component

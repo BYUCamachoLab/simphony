@@ -5,8 +5,8 @@
 #
 # File: filters.py
 
-import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 from simphony.libraries import siepic, sipann
 from simphony.simulators import SweepSimulator

@@ -39,10 +39,7 @@ def take_closest(sorted_list, value):
         return associations[-1]
     before = associations[pos - 1]
     after = associations[pos]
-    if after - Lc < Lc - before:
-        return after
-    else:
-        return before
+    return after if after - Lc < Lc - before else before
 
 
 associations[take_closest(list(associations.keys()), 1.35e-5)]

@@ -38,7 +38,6 @@ accessible through the sidebar navigation.
   tutorials/intro
   tutorials/mzi
   tutorials/filters
-  tutorials/layout_aware
 
 .. toctree::
   :hidden:
