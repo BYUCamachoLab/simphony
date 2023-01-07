@@ -80,10 +80,7 @@ autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
 # add_module_names = False # Remove namespaces from class/method signatures
 
 autodoc_mock_imports = [
-    "matplotlib",
-    "numpy",
     "parsimonious",
-    "scipy",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
