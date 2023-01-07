@@ -79,7 +79,12 @@ autoclass_content = "class"  # Add __init__ doc (ie. params) to class summaries
 autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
 # add_module_names = False # Remove namespaces from class/method signatures
 
-autodoc_mock_imports = []
+autodoc_mock_imports = [
+    "matplotlib",
+    "numpy",
+    "parsimonious",
+    "scipy",
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -125,15 +130,15 @@ html_theme = 'pydata_sphinx_theme'
 
 html_theme_options = {
     # "header_links_before_dropdown": 4,
-    "icon_links": [
-        {
-            "name": "GitHub",
-            "url": "https://github.com/BYUCamachoLab/simphony",
-            "icon": "fab fa-github-square",
-            "type": "fontawesome",
-            "attributes": {"target": "_blank"},
-        },
-    ],
+    # "icon_links": [
+    #     {
+    #         "name": "GitHub",
+    #         "url": "https://github.com/BYUCamachoLab/simphony",
+    #         "icon": "fab fa-github-square",
+    #         "type": "fontawesome",
+    #     },
+    # ],
+    "github_url": "https://github.com/BYUCamachoLab/simphony",
     # "logo": {
     #     "text": "PyData Theme",
     #     "image_dark": "logo-dark.svg",
