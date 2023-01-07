@@ -44,15 +44,15 @@ class Model:
 
     Attributes
     ----------
-    freq_range :
+    freq_range : np.ndarray
         A tuple of the valid frequency bounds for the element in the  order
         (lower, upper). Defaults to (-infty, infty).
-    pin_count :
+    pin_count : int
         The number of pins for the device. Must be set if pins is not.
-    pins :
+    pins : tuple of str
         A tuple of all the default pin names of the device. Must be set if
         pin_count is not.
-    component :
+    component : Component
         A gdsfactory Component object which is a representation of this component (optional).
     """
 
@@ -75,17 +75,17 @@ class Model:
 
         Parameters
         ----------
-        name :
+        name : str
             The name of the model.
-        freq_range :
+        freq_range : tuple of floats
             The frequency range for the model. If not specified,
             it will inherit from cls.freq_range. If that is not specified,
             then it will default to (0, inf).
-        pins :
+        pins : list of Pin
             The pins for the model. If not specified, the pins will be
             be initialized from cls.pins. If that is not specified,
             cls.pin_count number of pins will be initialized.
-        component :
+        component : Component
             A gdsfactory Component object for this component (optional).
 
         Raises
@@ -168,6 +168,11 @@ class Model:
         This method makes sure that all connected components belong to
         the same circuit. i.e. Their .circuit references all point to
         the same thing.
+
+        Parameters
+        ----------
+        component : Model
+            The component to connect to.
         """
         if self.circuit != component.circuit:
             # make sure to merge the smaller circuit into the larger
@@ -446,11 +451,11 @@ class Model:
 
         Parameters
         ----------
-        filename :
+        filename : str
             The name of the file to write to.
-        freqs :
+        freqs : np.ndarray
             The list of frequencies to save data for.
-        formatter :
+        formatter : ModelFormatter, optional
             The formatter instance to use.
         """
         # change the cwd to the the directory containing the file
@@ -475,9 +480,9 @@ class Model:
 
         Parameters
         ----------
-        freqs :
+        freqs : np.ndarray
             The list of frequencies to save data for.
-        formatter :
+        formatter : ModelFormatter, optional
             The formatter instance to use.
         """
         formatter = formatter if formatter is not None else ModelJSONFormatter()
@@ -491,9 +496,9 @@ class Model:
 
         Parameters
         ----------
-        filename :
+        filename : str
             The filename to read from.
-        formatter :
+        formatter : ModelFormatter, optional
             The formatter instance to use.
         """
         # change the cwd to the the directory containing the file
@@ -520,9 +525,9 @@ class Model:
 
         Parameters
         ----------
-        string :
+        string : str
             The string to load the component from.
-        formatter :
+        formatter : ModelFormatter, optional
             The formatter instance to use.
         """
         formatter = formatter if formatter is not None else ModelJSONFormatter()
@@ -535,6 +540,28 @@ class Subcircuit(Model):
 
     Any unconnected pins from the underlying components are re-exposed.
     This requires that unconnected pins have unique names.
+
+    Parameters
+    ----------
+    circuit : Circuit
+        The circuit to turn into a subcircuit.
+    name : str, optional
+        An optional name for the subcircuit.
+    permanent : bool, optional
+        Whether or not this subcircuit should be considered permanent.
+
+        If you intend to make connections to a subcircuit, it is considered
+        a permanent subcircuit. Permanet subcircuits require that pin names
+        be unique.
+
+    Raises
+    ------
+    ValueError
+        when no components belong to the circuit.
+    ValueError
+        when unconnected pins share the same name.
+    ValueError
+        when no unconnected pins exist.
     """
 
     scache: Dict[Model, "np.ndarray"] = {}
@@ -547,30 +574,6 @@ class Subcircuit(Model):
         permanent: bool = True,
         **kwargs,
     ) -> None:
-        """Initializes a subcircuit from the given circuit.
-
-        Parameters
-        ----------
-        circuit :
-            The circuit to turn into a subcircuit.
-        name :
-            An optional name for the subcircuit.
-        permanent :
-            Whether or not this subcircuit should be considered permanent.
-
-            If you intend to make connections to a subcircuit, it is considered
-            a permanent subcircuit. Permanet subcircuits require that pin names
-            be unique.
-
-        Raises
-        ------
-        ValueError
-            when no components belong to the circuit.
-        ValueError
-            when unconnected pins share the same name.
-        ValueError
-            when no unconnected pins exist.
-        """
         freq_range = [0, float("inf")]
         pins = []
         pin_names = {}
@@ -680,9 +683,9 @@ class Subcircuit(Model):
 
         Parameters
         ----------
-        freqs :
+        freqs : np.ndarray
             The list of frequencies to get scattering parameters for.
-        s_parameters_method :
+        s_parameters_method : str, optional
             The method name to call to get the scattering parameters.
             Either 's_parameters' or 'monte_carlo_s_parameters'
         """

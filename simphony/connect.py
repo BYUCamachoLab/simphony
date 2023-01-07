@@ -50,37 +50,41 @@ from simphony.tools import add_polar, mul_polar
 # Functions operating on s-parameter matrices
 def connect_s(A, k, B, l):
     """
-    connect two n-port networks' s-matrices together.
-    specifically, connect port `k` on network `A` to port `l` on network
+    Connect two n-port networks' s-matrices together.
+
+    Specifically, connect port `k` on network `A` to port `l` on network
     `B`. The resultant network has nports = (A.rank + B.rank-2). This
     function operates on, and returns s-matrices. The function
     :func:`connect` operates on :class:`Network` types.
+
     Parameters
     -----------
-    A : :class:`numpy.ndarray`
+    A : np.ndarray
             S-parameter matrix of `A`, shape is fxnxn(x2)
     k : int
             port index on `A` (port indices start from 0)
-    B : :class:`numpy.ndarray`
+    B : np.ndarray
             S-parameter matrix of `B`, shape is fxnxn(x2)
     l : int
             port index on `B`
+    
     Returns
     -------
-    C : :class:`numpy.ndarray`
+    C : np.ndarray
         new S-parameter matrix
+
     Notes
     -------
-    internally, this function creates a larger composite network
+    Internally, this function creates a larger composite network
     and calls the  :func:`innerconnect_s` function. see that function for more
     details about the implementation
+
     See Also
     --------
-        connect : operates on :class:`Network` types
-        innerconnect_s : function which implements the connection
-            connection algorithm
+    connect : operates on :class:`Network` types
+    innerconnect_s : function which implements the connection
+        connection algorithm
     """
-
     if k > A.shape[-1] - 1 or l > B.shape[-1] - 1:
         raise (ValueError("port indices are out of range"))
 
@@ -93,7 +97,13 @@ def connect_s(A, k, B, l):
 
 def create_block_diagonal(A, B):
     """merges an fxnxn(x2) matrix with an fxmxm(x2) matrix to form a fx(n+m)x(n+m)(x2)
-    block diagonal matrix."""
+    block diagonal matrix.
+    
+    Parameters
+    ----------
+    A
+    B
+    """
     nf = A.shape[0]  # num frequency points
     nA = A.shape[1]  # num ports on A
     nB = B.shape[1]  # num ports on B
@@ -117,10 +127,12 @@ def create_block_diagonal(A, B):
 def innerconnect_s(S, k, l):
     """
     connect two ports of a single n-port network's s-matrix.
+
     Specifically, connect port `k`  to port `l` on `S`. This results in
     a (n-2)-port network.  This     function operates on, and returns
     s-matrices. The function :func:`innerconnect` operates on
     :class:`Network` types.
+
     Parameters
     -----------
     S : :class:`numpy.ndarray`
@@ -129,21 +141,23 @@ def innerconnect_s(S, k, l):
         port index on `S` (port indices start from 0)
     l : int
         port index on `S`
+
     Returns
     -------
     C : :class:`numpy.ndarray`
             new S-parameter matrix
+
     Notes
     -----
     The algorithm used to calculate the resultant network is called a
     'sub-network growth',  can be found in [#]_. The original paper
     describing the  algorithm is given in [#]_.
+
     References
     ----------
     .. [#] Compton, R.C.; , "Perspectives in microwave circuit analysis," Circuits and Systems, 1989., Proceedings of the 32nd Midwest Symposium on , vol., no., pp.716-718 vol.2, 14-16 Aug 1989. URL: http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=101955&isnumber=3167
     .. [#] Filipsson, Gunnar; , "A New General Computer Algorithm for S-Matrix Calculation of Interconnected Multiports," Microwave Conference, 1981. 11th European , vol., no., pp.700-704, 7-11 Sept. 1981. URL: http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=4131699&isnumber=4131585
     """
-
     if k > S.shape[1] - 1 or l > S.shape[1] - 1:
         raise (ValueError("port indices are out of range"))
 

@@ -6,6 +6,11 @@ parsimonious==0.8.1
 pre-commit>=2.12.1
 pytest>=6.2.4
 scipy>=1.5.4
-sphinx>=3.0.3
-sphinx_rtd_theme==0.4.3
+sphinx==4.5.0
+pydata-sphinx-theme==0.11.0
+sphinx-design==0.3.0
+sphinx-copybutton==0.5.1
+sphinx-togglebutton==0.3.2
+numpydoc==1.5.0
+linkify-it-py==1.0.3
 tox>=3.23.1

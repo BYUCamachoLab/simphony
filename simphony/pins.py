@@ -27,18 +27,15 @@ class Pin:
 
     As pins are connected and disconnected from each other, the
     components keep track of which circuit they belong to.
+
+    Parameters
+    ----------
+    component : Model
+        The component that this pin belongs to.
+    name : str
+        The name of the pin.
     """
-
     def __init__(self, component: "Model", name: str) -> None:
-        """Instantiates a pin object.
-
-        Parameters
-        ----------
-        component :
-            The component that this pin belongs to.
-        name :
-            The name of the pin.
-        """
         self._component = component
         self._connection = None
         self.name = name
