@@ -1,10 +1,11 @@
-.. _model-libraries:
+.. _api.libraries:
 
-Model Libraries
-===============
+=========
+Libraries
+=========
 
-.. automodule:: simphony.libraries.siepic
-  :members:
+.. autosummary::
+   :toctree: ./api/
 
-.. automodule:: simphony.libraries.sipann
-  :members:
+   simphony.libraries.siepic
+   simphony.libraries.sipann

@@ -20,82 +20,208 @@ import re
 #
 # needs_sphinx = '1.0'
 
-# -----------------------------------------------------------------------------
-# General configuration
-# -----------------------------------------------------------------------------
+# -- Project information -----------------------------------------------------
 
-# Add any Sphinx extension module names here, as strings. They can be extensions
-# coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-
-# sys.path.insert(0, os.path.abspath('../sphinxext'))
-
-# Add any Sphinx extension module names here, as strings. They can be
-# extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
-# ones.
-
-extensions = [
-    "sphinx.ext.autodoc",
-    "sphinx.ext.napoleon",
-    "sphinx.ext.intersphinx",
-    "sphinx.ext.coverage",
-    "sphinx.ext.doctest",
-    "sphinx.ext.autosummary",
-    "sphinx.ext.graphviz",
-    "sphinx.ext.ifconfig",
-    # 'matplotlib.sphinxext.plot_directive',
-    # 'IPython.sphinxext.ipython_console_highlighting',
-    # 'IPython.sphinxext.ipython_directive',
-    "sphinx.ext.imgmath",
-    # 'sphinx.ext.todo', #
-    # 'sphinx.ext.mathjax', #
-    # 'sphinx.ext.viewcode', #
-    # 'sphinx.ext.githubpages', #
-    # 'sphinx_autodoc_typehints', #
-]
-
-# # Napoleon settings
-# napoleon_google_docstring = False
-napoleon_numpy_docstring = True
-# napoleon_include_init_with_doc = False
-# napoleon_include_private_with_doc = False
-# napoleon_include_special_with_doc = False
-# napoleon_use_admonition_for_examples = False
-# napoleon_use_admonition_for_notes = False
-# napoleon_use_admonition_for_references = False
-# napoleon_use_ivar = False
-# napoleon_use_param = True
-# napoleon_use_rtype = True
-# napoleon_use_keyword = True
-# # napoleon_custom_sections = None
-
-imgmath_image_format = "svg"
-
-# Add any paths that contain templates here, relative to this directory.
-templates_path = ["_templates"]
-
-# The suffix of source filenames.
-source_suffix = ".rst"
-
-# The master toctree document.
-master_doc = "index"
-
-# General information about the project.
 project = "Simphony"
 copyright = "2019-2021, Simphony Project Contributors"
 author = "Sequoia Ploeg, et al."
 
+# The full version, including alpha/beta/rc tags
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
-#
-import simphony
+release = '0.6.1'
 
-# The short X.Y version (including .devXXXX, rcX, b1 suffixes if present)
-version = re.sub(r"(\d+\.\d+)\.\d+(.*)", r"\1\2", simphony.__version__)
-version = re.sub(r"(\.dev\d+).*?$", r"\1", version)
-# The full version, including alpha/beta/rc tags.
-release = simphony.__version__
-print("%s %s" % (version, release))
+
+# -- General configuration ---------------------------------------------------
+
+# Add any Sphinx extension module names here, as strings. They can be
+# extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
+# ones.
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    # "sphinx.ext.todo",
+    "sphinx.ext.viewcode",
+    # "sphinxext.rediraffe",
+    "sphinx_design",
+    "sphinx_copybutton",
+    # "ablog",
+    # "jupyter_sphinx",
+    "matplotlib.sphinxext.mathmpl",
+    "matplotlib.sphinxext.plot_directive",
+    "myst_nb",
+    # "nbsphinx",  # Uncomment and comment-out MyST-NB for local testing purposes.
+    "numpydoc",
+    "sphinx_togglebutton",
+    # "sphinx.ext.napoleon",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.coverage",
+    "sphinx.ext.doctest",
+    "sphinx.ext.graphviz",
+    "sphinx.ext.ifconfig",
+    # 'IPython.sphinxext.ipython_console_highlighting',
+    # 'IPython.sphinxext.ipython_directive',
+    "sphinx.ext.imgmath",
+    # 'sphinx.ext.mathjax', #
+    # 'sphinx.ext.githubpages', #
+    # 'sphinx_autodoc_typehints', #
+]
+
+# -- Internationalization ------------------------------------------------
+# specifying the natural language populates some key tags
+language = "en"
+
+
+autosummary_generate = True  # Turn on sphinx.ext.autosummary
+autodoc_typehints = "none"
+autoclass_content = "class"  # Add __init__ doc (ie. params) to class summaries
+# html_show_sourcelink = False  # Remove 'view source code' from top of page (for html, not python)
+autodoc_inherit_docstrings = True  # If no docstring, inherit from base class
+# add_module_names = False # Remove namespaces from class/method signatures
+
+autodoc_mock_imports = []
+
+# Add any paths that contain templates here, relative to this directory.
+templates_path = ['_templates']
+
+# List of patterns, relative to source directory, that match files and
+# directories to ignore when looking for source files.
+# This pattern also affects html_static_path and html_extra_path.
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', "**.ipynb_checkpoints"]
+
+# -- Extension options -------------------------------------------------------
+
+# This allows us to use ::: to denote directives, useful for admonitions
+# myst_enable_extensions = ["colon_fence", "linkify", "substitution"]
+
+panels_add_bootstrap_css = False
+
+# -- Plot directive configuration --------------------------------------------
+
+# For speedup, decide which plot_formats to build based on build targets:
+#     html only -> png
+#     latex only -> pdf
+#     all other cases, including html + latex -> png, pdf
+# For simplicity, we assume that the build targets appear in the command line.
+# We're falling back on using all formats in case that assumption fails.
+formats = {'html': ('png', 100), 'latex': ('pdf', 100)}
+plot_formats = [formats[target] for target in ['html', 'latex']
+                if target in sys.argv] or list(formats.values())
+
+# -- Options for HTML output -------------------------------------------------
+
+# The theme to use for HTML and HTML Help pages.  See the documentation for
+# a list of builtin themes.
+# Configuration guide: https://pydata-sphinx-theme.readthedocs.io/en/v0.8.1/user_guide/configuring.html
+
+html_theme = 'pydata_sphinx_theme'
+# html_logo = "_static/gdsframeworklogo2.png"
+# html_favicon = "_static/logo.svg"
+# html_sourcelink_suffix = ""
+
+# Theme options are theme-specific and customize the look and feel of a theme
+# further.  For a list of options available for each theme, see the
+# documentation.
+
+html_theme_options = {
+    # "header_links_before_dropdown": 4,
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/BYUCamachoLab/simphony",
+            "icon": "fab fa-github-square",
+            "type": "fontawesome",
+            "attributes": {"target": "_blank"},
+        },
+    ],
+    # "logo": {
+    #     "text": "PyData Theme",
+    #     "image_dark": "logo-dark.svg",
+    #     "alt_text": "PyData Theme",
+    # },
+    "use_edit_page_button": True,
+    "show_toc_level": 1,
+    "navbar_align": "left",  # [left, content, right] For testing that the navbar items align properly
+    # "navbar_center": ["version-switcher", "navbar-nav"],
+    # "announcement": "https://raw.githubusercontent.com/pydata/pydata-sphinx-theme/main/docs/_templates/custom-template.html",
+    "show_nav_level": 1,
+    # "navbar_start": ["navbar-logo"],
+    # "navbar_end": ["theme-switcher", "navbar-icon-links"],
+    # "navbar_persistent": ["search-button"],
+    # "primary_sidebar_end": ["custom-template.html", "sidebar-ethical-ads.html"],
+    # "footer_items": ["copyright", "sphinx-version"],
+    # "secondary_sidebar_items": ["page-toc.html"],  # Remove the source buttons
+    # "switcher": {
+    #     "json_url": json_url,
+    #     "version_match": version_match,
+    # },
+    # "search_bar_position": "navbar",  # TODO: Deprecated - remove in future version
+    "external_links": [
+      {"name": "Changelog", "url": "https://github.com/BYUCamachoLab/simphony/tree/master/docs/changelog"},
+    ],
+}
+
+# Custom sidebar templates, maps document names to template names.
+# This is required for the alabaster theme
+# refs: http://alabaster.readthedocs.io/en/latest/installation.html#sidebars
+html_sidebars = {
+    "index": [],
+    # "community/index": [
+    #     "sidebar-nav-bs",
+    #     "custom-template",
+    # ],  # This ensures we test for custom sidebars
+    # "examples/no-sidebar": [],  # Test what page looks like with no sidebar items
+    # "examples/persistent-search-field": ["search-field"],
+    # # Blog sidebars
+    # # ref: https://ablog.readthedocs.io/manual/ablog-configuration-options/#blog-sidebars
+    # "examples/blog/*": [
+    #     "postcard.html",
+    #     "recentposts.html",
+    #     "tagcloud.html",
+    #     "categories.html",
+    #     "authors.html",
+    #     "languages.html",
+    #     "locations.html",
+    #     "archives.html",
+    # ],
+}
+
+html_context = {
+    "github_url": "https://github.com", # or your GitHub Enterprise interprise
+    "github_user": "BYUCamachoLab",
+    "github_repo": "simphony",
+    "github_version": "master",
+    "doc_path": "docs/source",
+}
+
+# Add any paths that contain custom static files (such as style sheets) here,
+# relative to this directory. They are copied after the builtin static files,
+# so a file named "default.css" will overwrite the builtin "default.css".
+html_static_path = ['_static']
+
+# rediraffe_redirects = {
+#     # "contributing.rst": "community/index.rst",
+# }
+
+# ABlog configuration
+# blog_path = "examples/blog/index"
+# blog_authors = {
+#     "pydata": ("PyData", "https://pydata.org"),
+#     "jupyter": ("Jupyter", "https://jupyter.org"),
+# }
+
+imgmath_image_format = "svg"
+
+# The suffix of source filenames.
+source_suffix = {
+    '.rst': 'restructuredtext',
+    # '.txt': 'markdown',
+    # '.md': 'markdown',
+}
+
+# The master toctree document.
+master_doc = "index"
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
@@ -120,11 +246,6 @@ today_fmt = "%B %d, %Y"
 # for source files.
 exclude_dirs = []
 
-# List of patterns, relative to source directory, that match files and
-# directories to ignore when looking for source files.
-# This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["_build"]
-
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
 # default_role = None
@@ -143,7 +264,6 @@ add_function_parentheses = False
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = "sphinx"
 
-
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []
 
@@ -153,64 +273,6 @@ pygments_style = "sphinx"
 # If true, keep warnings as "system message" paragraphs in the built documents.
 # keep_warnings = False
 
-
-# -----------------------------------------------------------------------------
-# HTML output
-# -----------------------------------------------------------------------------
-
-# The theme to use for HTML and HTML Help pages.  See the documentation for
-# a list of builtin themes.
-html_theme = "sphinx_rtd_theme"
-
-# Theme options are theme-specific and customize the look and feel of a theme
-# further.  For a list of options available for each theme, see the
-# documentation.
-html_theme_options = {
-    # 'canonical_url': '',
-    # 'analytics_id': 'UA-XXXXXXX-1',  #  Provided by Google in your dashboard
-    "logo_only": False,
-    "display_version": True,
-    "prev_next_buttons_location": "bottom",
-    "style_external_links": False,
-    # 'vcs_pageview_mode': '',
-    # 'style_nav_header_background': 'white',
-    # Toc options
-    "collapse_navigation": True,
-    "sticky_navigation": True,
-    "navigation_depth": 4,
-    "includehidden": True,
-    "titles_only": False,
-}
-
-# Add any paths that contain custom themes here, relative to this directory.
-# html_theme_path = []
-
-# The name for this set of Sphinx documents.  If None, it defaults to
-# "<project> v<release> documentation".
-html_title = "%s v%s Manual" % (project, version)
-
-# A shorter title for the navigation bar.  Default is the same as html_title.
-# html_short_title = None
-
-# The name of an image file (relative to this directory) to place at the top
-# of the sidebar.
-# html_logo = None
-
-# The name of an image file (within the static path) to use as favicon of the
-# docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
-# pixels large.
-# html_favicon = None
-
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ['_static']
-
-# Add any extra paths that contain custom files (such as robots.txt or
-# .htaccess) here, relative to this directory. These files are copied
-# directly to the root of the documentation.
-# html_extra_path = []
-
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
 html_last_updated_fmt = "%b %d, %Y"
@@ -218,17 +280,6 @@ html_last_updated_fmt = "%b %d, %Y"
 # If true, SmartyPants will be used to convert quotes and dashes to
 # typographically correct entities.
 # html_use_smartypants = True
-
-# Custom sidebar templates, maps document names to template names.
-# html_sidebars = {}
-# This is required for the alabaster theme
-# refs: http://alabaster.readthedocs.io/en/latest/installation.html#sidebars
-html_sidebars = {
-    "**": [
-        "relations.html",  # needs 'show_related': True theme option to display
-        "searchbox.html",
-    ]
-}
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.

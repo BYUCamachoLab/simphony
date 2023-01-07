@@ -35,17 +35,13 @@ accessible through the sidebar navigation.
   :hidden:
   :caption: Tutorials
 
-  tutorials/intro
-  tutorials/mzi
-  tutorials/filters
-  tutorials/layout_aware
+  tutorials/index
 
 .. toctree::
   :hidden:
   :caption: Reference
 
-  reference/api
-  reference/libraries
+  reference/index
 
 Simphony is primarily developed and maintained by members of
 the `CamachoLab`_ at Brigham Young University. Feedback is
@@ -58,9 +54,7 @@ Simphony project, let us know by raising an issue on
   :hidden:
   :caption: Development
 
-  dev/contributing
-  dev/developing
-  dev/documenting
+  dev/index
 
 .. _Github: https://github.com/BYUCamachoLab/simphony
 .. _CamachoLab: https://camacholab.byu.edu

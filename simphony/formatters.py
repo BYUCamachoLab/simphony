@@ -28,7 +28,8 @@ if TYPE_CHECKING:
 
 class ModelFormatter:
     """Base model formatter class that is extended to provide functionality for
-    converting a component (model instance) to a string and vice-versa."""
+    converting a component (model instance) to a string and vice-versa.
+    """
 
     flatten_subcircuits = False
 
@@ -39,9 +40,9 @@ class ModelFormatter:
 
         Parameters
         ----------
-        component :
+        component : Model
             The component to get the information from.
-        freqs :
+        freqs : np.ndarray
             The list of frequencies to get information about.
         """
         name = component.name or f"{component.__class__.__name__} component"
@@ -76,16 +77,21 @@ class ModelFormatter:
 
         Parameters
         ----------
-        freqs :
+        freqs : np.ndarray
             The list of valid frequencies for the model.
-        name :
+        name : str
             The name of the component.
-        pins :
+        pins : list of str
             The pins names for the component.
-        s_params :
+        s_params : np.ndarray, optional
             The scattering parameters for each frequency.
-        subcircuit :
+        subcircuit : str, optional
             If the component is a subcircuit, this contains the circuit information.
+
+        Returns
+        -------
+        Model
+            The model defined by the parameters.
         """
         from simphony.models import Model, Subcircuit
 
@@ -114,14 +120,13 @@ class ModelFormatter:
         return component
 
     def format(self, component: "Model", freqs: np.array) -> str:
-        """Returns a string representation of the component's scattering
-        parameters.
+        """Returns a string representation of the component's scattering parameters.
 
         Parameters
         ----------
-        component :
+        component : Model
             The component to format.
-        freqs :
+        freqs : np.ndarray
             The frequencies to get scattering parameters for.
         """
         raise NotImplementedError
@@ -131,7 +136,7 @@ class ModelFormatter:
 
         Parameters
         ----------
-        string :
+        string : str
             The string to parse.
         """
         raise NotImplementedError
@@ -200,8 +205,10 @@ class CircuitFormatter:
 
         Parameters
         ----------
-        circuit :
+        circuit : Circuit
             The circuit to get a string representation for.
+        freqs : np.ndarray
+            Frequency array.
         """
         raise NotImplementedError
 
@@ -210,7 +217,7 @@ class CircuitFormatter:
 
         Parameters
         ----------
-        string :
+        string : str
             The string to parse.
         """
         raise NotImplementedError
