@@ -50,11 +50,10 @@ extensions = [
     # "jupyter_sphinx",
     "matplotlib.sphinxext.mathmpl",
     "matplotlib.sphinxext.plot_directive",
-    "myst_nb",
+    # "myst_nb",
     # "nbsphinx",  # Uncomment and comment-out MyST-NB for local testing purposes.
     "numpydoc",
     "sphinx_togglebutton",
-    # "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
     "sphinx.ext.coverage",
     "sphinx.ext.doctest",
