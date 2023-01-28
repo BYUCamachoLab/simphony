@@ -61,6 +61,11 @@ class Model:
     pins: ClassVar[Optional[Tuple[str, ...]]]
     pins: PinList  # additional type hint for instance.pins
 
+    def __hash__(self) -> int:
+        """Gets a hash for the model based on pin count and freq range."""
+
+        return hash(hash(self.pin_count) + hash(self.freq_range))
+
     def __getitem__(self, item: Union[int, str]) -> Pin:
         return self.pins[item]
 
