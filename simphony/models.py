@@ -572,12 +572,12 @@ class Subcircuit(Model):
         name: str = "",
         *,
         permanent: bool = True,
+        autoname: bool = False,
         **kwargs,
     ) -> None:
         freq_range = [0, float("inf")]
         pins = []
         pin_names = {}
-
         for component in circuit:
             # calculate the frequency range for the subcircuit
             if component.freq_range[0] > freq_range[0]:
@@ -589,6 +589,9 @@ class Subcircuit(Model):
             for pin in component.pins:
                 # re-expose unconnected pins or pins connected to simulators
                 if not pin._isconnected(include_simulators=False):
+                    if autoname:
+                        new_name = "port " + str(len(pins) + 1)
+                        pin.name = new_name
                     if permanent and pin.name in pin_names:
                         raise ValueError(
                             f"Multiple pins named '{pin.name}' cannot exist in a subcircuit."

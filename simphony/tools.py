@@ -16,6 +16,7 @@ import re
 
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import interp1d
+import numpy as np
 
 MATH_SUFFIXES = {
     "f": "e-15",
@@ -174,7 +175,7 @@ def wl2freq(wl):
     return SPEED_OF_LIGHT / wl
 
 
-def interpolate(resampled, sampled, s_parameters):
+def interpolate(resampled, sampled, s_parameters, polar_interpolation=False):
     """Returns the result of a cubic interpolation for a given frequency range.
 
     Parameters
@@ -185,6 +186,8 @@ def interpolate(resampled, sampled, s_parameters):
         A frequency array, indexed matching the given s_parameters.
     s_parameters : np.array
         S-parameters for each frequency given in input_freq.
+    polar_interpolation : bool
+        If True, the polar interpolation is used.
 
     Returns
     -------
@@ -192,5 +195,18 @@ def interpolate(resampled, sampled, s_parameters):
         The values of the interpolated function (fitted to the input
         s-parameters) evaluated at the ``output_freq`` frequencies.
     """
-    func = interp1d(sampled, s_parameters, kind="cubic", axis=0)
-    return func(resampled)
+
+    if polar_interpolation:
+        # convert to magnitude and phase
+        mag = np.abs(s_parameters)
+        angle = np.arctan2(s_parameters.imag, s_parameters.real)
+        angle = np.unwrap(angle, axis=0)
+        # interpolate
+        func_mag = interp1d(sampled, mag, kind='cubic', axis=0)
+        func_angle = interp1d(sampled, angle, kind='cubic', axis=0)
+        # convert back to complex and return
+        return func_mag(resampled) * np.cos(func_angle(resampled)) + \
+            (func_mag(resampled) * np.sin(func_angle(resampled))) * 1j
+    else:
+        func = interp1d(sampled, s_parameters, kind="cubic", axis=0)
+        return func(resampled)
