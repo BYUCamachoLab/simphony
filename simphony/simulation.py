@@ -13,7 +13,20 @@ used within the context. Devices include theoretical sources and detectors.
 from cmath import rect
 from typing import Callable, ClassVar, List, Optional, Tuple, Union
 
-import numpy as np
+# JAX_AVAILABLE = False
+
+try:
+    import jax
+    import jax.numpy as np
+    import jax.random as jnprand
+    
+    JAX_AVAILABLE = True
+except ImportError:
+    import numpy as np
+    JAX_AVAILABLE = False
+# import numpy as np
+# JAX_AVAILABLE = False
+import numpy as testnp
 
 try:
     from gdsfactory import Component
@@ -95,7 +108,13 @@ class Simulation:
         self.fs = fs
         self.noise = False
         self.num_samples = 1
-        self.rng = np.random.default_rng(seed)
+        if JAX_AVAILABLE:
+            self.key = jnprand.PRNGKey(0)
+            self.key, self.subkey = jnprand.split(self.key)
+            self.rng = testnp.random.default_rng(seed)
+        else:
+            self.rng = testnp.random.default_rng(seed)
+        #JAX note, the above line creates a new generator
         self.powers = np.array([])
         self.shape = [0, 0]
         self.sources = []
@@ -247,9 +266,12 @@ class Simulation:
                 for i in range(self.shape[0]):
                     for j in range(self.shape[1]):
                         for k in range(self.num_samples):
-                            transmissions[i, j, k] = add_polar(
+                            if JAX_AVAILABLE:
+                                transmissions = transmissions.at[i, j ,k].set(add_polar(transmissions[i, j, k], contributions[i, j, k]))
+                            else:
+                                transmissions[i, j, k] = add_polar(
                                 transmissions[i, j, k], contributions[i, j, k]
-                            )
+                                )
 
             # convert the output fields to powers
             self.transmissions.append(transmissions)
@@ -701,9 +723,17 @@ class Laser(Source):
         try:
             return self.rin_dists[i, j]
         except KeyError:
-            self.rin_dists[i, j] = self.context.rng.normal(
-                size=self.context.num_samples
-            )
+            if JAX_AVAILABLE:
+                print("NOT IMPLEMENTED, key:", self.context.key)
+                self.rin_dists[i, j] = jnprand.normal(
+                    key=self.context.key,
+                    shape=(1, self.context.num_samples)
+                )[0]
+                self.context.key, self.context.subkey = jnprand.split(self.context.key)
+            else:
+                self.rin_dists[i, j] = self.context.rng.normal(
+                    size=self.context.num_samples
+                )
             return self.rin_dists[i, j]
 
     def modulate(
@@ -821,17 +851,28 @@ class Detector(SimulationModel):
 
                         for k in range(self.context.num_samples):
                             if power[i][j][k] > 0:
-                                noise[k] = (
-                                    from_db(to_db(power[i][j][k]) + rin) * dist[k]
-                                )
+                                if JAX_AVAILABLE:
+                                    noise = noise.at[k].set(from_db(to_db(power[i][j][k]) + rin) * dist[k])
+                                else:
+                                    noise[k] = (
+                                        from_db(to_db(power[i][j][k]) + rin) * dist[k]
+                                    )
 
                     # store the RIN noise for later use
-                    self.rin_dists[i][j] = noise
+                    if JAX_AVAILABLE:
+                        self.rin_dists = self.rin_dists.at[i, j].set(noise)
+                        self.noise_dists = self.noise_dists.at[i, j].set(self.noise * jnprand.normal(
+                            key=self.context.key,
+                            shape=(1, self.context.num_samples)
+                        )[0])
+                        self.context.key, self.context.subkey = jnprand.split(self.context.key)
+                    else:
+                        self.rin_dists[i][j] = noise
 
-                    # calculate and store electrical noise for later use
-                    self.noise_dists[i][j] = self.noise * self.context.rng.normal(
-                        size=self.context.num_samples
-                    )
+                        # calculate and store electrical noise for later use
+                        self.noise_dists[i][j] = self.noise * self.context.rng.normal(
+                            size=self.context.num_samples
+                        )
 
                     # add the shot noise
                     for k in range(self.context.num_samples):

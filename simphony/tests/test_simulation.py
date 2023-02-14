@@ -7,7 +7,8 @@ try:
     _has_gf = True
 except ImportError:
     _has_gf = False
-import numpy as np
+import jax.numpy as np
+# import numpy as np
 import pytest
 
 from simphony.libraries import siepic

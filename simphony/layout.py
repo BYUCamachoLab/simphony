@@ -14,7 +14,8 @@ other, they will make sure that they belong to the same ``Circuit`` instance.
 import os
 from typing import TYPE_CHECKING, List, Optional
 
-import numpy as np
+import jax.numpy as np
+# import numpy as np
 
 from simphony.formatters import CircuitFormatter, CircuitJSONFormatter
 
