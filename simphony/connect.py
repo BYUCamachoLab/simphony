@@ -42,7 +42,11 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-import numpy as np
+#=import numpy as np
+import jax.numpy as np
+JAX_AVAILABLE = True
+# import numpy as np
+# JAX_AVAILABLE = False
 
 from simphony.tools import add_polar, mul_polar
 
@@ -118,8 +122,13 @@ def create_block_diagonal(A, B):
 
     # create composite matrix, appending each sub-matrix diagonally
     C = np.zeros((nf, nC, nC, 2))
-    C[:, :nA, :nA] = A.copy()
-    C[:, nA:, nA:] = B.copy()
+    if JAX_AVAILABLE is True:
+        C = C.at[:, :nA, :nA].set(A.copy())
+        C = C.at[:, nA:, nA:].set(B.copy())
+    else:
+        C[:, :nA, :nA] = A.copy()
+        C[:, nA:, nA:] = B.copy()
+    #C[:, nA:, nA:] = B.copy() numpy code
 
     return C
 
@@ -187,10 +196,17 @@ def innerconnect_s(S, k, l):
                 term7 = add_polar(add_polar(add_polar(term1, term2), term3), term4)
                 term8 = add_polar(term5, (-term6[0], term6[1]))
                 term9 = (term7[0] / term8[0], term7[1] - term8[1])
-                C[h, i, j] = add_polar(S[h, i, j], term9)
+                
+                if JAX_AVAILABLE:
+                    C = C.at[h, i, j].set(add_polar(S[h, i, j], term9))
+                else:
+                    C[h, i, j] = add_polar(S[h, i, j], term9)
 
     # remove ports that were `connected`
-    C = np.delete(C, (k, l), 1)
-    C = np.delete(C, (k, l), 2)
+    
+    C = np.delete(C, np.array((k, l)), 1) # Jax does not allow tuples to be implicitly casted to arrays as this can hide performance issues. explicitly cast to ndarray
+    C = np.delete(C, np.array((k, l)), 2)
+    #C = np.delete(C, (k, l), 1) numpy implementation
+    #C = np.delete(C, (k, l), 2)
 
     return C

@@ -21,7 +21,9 @@ they form a circuit. There are three ways to connect components:
 import os
 from typing import ClassVar, Dict, List, Optional, Tuple, Union
 
-import numpy as np
+import numpy as testnp
+import jax.numpy as np
+# import numpy as np
 
 try:
     from gdsfactory import Component, ComponentReference
@@ -621,21 +623,37 @@ class Subcircuit(Model):
         if s_parameters_method == "s_parameters":
             # each frequency has a different s-matrix, so we need to cache
             # the s-matrices by frequency as well as component
+
             s_params = []
             for freq in freqs:
                 try:
                     # use the cached s-matrix if available
+                    #print(self.__class__.scache)
                     s_matrix = self.__class__.scache[component][freq]
                 except KeyError:
                     # make sure the frequency dict is created
                     if component not in self.__class__.scache:
+                        #print("component not in scache:", component)
                         self.__class__.scache[component] = {}
-
+                    #print("scache:", self.__class__.scache[component])
                     # store the s-matrix for the frequency and component
                     s_matrix = getattr(component, s_parameters_method)(
                         np.array([freq])
                     )[0]
-                    self.__class__.scache[component][freq] = s_matrix
+                    #x = tuple(freq)
+                    #x = testnp.load(freq, allow_pickle=True)
+                    #print("s matrix", s_matrix, "component", component, "freq", freq)
+                    #print("freq", type(freq))
+                    #print("type x:", type(testnp.array(freq)))
+                    x = testnp.array(freq)
+                    #print(x)
+                          #, freq.at[0].get())
+                    x1 = testnp.reshape(x, 1)
+                    freqtup = tuple(x1)
+                    #print("scache:", self.__class__.scache[component][freqtup])
+                    self.__class__.scache[component][freqtup] = s_matrix
+                    #print("scache now:", self.__class__.scache[component][freqtup])
+                    #self.__class__.scache.at[component][freq].set(s_matrix)
 
                 # add the s-matrix to our list of s-matrices
                 s_params.append(s_matrix)

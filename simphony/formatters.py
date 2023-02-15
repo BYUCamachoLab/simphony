@@ -17,7 +17,8 @@ Specifically, instances of these classes should be used in the ``to_file`` and
 import json
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-import numpy as np
+import jax.numpy as np
+# import numpy as np
 
 from simphony.tools import interpolate
 
@@ -176,10 +177,10 @@ class ModelJSONFormatter(ModelFormatter):
         name, pins, s_params, subcircuit = self._from_component(component, freqs)
         return json.dumps(
             {
-                "freqs": freqs,
+                "freqs": freqs.tolist(),
                 "name": name,
                 "pins": pins,
-                "s_params": s_params,
+                "s_params": s_params.tolist(),
                 "subcircuit": subcircuit,
             },
             cls=JSONEncoder,

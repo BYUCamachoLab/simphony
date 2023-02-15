@@ -2,7 +2,8 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-import numpy as np
+import jax.numpy as np
+#import numpy as np
 import pytest
 import os
 

@@ -11,7 +11,8 @@ and to the average user.
 """
 
 from cmath import rect
-import numpy as np
+import jax.numpy as np
+# import numpy as np
 import re
 
 from scipy.constants import c as SPEED_OF_LIGHT
