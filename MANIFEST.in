@@ -1,0 +1,7 @@
+exclude .bumpversion.cfg .gitignore .readthedocs.yml .pre-commit-config.yaml *.ini Makefile CHANGELOG.md requirements.txt simphony_logo.png tox.ini
+prune docs
+prune examples
+prune scripts
+prune tests
+prune .github
+prune .vscode
