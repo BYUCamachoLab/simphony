@@ -21,7 +21,7 @@ from simphony.formatters import CircuitFormatter, CircuitJSONFormatter
 
 if TYPE_CHECKING:
     from simphony import Model
-    from simphony.models import Subcircuit
+    from simphony.models_old import Subcircuit
     from simphony.pins import Pin
 
 
@@ -187,7 +187,7 @@ class Circuit(list):
     def to_subcircuit(self, name: str = "", **kwargs) -> "Subcircuit":
         """Converts this circuit into a subcircuit component for easy re-use in
         another circuit."""
-        from simphony.models import Subcircuit
+        from simphony.models_old import Subcircuit
 
         return Subcircuit(self, **kwargs, name=name)
 

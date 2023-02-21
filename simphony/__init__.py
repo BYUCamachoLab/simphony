@@ -30,14 +30,17 @@ simphony
 A Simulator for Photonic circuits
 """
 
-import platform
 import sys
+import platform
+import warnings
+from types import SimpleNamespace
 
-from .models import Model  # noqa: F401
 
-if sys.version_info < (3, 0, 0):
+from .models_old import Model  # noqa: F401
+
+if sys.version_info < (3, 7, 0):
     raise Exception(
-        "Simphony requires Python 3 (version "
+        "Simphony requires Python 3.7+ (version "
         + platform.python_version()
         + " detected)."
     )
@@ -48,3 +51,19 @@ __project_url__ = "https://github.com/BYUCamachoLab/simphony"
 __forum_url__ = "https://github.com/BYUCamachoLab/simphony/issues"
 __trouble_url__ = __project_url__ + "/wiki/Troubleshooting-Guide"
 __website_url__ = "https://camacholab.byu.edu/"
+
+
+try:
+    import jax
+    import jax.numpy as jnp
+
+    JAX_AVAILABLE = True
+except ImportError:
+    import numpy as jnp
+
+    def jit(func, *args, **kwargs):
+        warnings.warn("Jax not available, cannot compile using 'jit'!")
+        return func
+
+    jax = SimpleNamespace(jit=jit)
+    JAX_AVAILABLE = False

@@ -11,8 +11,13 @@ and to the average user.
 """
 
 from cmath import rect
-import jax.numpy as np
-# import numpy as np
+
+try:
+    import jax.numpy as jnp
+except ImportError:
+    import numpy as jnp
+    JAX_AVAILABLE = False
+
 import re
 
 from scipy.constants import c as SPEED_OF_LIGHT
@@ -30,6 +35,43 @@ MATH_SUFFIXES = {
     "G": "e9",
     "T": "e12",
 }
+
+
+def rect(r, phi) -> jnp.ndarray:
+    """
+    Convert from polar to rectangular coordinates element-wise.
+    
+    Parameters
+    ----------
+    r : np.ndarray
+        The real radii of the complex-valued numbers.
+    phi : np.ndarray
+        The real phase of the complex-valued numbers.
+
+    Returns
+    -------
+    np.ndarray
+        An array of complex-valued numbers.
+    """
+    return r * jnp.exp(1j*phi)
+
+
+def polar(x) -> jnp.ndarray:
+    """
+    Convert from rectangular to polar coordinates element-wise.
+    
+    Parameters
+    ----------
+    x : np.ndarray
+        Array of potentially complex-valued numbers.
+    
+    Returns
+    -------
+    mag, phi
+        A tuple of arrays where the first is the element-wise magnitude of the
+        argument and the second is the element-wise phase of the argument.
+    """
+    return jnp.abs(x), jnp.angle(x)
 
 
 def add_polar(c1, c2):
@@ -51,14 +93,14 @@ def add_polar(c1, c2):
 
     # add the vectors in rectangular form
     sum = rect(r1, phi1) + rect(r2, phi2)
-    mag = np.abs(sum)
-    angle = np.angle(sum)
+    mag = jnp.abs(sum)
+    angle = jnp.angle(sum)
 
     # calculate how many times the original vectors wrapped around
     # then add the biggest amount back to our phase
     # this simulates the steady-state in time-domain
-    wrapped1 = (phi1 // (2 * np.pi)) * (2 * np.pi)
-    wrapped2 = (phi2 // (2 * np.pi)) * (2 * np.pi)
+    wrapped1 = (phi1 // (2 * jnp.pi)) * (2 * jnp.pi)
+    wrapped2 = (phi2 // (2 * jnp.pi)) * (2 * jnp.pi)
     biggest = max(wrapped1, wrapped2)
 
     return (mag, angle + biggest)
@@ -180,16 +222,16 @@ def interpolate(resampled, sampled, s_parameters):
 
     Parameters
     ----------
-    output_freq : np.ndarray
+    output_freq : jnp.ndarray
         The desired frequency range for a given input to be interpolated to.
-    input_freq : np.ndarray
+    input_freq : jnp.ndarray
         A frequency array, indexed matching the given s_parameters.
-    s_parameters : np.array
+    s_parameters : jnp.array
         S-parameters for each frequency given in input_freq.
 
     Returns
     -------
-    result : np.array
+    result : jnp.array
         The values of the interpolated function (fitted to the input
         s-parameters) evaluated at the ``output_freq`` frequencies.
     """

@@ -14,7 +14,7 @@ makes sure all components belong to the same ``Circuit`` instance.
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
-    from simphony.models import Model
+    from simphony.models_old import Model
 try:
     from gdsfactory.types import ComponentReference
     _has_gf = True

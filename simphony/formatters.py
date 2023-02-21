@@ -94,7 +94,7 @@ class ModelFormatter:
         Model
             The model defined by the parameters.
         """
-        from simphony.models import Model, Subcircuit
+        from simphony.models_old import Model, Subcircuit
 
         if subcircuit is not None:
             # instantiate a subcircuit if there is subcircuit information
@@ -364,7 +364,7 @@ class CircuitSiEPICFormatter(CircuitFormatter):
         return getattr(self.pdk, mapping["name"])(**parameters)
 
     def parse(self, string: str) -> "Circuit":
-        from simphony.models import Subcircuit
+        from simphony.models_old import Subcircuit
         from simphony.plugins.siepic import load_spi_from_string
         from simphony.simulators import SweepSimulator
 
