@@ -38,9 +38,9 @@ from types import SimpleNamespace
 
 from .models_old import Model  # noqa: F401
 
-if sys.version_info < (3, 7, 0):
+if sys.version_info < (3, 8, 0):
     raise Exception(
-        "Simphony requires Python 3.7+ (version "
+        "Simphony requires Python 3.8+ (version "
         + platform.python_version()
         + " detected)."
     )

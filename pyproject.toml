@@ -3,7 +3,7 @@ name = "simphony"
 version = "0.6.1"
 description = "Simphony: A simulator for photonic circuits"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 license = {file = "LICENSE"}
 keywords = ["photonics", "simulation", "circuits", "science", "engineering", "physics", "interconnect"]
 
