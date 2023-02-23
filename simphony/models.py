@@ -30,11 +30,13 @@ from simphony.exceptions import ModelValidationError
 
 
 class Port:
-    """Port base class containing name and reference to Model instance."""
+    """
+    Port base class containing name and reference to Model instance.
+    """
     def __init__(self, name, instance=None):
         self.name = name
         self.instance = instance
-        self.connections = [] # a list of all other ports the port is connected to
+        self._connections = set() # a list of all other ports the port is connected to
 
     def __repr__(self):
         return f'<{self.__class__.__name__} "{self.name}" at {hex(id(self))}>'
@@ -158,7 +160,7 @@ class Model:
         c.rename_oports(["in", "through", "add", "drop"])
         """
         if len(self._oports) == 0:
-            self._oports = [Port(name, self) for name in names]
+            self._oports = set(Port(name, self) for name in names)
         elif len(names) == len(self.onames):
             (port.rename(name) for port, name in zip(self._oports, names))
         else:
@@ -174,7 +176,7 @@ class Model:
             The next unconnected port.
         """
         for o in self._oports:
-            if not o.connections:
+            if not o._connections:
                 return o
             
     def next_unconnected_eport(self) -> EPort:
@@ -187,8 +189,23 @@ class Model:
             The next unconnected port.
         """
         for e in self._eports:
-            if not e.connections:
+            if not e._connections:
                 return e
+            
+    def is_connected(self) -> bool:
+        """
+        Determines if this component is connected to any others.
+
+        Returns
+        -------
+        bool
+            True if any optical or electronic ports are connected to others.
+        """
+        if any([o._connections for o in self._oports]):
+            return True
+        if any([e._connections for e in self._eports]):
+            return True
+        return False
 
 
 if __name__ == "__main__":
