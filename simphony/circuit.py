@@ -2,7 +2,7 @@
 Define circuit and connections in simphony.
 """
 
-from typing import List, Set, Union
+from typing import List, Set, Tuple, Union
 from collections import defaultdict
 from itertools import count
 
@@ -31,12 +31,15 @@ class Circuit:
         cir.connect(wg_short, y_combine.o(1))
         cir.connect(wg_long, y_combine.o(2))
         cir.connect(y_combine, gc_out.o(1))
+
+        cir.connect(gc_in.o(0), Laser())
+        cir.connect(gc_out.o(0), Detector())
     """
     def __init__(self, name: str) -> None:
         self.name = name
         self._components = [] # list of components (model instances) in the circuit
-        self._onodes = defaultdict(list) # optical connections
-        self._enodes = defaultdict(set) # electrical connections
+        self._onodes: List[Tuple[OPort, OPort]] = [] # optical connections
+        self._enodes: List[Set[EPort]] = [] # electrical connections
         self._next_oidx = count() # netid iterator
         self._next_eidx = count() # netid iterator
 
@@ -45,26 +48,21 @@ class Circuit:
         """
         Return a list of components (model instances) in the circuit.
         
-        Order models were added to the circuit (by connection) is preserved.
+        Order in which models were added is not preserved.
 
         Returns
         -------
         list
             List of all model instances in the circuit.
         """
-        comps = []
-        for left, right in self._onodes:
-            if left.instance not in comps:
-                comps.append(left.instance)
-            if right.instance not in comps:
-                comps.append(right.instance)
-        # TODO: Also for enodes
-        return comps
+        oinstances = [port.instance for pair in self._onodes for port in pair]
+        einstances = [wire.instance for node in self._enodes for wire in node]
+        return list(set(oinstances + einstances))
 
     def _connect_o(self, port1: OPort, port2: OPort) -> None:
         """Connect two ports in the internal netlist and update the connections
         vairable on the ports themselves."""
-        self._onodes[next(self._next_oidx)].extend([port1, port2])
+        self._onodes.append((port1, port2))
         port1._connections.add[port2]
         port2._connections.add[port1]
 
@@ -74,17 +72,18 @@ class Circuit:
         def update_connections(enodes: Set[EPort]):
             for eport in enodes:
                 eport._connections.update(enodes)
+                eport._connections.remove(eport)
 
-        for key, enodes in self._enodes.items():
+        for i, eports in enumerate(self._enodes):
             # EPort already has some connections in the netlist
-            if port1 in enodes or port2 in enodes:
-                self._enodes[key].update([port1, port2])
-                update_connections(self._enodes[key])
+            if port1 in eports or port2 in eports:
+                self._enodes[i].update([port1, port2])
+                update_connections(self._enodes[i])
                 return
             
         # EPort has not yet appeared in the netlist
-        self._enodes[next(self._next_eidx)].update([port1, port2])
-        update_connections(self._enodes[key])
+        self._enodes.append(set([port1, port2]))
+        update_connections(self._enodes[-1])
 
     def connect(self, port1: Union[Model, Port], port2: Union[Model, Port]):
         """
@@ -140,37 +139,6 @@ class Circuit:
             else:
                 raise ValueError(f"Ports must be optical, electronic, or a Model (got '{type(port1)}')")
 
-    def disconnect(self, port: Union[OPort, EPort]):
-        """
-        Disconnect a port from all ports it's connected to.
-        
-        Parameters
-        ----------
-        port : OPort or EPort
-            The port to be disconnected.
-        """
-        if isinstance(port, OPort):
-            for i, oports in enumerate(self._onodes):
-                if port in oports:
-                    self._onodes.pop(i)
-                    for oport in oports:
-                        oport._connections.remove(port)
-                    return
-        elif isinstance(port, EPort):
-            for i, eports in enumerate(self._enodes):
-                if port in eports:
-                    # TODO: These are now dicts!
-                    self._enodes.pop(i)
-                    left._connections.remove[right]
-                    right._connections.remove[left]
-                    return
-        elif isinstance(port, Port):
-            raise ValueError(f"Port '{port.name}' not found in circuit.")
-        else:
-            raise ValueError(f"port must be a subclass of Port (got '{type(port)}')")
-        
-    def remove(self, model: Model):
-        """
-        Remove a model from the circuit, disconnecting all its ports.
-        """
+    def to_model(self) -> Model:
         pass
+    
