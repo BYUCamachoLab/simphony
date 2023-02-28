@@ -4,26 +4,16 @@ Base class for defining models.
 
 from __future__ import annotations
 from copy import deepcopy
-
-import warnings
-from types import SimpleNamespace
 from typing import List, Union
 from functools import lru_cache, wraps
 
 try:
     import jax
     import jax.numpy as jnp
-
     JAX_AVAILABLE = True
 except ImportError:
     import numpy as jnp
-
-    def jit(func, *args, **kwargs):
-        """Mock "jit" version of a function. Warning is only raised once."""
-        warnings.warn("Jax not available, cannot compile using 'jit'!")
-        return func
-
-    jax = SimpleNamespace(jit=jit)
+    from simphony.utils import jax
     JAX_AVAILABLE = False
 
 from simphony.exceptions import ModelValidationError
@@ -33,26 +23,44 @@ class Port:
     """
     Port base class containing name and reference to Model instance.
     """
-    def __init__(self, name, instance=None):
+    def __init__(self, name: str, instance: Model=None) -> None:
         self.name = name
         self.instance = instance
         self._connections = set() # a list of all other ports the port is connected to
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<{self.__class__.__name__} "{self.name}" at {hex(id(self))}>'
 
-    def rename(self, name):
+    def rename(self, name: str) -> None:
         self.name = name
+
+    @property
+    def connected(self) -> bool:
+        """If the port is connected to other port(s)."""
+        return bool(self._connections)
+    
+    def connect_to(self, port: Port) -> None:
+        raise NotImplementedError
 
 
 class OPort(Port):
     """Optical ports can only be connected to one other port."""
-    pass
+    def connect_to(self, port: OPort) -> None:
+        if not isinstance(port, OPort):
+            raise ValueError(f"Optical ports can only be connected to other optical ports (got '{type(port).__name__}')")
+        elif not self._connections:
+            self._connections.add(port)
+        else:
+            raise ConnectionError(f"Port '{self.name}' is already connected!")
 
 
 class EPort(Port):
     """Electrical ports can be connected to many other ports."""
-    pass
+    def connect_to(self, port: EPort) -> None:
+        if not isinstance(port, EPort):
+            raise ValueError(f"Electrical ports can only be connected to other electrical ports (got '{type(port).__name__}')")
+        else:
+            self._connections.add(port)
 
 
 class Model:
@@ -116,33 +124,73 @@ class Model:
         """Hashes the instance dictionary to calculate the hash."""
         s = frozenset([(k, v) for k, v in vars(self).items() if (not k.startswith("_") and (k not in self._ignore_keys))])
         return hash(s)
+    
+    def __copy__(self):
+        """Shallow copy the circuit."""
+        cls = self.__class__
+        result = cls.__new__(cls)
+        result.__dict__.update(self.__dict__)
+        return result
+
+    def __deepcopy__(self, memo):
+        """Deep copy the circuit."""
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            setattr(result, k, deepcopy(v, memo))
+        return result
 
     @lru_cache
     def _s(self, wl):
         # https://docs.python.org/3/faq/programming.html#how-do-i-cache-method-calls
         return self.s_params(wl)
     
-    def o(self, value):
-        """Get a reference to an optical port."""
-        if isinstance(value, str):
-            for p in self._oports:
-                if p.name == value:
-                    return p
-        elif isinstance(value, int):
-            return self._oports[value]
-        else:
-            raise ValueError("Port indexer must be a name (str) or index (int).")
+    def o(self, value: Union[str, int]=None):
+        """
+        Get a reference to an optical port.
         
-    def e(self, value):
-        """Get a reference to an electrical port."""
-        if isinstance(value, str):
-            for p in self._eports:
-                if p.name == value:
-                    return p
-        elif isinstance(value, int):
-            return self._eports[value]
+        Parameter
+        ---------
+        value : str or int, optional
+            The port name or index to get (default None). If not provided, next
+            unconnected port is returned.
+        """
+        if value:
+            if isinstance(value, str):
+                for p in self._oports:
+                    if p.name == value:
+                        return p
+            elif isinstance(value, int):
+                return self._oports[value]
+            else:
+                raise ValueError("Port indexer must be a name (str) or index (int).")
         else:
-            raise ValueError("Port indexer must be a name (str) or index (int).")
+            return self.next_unconnected_oport()
+            
+        
+    def e(self, value: Union[str, int]=None):
+        """
+        Get a reference to an electrical port.
+
+        Parameter
+        ---------
+        value : str or int, optional
+            The port name or index to get (default None). If not provided, next
+            unconnected port is returned.
+        """
+        if value:
+            if isinstance(value, str):
+                for p in self._eports:
+                    if p.name == value:
+                        return p
+            elif isinstance(value, int):
+                return self._eports[value]
+            else:
+                raise ValueError("Port indexer must be a name (str) or index (int).")
+        else:
+            return self.next_unconnected_eport()
+            
     
     def rename_oports(self, names: List[str]) -> Model:
         """
@@ -176,7 +224,7 @@ class Model:
             The next unconnected port.
         """
         for o in self._oports:
-            if not o._connections:
+            if not o.connected:
                 return o
             
     def next_unconnected_eport(self) -> EPort:
@@ -189,7 +237,7 @@ class Model:
             The next unconnected port.
         """
         for e in self._eports:
-            if not e._connections:
+            if not e.connected:
                 return e
             
     def is_connected(self) -> bool:
@@ -201,9 +249,9 @@ class Model:
         bool
             True if any optical or electronic ports are connected to others.
         """
-        if any([o._connections for o in self._oports]):
+        if any([o.connected for o in self._oports]):
             return True
-        if any([e._connections for e in self._eports]):
+        if any([e.connected for e in self._eports]):
             return True
         return False
 
