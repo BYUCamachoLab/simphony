@@ -42,11 +42,14 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-#=import numpy as np
-import jax.numpy as np
-JAX_AVAILABLE = True
-# import numpy as np
-# JAX_AVAILABLE = False
+try:
+    import jax
+    import jax.numpy as jnp
+    JAX_AVAILABLE = True
+except ImportError:
+    import numpy as jnp
+    from simphony.utils import jax
+    JAX_AVAILABLE = False
 
 from simphony.tools import add_polar, mul_polar
 
@@ -115,13 +118,13 @@ def create_block_diagonal(A, B):
 
     # if complex values are in rectangular, convert to polar
     if A.ndim == 3:
-        A = np.stack((np.abs(A), np.angle(A)), axis=-1)
+        A = jnp.stack((jnp.abs(A), jnp.angle(A)), axis=-1)
 
     if B.ndim == 3:
-        B = np.stack((np.abs(B), np.angle(B)), axis=-1)
+        B = jnp.stack((jnp.abs(B), jnp.angle(B)), axis=-1)
 
     # create composite matrix, appending each sub-matrix diagonally
-    C = np.zeros((nf, nC, nC, 2))
+    C = jnp.zeros((nf, nC, nC, 2))
     if JAX_AVAILABLE is True:
         C = C.at[:, :nA, :nA].set(A.copy())
         C = C.at[:, nA:, nA:].set(B.copy())
@@ -172,7 +175,7 @@ def innerconnect_s(S, k, l):
 
     nS = S.shape[1]  # num of ports on input s-matrix
     # create an empty s-matrix, to store the result
-    C = np.zeros(S.shape)
+    C = jnp.zeros(S.shape)
 
     # loop through ports and calulates resultant s-parameters
     for h in range(S.shape[0]):
@@ -204,9 +207,9 @@ def innerconnect_s(S, k, l):
 
     # remove ports that were `connected`
     
-    C = np.delete(C, np.array((k, l)), 1) # Jax does not allow tuples to be implicitly casted to arrays as this can hide performance issues. explicitly cast to ndarray
-    C = np.delete(C, np.array((k, l)), 2)
-    #C = np.delete(C, (k, l), 1) numpy implementation
-    #C = np.delete(C, (k, l), 2)
+    C = jnp.delete(C, jnp.array((k, l)), 1) # Jax does not allow tuples to be implicitly casted to arrays as this can hide performance issues. explicitly cast to ndarray
+    C = jnp.delete(C, jnp.array((k, l)), 2)
+    #C = jnp.delete(C, (k, l), 1) numpy implementation
+    #C = jnp.delete(C, (k, l), 2)
 
     return C
