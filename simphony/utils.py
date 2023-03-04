@@ -13,13 +13,15 @@ from types import SimpleNamespace
 
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import interp1d
+
 try:
     import jax
     import jax.numpy as jnp
+
     JAX_AVAILABLE = True
 except ImportError:
     import numpy as jnp
-    
+
     def jit(func, *args, **kwargs):
         """Mock "jit" version of a function. Warning is only raised once."""
         warnings.warn("Jax not available, cannot compile using 'jit'!")
@@ -46,7 +48,7 @@ MATH_SUFFIXES = {
 def rect(r, phi) -> jnp.ndarray:
     """
     Convert from polar to rectangular coordinates element-wise.
-    
+
     Parameters
     ----------
     r : np.ndarray
@@ -59,18 +61,18 @@ def rect(r, phi) -> jnp.ndarray:
     np.ndarray
         An array of complex-valued numbers.
     """
-    return r * jnp.exp(1j*phi)
+    return r * jnp.exp(1j * phi)
 
 
 def polar(x) -> jnp.ndarray:
     """
     Convert from rectangular to polar coordinates element-wise.
-    
+
     Parameters
     ----------
     x : np.ndarray
         Array of potentially complex-valued numbers.
-    
+
     Returns
     -------
     mag, phi
