@@ -21,7 +21,7 @@ authors = [
 # listed.
 maintainers = [
   {name = "Sequoia Ploeg", email = "sequoiap4@gmail.com" },
-  # {name = "Christian Carver", email = ""},
+  {name = "Christian Carver", email = "cjcarv3r@byu.edu"},
   {name = "BYU CamachoLab", email = "camacho@byu.edu"}
 ]
 
