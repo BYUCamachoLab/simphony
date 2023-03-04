@@ -93,7 +93,7 @@ def connect_s(A, k, B, l):
         connection algorithm
     """
     if k > A.shape[-1] - 1 or l > B.shape[-1] - 1:
-        raise (ValueError("port indices are out of range"))
+        raise ValueError("port indices are out of range")
 
     C = create_block_diagonal(A, B)
     nA = A.shape[1]  # num ports on A
@@ -103,7 +103,8 @@ def connect_s(A, k, B, l):
 
 
 def create_block_diagonal(A, B):
-    """merges an fxnxn(x2) matrix with an fxmxm(x2) matrix to form a fx(n+m)x(n+m)(x2)
+    """
+    Merges an fxnxn(x2) matrix with an fxmxm(x2) matrix to form a fx(n+m)x(n+m)(x2)
     block diagonal matrix.
     
     Parameters
