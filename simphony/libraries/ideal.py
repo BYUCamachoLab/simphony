@@ -19,6 +19,9 @@ class Coupler(Model):
     r"""
     2x2 photonic coupler model.
 
+    .. image:: /reference/images/coupler.png
+        :alt: coupler.png
+
     The coupler has 2 inputs ('o1', 'o2') and 2 outputs ('o3', 'o4').
     The coupler has the following s-parameter matrix:
 
@@ -30,18 +33,20 @@ class Coupler(Model):
                 r \sqrt{T_0 T_3} & t \sqrt{T_1 T_3} & 0 & 0
             \end{bmatrix}
 
-    where :math:`t = \sqrt{1 - \text{coupling}}` and :math:`r = \sqrt{\text{coupling}}`.
+    where :math:`t = \sqrt{1 - \text{coupling}}` and :math:`r = 
+    \sqrt{\text{coupling}}`.
 
 
     Parameters
     ----------
     coupling : float
-        Coupling coefficient (0 <= coupling <= 1)
+        Coupling coefficient (0 <= coupling <= 1). Defaults to 0.5.
     phi : float
-        Phase shift between the two output ports (in radians)
+        Phase shift between the two output ports (in radians). Defaults to pi/2.
     loss : float or list of floats
-        Loss of the component in dB (0 <= loss). If a list of 4 floats is given,
-        the loss associated with each port is set individually.
+        Loss of the component in dB (0 <= loss) assumed uniform loss across 
+        ports. If a list of 4 floats is given, the loss associated with each 
+        port is set individually.
     """
     jit = False
     onames = ["o1", "o2", "o3", "o4"]
