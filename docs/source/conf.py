@@ -61,8 +61,7 @@ extensions = [
     "sphinx.ext.ifconfig",
     # 'IPython.sphinxext.ipython_console_highlighting',
     # 'IPython.sphinxext.ipython_directive',
-    "sphinx.ext.imgmath",
-    # 'sphinx.ext.mathjax', #
+    'sphinx.ext.mathjax',
     # 'sphinx.ext.githubpages', #
     # 'sphinx_autodoc_typehints', #
 ]
@@ -211,8 +210,6 @@ html_static_path = ['_static']
 #     "pydata": ("PyData", "https://pydata.org"),
 #     "jupyter": ("Jupyter", "https://jupyter.org"),
 # }
-
-imgmath_image_format = "svg"
 
 # The suffix of source filenames.
 source_suffix = {
