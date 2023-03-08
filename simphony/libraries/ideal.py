@@ -48,7 +48,6 @@ class Coupler(Model):
         ports. If a list of 4 floats is given, the loss associated with each 
         port is set individually.
     """
-    jit = False
     onames = ["o1", "o2", "o3", "o4"]
 
     def __init__(
@@ -86,21 +85,97 @@ class Coupler(Model):
 
 
 class Waveguide(Model):
-    ocount = 2
-    ecount = 2
+    """
+    Model of a 500 nm wide, 220 nm tall waveguide with a 1.55 um center wavelength.
 
-    def __init__(self, a):
-        self.a = a
+    An ideal waveguide has transmission that is affected only by the loss of the
+    waveguide and no reflection. The accumulated phase of the waveguide is
+    affected by the effective index and the length of the waveguide.
+
+    Parameters
+    ----------
+    length : float
+        Length of the waveguide in microns.
+    wl0 : float
+        Center wavelength of the waveguide in microns. Defaults to 1.55.
+    neff : float
+        Effective index of the waveguide. If not set, reads the global effective
+        index from the context.
+    ng : float
+        Group index of the waveguide. If not set, reads the global group index
+        from the context.
+    loss : float
+        Loss of the waveguide in dB/micron. If not set, reads the global loss
+        from the context.
+
+    TODO: Check the following note for accuracy.
+
+    Notes
+    -----
+    The effective index of the waveguide is calculated as:
+
+    .. math::
+        n_{eff} = n_g - \frac{\Delta \lambda}{\lambda_0} \frac{\partial n_g}{\partial \lambda}
+
+    where :math:`n_g` is the group index, :math:`\Delta \lambda` is the
+    wavelength difference between the center wavelength and the current
+    wavelength, and :math:`\lambda_0` is the center wavelength.
+
+    The transmission of the waveguide is calculated as:
+
+    .. math::
+        T = \exp(-\frac{2 \pi n_{eff} L}{\lambda})
+
+    where :math:`n_{eff}` is the effective index, :math:`L` is the length of the
+    waveguide, and :math:`\lambda` is the current wavelength.
+
+    The reflection of the waveguide is calculated as:
+
+    .. math::
+        R = \exp(-\frac{2 \pi n_{eff} L}{\lambda}) \exp(-\frac{2 \pi n_{eff} L}{\lambda_0})
+
+    where :math:`n_{eff}` is the effective index, :math:`L` is the length of the
+    waveguide, and :math:`\lambda` is the current wavelength.
+
+    The s-parameter matrix of the waveguide is calculated as:
+
+    .. math::
+        M = \begin{bmatrix}
+                T & R \\
+                R & T
+            \end{bmatrix}
+    """
+    ocount = 2
+
+    def __init__(self, length, wl0=1.55, neff=None, ng=None, loss=None):
+        self.length = length
+        self.wl0 = wl0
+        self.neff = neff
+        self.ng = ng
+        self.loss = loss
 
     def s_params(self, wl):
-        # Fake value
-        print(f"cache miss ({self.a})")
-        return 1j * self.a
+        global CTX
+
+        neff = self.neff or CTX.neff
+        ng = self.ng or CTX.ng
+        loss = self.loss or CTX.loss
+
+        dwl = wl - self.wl0
+        dneff_dwl = (ng - neff) / self.wl0
+        neff = neff - dwl * dneff_dwl
+        phase = 2 * jnp.pi * neff * self.length / wl
+        amplitude = jnp.asarray(10 ** (-loss * self.length / 20), dtype=complex)
+        transmission =  amplitude * jnp.exp(1j * phase)
+        return jnp.array(
+            [
+                [transmission, 0],
+                [0, transmission],
+            ]
+        )
 
 
 class Heater(Model):
-    jit = False
-
     def __init__(self, onames=["o0", "o1"]):
         self.onames = onames
 
