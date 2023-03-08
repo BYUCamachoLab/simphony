@@ -11,6 +11,8 @@ used within the context. Devices include theoretical sources and detectors.
 """
 
 from cmath import rect
+from copy import deepcopy
+from types import SimpleNamespace
 from typing import Callable, ClassVar, List, Optional, Tuple, Union
 
 # JAX_AVAILABLE = False
@@ -38,10 +40,11 @@ from scipy.constants import h
 from scipy.linalg import cholesky, lu
 from scipy.signal import butter, sosfiltfilt
 
-from simphony import Model
-from simphony.layout import Circuit
-from simphony.libraries import siepic
-from simphony.tools import add_polar, wl2freq
+from simphony.models import Model
+# from simphony.layout import Circuit
+# from simphony.libraries import siepic
+from simphony.utils import add_polar, wl2freq
+from simphony.context import CTX
 
 # this variable keeps track of the current simulation context (if any)
 context = None
@@ -58,6 +61,25 @@ def from_db(x: float, factor: int = 10) -> float:
 def to_db(x: float, factor: int = 10) -> float:
     """Converts a linear value to a dB value."""
     return factor * np.log10(x)
+
+
+class SimulationTmp:
+    def __init__(self, circuit):
+        self.circuit = circuit
+
+    def run(self):
+        global CTX
+        self._OLD_CTX = CTX.export()
+        
+        CTX.neff = 2.5
+        CTX.form = "polar"
+
+        # Do calculation
+        print("hello from", len(self.circuit.components), "components")
+        for component in self.circuit.components:
+            print(component._s(1.0))
+
+        CTX.load(self._OLD_CTX)
 
 
 class Simulation:
@@ -411,7 +433,7 @@ class Simulation:
 
     def layout_aware_simulation(
         self,
-        component_or_circuit: Union["Component", Circuit],
+        component_or_circuit: Union["Component", "Circuit"],
         sigmaw: float = 5,
         sigmat: float = 2,
         l: float = 4.5e-3,
@@ -594,617 +616,617 @@ class Simulation:
         context = _context
 
 
-class SimulationModel(Model):
-    """A Simphony model that is aware of the current Simulation context.
-
-    Models that extend this one should automatically connect to the
-    context upon instantiation.
-    """
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.context = Simulation.get_context()
-
-    def _on_connect(self, *args, **kwargs):
-        super()._on_connect(*args, **kwargs)
-
-        # after this model connects to another model, we have access to the
-        # circuit. make the context aware of the circuit
-        self.context.circuit = self.circuit
-
-
-class Source(SimulationModel):
-    """A simphony model for a source.
-
-    It automatically connects to the current simulation context upon
-    instantiation.
-    """
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.context._add_source(self)
-
-    def _load_context_data(self) -> None:
-        """Gets the frequencies and powers to sweep from the simulation
-        context.
-
-        This information must be updated so that the simulated data all
-        has the same shape.
-        """
-        self.freqs = self.context.freqs
-        self.powers = self.context._expand_array(self._powers, self.context.shape[1])
-        self._coupled_powers = self.powers * self.coupling_ratio
-
-
-class Laser(Source):
-    """A Simphony model for a laser source."""
-
-    pin_count = 1
-
-    def __init__(
-        self,
-        *args,
-        coupling_loss=0,
-        freq=None,
-        phase=0,
-        power=0,
-        rin=-np.inf,
-        wl=1550e-9,
-        **kwargs,
-    ) -> None:
-        """Initializes the laser.
-
-        Parameters
-        ----------
-        coupling_loss :
-            The coupling loss of the laser in dB.
-        freq :
-            The frequency of the laser in Hz.
-        phase :
-            The phase of the laser in radians.
-        power :
-            The power of the laser in Watts.
-        rin :
-            The relative intensity noise of the laser in dBc/Hz.
-        wl :
-            The wavelength of the laser in meters.
-        """
-        super().__init__(*args, **kwargs)
-
-        # initialize properties
-        self._coupled_powers = np.array([])
-        self._freqs = np.array([freq if freq else wl2freq(wl)])
-        self._powers = np.array([power])
-        self.coupling_ratio = from_db(-np.abs(coupling_loss))
-        self.freqs = np.array([])
-        self.index = 0
-        self.modfn = None
-        self.phase = phase
-        self.powers = np.array([])
-        self.rin = -np.abs(rin)
-        self.rin_dists = {}
-
-    def freqsweep(self, start: float, end: float, num: int = 500) -> "Laser":
-        """Sets the frequencies to sweep during simulation.
-
-        Parameters
-        ----------
-        start :
-            The frequency to start at.
-        end :
-            The frequency to end at.
-        num :
-            The number of frequencies to sweep.
-        """
-        self._freqs = np.linspace(start, end, num)
-        return self
-
-    def get_rin(self, bandwidth: float) -> float:
-        """Gets the RIN value in dBc.
-
-        Parameters
-        ----------
-        bandwidth :
-            The bandwidth of the detector in Hz.
-        """
-        return -np.inf if self.rin == -np.inf else to_db(from_db(self.rin) * bandwidth)
-
-    def get_rin_dist(self, i: int, j: int) -> List[float]:
-        """Returns the normal distribution used for the i,j key. If this is the
-        first access, a new distribution is created.
-
-        Parameters
-        ----------
-        i :
-            The first index (frequency index).
-        j :
-            The second index (power index).
-        """
-        try:
-            return self.rin_dists[i, j]
-        except KeyError:
-            if JAX_AVAILABLE:
-                print("NOT IMPLEMENTED, key:", self.context.key)
-                self.rin_dists[i, j] = jnprand.normal(
-                    key=self.context.key,
-                    shape=(1, self.context.num_samples)
-                )[0]
-                self.context.key, self.context.subkey = jnprand.split(self.context.key)
-            else:
-                self.rin_dists[i, j] = self.context.rng.normal(
-                    size=self.context.num_samples
-                )
-            return self.rin_dists[i, j]
-
-    def modulate(
-        self,
-        fn: Callable[
-            [float, float, np.array], Union[np.array, Tuple[np.array, np.array]]
-        ],
-    ) -> "Laser":
-        """Modulates the laser.
-
-        Parameters
-        ----------
-        fn :
-            The function that defines the modulation. fn(freq, power, t).
-            It takes the base power and a numpy array of time steps and returns what the
-            actual power should be at at each time (numpy array).
-
-            The values in the array can either be a float, to modulate power,
-            or a tuple with (power, phase) to modulate phase.
-        """
-        self.modfn = fn
-
-    def powersweep(self, start: float, end: float, num: int = 500) -> "Laser":
-        """Sets the powers to sweep during simulation.
-
-        Parameters
-        ----------
-        start :
-            The power to start at.
-        end :
-            The power to end at.
-        num :
-            The number of powers to sweep.
-        """
-        self._powers = np.linspace(start, end, num)
-        return self
-
-    def wlsweep(self, start: float, end: float, num: int = 500) -> "Laser":
-        """Sets the wavelengths to sweep during simulation.
-
-        Parameters
-        ----------
-        start :
-            The wavelength to start at.
-        end :
-            The wavelength to end at.
-        num :
-            The number of wavelengths to sweep.
-        """
-        self._freqs = wl2freq(np.linspace(start, end, num))[::-1]
-        return self
-
-
-class Detector(SimulationModel):
-    """The base class for all detectors.
-
-    When a detector is connected to the circuit, it defines how many
-    outputs are returned from calling the ``Simulation.sample`` method.
-    This detector only adds one output.
-    """
-
-    pin_count = 1
-
-    def __init__(
-        self,
-        *args,
-        conversion_gain=1,
-        high_fc=1e9,
-        low_fc=0,
-        noise=0,
-        **kwargs,
-    ) -> None:
-        super().__init__(*args, **kwargs)
-        self.context._add_detector(self)
-
-        # conversion gain = responsivity * transimpedance gain
-        # noise = Vrms on measurement
-        self.conversion_gain = conversion_gain
-        self.high_fc = high_fc
-        self.low_fc = low_fc
-        self.noise = noise
-        self.noise_dists = np.array([])
-        self.rin_dists = np.array([])
-
-    def _detect(self, power: List[np.ndarray]) -> List[np.ndarray]:
-        """This method receives the signal values as powers, i.e. the units are
-        in Watts.
-
-        Other detectors should extend this method to inject noise,
-        amplify the signal, etc.
-        """
-        # temporarily unwrap the signal for easier manipulation
-        power = power[0]
-
-        # prepare noise dists with the proper shape
-        self.noise_dists = np.zeros(power.shape)
-        self.rin_dists = np.zeros(power.shape)
-
-        if self.context.noise:
-            # for now, we assume that all sources are lasers and inject
-            # quantum noise using poissonian distributions
-
-            # inject an independent distribution for each frequency and power
-            for i, freq in enumerate(self.context.freqs):
-                # power = num_photons * h * freq * sampling_freq
-                hffs = h * freq * self.context.fs
-                for j, _ in enumerate(power[i]):
-                    # calulcate the RIN noise
-                    noise = np.zeros(self.context.num_samples)
-                    for source in self.context.sources:
-                        # we let the laser handle the RIN distribution
-                        # so the same noise is injected in all the signals
-                        rin = source.get_rin(self._get_bandwidth()[0])
-                        dist = source.get_rin_dist(i, j)
-
-                        for k in range(self.context.num_samples):
-                            if power[i][j][k] > 0:
-                                if JAX_AVAILABLE:
-                                    noise = noise.at[k].set(from_db(to_db(power[i][j][k]) + rin) * dist[k])
-                                else:
-                                    noise[k] = (
-                                        from_db(to_db(power[i][j][k]) + rin) * dist[k]
-                                    )
-
-                    # store the RIN noise for later use
-                    if JAX_AVAILABLE:
-                        self.rin_dists = self.rin_dists.at[i, j].set(noise)
-                        self.noise_dists = self.noise_dists.at[i, j].set(self.noise * jnprand.normal(
-                            key=self.context.key,
-                            shape=(1, self.context.num_samples)
-                        )[0])
-                        self.context.key, self.context.subkey = jnprand.split(self.context.key)
-                    else:
-                        self.rin_dists[i][j] = noise
-
-                        # calculate and store electrical noise for later use
-                        self.noise_dists[i][j] = self.noise * self.context.rng.normal(
-                            size=self.context.num_samples
-                        )
-
-                    # add the shot noise
-                    for k in range(self.context.num_samples):
-                        power[i][j][k] = hffs * self.context.rng.poisson(
-                            power[i][j][k] / hffs
-                        )
-
-        # amplify the signal
-        signal = (power + self.rin_dists) * self.conversion_gain
-
-        # filter the signal
-        if self.context.num_samples > 1:
-            signal = self._filter(signal)
-
-        # add electrical noise on top
-        signal += self.noise_dists
-
-        # wrap the signal back up
-        return np.array([signal])
-
-    def _filter(self, signal: np.ndarray) -> np.ndarray:
-        """Filters the signal.
-
-        Parameters
-        ----------
-        signal :
-            The signal to filter.
-        """
-        bw = self._get_bandwidth()
-        sos = (
-            butter(1, bw[2], "lowpass", fs=self.context.fs, output="sos")
-            if bw[1] == 0
-            else butter(
-                1,
-                [
-                    bw[1],
-                    bw[2],
-                ],
-                "bandpass",
-                fs=self.context.fs,
-                output="sos",
-            )
-        )
-        return sosfiltfilt(sos, signal)
-
-    def _get_bandwidth(self):
-        """Gets the bandwidth of the detector w.r.t.
-
-        the sampling frequency.
-        """
-        low = (
-            0
-            if self.low_fc == 0
-            else max(self.low_fc, self.context.fs / self.context.num_samples * 30)
-        )
-        high = min(self.high_fc, 0.5 * (self.context.fs - 1))
-
-        return (high - low, low, high)
-
-
-class DifferentialDetector(Detector):
-    """A differential detector takes two connections and provides three outputs
-    to the ``Simulation.sample`` method.
-
-    The outputs are [connection1, connection1 - connection2, connection2]. The
-    first and third outputs are the monitor outputs and the second output is the
-    RF output.
-    """
-
-    pin_count = 2
-
-    def __init__(
-        self,
-        *args,
-        monitor_conversion_gain=1,
-        monitor_high_fc=1e9,
-        monitor_low_fc=0,
-        monitor_noise=0,
-        rf_cmrr=np.inf,
-        rf_conversion_gain=1,
-        rf_high_fc=1e9,
-        rf_low_fc=0,
-        rf_noise=0,
-        **kwargs,
-    ):
-        super().__init__(
-            *args,
-            **kwargs,
-        )
-
-        # initialize parameters
-        self.monitor_conversion_gain = monitor_conversion_gain
-        self.monitor_high_fc = monitor_high_fc
-        self.monitor_low_fc = monitor_low_fc
-        self.monitor_noise = monitor_noise
-        self.monitor_noise_dists = np.array([])
-        self.monitor_rin_dists1 = np.array([])
-        self.monitor_rin_dists2 = np.array([])
-        self.rf_cmrr = -np.abs(rf_cmrr)
-        self.rf_conversion_gain = rf_conversion_gain
-        self.rf_high_fc = rf_high_fc
-        self.rf_low_fc = rf_low_fc
-        self.rf_noise = rf_noise
-        self.rf_noise_dists = np.array([])
-        self.rf_rin_dists1 = np.array([])
-        self.rf_rin_dists2 = np.array([])
-
-    def _detect(self, powers: List[np.ndarray]) -> List[np.ndarray]:
-        p1 = powers[0]
-        p2 = powers[1]
-
-        # prepare noise dists with the proper shape
-        self.monitor_noise_dists = np.zeros(p1.shape)
-        self.monitor_rin_dists1 = np.zeros(p1.shape)
-        self.monitor_rin_dists2 = np.zeros(p2.shape)
-        self.rf_noise_dists = np.zeros(p1.shape)
-        self.rf_rin_dists1 = np.zeros(p1.shape)
-        self.rf_rin_dists2 = np.zeros(p2.shape)
-
-        if self.context.noise:
-            # for now, we assume that all sources are lasers and inject
-            # quantum noise using poissonian distributions
-
-            # inject an independent distribution for each frequency and power
-            for i, freq in enumerate(self.context.freqs):
-                # power = num_photons * h * freq * sampling_freq
-                hffs = h * freq * self.context.fs
-                for j, _ in enumerate(p1[i]):
-                    # calculate the RIN noise
-                    # we will need to keep track of the noise for each
-                    # differential signal independently
-                    monitor_noise1 = np.zeros(self.context.num_samples)
-                    monitor_noise2 = np.zeros(self.context.num_samples)
-                    rf_noise1 = np.zeros(self.context.num_samples)
-                    rf_noise2 = np.zeros(self.context.num_samples)
-
-                    # every source will contribute different noise
-                    for source in self.context.sources:
-                        # get the RIN specs from the laser to ensure that the
-                        # same noise is injected across all signals
-                        monitor_rin = source.get_rin(self._get_monitor_bandwidth()[0])
-                        rf_rin = source.get_rin(self._get_rf_bandwidth()[0])
-                        dist = source.get_rin_dist(i, j)
-
-                        for k in range(self.context.num_samples):
-                            # if the two powers are different, we need to adjust
-                            # the CMRR to account for the difference
-                            cmrr = self.rf_cmrr  # CMRR from path length
-                            sum = p1[i][j][k] + p2[i][j][k]
-                            diff = np.abs(p1[i][j][k] - p2[i][j][k])
-                            if diff:
-                                cmrr2 = -to_db(sum / diff)  # CMRR from power difference
-                                cmrr = (
-                                    cmrr
-                                    if cmrr == -np.inf
-                                    else (
-                                        0
-                                        if cmrr2 == 0
-                                        else (1 / (1 / cmrr + 1 / cmrr2))
-                                    )
-                                )
-
-                            # only calculate the noise if there is power
-                            if p1[i][j][k] > 0:
-                                p1db = to_db(p1[i][j][k])
-                                monitor_noise1[k] = (
-                                    from_db(p1db + monitor_rin) * dist[k]
-                                )
-                                rf_noise1[k] = from_db(p1db + rf_rin + cmrr) * dist[k]
-
-                            # only calculate the noise if there is power
-                            if p2[i][j][k] > 0:
-                                p2db = to_db(p2[i][j][k])
-                                monitor_noise2[k] = (
-                                    from_db(p2db + monitor_rin) * dist[k]
-                                )
-                                rf_noise2[k] = from_db(p2db + rf_rin + cmrr) * dist[k]
-
-                    # store the RIN noise for later use
-                    self.monitor_rin_dists1[i][j] = monitor_noise1
-                    self.monitor_rin_dists2[i][j] = monitor_noise2
-                    self.rf_rin_dists1[i][j] = rf_noise1
-                    self.rf_rin_dists2[i][j] = rf_noise2
-
-                    # calculate and store electrical noise
-                    self.monitor_noise_dists[i][
-                        j
-                    ] = self.monitor_noise * self.context.rng.normal(
-                        size=self.context.num_samples
-                    )
-                    self.rf_noise_dists[i][j] = self.rf_noise * self.context.rng.normal(
-                        size=self.context.num_samples
-                    )
-
-                    # add the shot noise
-                    for k in range(self.context.num_samples):
-                        p1[i][j][k] = hffs * self.context.rng.poisson(
-                            p1[i][j][k] / hffs
-                        )
-                        p2[i][j][k] = hffs * self.context.rng.poisson(
-                            p2[i][j][k] / hffs
-                        )
-
-        # return the outputs
-        return (
-            self._monitor(p1, self.monitor_rin_dists1),
-            self._rf(p1, p2),
-            self._monitor(p2, self.monitor_rin_dists2),
-        )
-
-    def _filter(self, signal: np.ndarray, bw: Tuple[float, float, float]) -> np.ndarray:
-        """Filters the signal.
-
-        Parameters
-        ----------
-        signal :
-            The signal to filter.
-        bw :
-            The bandwidth of the filter. (difference, low_fc, high_fc)
-        """
-        sos = (
-            butter(1, bw[2], "lowpass", fs=self.context.fs, output="sos")
-            if bw[1] == 0
-            else butter(
-                1,
-                [
-                    bw[1],
-                    bw[2],
-                ],
-                "bandpass",
-                fs=self.context.fs,
-                output="sos",
-            )
-        )
-        return sosfiltfilt(sos, signal)
-
-    def _get_bandwidth(self, low_fc, high_fc):
-        """Gets the bandwidth of the detector w.r.t. the sampling frequency.
-
-        Parameters
-        ----------
-        low_fc :
-            The lower cut-off frequency.
-        high_fc :
-            The higher cut-off frequency.
-        """
-        low = (
-            0
-            if low_fc == 0
-            else max(low_fc, self.context.fs / self.context.num_samples * 30)
-        )
-        high = min(high_fc, 0.5 * (self.context.fs - 1))
-
-        return (high - low, low, high)
-
-    def _get_monitor_bandwidth(self):
-        """Gets the bandwidth of the monitor w.r.t.
-
-        the sampling frequency.
-        """
-        return self._get_bandwidth(self.monitor_low_fc, self.monitor_high_fc)
-
-    def _get_rf_bandwidth(self):
-        """Gets the bandwidth of the rf w.r.t.
-
-        the sampling frequency.
-        """
-        return self._get_bandwidth(self.rf_low_fc, self.rf_high_fc)
-
-    def _monitor(self, power: np.ndarray, rin_dists: np.ndarray) -> np.ndarray:
-        """Takes a signal and turns it into a monitor output.
-
-        Parameters
-        ----------
-        power :
-            The power to convert to a monitor signal.
-        """
-        # amplify the signal
-        signal = (power + rin_dists) * self.monitor_conversion_gain
-
-        # filter the signal
-        if self.context.num_samples > 1:
-            signal = self._monitor_filter(signal)
-
-        # add the electrical noise after amplification
-        signal += self.monitor_noise_dists
-
-        return signal
-
-    def _monitor_filter(self, signal: np.ndarray) -> np.ndarray:
-        """Filters the monitor signal.
-
-        Parameters
-        ----------
-        signal :
-            The signal to filter.
-        """
-        return self._filter(signal, self._get_monitor_bandwidth())
-
-    def _rf(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        """Takes two signals and generates the differential RF signal. p1 - p2.
-
-        Parameters
-        ----------
-        p1 :
-            The first signal (in Watts).
-        p2 :
-            The second signal (in Watts)."""
-        # amplify the difference.
-        # we don't subtract RIN dists because that would be a CMRR of infinity.
-        # when we generated the RIN, we took the CMRR into account so at this
-        # point, all we need to do is add them after the signals have
-        # been diffed.
-        signal = (
-            (p1 - p2) + (self.rf_rin_dists1 + self.rf_rin_dists2)
-        ) * self.rf_conversion_gain
-
-        # filter the difference
-        if self.context.num_samples > 1:
-            signal = self._rf_filter(signal)
-
-        # add the electrical signal after amplification
-        signal += self.rf_noise_dists
-
-        return signal
-
-    def _rf_filter(self, signal: np.ndarray) -> np.ndarray:
-        """Filters the RF signal.
-
-        Parameters
-        ----------
-        signal :
-            The signal to filter.
-        """
-        return self._filter(signal, self._get_rf_bandwidth())
+# class SimulationModel(Model):
+#     """A Simphony model that is aware of the current Simulation context.
+
+#     Models that extend this one should automatically connect to the
+#     context upon instantiation.
+#     """
+
+#     def __init__(self, *args, **kwargs) -> None:
+#         super().__init__(*args, **kwargs)
+#         self.context = Simulation.get_context()
+
+#     def _on_connect(self, *args, **kwargs):
+#         super()._on_connect(*args, **kwargs)
+
+#         # after this model connects to another model, we have access to the
+#         # circuit. make the context aware of the circuit
+#         self.context.circuit = self.circuit
+
+
+# class Source(SimulationModel):
+#     """A simphony model for a source.
+
+#     It automatically connects to the current simulation context upon
+#     instantiation.
+#     """
+
+#     def __init__(self, *args, **kwargs) -> None:
+#         super().__init__(*args, **kwargs)
+#         self.context._add_source(self)
+
+#     def _load_context_data(self) -> None:
+#         """Gets the frequencies and powers to sweep from the simulation
+#         context.
+
+#         This information must be updated so that the simulated data all
+#         has the same shape.
+#         """
+#         self.freqs = self.context.freqs
+#         self.powers = self.context._expand_array(self._powers, self.context.shape[1])
+#         self._coupled_powers = self.powers * self.coupling_ratio
+
+
+# class Laser(Source):
+#     """A Simphony model for a laser source."""
+
+#     pin_count = 1
+
+#     def __init__(
+#         self,
+#         *args,
+#         coupling_loss=0,
+#         freq=None,
+#         phase=0,
+#         power=0,
+#         rin=-np.inf,
+#         wl=1550e-9,
+#         **kwargs,
+#     ) -> None:
+#         """Initializes the laser.
+
+#         Parameters
+#         ----------
+#         coupling_loss :
+#             The coupling loss of the laser in dB.
+#         freq :
+#             The frequency of the laser in Hz.
+#         phase :
+#             The phase of the laser in radians.
+#         power :
+#             The power of the laser in Watts.
+#         rin :
+#             The relative intensity noise of the laser in dBc/Hz.
+#         wl :
+#             The wavelength of the laser in meters.
+#         """
+#         super().__init__(*args, **kwargs)
+
+#         # initialize properties
+#         self._coupled_powers = np.array([])
+#         self._freqs = np.array([freq if freq else wl2freq(wl)])
+#         self._powers = np.array([power])
+#         self.coupling_ratio = from_db(-np.abs(coupling_loss))
+#         self.freqs = np.array([])
+#         self.index = 0
+#         self.modfn = None
+#         self.phase = phase
+#         self.powers = np.array([])
+#         self.rin = -np.abs(rin)
+#         self.rin_dists = {}
+
+#     def freqsweep(self, start: float, end: float, num: int = 500) -> "Laser":
+#         """Sets the frequencies to sweep during simulation.
+
+#         Parameters
+#         ----------
+#         start :
+#             The frequency to start at.
+#         end :
+#             The frequency to end at.
+#         num :
+#             The number of frequencies to sweep.
+#         """
+#         self._freqs = np.linspace(start, end, num)
+#         return self
+
+#     def get_rin(self, bandwidth: float) -> float:
+#         """Gets the RIN value in dBc.
+
+#         Parameters
+#         ----------
+#         bandwidth :
+#             The bandwidth of the detector in Hz.
+#         """
+#         return -np.inf if self.rin == -np.inf else to_db(from_db(self.rin) * bandwidth)
+
+#     def get_rin_dist(self, i: int, j: int) -> List[float]:
+#         """Returns the normal distribution used for the i,j key. If this is the
+#         first access, a new distribution is created.
+
+#         Parameters
+#         ----------
+#         i :
+#             The first index (frequency index).
+#         j :
+#             The second index (power index).
+#         """
+#         try:
+#             return self.rin_dists[i, j]
+#         except KeyError:
+#             if JAX_AVAILABLE:
+#                 print("NOT IMPLEMENTED, key:", self.context.key)
+#                 self.rin_dists[i, j] = jnprand.normal(
+#                     key=self.context.key,
+#                     shape=(1, self.context.num_samples)
+#                 )[0]
+#                 self.context.key, self.context.subkey = jnprand.split(self.context.key)
+#             else:
+#                 self.rin_dists[i, j] = self.context.rng.normal(
+#                     size=self.context.num_samples
+#                 )
+#             return self.rin_dists[i, j]
+
+#     def modulate(
+#         self,
+#         fn: Callable[
+#             [float, float, np.array], Union[np.array, Tuple[np.array, np.array]]
+#         ],
+#     ) -> "Laser":
+#         """Modulates the laser.
+
+#         Parameters
+#         ----------
+#         fn :
+#             The function that defines the modulation. fn(freq, power, t).
+#             It takes the base power and a numpy array of time steps and returns what the
+#             actual power should be at at each time (numpy array).
+
+#             The values in the array can either be a float, to modulate power,
+#             or a tuple with (power, phase) to modulate phase.
+#         """
+#         self.modfn = fn
+
+#     def powersweep(self, start: float, end: float, num: int = 500) -> "Laser":
+#         """Sets the powers to sweep during simulation.
+
+#         Parameters
+#         ----------
+#         start :
+#             The power to start at.
+#         end :
+#             The power to end at.
+#         num :
+#             The number of powers to sweep.
+#         """
+#         self._powers = np.linspace(start, end, num)
+#         return self
+
+#     def wlsweep(self, start: float, end: float, num: int = 500) -> "Laser":
+#         """Sets the wavelengths to sweep during simulation.
+
+#         Parameters
+#         ----------
+#         start :
+#             The wavelength to start at.
+#         end :
+#             The wavelength to end at.
+#         num :
+#             The number of wavelengths to sweep.
+#         """
+#         self._freqs = wl2freq(np.linspace(start, end, num))[::-1]
+#         return self
+
+
+# class Detector(SimulationModel):
+#     """The base class for all detectors.
+
+#     When a detector is connected to the circuit, it defines how many
+#     outputs are returned from calling the ``Simulation.sample`` method.
+#     This detector only adds one output.
+#     """
+
+#     pin_count = 1
+
+#     def __init__(
+#         self,
+#         *args,
+#         conversion_gain=1,
+#         high_fc=1e9,
+#         low_fc=0,
+#         noise=0,
+#         **kwargs,
+#     ) -> None:
+#         super().__init__(*args, **kwargs)
+#         self.context._add_detector(self)
+
+#         # conversion gain = responsivity * transimpedance gain
+#         # noise = Vrms on measurement
+#         self.conversion_gain = conversion_gain
+#         self.high_fc = high_fc
+#         self.low_fc = low_fc
+#         self.noise = noise
+#         self.noise_dists = np.array([])
+#         self.rin_dists = np.array([])
+
+#     def _detect(self, power: List[np.ndarray]) -> List[np.ndarray]:
+#         """This method receives the signal values as powers, i.e. the units are
+#         in Watts.
+
+#         Other detectors should extend this method to inject noise,
+#         amplify the signal, etc.
+#         """
+#         # temporarily unwrap the signal for easier manipulation
+#         power = power[0]
+
+#         # prepare noise dists with the proper shape
+#         self.noise_dists = np.zeros(power.shape)
+#         self.rin_dists = np.zeros(power.shape)
+
+#         if self.context.noise:
+#             # for now, we assume that all sources are lasers and inject
+#             # quantum noise using poissonian distributions
+
+#             # inject an independent distribution for each frequency and power
+#             for i, freq in enumerate(self.context.freqs):
+#                 # power = num_photons * h * freq * sampling_freq
+#                 hffs = h * freq * self.context.fs
+#                 for j, _ in enumerate(power[i]):
+#                     # calulcate the RIN noise
+#                     noise = np.zeros(self.context.num_samples)
+#                     for source in self.context.sources:
+#                         # we let the laser handle the RIN distribution
+#                         # so the same noise is injected in all the signals
+#                         rin = source.get_rin(self._get_bandwidth()[0])
+#                         dist = source.get_rin_dist(i, j)
+
+#                         for k in range(self.context.num_samples):
+#                             if power[i][j][k] > 0:
+#                                 if JAX_AVAILABLE:
+#                                     noise = noise.at[k].set(from_db(to_db(power[i][j][k]) + rin) * dist[k])
+#                                 else:
+#                                     noise[k] = (
+#                                         from_db(to_db(power[i][j][k]) + rin) * dist[k]
+#                                     )
+
+#                     # store the RIN noise for later use
+#                     if JAX_AVAILABLE:
+#                         self.rin_dists = self.rin_dists.at[i, j].set(noise)
+#                         self.noise_dists = self.noise_dists.at[i, j].set(self.noise * jnprand.normal(
+#                             key=self.context.key,
+#                             shape=(1, self.context.num_samples)
+#                         )[0])
+#                         self.context.key, self.context.subkey = jnprand.split(self.context.key)
+#                     else:
+#                         self.rin_dists[i][j] = noise
+
+#                         # calculate and store electrical noise for later use
+#                         self.noise_dists[i][j] = self.noise * self.context.rng.normal(
+#                             size=self.context.num_samples
+#                         )
+
+#                     # add the shot noise
+#                     for k in range(self.context.num_samples):
+#                         power[i][j][k] = hffs * self.context.rng.poisson(
+#                             power[i][j][k] / hffs
+#                         )
+
+#         # amplify the signal
+#         signal = (power + self.rin_dists) * self.conversion_gain
+
+#         # filter the signal
+#         if self.context.num_samples > 1:
+#             signal = self._filter(signal)
+
+#         # add electrical noise on top
+#         signal += self.noise_dists
+
+#         # wrap the signal back up
+#         return np.array([signal])
+
+#     def _filter(self, signal: np.ndarray) -> np.ndarray:
+#         """Filters the signal.
+
+#         Parameters
+#         ----------
+#         signal :
+#             The signal to filter.
+#         """
+#         bw = self._get_bandwidth()
+#         sos = (
+#             butter(1, bw[2], "lowpass", fs=self.context.fs, output="sos")
+#             if bw[1] == 0
+#             else butter(
+#                 1,
+#                 [
+#                     bw[1],
+#                     bw[2],
+#                 ],
+#                 "bandpass",
+#                 fs=self.context.fs,
+#                 output="sos",
+#             )
+#         )
+#         return sosfiltfilt(sos, signal)
+
+#     def _get_bandwidth(self):
+#         """Gets the bandwidth of the detector w.r.t.
+
+#         the sampling frequency.
+#         """
+#         low = (
+#             0
+#             if self.low_fc == 0
+#             else max(self.low_fc, self.context.fs / self.context.num_samples * 30)
+#         )
+#         high = min(self.high_fc, 0.5 * (self.context.fs - 1))
+
+#         return (high - low, low, high)
+
+
+# class DifferentialDetector(Detector):
+#     """A differential detector takes two connections and provides three outputs
+#     to the ``Simulation.sample`` method.
+
+#     The outputs are [connection1, connection1 - connection2, connection2]. The
+#     first and third outputs are the monitor outputs and the second output is the
+#     RF output.
+#     """
+
+#     pin_count = 2
+
+#     def __init__(
+#         self,
+#         *args,
+#         monitor_conversion_gain=1,
+#         monitor_high_fc=1e9,
+#         monitor_low_fc=0,
+#         monitor_noise=0,
+#         rf_cmrr=np.inf,
+#         rf_conversion_gain=1,
+#         rf_high_fc=1e9,
+#         rf_low_fc=0,
+#         rf_noise=0,
+#         **kwargs,
+#     ):
+#         super().__init__(
+#             *args,
+#             **kwargs,
+#         )
+
+#         # initialize parameters
+#         self.monitor_conversion_gain = monitor_conversion_gain
+#         self.monitor_high_fc = monitor_high_fc
+#         self.monitor_low_fc = monitor_low_fc
+#         self.monitor_noise = monitor_noise
+#         self.monitor_noise_dists = np.array([])
+#         self.monitor_rin_dists1 = np.array([])
+#         self.monitor_rin_dists2 = np.array([])
+#         self.rf_cmrr = -np.abs(rf_cmrr)
+#         self.rf_conversion_gain = rf_conversion_gain
+#         self.rf_high_fc = rf_high_fc
+#         self.rf_low_fc = rf_low_fc
+#         self.rf_noise = rf_noise
+#         self.rf_noise_dists = np.array([])
+#         self.rf_rin_dists1 = np.array([])
+#         self.rf_rin_dists2 = np.array([])
+
+#     def _detect(self, powers: List[np.ndarray]) -> List[np.ndarray]:
+#         p1 = powers[0]
+#         p2 = powers[1]
+
+#         # prepare noise dists with the proper shape
+#         self.monitor_noise_dists = np.zeros(p1.shape)
+#         self.monitor_rin_dists1 = np.zeros(p1.shape)
+#         self.monitor_rin_dists2 = np.zeros(p2.shape)
+#         self.rf_noise_dists = np.zeros(p1.shape)
+#         self.rf_rin_dists1 = np.zeros(p1.shape)
+#         self.rf_rin_dists2 = np.zeros(p2.shape)
+
+#         if self.context.noise:
+#             # for now, we assume that all sources are lasers and inject
+#             # quantum noise using poissonian distributions
+
+#             # inject an independent distribution for each frequency and power
+#             for i, freq in enumerate(self.context.freqs):
+#                 # power = num_photons * h * freq * sampling_freq
+#                 hffs = h * freq * self.context.fs
+#                 for j, _ in enumerate(p1[i]):
+#                     # calculate the RIN noise
+#                     # we will need to keep track of the noise for each
+#                     # differential signal independently
+#                     monitor_noise1 = np.zeros(self.context.num_samples)
+#                     monitor_noise2 = np.zeros(self.context.num_samples)
+#                     rf_noise1 = np.zeros(self.context.num_samples)
+#                     rf_noise2 = np.zeros(self.context.num_samples)
+
+#                     # every source will contribute different noise
+#                     for source in self.context.sources:
+#                         # get the RIN specs from the laser to ensure that the
+#                         # same noise is injected across all signals
+#                         monitor_rin = source.get_rin(self._get_monitor_bandwidth()[0])
+#                         rf_rin = source.get_rin(self._get_rf_bandwidth()[0])
+#                         dist = source.get_rin_dist(i, j)
+
+#                         for k in range(self.context.num_samples):
+#                             # if the two powers are different, we need to adjust
+#                             # the CMRR to account for the difference
+#                             cmrr = self.rf_cmrr  # CMRR from path length
+#                             sum = p1[i][j][k] + p2[i][j][k]
+#                             diff = np.abs(p1[i][j][k] - p2[i][j][k])
+#                             if diff:
+#                                 cmrr2 = -to_db(sum / diff)  # CMRR from power difference
+#                                 cmrr = (
+#                                     cmrr
+#                                     if cmrr == -np.inf
+#                                     else (
+#                                         0
+#                                         if cmrr2 == 0
+#                                         else (1 / (1 / cmrr + 1 / cmrr2))
+#                                     )
+#                                 )
+
+#                             # only calculate the noise if there is power
+#                             if p1[i][j][k] > 0:
+#                                 p1db = to_db(p1[i][j][k])
+#                                 monitor_noise1[k] = (
+#                                     from_db(p1db + monitor_rin) * dist[k]
+#                                 )
+#                                 rf_noise1[k] = from_db(p1db + rf_rin + cmrr) * dist[k]
+
+#                             # only calculate the noise if there is power
+#                             if p2[i][j][k] > 0:
+#                                 p2db = to_db(p2[i][j][k])
+#                                 monitor_noise2[k] = (
+#                                     from_db(p2db + monitor_rin) * dist[k]
+#                                 )
+#                                 rf_noise2[k] = from_db(p2db + rf_rin + cmrr) * dist[k]
+
+#                     # store the RIN noise for later use
+#                     self.monitor_rin_dists1[i][j] = monitor_noise1
+#                     self.monitor_rin_dists2[i][j] = monitor_noise2
+#                     self.rf_rin_dists1[i][j] = rf_noise1
+#                     self.rf_rin_dists2[i][j] = rf_noise2
+
+#                     # calculate and store electrical noise
+#                     self.monitor_noise_dists[i][
+#                         j
+#                     ] = self.monitor_noise * self.context.rng.normal(
+#                         size=self.context.num_samples
+#                     )
+#                     self.rf_noise_dists[i][j] = self.rf_noise * self.context.rng.normal(
+#                         size=self.context.num_samples
+#                     )
+
+#                     # add the shot noise
+#                     for k in range(self.context.num_samples):
+#                         p1[i][j][k] = hffs * self.context.rng.poisson(
+#                             p1[i][j][k] / hffs
+#                         )
+#                         p2[i][j][k] = hffs * self.context.rng.poisson(
+#                             p2[i][j][k] / hffs
+#                         )
+
+#         # return the outputs
+#         return (
+#             self._monitor(p1, self.monitor_rin_dists1),
+#             self._rf(p1, p2),
+#             self._monitor(p2, self.monitor_rin_dists2),
+#         )
+
+#     def _filter(self, signal: np.ndarray, bw: Tuple[float, float, float]) -> np.ndarray:
+#         """Filters the signal.
+
+#         Parameters
+#         ----------
+#         signal :
+#             The signal to filter.
+#         bw :
+#             The bandwidth of the filter. (difference, low_fc, high_fc)
+#         """
+#         sos = (
+#             butter(1, bw[2], "lowpass", fs=self.context.fs, output="sos")
+#             if bw[1] == 0
+#             else butter(
+#                 1,
+#                 [
+#                     bw[1],
+#                     bw[2],
+#                 ],
+#                 "bandpass",
+#                 fs=self.context.fs,
+#                 output="sos",
+#             )
+#         )
+#         return sosfiltfilt(sos, signal)
+
+#     def _get_bandwidth(self, low_fc, high_fc):
+#         """Gets the bandwidth of the detector w.r.t. the sampling frequency.
+
+#         Parameters
+#         ----------
+#         low_fc :
+#             The lower cut-off frequency.
+#         high_fc :
+#             The higher cut-off frequency.
+#         """
+#         low = (
+#             0
+#             if low_fc == 0
+#             else max(low_fc, self.context.fs / self.context.num_samples * 30)
+#         )
+#         high = min(high_fc, 0.5 * (self.context.fs - 1))
+
+#         return (high - low, low, high)
+
+#     def _get_monitor_bandwidth(self):
+#         """Gets the bandwidth of the monitor w.r.t.
+
+#         the sampling frequency.
+#         """
+#         return self._get_bandwidth(self.monitor_low_fc, self.monitor_high_fc)
+
+#     def _get_rf_bandwidth(self):
+#         """Gets the bandwidth of the rf w.r.t.
+
+#         the sampling frequency.
+#         """
+#         return self._get_bandwidth(self.rf_low_fc, self.rf_high_fc)
+
+#     def _monitor(self, power: np.ndarray, rin_dists: np.ndarray) -> np.ndarray:
+#         """Takes a signal and turns it into a monitor output.
+
+#         Parameters
+#         ----------
+#         power :
+#             The power to convert to a monitor signal.
+#         """
+#         # amplify the signal
+#         signal = (power + rin_dists) * self.monitor_conversion_gain
+
+#         # filter the signal
+#         if self.context.num_samples > 1:
+#             signal = self._monitor_filter(signal)
+
+#         # add the electrical noise after amplification
+#         signal += self.monitor_noise_dists
+
+#         return signal
+
+#     def _monitor_filter(self, signal: np.ndarray) -> np.ndarray:
+#         """Filters the monitor signal.
+
+#         Parameters
+#         ----------
+#         signal :
+#             The signal to filter.
+#         """
+#         return self._filter(signal, self._get_monitor_bandwidth())
+
+#     def _rf(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
+#         """Takes two signals and generates the differential RF signal. p1 - p2.
+
+#         Parameters
+#         ----------
+#         p1 :
+#             The first signal (in Watts).
+#         p2 :
+#             The second signal (in Watts)."""
+#         # amplify the difference.
+#         # we don't subtract RIN dists because that would be a CMRR of infinity.
+#         # when we generated the RIN, we took the CMRR into account so at this
+#         # point, all we need to do is add them after the signals have
+#         # been diffed.
+#         signal = (
+#             (p1 - p2) + (self.rf_rin_dists1 + self.rf_rin_dists2)
+#         ) * self.rf_conversion_gain
+
+#         # filter the difference
+#         if self.context.num_samples > 1:
+#             signal = self._rf_filter(signal)
+
+#         # add the electrical signal after amplification
+#         signal += self.rf_noise_dists
+
+#         return signal
+
+#     def _rf_filter(self, signal: np.ndarray) -> np.ndarray:
+#         """Filters the RF signal.
+
+#         Parameters
+#         ----------
+#         signal :
+#             The signal to filter.
+#         """
+#         return self._filter(signal, self._get_rf_bandwidth())

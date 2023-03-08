@@ -58,14 +58,6 @@ class Model:
         A gdsfactory Component object which is a representation of this component (optional).
     """
 
-    freq_range: ClassVar[Tuple[Optional[float], Optional[float]]]
-    pin_count: ClassVar[Optional[int]]
-    pins: ClassVar[Optional[Tuple[str, ...]]]
-    pins: PinList  # additional type hint for instance.pins
-
-    def __getitem__(self, item: Union[int, str]) -> Pin:
-        return self.pins[item]
-
     def __init__(
         self,
         name: str = "",
@@ -97,158 +89,9 @@ class Model:
         NotImplementedError
             when pins is None and cls.pin_count and cls.pins are undefined.
         """
-        # set the frequency range for the instance. resolution order:
-        # 1. freq_range
-        # 2. cls.freq_range
-        # 3. default value (0, inf)
-        if freq_range:
-            self.freq_range = (freq_range[0], freq_range[1])
-        else:
-            try:
-                self.freq_range = self.__class__.freq_range
-            except AttributeError:
-                self.freq_range = (0, float("inf"))
-
-        self.name = name
-        # initiate the Pin objects for the instance. resolution order:
-        # 1. pins (list of Pin objects)
-        # 2. cls.pins (tuple of pin names)
-        # 3. cls.pin_count
-        if pins:
-            self.pins = PinList(pins)
-        else:
-            try:
-                self.pins = PinList(self, len(self.__class__.pins))
-                self.pins.rename(*self.__class__.pins)
-            except AttributeError:
-                try:
-                    self.pins = PinList(self, self.__class__.pin_count)
-                except AttributeError:
-                    name = self.__class__.__name__
-                    raise NotImplementedError(
-                        f"{name}.pin_count or {name}.pins needs to be defined."
-                    )
-
-        if _has_gf:
-            self.component = Component()
-            self.component.name = name
 
         # Set circuit
         self.circuit = Circuit(self)
-
-    def __str__(self) -> str:
-        name = self.name or f"{self.__class__.__name__} component"
-        return f"{name} with pins: {', '.join([pin.name for pin in self.pins])}"
-
-    def _get_next_unconnected_pin(self) -> Pin:
-        """Loops through this model's pins and returns the next unconnected
-        pin.
-
-        Raises
-        ------
-        ValueError
-            when this instance has no unconnected pins.
-        """
-        for pin in self.pins:
-            if not pin._isconnected():
-                return pin
-
-        raise ValueError(f"{self.__class__.__name__} has no unconnected pins.")
-
-    def _isconnected(self) -> bool:
-        """Returns whether this component is connected to other components."""
-        for pin in self.pins:
-            if pin._isconnected():
-                return True
-
-        return False
-
-    def _on_connect(self, component: "Model") -> None:
-        """This method is called whenever one of this component's pins is
-        connected to another component.
-
-        This method makes sure that all connected components belong to
-        the same circuit. i.e. Their .circuit references all point to
-        the same thing.
-
-        Parameters
-        ----------
-        component : Model
-            The component to connect to.
-        """
-        if self.circuit != component.circuit:
-            # make sure to merge the smaller circuit into the larger
-            if len(component.circuit) > len(self.circuit):
-                component.circuit._merge(self.circuit)
-            else:
-                self.circuit._merge(component.circuit)
-
-    def _on_disconnect(self, component: "Model") -> None:
-        """This method is called whenever one of this component's pins is
-        disconnected to another component.
-
-        This method makes sure that all connected components belong to
-        the same circuit. i.e. Their .circuit references all point to
-        the same thing.
-        """
-        circuit1 = Circuit(self)
-        circuit2 = Circuit(component)
-
-        # the recursive functions loops through all connected components
-        # and adds them to the respective circuits
-        self._on_disconnect_recursive(circuit1)
-        component._on_disconnect_recursive(circuit2)
-
-        # compare the components in the circuits to see if they're different
-        different = len(circuit1) != len(circuit2)
-        if not different:
-            for component in circuit1:
-                if component not in circuit2:
-                    different = True
-                    break
-
-        if different:
-            # we have two separate circuits, but the recursive construction of
-            # the circuits destroys the component ordering, so we need to
-            # reconstruct the separate circuits in a way that preserves order
-            ordered1 = []
-            ordered2 = []
-
-            # self.circuit still has all of the components in order, so we will
-            # loop through them and sort them into two lists
-            for component in self.circuit:
-                if component in circuit1:
-                    ordered1.append(component)
-                else:
-                    ordered2.append(component)
-
-            # now we create the two separate circuits, add the ordered
-            # components to them, and make the components point to the circuits
-            circuit1 = Circuit(ordered1[0])
-            circuit2 = Circuit(ordered2[0])
-
-            for component in ordered1:
-                circuit1._add(component)
-                component.circuit = circuit1
-
-            for component in ordered2:
-                circuit2._add(component)
-                component.circuit = circuit2
-
-    def _on_disconnect_recursive(self, circuit: Circuit) -> None:
-        """Recursive logic for ``_on_disconnect``.
-
-        It loops through all of the pins for this component and makes
-        sure that the connected components are all a part of the
-        circuit. It then proceeds to loop through the pins for the
-        connected components. Once all components have been visited, the
-        recursion ends.
-        """
-        for pin in self.pins:
-            if pin._isconnected():
-                component = pin._connection._component
-                if circuit._add(component):
-                    component._on_disconnect_recursive(circuit)
 
     def connect(
         self,
@@ -273,11 +116,6 @@ class Model:
             raise ImportError("gdsfactory must be installed to connect gdsfactory components. Try `pip install gdsfactory`.")
 
         return self
-
-    def disconnect(self) -> None:
-        """Disconnects this component from all other components."""
-        for pin in self.pins:
-            pin.disconnect()
 
     def interface(
         self,
@@ -348,23 +186,6 @@ class Model:
         """
         return self.s_parameters(freqs)
 
-    def multiconnect(self, *connections: Union["Model", Pin, None]) -> "Model":
-        """Connects this component to the specified connections by looping
-        through each connection and connecting it with the corresponding pin.
-
-        The first connection is connected to the first pin, the second
-        connection to the second pin, etc. If the connection is set to None,
-        that pin is skipped.
-
-        See the ``connect`` method for more information if the connection is
-        a component or a pin.
-        """
-        for index, connection in enumerate(connections):
-            if connection is not None:
-                self.pins[index].connect(connection)
-
-        return self
-
     def regenerate_monte_carlo_parameters(self) -> None:
         """Regenerates parameters used to generate monte carlo s-matrices.
 
@@ -407,133 +228,6 @@ class Model:
         """Update width and thickness variations for the component using correlated
         samples. This is used for layout-aware Monte Carlo runs."""
         pass
-
-    def rename_pins(self, *names: str) -> None:
-        """Renames the pins for this component.
-
-        The first pin is renamed to the first value passed in, the
-        second pin is renamed to the second value, etc.
-        """
-        self.pins.rename(*names)
-
-    def s_parameters(self, freqs: "np.array") -> "np.ndarray":
-        """Returns scattering parameters for the element with its given
-        parameters as declared in the optional ``__init__()``.
-
-        Parameters
-        ----------
-        freqs : np.array
-            The frequency range to get scattering parameters for.
-
-        Returns
-        -------
-        s : np.ndarray
-            The scattering parameters corresponding to the frequency range.
-            Its shape should be (the number of frequency points x ports x ports).
-            If the scattering parameters are requested for only a single
-            frequency, for example, and the device has 4 ports, the shape
-            returned by ``s_parameters`` would be (1, 4, 4).
-
-        Raises
-        ------
-        NotImplementedError
-            Raised if the subclassing element doesn't implement this function.
-        """
-        raise NotImplementedError
-
-    def to_file(
-        self,
-        filename: str,
-        freqs: "np.array",
-        *,
-        formatter: Optional[ModelFormatter] = None,
-    ) -> None:
-        """Writes this component's scattering parameters to the specified file
-        using the specified formatter.
-
-        Parameters
-        ----------
-        filename : str
-            The name of the file to write to.
-        freqs : np.ndarray
-            The list of frequencies to save data for.
-        formatter : ModelFormatter, optional
-            The formatter instance to use.
-        """
-        # change the cwd to the the directory containing the file
-        filename = os.path.abspath(filename)
-        cwd = os.getcwd()
-        dir, _ = os.path.split(filename)
-        os.chdir(dir)
-
-        # format the file
-        with open(filename, "w") as file:
-            file.write(self.to_string(freqs, formatter=formatter))
-            file.close()
-
-        # restore the cwd
-        os.chdir(cwd)
-
-    def to_string(
-        self, freqs: "np.array", *, formatter: Optional[ModelFormatter] = None
-    ) -> str:
-        """Returns this component's scattering parameters as a formatted
-        string.
-
-        Parameters
-        ----------
-        freqs : np.ndarray
-            The list of frequencies to save data for.
-        formatter : ModelFormatter, optional
-            The formatter instance to use.
-        """
-        formatter = formatter if formatter is not None else ModelJSONFormatter()
-        return formatter.format(self, freqs)
-
-    @staticmethod
-    def from_file(
-        filename: str, *, formatter: Optional[ModelFormatter] = None
-    ) -> "Model":
-        """Creates a component from a file using the specified formatter.
-
-        Parameters
-        ----------
-        filename : str
-            The filename to read from.
-        formatter : ModelFormatter, optional
-            The formatter instance to use.
-        """
-        # change the cwd to the the directory containing the file
-        filename = os.path.abspath(filename)
-        cwd = os.getcwd()
-        dir, _ = os.path.split(filename)
-        os.chdir(dir)
-
-        # parse the file
-        with open(filename, "r") as file:
-            component = Model.from_string(file.read(), formatter=formatter)
-            file.close()
-
-        # restore the cwd
-        os.chdir(cwd)
-
-        return component
-
-    @staticmethod
-    def from_string(
-        string: str, *, formatter: Optional[ModelFormatter] = None
-    ) -> "Model":
-        """Creates a component from a string using the specified formatter.
-
-        Parameters
-        ----------
-        string : str
-            The string to load the component from.
-        formatter : ModelFormatter, optional
-            The formatter instance to use.
-        """
-        formatter = formatter if formatter is not None else ModelJSONFormatter()
-        return formatter.parse(string)
 
 
 class Subcircuit(Model):
@@ -581,11 +275,6 @@ class Subcircuit(Model):
         pin_names = {}
 
         for component in circuit:
-            # calculate the frequency range for the subcircuit
-            if component.freq_range[0] > freq_range[0]:
-                freq_range[0] = component.freq_range[0]
-            if component.freq_range[1] < freq_range[1]:
-                freq_range[1] = component.freq_range[1]
 
             # figure out which pins to re-expose
             for pin in component.pins:

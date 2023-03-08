@@ -36,7 +36,7 @@ import warnings
 from types import SimpleNamespace
 
 
-from .models_old import Model  # noqa: F401
+# from .models_old import Model  # noqa: F401
 
 if sys.version_info < (3, 8, 0):
     raise Exception(

@@ -1,5 +1,4 @@
 from typing import List, Union
-from functools import partial
 
 try:
     import jax
