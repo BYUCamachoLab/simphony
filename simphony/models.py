@@ -83,11 +83,6 @@ class Model:
 
     The model tracks its own ports. Ports should not be interacted with
     directly, but should be modified through the functions that Model provides.
-
-    The Model base class will attempt to wrap your function with JAX's "jit"
-    functionality, which will speed up the calculation of the s-parameters when
-    running on a GPU or TPU. If you want to disable jit, set ``jit=False`` as
-    a class variable when you write the class.
     """
 
     _oports: List[OPort] = []  # should only be manipulated by rename_oports()
@@ -97,9 +92,7 @@ class Model:
         "ocount",
         "enames",
         "ecount",
-        "jit",
     ]  # ignore when checking for equality or hashing
-    jit = True
 
     def __init__(self) -> None:
         if hasattr(self, "onames"):
@@ -120,8 +113,6 @@ class Model:
             raise ModelValidationError(
                 f"Model '{cls.__name__}' does not define the required method 's_params(self, wl).'"
             )
-        if cls.jit:
-            cls.s_params = jax.jit(cls.s_params)
 
         orig_init = cls.__init__
 
