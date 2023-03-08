@@ -225,6 +225,23 @@ def wl2freq(wl):
     return SPEED_OF_LIGHT / wl
 
 
+def wlum2freq(wl):
+    """Convenience function for converting from wavelength in microns to
+    frequency.
+
+    Parameters
+    ----------
+    wl : float
+        The wavelength in microns.
+
+    Returns
+    -------
+    freq : float
+        The frequency in SI units (Hz).
+    """
+    return wl2freq(wl * 1e-6)
+
+
 def interpolate(resampled, sampled, s_parameters):
     """Returns the result of a cubic interpolation for a given frequency range.
 

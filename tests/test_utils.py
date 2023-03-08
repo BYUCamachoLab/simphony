@@ -4,15 +4,28 @@
 
 import pytest
 
-from simphony.tools import str2float
+from simphony.utils import str2float, wl2freq, freq2wl, wlum2freq
 
 
 def test_wl2freq():
-    pass
+    # Test converting a few random wavelengths to frequencies
+    assert wl2freq(1) == 299792458
+    assert wl2freq(2) == 149896229
+    assert wl2freq(3) == 99997486.66666667
 
 
 def test_freq2wl():
-    pass
+    # Test converting a few random frequencies to wavelengths
+    assert freq2wl(1) == 299792458
+    assert freq2wl(2) == 149896229
+    assert freq2wl(3) == 99997486.66666667
+
+
+def test_wlum2freq():
+    # Test converting a few random wavelengths in microns to frequencies
+    assert wlum2freq(1) == wl2freq(1e-6)
+    assert wlum2freq(2) == wl2freq(2e-6)
+    assert wlum2freq(3) == wl2freq(3e-6)
 
 
 class TestString2Float:
