@@ -170,8 +170,8 @@ class Waveguide(Model):
         transmission =  amplitude * jnp.exp(1j * phase)
         return jnp.array(
             [
-                [transmission, 0],
-                [0, transmission],
+                [transmission, jnp.array([0] * len(wl))],
+                [jnp.array([0] * len(wl)), transmission],
             ]
         )
 
