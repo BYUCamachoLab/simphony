@@ -142,17 +142,17 @@ class Circuit:
                 raise ValueError(f"Port types must match or be an instance of Model ({type(port1)} != {type(port2)})")
 
         if isinstance(port1, OPort):
-            o2x(self, port1, port2)
+            return o2x(self, port1, port2)
 
         if isinstance(port1, EPort):
-            e2x(self, port1, port2)
+            return e2x(self, port1, port2)
 
         if issubclass(type(port1), Model):
             for p2 in list(port2):
                 if p1:=port1.next_unconnected_oport():
-                    o2x(self, p1, p2)
+                    return o2x(self, p1, p2)
                 elif p1:=port1.next_unconnected_eport():
-                    e2x(self, p1, p2)
+                    return e2x(self, p1, p2)
             else:
                 raise ValueError(f"Ports must be optical, electronic, or a Model (got '{type(port1)}')")
             
