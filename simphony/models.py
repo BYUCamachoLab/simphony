@@ -170,6 +170,23 @@ class Model:
     def _s(self, wl):
         # https://docs.python.org/3/faq/programming.html#how-do-i-cache-method-calls
         return self.s_params(wl)
+    
+    def s_params(self, wl):
+        """
+        Function to be implemented by subclasses to return scattering parameters.
+
+        Parameters
+        ----------
+        wl : float or ndarray
+            The wavelength(s) to calculate scattering parameters for.
+
+        Returns
+        -------
+        s : ndarray
+            Scattering parameters for the model. The shape of the array should
+            be (len(wl), n, n) where n is the number of ports.
+        """
+        raise NotImplementedError
 
     def o(self, value: Union[str, int] = None):
         """
