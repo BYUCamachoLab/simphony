@@ -158,31 +158,17 @@ class Waveguide(Model):
     def s_params(self, wl):
         global CTX
 
-        neff = self.neff or CTX.neff
-        ng = self.ng or CTX.ng
-        loss = self.loss or CTX.loss_db_cm / 100
+        _neff = self.neff or CTX.neff
+        _ng = self.ng or CTX.ng
+        _loss = self.loss or CTX.loss_db_cm / 100
 
-        dwl = wl - self.wl0
-        dneff_dwl = (ng - neff) / self.wl0
-        neff = neff - dwl * dneff_dwl
+        neff = _neff - (wl - self.wl0) * (_ng - _neff) / self.wl0
+        amp = 10 ** (-_loss * self.length / 20)
         phase = 2 * jnp.pi * neff * self.length / wl
-        amplitude = jnp.asarray(10 ** (-loss * self.length / 20), dtype=complex)
-        transmission =  amplitude * jnp.exp(1j * phase)
-        return jnp.array(
-            [
-                [transmission, jnp.array([0] * len(wl))],
-                [jnp.array([0] * len(wl)), transmission],
-            ]
-        )
-
-    # def s_params(self, wl):
-    #     neff = self.neff - (wl - self.wl0) * (self.ng - self.neff) / self.wl0
-    #     amp = 10 ** (-self.loss * self.length / 20)
-    #     phase = 2 * jnp.pi * neff * self.length / wl
-    #     s21 = amp * jnp.exp(-1j * phase)
-    #     s12 = jnp.conj(s21)
-    #     s11 = s22 = jnp.array([0] * len(wl))
-    #     return jnp.stack([s11, s12, s21, s22], axis=1).reshape(-1, 2, 2)
+        s21 = amp * jnp.exp(-1j * phase)
+        s12 = jnp.conj(s21)
+        s11 = s22 = jnp.array([0] * len(wl))
+        return jnp.stack([s11, s12, s21, s22], axis=1).reshape(-1, 2, 2)
 
 
 class Heater(Model):
@@ -196,5 +182,5 @@ class Heater(Model):
 
 if __name__ == "__main__":
     # Create a coupler
-    coupler = Coupler()
-    print(coupler.s_params(jnp.array([0, 0])))
+    coupler = Waveguide(length=10)
+    print(coupler.s_params(jnp.array([1.545, 1.555])))
