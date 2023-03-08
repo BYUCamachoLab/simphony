@@ -22,7 +22,7 @@ class Coupler(Model):
     .. image:: /reference/images/coupler.png
         :alt: coupler.png
 
-    The coupler has 2 inputs ('o1', 'o2') and 2 outputs ('o3', 'o4').
+    The coupler has 2 inputs ('o0', 'o1') and 2 outputs ('o2', 'o3').
     The coupler has the following s-parameter matrix:
 
     .. math::
@@ -48,7 +48,7 @@ class Coupler(Model):
         ports. If a list of 4 floats is given, the loss associated with each 
         port is set individually.
     """
-    onames = ["o1", "o2", "o3", "o4"]
+    onames = ["o0", "o1", "o2", "o3"]
 
     def __init__(
         self,
@@ -58,10 +58,11 @@ class Coupler(Model):
     ):
         self.coupling = coupling
         self.phi = phi
-        if hasattr(loss, "__iter__"):
-            self.T0, self.T1, self.T2, self.T3 = 10**(loss/10)
-        else:
-            self.T0 = self.T1 = self.T2 = self.T3 = 10**(loss/10) ** (1 / 4)
+        self.loss = loss
+        try:
+            self.T0, self.T1, self.T2, self.T3 = 10 ** (loss / 10)
+        except:
+            self.T0 = self.T1 = self.T2 = self.T3 = 10 ** (loss / 10) ** (1 / 4)
         self.t = jnp.sqrt(1 - self.coupling)
         self.r = jnp.sqrt(self.coupling)
         self.rp = jnp.conj(self.r)
@@ -81,7 +82,7 @@ class Coupler(Model):
         # fmt: on
 
         # repeat smatrix for each wavelength since its frequency independent
-        return jnp.stack([smatrix]*len(wl), axis=0)
+        return jnp.stack([smatrix] * len(wl), axis=0)
 
 
 class Waveguide(Model):
@@ -174,6 +175,15 @@ class Waveguide(Model):
             ]
         )
 
+    # def s_params(self, wl):
+    #     neff = self.neff - (wl - self.wl0) * (self.ng - self.neff) / self.wl0
+    #     amp = 10 ** (-self.loss * self.length / 20)
+    #     phase = 2 * jnp.pi * neff * self.length / wl
+    #     s21 = amp * jnp.exp(-1j * phase)
+    #     s12 = jnp.conj(s21)
+    #     s11 = s22 = jnp.array([0] * len(wl))
+    #     return jnp.stack([s11, s12, s21, s22], axis=1).reshape(-1, 2, 2)
+
 
 class Heater(Model):
     def __init__(self, onames=["o0", "o1"]):
@@ -187,4 +197,4 @@ class Heater(Model):
 if __name__ == "__main__":
     # Create a coupler
     coupler = Coupler()
-    print(coupler.s_params(jnp.array([0])))
+    print(coupler.s_params(jnp.array([0, 0])))
