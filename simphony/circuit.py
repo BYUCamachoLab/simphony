@@ -35,8 +35,8 @@ class Circuit:
         cir.connect(gc_in.o(0), Laser())
         cir.connect(gc_out.o(0), Detector())
     """
-    def __init__(self, name: str) -> None:
-        self.name = name
+    def __init__(self, name: str = None) -> None:
+        self.name = name or "circuit"
         self._components = [] # list of components (model instances) in the circuit
         self._onodes: List[Tuple[OPort, OPort]] = [] # optical connections
         self._enodes: List[Set[EPort]] = [] # electrical connections
@@ -63,8 +63,8 @@ class Circuit:
         """Connect two ports in the internal netlist and update the connections
         vairable on the ports themselves."""
         self._onodes.append((port1, port2))
-        port1._connections.add[port2]
-        port2._connections.add[port1]
+        port1._connections.add(port2)
+        port2._connections.add(port1)
 
     def _connect_e(self, port1: EPort, port2: EPort) -> None:
         """Connect two ports in the internal netlist and update the connections
@@ -155,6 +155,8 @@ class Circuit:
                     e2x(self, p1, p2)
             else:
                 raise ValueError(f"Ports must be optical, electronic, or a Model (got '{type(port1)}')")
+            
+        raise ValueError(f"Ports must be optical (OPort), electronic (EPort), or a Model (got '{type(port1)}' and '{type(port2)})")
 
     def to_model(self) -> Model:
         pass

@@ -99,6 +99,10 @@ class Model:
             self.rename_oports(self.onames)
         if hasattr(self, "ocount"):
             self.rename_oports([f"o{i}" for i in range(self.ocount)])
+        if hasattr(self, "enames"):
+            self.rename_eports(self.enames)
+        if hasattr(self, "ecount"):
+            self.rename_eports([f"o{i}" for i in range(self.ecount)])
         if not hasattr(self, "_oports"):
             raise ModelValidationError(
                 "Model does not define 'onames' or 'ocount', which is required."
@@ -227,12 +231,36 @@ class Model:
         c.rename_oports(["in", "through", "add", "drop"])
         """
         if len(self._oports) == 0:
-            self._oports = set(Port(name, self) for name in names)
+            self._oports = set(OPort(name, self) for name in names)
         elif len(names) == len(self.onames):
             (port.rename(name) for port, name in zip(self._oports, names))
         else:
             raise ValueError(
                 f"Number of renamed ports must be equal to number of current ports ({len(names)}!={len(self.onames)})"
+            )
+        
+    def rename_eports(self, names: List[str]) -> Model:
+        """
+        Rename all electrical ports.
+
+        Parameters
+        ----------
+        names : list of str
+            A list of strings renaming all the ports sequentially. List must
+            be as long as existing port count.
+
+        Examples
+        --------
+        c = ThermalPhaseShifter()
+        c.rename_oports(["gnd", "bias"])
+        """
+        if len(self._eports) == 0:
+            self._eports = set(EPort(name, self) for name in names)
+        elif len(names) == len(self.enames):
+            (port.rename(name) for port, name in zip(self._eports, names))
+        else:
+            raise ValueError(
+                f"Number of renamed ports must be equal to number of current ports ({len(names)}!={len(self.enames)})"
             )
 
     def next_unconnected_oport(self) -> Optional[OPort]:
@@ -275,46 +303,3 @@ class Model:
         if any([e.connected for e in self._eports]):
             return True
         return False
-
-
-if __name__ == "__main__":
-
-    class Coupler(Model):
-        onames = ["o1", "o2", "o3", "o4"]
-
-        def __init__(self, k):
-            self.k = k
-
-        def s_params(self, wl):
-            print(f"cache miss ({self.k})")
-            return wl * 1j * self.k
-
-    class Waveguide(Model):
-        ocount = 2
-        ecount = 2
-
-        def __init__(self, a):
-            self.a = a
-
-        def s_params(self, wl):
-            print(f"cache miss ({self.a})")
-            return 1j * self.a
-
-    class Heater(Model):
-        jit = False
-
-        def __init__(self, onames=["o0", "o1"]):
-            self.onames = onames
-
-        def s_params(self, wl):
-            pass
-
-    # m = Model()
-    c1 = Coupler(0.5)
-    c2 = Coupler(0.6)
-    c1.onames = ["p1", "p2", "p3", "p4"]
-
-    print(c1.onames)
-    print(c2.onames)
-
-    pass
