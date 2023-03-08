@@ -4,16 +4,18 @@ Base class for defining models.
 
 from __future__ import annotations
 from copy import deepcopy
-from typing import List, Union
+from typing import List, Optional, Union
 from functools import lru_cache, wraps
 
 try:
     import jax
     import jax.numpy as jnp
+
     JAX_AVAILABLE = True
 except ImportError:
     import numpy as jnp
     from simphony.utils import jax
+
     JAX_AVAILABLE = False
 
 from simphony.exceptions import ModelValidationError
@@ -23,10 +25,11 @@ class Port:
     """
     Port base class containing name and reference to Model instance.
     """
-    def __init__(self, name: str, instance: Model=None) -> None:
+
+    def __init__(self, name: str, instance: Model = None) -> None:
         self.name = name
         self.instance = instance
-        self._connections = set() # a list of all other ports the port is connected to
+        self._connections = set()  # a list of all other ports the port is connected to
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__} "{self.name}" at {hex(id(self))}>'
@@ -38,16 +41,19 @@ class Port:
     def connected(self) -> bool:
         """If the port is connected to other port(s)."""
         return bool(self._connections)
-    
+
     def connect_to(self, port: Port) -> None:
         raise NotImplementedError
 
 
 class OPort(Port):
     """Optical ports can only be connected to one other port."""
+
     def connect_to(self, port: OPort) -> None:
         if not isinstance(port, OPort):
-            raise ValueError(f"Optical ports can only be connected to other optical ports (got '{type(port).__name__}')")
+            raise ValueError(
+                f"Optical ports can only be connected to other optical ports (got '{type(port).__name__}')"
+            )
         elif not self._connections:
             self._connections.add(port)
         else:
@@ -56,9 +62,12 @@ class OPort(Port):
 
 class EPort(Port):
     """Electrical ports can be connected to many other ports."""
+
     def connect_to(self, port: EPort) -> None:
         if not isinstance(port, EPort):
-            raise ValueError(f"Electrical ports can only be connected to other electrical ports (got '{type(port).__name__}')")
+            raise ValueError(
+                f"Electrical ports can only be connected to other electrical ports (got '{type(port).__name__}')"
+            )
         else:
             self._connections.add(port)
 
@@ -68,11 +77,11 @@ class Model:
     Base model class that all components should inherit from.
 
     Models perform some basic validation on their subclasses, like making sure
-    functions required for simulation are present. Some functions, such as 
+    functions required for simulation are present. Some functions, such as
     those that calculate and return scattering parameters, are cached to reduce
     memory usage and calculation times.
 
-    The model tracks its own ports. Ports should not be interacted with 
+    The model tracks its own ports. Ports should not be interacted with
     directly, but should be modified through the functions that Model provides.
 
     The Model base class will attempt to wrap your function with JAX's "jit"
@@ -80,18 +89,27 @@ class Model:
     running on a GPU or TPU. If you want to disable jit, set ``jit=False`` as
     a class variable when you write the class.
     """
-    _oports: List[OPort] = [] # should only be manipulated by rename_oports()
-    _eports: List[EPort] = [] # should only be manipulated by rename_eports()
-    _ignore_keys = ["onames", "ocount", "enames", "ecount", "jit"] # ignore when checking for equality or hashing
+
+    _oports: List[OPort] = []  # should only be manipulated by rename_oports()
+    _eports: List[EPort] = []  # should only be manipulated by rename_eports()
+    _ignore_keys = [
+        "onames",
+        "ocount",
+        "enames",
+        "ecount",
+        "jit",
+    ]  # ignore when checking for equality or hashing
     jit = True
-    
+
     def __init__(self) -> None:
         if hasattr(self, "onames"):
             self.rename_oports(self.onames)
         if hasattr(self, "ocount"):
             self.rename_oports([f"o{i}" for i in range(self.ocount)])
         if not hasattr(self, "_oports"):
-            raise ModelValidationError("Model does not define 'onames' or 'ocount', which is required.")
+            raise ModelValidationError(
+                "Model does not define 'onames' or 'ocount', which is required."
+            )
 
     def __init_subclass__(cls) -> None:
         """
@@ -99,17 +117,19 @@ class Model:
         the super().__init__ function.
         """
         if not hasattr(cls, "s_params"):
-            raise ModelValidationError(f"Model '{cls.__name__}' does not define the required method 's_params(self, wl).'")
+            raise ModelValidationError(
+                f"Model '{cls.__name__}' does not define the required method 's_params(self, wl).'"
+            )
         if cls.jit:
             cls.s_params = jax.jit(cls.s_params)
-        
+
         orig_init = cls.__init__
 
         @wraps(orig_init)
         def __init__(self, *args, **kwargs):
             orig_init(self, *args, **kwargs)
             super(self.__class__, self).__init__()
-        
+
         cls.__init__ = __init__
 
     def __eq__(self, other: Model):
@@ -122,9 +142,15 @@ class Model:
 
     def __hash__(self):
         """Hashes the instance dictionary to calculate the hash."""
-        s = frozenset([(k, v) for k, v in vars(self).items() if (not k.startswith("_") and (k not in self._ignore_keys))])
+        s = frozenset(
+            [
+                (k, v)
+                for k, v in vars(self).items()
+                if (not k.startswith("_") and (k not in self._ignore_keys))
+            ]
+        )
         return hash(s)
-    
+
     def __copy__(self):
         """Shallow copy the circuit."""
         cls = self.__class__
@@ -141,15 +167,19 @@ class Model:
             setattr(result, k, deepcopy(v, memo))
         return result
 
+    def __repr__(self) -> str:
+        """Code representation of the circuit."""
+        return f'<{self.__class__.__name__} at {hex(id(self))} (o: [{", ".join(["+"+o.name if o.connected else o.name for o in self._oports])}], e: [{", ".join(["+"+e.name if e.connected else e.name for e in self._eports]) or None}])>'
+
     @lru_cache
     def _s(self, wl):
         # https://docs.python.org/3/faq/programming.html#how-do-i-cache-method-calls
         return self.s_params(wl)
-    
-    def o(self, value: Union[str, int]=None):
+
+    def o(self, value: Union[str, int] = None):
         """
         Get a reference to an optical port.
-        
+
         Parameter
         ---------
         value : str or int, optional
@@ -167,9 +197,8 @@ class Model:
                 raise ValueError("Port indexer must be a name (str) or index (int).")
         else:
             return self.next_unconnected_oport()
-            
-        
-    def e(self, value: Union[str, int]=None):
+
+    def e(self, value: Union[str, int] = None):
         """
         Get a reference to an electrical port.
 
@@ -190,8 +219,7 @@ class Model:
                 raise ValueError("Port indexer must be a name (str) or index (int).")
         else:
             return self.next_unconnected_eport()
-            
-    
+
     def rename_oports(self, names: List[str]) -> Model:
         """
         Rename all optical ports.
@@ -212,34 +240,36 @@ class Model:
         elif len(names) == len(self.onames):
             (port.rename(name) for port, name in zip(self._oports, names))
         else:
-            raise ValueError(f"Number of renamed ports must be equal to number of current ports ({len(names)}!={len(self.onames)})")
-        
-    def next_unconnected_oport(self) -> OPort:
+            raise ValueError(
+                f"Number of renamed ports must be equal to number of current ports ({len(names)}!={len(self.onames)})"
+            )
+
+    def next_unconnected_oport(self) -> Optional[OPort]:
         """
         Gets the next unconnected optical port, or None if all connected.
 
         Returns
         -------
         OPort
-            The next unconnected port.
+            The next unconnected port, or None if all connected.
         """
         for o in self._oports:
             if not o.connected:
                 return o
-            
-    def next_unconnected_eport(self) -> EPort:
+
+    def next_unconnected_eport(self) -> Optional[EPort]:
         """
         Gets the next unconnected electronic port, or None if all connected.
 
         Returns
         -------
         EPort
-            The next unconnected port.
+            The next unconnected port, or None if all connected.
         """
         for e in self._eports:
             if not e.connected:
                 return e
-            
+
     def is_connected(self) -> bool:
         """
         Determines if this component is connected to any others.
@@ -257,6 +287,7 @@ class Model:
 
 
 if __name__ == "__main__":
+
     class Coupler(Model):
         onames = ["o1", "o2", "o3", "o4"]
 
@@ -266,7 +297,6 @@ if __name__ == "__main__":
         def s_params(self, wl):
             print(f"cache miss ({self.k})")
             return wl * 1j * self.k
-
 
     class Waveguide(Model):
         ocount = 2
@@ -279,7 +309,6 @@ if __name__ == "__main__":
             print(f"cache miss ({self.a})")
             return 1j * self.a
 
-
     class Heater(Model):
         jit = False
 
@@ -288,7 +317,6 @@ if __name__ == "__main__":
 
         def s_params(self, wl):
             pass
-
 
     # m = Model()
     c1 = Coupler(0.5)
