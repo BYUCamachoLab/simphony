@@ -78,8 +78,13 @@ def mzi_factory(wg_length=50):
 
     cir = Circuit()
     cir.connect(gc_in.o(1), y_split)
+    
+    # this
     cir.connect(y_split, wg_short)
     cir.connect(y_split, wg_long)
+    # or
+    cir.multiconnect(y_split, [wg_short, wg_long])
+
     cir.connect(wg_short, y_combine.o(1))
     cir.connect(wg_long, y_combine.o(2))
     cir.connect(y_combine, gc_out.o(1))
@@ -92,5 +97,7 @@ def mzi_factory(wg_length=50):
 freq = np.linspace(1.5, 1.6, 2000)
 sim = Simulation(cir, freq, context={})
 sim = IdealSimulation
+sim = MonteCarloSimulation
+sim = LayoutAwareSimulation
 sim = SamplingSimulation
 sim = TimeDomainSimulation
