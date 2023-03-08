@@ -89,9 +89,9 @@ class Circuit:
         """
         Connect two ports together and add to the internal netlist.
 
-        If a Model is passed, the next available optical port is inferred.
-        If no optical ports are available, the next available electronic port
-        is inferred. The type of ``port1`` is used to determine the type of
+        If a Model is passed, the next available optical port is inferred. If
+        no optical ports are available, the next available electronic port is
+        inferred. The type of ``port1`` is used to determine the type of
         ``port2`` if an explicit port is not given.
 
         Parameters
@@ -104,8 +104,24 @@ class Circuit:
         Raises
         ------
         ValueError
-            If the ports are of the wrong type or are incompatible (i.e. 
+            If the ports are of the wrong type or are incompatible (i.e.
             optical to electronic connection).
+
+        Examples
+        --------
+        You can connect two ports, models, or a model to a list of ports.
+
+        We can connect two ports. The type of port1 is used to determine the
+        type of port2. And, since port2 is a Model, the next available port is
+        inferred.
+
+        >>> cir.connect(gc_in.o(1), y_split)
+
+        We can connect a model to a port. The next available port of the model
+        is used to connect to each consecutive port in the list. OPorts are
+        resolved first, then EPorts.
+            
+        >>> cir.connect(y_split, [wg_short, wg_long])
         """
         def o2x(self, port1: OPort, port2: Union[Model, OPort]):
             """Connect an optical port to a second port (type-inferred)."""
@@ -132,10 +148,11 @@ class Circuit:
             e2x(self, port1, port2)
 
         if issubclass(type(port1), Model):
-            if p1:=port1.next_unconnected_oport():
-                o2x(self, p1, port2)
-            elif p1:=port1.next_unconnected_eport():
-                e2x(self, p1, port2)
+            for p2 in list(port2):
+                if p1:=port1.next_unconnected_oport():
+                    o2x(self, p1, p2)
+                elif p1:=port1.next_unconnected_eport():
+                    e2x(self, p1, p2)
             else:
                 raise ValueError(f"Ports must be optical, electronic, or a Model (got '{type(port1)}')")
 
