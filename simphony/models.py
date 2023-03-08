@@ -181,7 +181,7 @@ class Model:
             The port name or index to get (default None). If not provided, next
             unconnected port is returned.
         """
-        if value:
+        if value is not None:
             if isinstance(value, str):
                 for p in self._oports:
                     if p.name == value:
@@ -203,7 +203,7 @@ class Model:
             The port name or index to get (default None). If not provided, next
             unconnected port is returned.
         """
-        if value:
+        if value is not None:
             if isinstance(value, str):
                 for p in self._eports:
                     if p.name == value:
@@ -231,8 +231,8 @@ class Model:
         c.rename_oports(["in", "through", "add", "drop"])
         """
         if len(self._oports) == 0:
-            self._oports = set(OPort(name, self) for name in names)
-        elif len(names) == len(self.onames):
+            self._oports = list(OPort(name, self) for name in names)
+        elif len(names) == len(self._ports):
             (port.rename(name) for port, name in zip(self._oports, names))
         else:
             raise ValueError(
@@ -255,8 +255,8 @@ class Model:
         c.rename_oports(["gnd", "bias"])
         """
         if len(self._eports) == 0:
-            self._eports = set(EPort(name, self) for name in names)
-        elif len(names) == len(self.enames):
+            self._eports = list(EPort(name, self) for name in names)
+        elif len(names) == len(self._eports):
             (port.rename(name) for port, name in zip(self._eports, names))
         else:
             raise ValueError(
