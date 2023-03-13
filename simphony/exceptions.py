@@ -12,7 +12,7 @@ class SimphonyError(Exception):
 
 class ModelValidationError(SimphonyError):
     """
-    Error raised when a simulation model is improperly defined.
+    Error raised when a component model is improperly defined.
     """
     pass
 

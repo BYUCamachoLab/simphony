@@ -26,7 +26,7 @@ class Port:
     Port base class containing name and reference to Model instance.
     """
 
-    def __init__(self, name: str, instance: Model = None) -> None:
+    def __init__(self, name: str, instance: Union[Model, "Circuit"] = None) -> None:
         self.name = name
         self.instance = instance
         self._connections = set()  # a list of all other ports the port is connected to
@@ -132,18 +132,21 @@ class Model:
         d1 = deepcopy(self.__dict__)
         d2 = deepcopy(other.__dict__)
         for key in self._ignore_keys:
-            d1.pop(key), d2.pop(key)
+            d1.pop(key, None), d2.pop(key, None)
         return d1 == d2
 
     def __hash__(self):
         """Hashes the instance dictionary to calculate the hash."""
-        s = frozenset(
-            [
-                (k, v)
-                for k, v in vars(self).items()
-                if (not k.startswith("_") and (k not in self._ignore_keys))
-            ]
-        )
+        try:
+            s = frozenset(
+                [
+                    (k, v)
+                    for k, v in vars(self).items()
+                    if (not k.startswith("_") and (k not in self._ignore_keys))
+                ]
+            )
+        except TypeError:
+            raise ModelValidationError("Model is not hashable.")
         return hash(s)
 
     def __copy__(self):
@@ -163,14 +166,17 @@ class Model:
         return result
 
     def __repr__(self) -> str:
-        """Code representation of the circuit."""
+        """Code representation of the model."""
         return f'<{self.__class__.__name__} at {hex(id(self))} (o: [{", ".join(["+"+o.name if o.connected else o.name for o in self._oports])}], e: [{", ".join(["+"+e.name if e.connected else e.name for e in self._eports]) or None}])>'
+
+    def __iter__(self):
+        yield self
 
     @lru_cache
     def _s(self, wl):
         # https://docs.python.org/3/faq/programming.html#how-do-i-cache-method-calls
         return self.s_params(wl)
-    
+
     def s_params(self, wl):
         """
         Function to be implemented by subclasses to return scattering parameters.
@@ -255,7 +261,7 @@ class Model:
             raise ValueError(
                 f"Number of renamed ports must be equal to number of current ports ({len(names)}!={len(self.onames)})"
             )
-        
+
     def rename_eports(self, names: List[str]) -> Model:
         """
         Rename all electrical ports.
