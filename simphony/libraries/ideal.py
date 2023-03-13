@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Tuple, Union
 
 try:
     import jax
@@ -43,7 +43,7 @@ class Coupler(Model):
         Coupling coefficient (0 <= coupling <= 1). Defaults to 0.5.
     phi : float
         Phase shift between the two output ports (in radians). Defaults to pi/2.
-    loss : float or list of floats
+    loss : float or Tuple of floats
         Loss of the component in dB (0 <= loss) assumed uniform loss across 
         ports. If a list of 4 floats is given, the loss associated with each 
         port is set individually.
@@ -54,22 +54,22 @@ class Coupler(Model):
         self,
         coupling: float = 0.5,
         phi: float = jnp.pi / 2,
-        loss: Union[float, List[float]] = 0.0,
+        loss: Union[float, Tuple[float]] = 0.0,
     ):
         self.coupling = coupling
         self.phi = phi
         self.loss = loss
-        try:
-            self.T0, self.T1, self.T2, self.T3 = 10 ** (loss / 10)
-        except:
-            self.T0 = self.T1 = self.T2 = self.T3 = 10 ** (loss / 10) ** (1 / 4)
-        self.t = jnp.sqrt(1 - self.coupling)
-        self.r = jnp.sqrt(self.coupling)
-        self.rp = jnp.conj(self.r)
+        
 
     def s_params(self, wl):
-        t, r, rp = self.t, self.r, self.rp
-        T0, T1, T2, T3 = self.T0, self.T1, self.T2, self.T3
+        try:
+            T0, T1, T2, T3 = 10 ** (self.loss / 10)
+        except:
+            T0 = T1 = T2 = T3 = 10 ** (self.loss / 10) ** (1 / 4)
+        t = jnp.sqrt(1 - self.coupling)
+        r = jnp.sqrt(self.coupling)
+        rp = jnp.conj(r)
+
         # fmt: off
         smatrix = jnp.array(
             [
@@ -146,9 +146,17 @@ class Waveguide(Model):
                 R & T
             \end{bmatrix}
     """
+
     ocount = 2
 
-    def __init__(self, length, wl0=1.55, neff=None, ng=None, loss=None):
+    def __init__(
+        self,
+        length: float,
+        wl0: float = 1.55,
+        neff: float = None,
+        ng: float = None,
+        loss: float = None,
+    ):
         self.length = length
         self.wl0 = wl0
         self.neff = neff
@@ -171,16 +179,31 @@ class Waveguide(Model):
         return jnp.stack([s11, s12, s21, s22], axis=1).reshape(-1, 2, 2)
 
 
-class Heater(Model):
-    def __init__(self, onames=["o0", "o1"]):
+class PhaseShifter(Model):
+    def __init__(self, onames=["o0", "o1"], phase=0, loss=0):
         self.onames = onames
+        self.phase = phase
+        self.loss = loss
 
     def s_params(self, wl):
-        # Fake value
-        pass
+        s11 = s22 = jnp.array([0] * len(wl))
+        s21 = 10**(self.loss/20) * jnp.exp(1j * self.phase)
+        s12 = jnp.conj(s21)
+        return jnp.stack([s11, s12, s21, s22], axis=1).reshape(-1, 2, 2)
 
 
 if __name__ == "__main__":
-    # Create a coupler
-    coupler = Waveguide(length=10)
-    print(coupler.s_params(jnp.array([1.545, 1.555])))
+    from simphony.circuit import Circuit
+
+    c1 = Coupler()
+    c2 = Coupler()
+    wg1 = Waveguide(length=100)
+    wg2 = Waveguide(length=10)
+
+    circuit = Circuit()
+    circuit.connect(c1, [wg1, wg2])
+    circuit.connect(c2, wg1)
+    circuit.connect(c2, wg2)
+    print(circuit)
+
+
