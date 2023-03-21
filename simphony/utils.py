@@ -133,6 +133,90 @@ def mul_polar(c1, c2):
 
     return (r1 * r2, phi1 + phi2)
 
+def mat_mul_polar(array1: jnp.array, array2: jnp.array) -> jnp.array:
+    """Multiplies two polar matrixes together
+    
+    Parameters
+    ----------
+    array1 : ndarray
+    array2 : ndarray
+    
+    the arrays can be one of the following possiblities:
+    #f x n x n x m1 x m2 x 2
+    #f x n x n x m1 x m2 x 1
+    #f x n x n x m1 x 2 
+    #f x n x n x m1 x 1    
+    #f x n x n x m2 x 2 
+    #f x n x n x m2 x 1
+    f x n x n x 2
+    f x n x n
+    f is the frequency dimension
+    n is the number of ports
+    m1 is the number of TE modes
+    m2 is the number of TM modes 
+    The last number of dimensions is 2 if polar and 1 if rectangular.
+    Complex rectangular data is of the form a + bj
+    Complex polar data is of the form [r, theta]   
+    """
+    # array1 and 2 should be identical in dimensions
+    if jnp.shape(array1) != jnp.shape(array2):
+        raise RuntimeError("Arrays must be the same shape to matrix multiply them")    
+    
+       
+    #polar: multiply magnitudes, add angles, or convert to rectangular and call this function
+    if jnp.shape(array1)[-1] is 2:
+        real1 = array1[..., 0]
+        imag1 = array1[..., 1]    
+        real2 = array2[..., 0]
+        imag2 = array2[..., 1]
+        rect1 = rect(real1, imag1)
+        rect2 = rect(real2, imag2)
+        # return real1*real2+imag1+imag2
+        return mat_mul_polar(rect1, rect2)
+
+    #rectangular: simply multiply them
+    return array1*array2
+
+def mat_add_polar(array1: jnp.array, array2: jnp.array) -> jnp.array:
+    """Adds two polar matrixes together
+    
+    Parameters
+    ----------
+    array1 : ndarray
+    array2 : ndarray
+    
+    the arrays can be one of the following possiblities:
+    f x n x n x m1 x m2 x 2
+    f x n x n x m1 x m2 x 1
+    f x n x n x m1 x 2 
+    f x n x n x m1 x 1    
+    f x n x n x m2 x 2 
+    f x n x n x m2 x 1
+    f is the frequency dimension
+    n is the number of ports
+    m1 is the number of TE modes
+    m2 is the number of TM modes 
+    The last number of dimensions is 2 if polar and 1 if rectangular.
+    Complex rectangular data is of the form a + bj
+    Complex polar data is of the form [r, theta]   
+    """
+    # array1 and 2 should be identical in dimensions
+    if jnp.shape(array1) != jnp.shape(array2):
+        raise RuntimeError("Arrays must be the same shape to matrix multiply them")
+    
+    #polar: convert to rectangular, then return this function 
+    if jnp.shape(array1)[-1] is 2:
+        real1 = array1[..., 0]
+        imag1 = array1[..., 1]    
+        real2 = array2[..., 0]
+        imag2 = array2[..., 1]
+        rect1 = rect(real1, imag1)
+        rect2 = rect(real2, imag2)
+        return mat_add_polar(rect1, rect2)
+    
+    #rectangular: simply add them
+    return array1+array2
+
 
 def str2float(num):
     """Converts a number represented as a string to a float. Can include
