@@ -8,6 +8,8 @@ from collections import defaultdict
 from itertools import count
 
 from simphony.models import Model, Port, OPort, EPort
+from simphony.connect import connect_s, innerconnect_s
+from simphony.exceptions import ModelValidationError
 
 
 class Circuit:
@@ -39,14 +41,15 @@ class Circuit:
 
     def __init__(self, name: str = None) -> None:
         self.name = name or "circuit"
-        self._oports: List[OPort] = []  # optical ports
-        self._eports: List[EPort] = []  # electrical ports
-        self._exposed_oports: List[OPort] = []  # exposed optical ports
-        self._exposed_eports: List[EPort] = []  # exposed electrical ports
+        self._internal_oports: List[OPort] = []  # internal optical ports
+        self._internal_eports: List[EPort] = []  # internal electrical ports
+        self._oports: List[OPort] = []  # exposed optical ports
+        self._eports: List[EPort] = []  # exposed electrical ports
         self._onodes: List[Tuple[OPort, OPort]] = []  # optical connections
         self._enodes: List[Set[EPort]] = []  # electrical connections
         self._next_oidx = count()  # netid iterator
         self._next_eidx = count()  # netid iterator
+        self.exposed = False
 
     @property
     def components(self) -> List[Union[Model, Circuit]]:
@@ -69,19 +72,11 @@ class Circuit:
     ) -> None:
         """Update the internal list of ports in the circuit."""
         if model1 not in self.components:
-            if isinstance(model1, Circuit):
-                self._oports.extend(model1._exposed_oports)
-                self._eports.extend(model1._exposed_eports)
-            else:
-                self._oports.extend(model1._oports)
-                self._eports.extend(model1._eports)
+            self._internal_oports.extend(model1._oports)
+            self._internal_eports.extend(model1._eports)
         if model2 not in self.components:
-            if isinstance(model2, Circuit):
-                self._oports.extend(model2._exposed_oports)
-                self._eports.extend(model2._exposed_eports)
-            else:
-                self._oports.extend(model2._oports)
-                self._eports.extend(model2._eports)
+            self._internal_oports.extend(model2._oports)
+            self._internal_eports.extend(model2._eports)
 
     def _connect_o(self, port1: OPort, port2: OPort) -> None:
         """Connect two ports in the internal netlist and update the connections
@@ -123,9 +118,9 @@ class Circuit:
 
         Parameters
         ----------
-        port1 : Model or Port
+        port1 : Circuit, Model or Port
             The first port to be connected.
-        port2 : Model or Port
+        port2 : Circuit, Model or Port
             The second port to connect to.
 
         Raises
@@ -203,7 +198,7 @@ class Circuit:
             return
 
         raise ValueError(
-            f"Ports must be optical (OPort), electronic (EPort), or a Model (got '{type(port1)}' and '{type(port2)}')"
+            f"Ports must be optical (OPort), electronic (EPort), or a Model/Circuit (got '{type(port1)}' and '{type(port2)}')"
         )
 
     def expose(
@@ -225,8 +220,8 @@ class Circuit:
         """
         new_ports = []
         if ports is None:
-            ports = [port for port in self._oports if not port.connected]
-            ports += [port for port in self._eports if not port.connected]
+            ports = [port for port in self._internal_oports if not port.connected]
+            ports += [port for port in self._internal_eports if not port.connected]
 
         if isinstance(ports, Port):
             ports = [ports]
@@ -246,26 +241,70 @@ class Circuit:
 
         new_oports = [port for port in new_ports if isinstance(port, OPort)]
         new_eports = [port for port in new_ports if isinstance(port, EPort)]
-        self._exposed_oports = new_oports
-        self._exposed_eports = new_eports
+        self._oports = new_oports
+        self._eports = new_eports
+        self.exposed = True
 
     def next_unconnected_oport(self) -> Optional[OPort]:
         """Return the next unconnected optical port."""
-        for port in self._exposed_oports:
+        for port in self._oports:
             if not port.connected:
                 return port
         return None
 
     def next_unconnected_eport(self) -> Optional[EPort]:
         """Return the next unconnected electronic port."""
-        for port in self._exposed_eports:
+        for port in self._eports:
             if not port.connected:
                 return port
         return None
     
     def __repr__(self) -> str:
         """Code representation of the circuit."""
-        return f'<{self.__class__.__name__} at {hex(id(self))} (o: [{", ".join(["+"+o.name if o.connected else o.name for o in self._exposed_oports])}], e: [{", ".join(["+"+e.name if e.connected else e.name for e in self._exposed_eports]) or None}])>'
+        return f'<{self.__class__.__name__} at {hex(id(self))} (o: [{", ".join(["+"+o.name if o.connected else o.name for o in self._oports])}], e: [{", ".join(["+"+e.name if e.connected else e.name for e in self._eports]) or None}])>'
     
     def __iter__(self):
         yield self
+
+    def s_params(self, wl):
+        """Compute the scattering parameters for the circuit. Using the sub-network growth method."""
+        if len(self._onodes) == 0:
+            raise ModelValidationError("No devices in circuit.")
+        if not self.exposed:
+            self.expose()
+
+        class STemp:
+            def __init__(self, s, oports):
+                self.s = s
+                self._oports = oports
+            def s_params(self, wl):
+                return self.s
+
+        # Iterate through all connections and update the s-parameters
+        for cnx in self._onodes:
+            port1, port2 = cnx
+            if port1.instance == port2.instance:
+                model = STemp(
+                    innerconnect_s(
+                        port1.instance.s_params(wl),
+                        port1.instance._oports.index(port1),
+                        port2.instance._oports.index(port2)
+                    ), 
+                    port1.instance._oports
+                )
+            else:
+                model = STemp(
+                    connect_s(
+                        port1.instance.s_params(wl),
+                        port1.instance._oports.index(port1),
+                        port2.instance.s_params(wl),
+                        port2.instance._oports.index(port2)
+                    ),
+                    port1.instance._oports + port2.instance._oports
+                )
+            model._oports.remove(port1, port2)
+            port1._update_instance(model)
+            port2._update_instance(model)
+
+        return model.s
+
