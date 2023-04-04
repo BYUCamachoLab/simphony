@@ -51,7 +51,7 @@ except ImportError:
     from simphony.utils import jax
     JAX_AVAILABLE = False
 
-from simphony.tools import add_polar, mul_polar
+from simphony.utils import add_polar, mul_polar
 
 
 # Functions operating on s-parameter matrices
