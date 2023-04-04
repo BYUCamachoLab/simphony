@@ -142,8 +142,8 @@ class Waveguide(Model):
 
     .. math::
         M = \begin{bmatrix}
-                T & R \\
-                R & T
+                R & T \\
+                T & R
             \end{bmatrix}
     """
 
@@ -205,5 +205,4 @@ if __name__ == "__main__":
     circuit.connect(c2, wg1)
     circuit.connect(c2, wg2)
     print(circuit)
-
-
+    
