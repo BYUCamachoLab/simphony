@@ -164,7 +164,7 @@ def mat_mul_polar(array1: jnp.array, array2: jnp.array) -> jnp.array:
     
        
     #polar: multiply magnitudes, add angles, or convert to rectangular and call this function
-    if jnp.shape(array1)[-1] is 2:
+    if jnp.shape(array1)[-1] == 2:
         real1 = array1[..., 0]
         imag1 = array1[..., 1]    
         real2 = array2[..., 0]
@@ -205,7 +205,7 @@ def mat_add_polar(array1: jnp.array, array2: jnp.array) -> jnp.array:
         raise RuntimeError("Arrays must be the same shape to matrix multiply them")
     
     #polar: convert to rectangular, then return this function 
-    if jnp.shape(array1)[-1] is 2:
+    if jnp.shape(array1)[-1] == 2:
         real1 = array1[..., 0]
         imag1 = array1[..., 1]    
         real2 = array2[..., 0]
