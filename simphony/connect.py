@@ -136,6 +136,37 @@ def create_block_diagonal(A, B):
 
     return C
 
+def vector_interconnect_s(S, k, l): 
+    ''' 
+    'Vectorization' of a matrix manipulation formula. Calculates 
+    new matrix based on S and indices k and l. This function is 
+    obtained from: Filipsson, Gunnar. "A new general computer 
+    algorithm for S-matrix calculation of interconnected multiports." 
+    1981 11th European Microwave Conference. IEEE, 1981. Parameters 
+    ---------- S : numpy 2-d array The matrix that will be updated 
+    k : int The index of the first connected port l : int The index 
+    of the second connected port Returns ------- numpy 2-d array The 
+    new updated S-matrix 
+    Credit to __ for the single frequency implementation of this algorithm
+    ''' 
+    skl = S[:, k, l] 
+    slk = S[:, l, k] 
+    skk = S[:, k, k] 
+    sll = S[:, l, l] 
+    Vl = S[:, :, l] # column vector 
+    Vk = S[:, :, k] # column vector 
+    Wk = S[:, k, :] # row vector 
+    Wl = S[:, l, :] # row vector 
+    a = 1 / (1 - skl - slk + skl * slk - skk * sll) 
+    A = (1 - slk) * jnp.outer(Vl, jnp.transpose(Wk)) 
+    B = skk *jnp.outer(Vl, jnp.transpose(Wl)) 
+    C = (1 - skl) * jnp.outer(Vk, jnp.transpose(Wl)) 
+    D = sll * jnp.outer(Vk, jnp.transpose(Wk)) 
+    U = a * (A + B + C + D) # update matrix 
+    Snew = S + U
+    
+    return Snew
+
 
 def innerconnect_s(S, k, l):
     """
