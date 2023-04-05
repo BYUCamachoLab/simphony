@@ -45,10 +45,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 try:
     import jax
     import jax.numpy as jnp
+
     JAX_AVAILABLE = True
 except ImportError:
     import numpy as jnp
     from simphony.utils import jax
+
     JAX_AVAILABLE = False
 
 from simphony.utils import add_polar, mul_polar
@@ -74,7 +76,7 @@ def connect_s(A, k, B, l):
             S-parameter matrix of `B`, shape is fxnxn(x2)
     l : int
             port index on `B`
-    
+
     Returns
     -------
     C : np.ndarray
@@ -106,7 +108,7 @@ def create_block_diagonal(A, B):
     """
     Merges an fxnxn(x2) matrix with an fxmxm(x2) matrix to form a fx(n+m)x(n+m)(x2)
     block diagonal matrix.
-    
+
     Parameters
     ----------
     A
@@ -132,39 +134,53 @@ def create_block_diagonal(A, B):
     else:
         C[:, :nA, :nA] = A.copy()
         C[:, nA:, nA:] = B.copy()
-    #C[:, nA:, nA:] = B.copy() numpy code
+    # C[:, nA:, nA:] = B.copy() numpy code
 
     return C
 
-def vector_interconnect_s(S, k, l): 
-    ''' 
-    'Vectorization' of a matrix manipulation formula. Calculates 
-    new matrix based on S and indices k and l. This function is 
-    obtained from: Filipsson, Gunnar. "A new general computer 
-    algorithm for S-matrix calculation of interconnected multiports." 
-    1981 11th European Microwave Conference. IEEE, 1981. Parameters 
-    ---------- S : numpy 2-d array The matrix that will be updated 
-    k : int The index of the first connected port l : int The index 
-    of the second connected port Returns ------- numpy 2-d array The 
-    new updated S-matrix 
-    Credit to __ for the single frequency implementation of this algorithm
-    ''' 
-    skl = S[:, k, l] 
-    slk = S[:, l, k] 
-    skk = S[:, k, k] 
-    sll = S[:, l, l] 
-    Vl = S[:, :, l] # column vector 
-    Vk = S[:, :, k] # column vector 
-    Wk = S[:, k, :] # row vector 
-    Wl = S[:, l, :] # row vector 
-    a = 1 / (1 - skl - slk + skl * slk - skk * sll) 
-    A = (1 - slk) * jnp.outer(Vl, jnp.transpose(Wk)) 
-    B = skk *jnp.outer(Vl, jnp.transpose(Wl)) 
-    C = (1 - skl) * jnp.outer(Vk, jnp.transpose(Wl)) 
-    D = sll * jnp.outer(Vk, jnp.transpose(Wk)) 
-    U = a * (A + B + C + D) # update matrix 
+
+def vector_interconnect_s(S, k, l):
+    """
+    'Vectorization' of a matrix manipulation formula. Calculates new matrix
+    based on S and indices k and l.
+
+    This function is obtained from: Filipsson, Gunnar. "A new general computer
+    algorithm for S-matrix calculation of interconnected multiports." 1981 11th
+    European Microwave Conference. IEEE, 1981.
+
+    Parameters
+    ----------
+    S : numpy 2-d array
+        The matrix that will be updated
+    k : int
+        The index of the first connected port
+    l : int
+        The index of the second connected port
+
+    Returns
+    -------
+    numpy 2-d array
+        The new updated S-matrix
+
+    Credit to Hossam Shoman for the single frequency implementation of this
+    algorithm
+    """
+    skl = S[:, k, l]
+    slk = S[:, l, k]
+    skk = S[:, k, k]
+    sll = S[:, l, l]
+    Vl = S[:, :, l]  # column vector
+    Vk = S[:, :, k]  # column vector
+    Wk = S[:, k, :]  # row vector
+    Wl = S[:, l, :]  # row vector
+    a = 1 / (1 - skl - slk + skl * slk - skk * sll)
+    A = (1 - slk) * jnp.outer(Vl, jnp.transpose(Wk))
+    B = skk * jnp.outer(Vl, jnp.transpose(Wl))
+    C = (1 - skl) * jnp.outer(Vk, jnp.transpose(Wl))
+    D = sll * jnp.outer(Vk, jnp.transpose(Wk))
+    U = a * (A + B + C + D)  # update matrix
     Snew = S + U
-    
+
     return Snew
 
 
@@ -172,10 +188,9 @@ def innerconnect_s(S, k, l):
     """
     connect two ports of a single n-port network's s-matrix.
 
-    Specifically, connect port `k`  to port `l` on `S`. This results in
-    a (n-2)-port network.  This     function operates on, and returns
-    s-matrices. The function :func:`innerconnect` operates on
-    :class:`Network` types.
+    Specifically, connect port `k`  to port `l` on `S`. This results in a
+    (n-2)-port network.  This     function operates on, and returns s-matrices.
+    The function :func:`innerconnect` operates on :class:`Network` types.
 
     Parameters
     -----------
@@ -194,13 +209,19 @@ def innerconnect_s(S, k, l):
     Notes
     -----
     The algorithm used to calculate the resultant network is called a
-    'sub-network growth',  can be found in [#]_. The original paper
-    describing the  algorithm is given in [#]_.
+    'sub-network growth',  can be found in [#]_. The original paper describing
+    the  algorithm is given in [#]_.
 
     References
     ----------
-    .. [#] Compton, R.C.; , "Perspectives in microwave circuit analysis," Circuits and Systems, 1989., Proceedings of the 32nd Midwest Symposium on , vol., no., pp.716-718 vol.2, 14-16 Aug 1989. URL: http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=101955&isnumber=3167
-    .. [#] Filipsson, Gunnar; , "A New General Computer Algorithm for S-Matrix Calculation of Interconnected Multiports," Microwave Conference, 1981. 11th European , vol., no., pp.700-704, 7-11 Sept. 1981. URL: http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=4131699&isnumber=4131585
+    .. [#] Compton, R.C.; , "Perspectives in microwave circuit analysis,"
+        Circuits and Systems, 1989., Proceedings of the 32nd Midwest Symposium
+        on , vol., no., pp.716-718 vol.2, 14-16 Aug 1989. URL:
+        http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=101955&isnumber=3167
+    .. [#] Filipsson, Gunnar; , "A New General Computer Algorithm for S-Matrix
+        Calculation of Interconnected Multiports," Microwave Conference, 1981.
+        11th European , vol., no., pp.700-704, 7-11 Sept. 1981. URL:
+        http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=4131699&isnumber=4131585
     """
     if k > S.shape[1] - 1 or l > S.shape[1] - 1:
         raise (ValueError("port indices are out of range"))
@@ -231,17 +252,19 @@ def innerconnect_s(S, k, l):
                 term7 = add_polar(add_polar(add_polar(term1, term2), term3), term4)
                 term8 = add_polar(term5, (-term6[0], term6[1]))
                 term9 = (term7[0] / term8[0], term7[1] - term8[1])
-                
+
                 if JAX_AVAILABLE:
                     C = C.at[h, i, j].set(add_polar(S[h, i, j], term9))
                 else:
                     C[h, i, j] = add_polar(S[h, i, j], term9)
 
     # remove ports that were `connected`
-    
-    C = jnp.delete(C, jnp.array((k, l)), 1) # Jax does not allow tuples to be implicitly casted to arrays as this can hide performance issues. explicitly cast to ndarray
+
+    C = jnp.delete(
+        C, jnp.array((k, l)), 1
+    )  # Jax does not allow tuples to be implicitly casted to arrays as this can hide performance issues. explicitly cast to ndarray
     C = jnp.delete(C, jnp.array((k, l)), 2)
-    #C = jnp.delete(C, (k, l), 1) numpy implementation
-    #C = jnp.delete(C, (k, l), 2)
+    # C = jnp.delete(C, (k, l), 1) numpy implementation
+    # C = jnp.delete(C, (k, l), 2)
 
     return C
