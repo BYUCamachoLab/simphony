@@ -2,34 +2,39 @@ import pytest
 
 
 from simphony.models import Model
+from simphony.exceptions import ModelValidationError
 
 
 class TestModelDeclaration:
     def test_missing_sparams(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(ModelValidationError):
             class BadModel(Model):
                 pass
+            BadModel()
 
     def test_missing_onames(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(ModelValidationError):
             class BadModel(Model):
                 def s_params(self, wl):
                     pass
+            BadModel()
 
     def test_missing_ocount(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(ModelValidationError):
             class BadModel(Model):
                 def s_params(self, wl):
                     pass
+            BadModel()
 
     def test_ocount_and_onames(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(ModelValidationError):
             class BadModel(Model):
                 ocount = 2
                 onames = ["o0", "o1"]
 
                 def s_params(self, wl):
                     pass
+            BadModel()
 
 
 class TestModelContextAccessibility:

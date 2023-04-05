@@ -120,7 +120,7 @@ class Model:
             self.rename_eports(self.enames)
         if hasattr(self, "ecount"):
             self.rename_eports([f"o{i}" for i in range(self.ecount)])
-        if not hasattr(self, "_oports"):
+        if self._oports == []:
             raise ModelValidationError(
                 "Model does not define 'onames' or 'ocount', which is required."
             )
@@ -272,7 +272,7 @@ class Model:
         """
         if len(self._oports) == 0:
             self._oports = list(OPort(name, self) for name in names)
-        elif len(names) == len(self._ports):
+        elif len(names) == len(self._oports):
             (port.rename(name) for port, name in zip(self._oports, names))
         else:
             raise ValueError(
