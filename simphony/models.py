@@ -275,7 +275,7 @@ class Model:
         elif len(names) == len(self._oports):
             (port.rename(name) for port, name in zip(self._oports, names))
         else:
-            raise ValueError(
+            raise ModelValidationError(
                 f"Number of renamed ports must be equal to number of current ports ({len(names)}!={len(self.onames)})"
             )
 
