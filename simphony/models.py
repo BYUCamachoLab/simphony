@@ -187,7 +187,10 @@ class Model:
         return f'<{self.__class__.__name__} at {hex(id(self))} (o: [{", ".join(["+"+o.name if o.connected else o.name for o in self._oports])}], e: [{", ".join(["+"+e.name if e.connected else e.name for e in self._eports]) or None}])>'
 
     def __iter__(self):
-        yield self
+        """Iterate over unconnected ports."""
+        for port in self._oports + self._eports:
+            if not port.connected:
+                yield port
 
     @lru_cache
     def _s(self, wl):
