@@ -90,9 +90,9 @@ import numpy as np
 import scipy.interpolate as interp
 from scipy.constants import c as SPEED_OF_LIGHT
 
-from simphony import Model
+from simphony.models import Model
 from simphony.libraries.siepic import parser
-from simphony.tools import interpolate, str2float
+from simphony.utils import interpolate, str2float
 
 
 def closest(sorted_list, value):

@@ -120,7 +120,7 @@ class Model:
             self.rename_eports(self.enames)
         if hasattr(self, "ecount"):
             self.rename_eports([f"o{i}" for i in range(self.ecount)])
-        if not hasattr(self, "_oports"):
+        if self._oports == []:
             raise ModelValidationError(
                 "Model does not define 'onames' or 'ocount', which is required."
             )
@@ -187,7 +187,10 @@ class Model:
         return f'<{self.__class__.__name__} at {hex(id(self))} (o: [{", ".join(["+"+o.name if o.connected else o.name for o in self._oports])}], e: [{", ".join(["+"+e.name if e.connected else e.name for e in self._eports]) or None}])>'
 
     def __iter__(self):
-        yield self
+        """Iterate over unconnected ports."""
+        for port in self._oports + self._eports:
+            if not port.connected:
+                yield port
 
     @lru_cache
     def _s(self, wl):
@@ -272,10 +275,10 @@ class Model:
         """
         if len(self._oports) == 0:
             self._oports = list(OPort(name, self) for name in names)
-        elif len(names) == len(self._ports):
+        elif len(names) == len(self._oports):
             (port.rename(name) for port, name in zip(self._oports, names))
         else:
-            raise ValueError(
+            raise ModelValidationError(
                 f"Number of renamed ports must be equal to number of current ports ({len(names)}!={len(self.onames)})"
             )
 

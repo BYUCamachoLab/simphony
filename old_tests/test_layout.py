@@ -3,16 +3,21 @@
 # (see simphony/__init__.py for details)
 
 import jax.numpy as np
-#import numpy as np
+
+# import numpy as np
 import pytest
 import os
 
 from simphony.libraries import siepic
-from simphony.tools import wl2freq
+from simphony.utils import wl2freq
 
-mzi_s_parameters = np.load(os.path.join(os.path.dirname(__file__), "mzi_sparameters.npy"))
+mzi_s_parameters = np.load(
+    os.path.join(os.path.dirname(__file__), "mzi_sparameters.npy")
+)
 
-mzi_monte_carlo_s_parameters = np.load(os.path.join(os.path.dirname(__file__), "mzi_monte_carlo_sparameters.npy"))
+mzi_monte_carlo_s_parameters = np.load(
+    os.path.join(os.path.dirname(__file__), "mzi_monte_carlo_sparameters.npy")
+)
 
 
 @pytest.fixture(scope="module")

@@ -11,14 +11,14 @@ def test_wl2freq():
     # Test converting a few random wavelengths to frequencies
     assert wl2freq(1) == 299792458
     assert wl2freq(2) == 149896229
-    assert wl2freq(3) == 99997486.66666667
+    assert wl2freq(3) == 99930819.33333333
 
 
 def test_freq2wl():
     # Test converting a few random frequencies to wavelengths
-    assert freq2wl(1) == 299792458
-    assert freq2wl(2) == 149896229
-    assert freq2wl(3) == 99997486.66666667
+    assert freq2wl(4) == 74948114.5
+    assert freq2wl(5) == 59958491.6
+    assert freq2wl(6) == 49965409.666666664
 
 
 def test_wlum2freq():
