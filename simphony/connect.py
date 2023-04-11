@@ -99,7 +99,9 @@ def connect_s(A, k, B, l):
     nA = A.shape[1]  # num ports on A
 
     # call innerconnect_s() on composit matrix C
-    return innerconnect_s(C, k, nA + l)
+    ##
+    # print("block diagonal", C)
+    return vector_innerconnect_s(C, k, nA + l)
 
 
 def create_block_diagonal(A, B):
@@ -113,30 +115,45 @@ def create_block_diagonal(A, B):
     B
     """
     nf = A.shape[0]  # num frequency points
+    # print("freqs", nf)
     nA = A.shape[1]  # num ports on A
+    # print("num ports A", nA)
     nB = B.shape[1]  # num ports on B
+    # print("num ports B", nB)
     nC = nA + nB  # num ports on C
 
+    # print(A)
+    # print("shape of A", A.shape)
+    # print("last dim", A.ndim)
     # if complex values are in rectangular, convert to polar
-    if A.ndim == 3:
-        A = jnp.stack((jnp.abs(A), jnp.angle(A)), axis=-1)
+    # TODO: we hope to handle arrays of many dimensions, not just 3, handle polar and rectangular
+    # if A.ndim == 3:
+    #     A = jnp.stack((jnp.abs(A), jnp.angle(A)), axis=-1)
 
-    if B.ndim == 3:
-        B = jnp.stack((jnp.abs(B), jnp.angle(B)), axis=-1)
+    # if B.ndim == 3:
+    #     B = jnp.stack((jnp.abs(B), jnp.angle(B)), axis=-1)
 
+    # print("A after convert to polar", A)
+    
+    # print("B after convert to polar", B)
+    
     # create composite matrix, appending each sub-matrix diagonally
-    C = jnp.zeros((nf, nC, nC, 2))
+    # print("copy of A", A.copy())
+    C = jnp.zeros((nf, nC, nC), dtype = "complex_")
     if JAX_AVAILABLE is True:
         C = C.at[:, :nA, :nA].set(A.copy())
+        # print("C after copy A", C)
         C = C.at[:, nA:, nA:].set(B.copy())
+        # print("C after copy B", C)
     else:
         C[:, :nA, :nA] = A.copy()
         C[:, nA:, nA:] = B.copy()
     #C[:, nA:, nA:] = B.copy() numpy code
 
+    
     return C
 
-def vector_interconnect_s(S, k, l): 
+def vector_innerconnect_s(S, k, l): 
     ''' 
     'Vectorization' of a matrix manipulation formula. Calculates 
     new matrix based on S and indices k and l. This function is 
@@ -150,20 +167,36 @@ def vector_interconnect_s(S, k, l):
     Credit to __ for the single frequency implementation of this algorithm
     ''' 
     skl = S[:, k, l] 
+    # print("skl", skl)
     slk = S[:, l, k] 
+    # print("slk", slk)
     skk = S[:, k, k] 
+    # print("skk", skk)
     sll = S[:, l, l] 
+    # print("sll", sll)
     Vl = S[:, :, l] # column vector 
+    print("Vl", Vl)
     Vk = S[:, :, k] # column vector 
+    # print("Vk", Vk)
     Wk = S[:, k, :] # row vector 
+    print("Wk", Wk)
     Wl = S[:, l, :] # row vector 
+    # print("Wl", Wl)
+
     a = 1 / (1 - skl - slk + skl * slk - skk * sll) 
+    # print("shapes", Vl.shape(), Wk.shape())
     A = (1 - slk) * jnp.outer(Vl, jnp.transpose(Wk)) 
     B = skk *jnp.outer(Vl, jnp.transpose(Wl)) 
     C = (1 - skl) * jnp.outer(Vk, jnp.transpose(Wl)) 
     D = sll * jnp.outer(Vk, jnp.transpose(Wk)) 
     U = a * (A + B + C + D) # update matrix 
     Snew = S + U
+    
+    #TODO: is there a jittable way to do this?
+    Snew = jnp.delete(Snew, jnp.array((k, l)), 1)
+    Snew = jnp.delete(Snew, jnp.array((k, l)), 2)
+    
+    # C = jnp.delete(C, jnp.array((k, l)), 1)
     
     return Snew
 
