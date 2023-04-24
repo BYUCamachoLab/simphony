@@ -9,7 +9,7 @@ class Context(SimpleNamespace):
     def __setitem__(self, key, value):
         setattr(self, key, value)
 
-    def export(self):
+    def export(self) -> dict:
         """
         Simulations should export the context to a dictionary before
         modifying it. This allows the context to be restored to its
