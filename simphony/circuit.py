@@ -187,7 +187,7 @@ class Circuit:
                         )
             return
         if isinstance(port1, Circuit):
-            for p2 in enumerate(list(port2)):
+            for i, p2 in enumerate(list(port2)):
                 if p1 := port1.next_unconnected_oport():
                     o2x(self, p1, p2)
                 elif p1 := port1.next_unconnected_eport():
