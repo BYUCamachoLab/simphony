@@ -12,7 +12,7 @@ from simphony.connect import connect_s, vector_innerconnect_s
 from simphony.exceptions import ModelValidationError
 
 
-class Circuit:
+class Circuit(Model):
     """
     A circuit tracks connections between ports.
 
@@ -187,18 +187,6 @@ class Circuit:
                             f"Model argument in connect() must have at least one unconnected port."
                         )
             return
-        if isinstance(port1, Circuit):
-            for i, p2 in enumerate(list(port2)):
-                if p1 := port1.next_unconnected_oport():
-                    o2x(self, p1, p2)
-                elif p1 := port1.next_unconnected_eport():
-                    e2x(self, p1, p2)
-                else:
-                    if i == 0:
-                        raise ValueError(
-                            f"Circuit argument in connect() must have at least one unconnected port."
-                        )
-            return
 
         raise ValueError(
             f"Ports must be optical (OPort), electronic (EPort), or a Model/Circuit (got '{type(port1)}' and '{type(port2)}')"
@@ -244,25 +232,7 @@ class Circuit:
         self._oports = new_oports
         self._eports = new_eports
         self.exposed = True
-
-    def next_unconnected_oport(self) -> Optional[OPort]:
-        """Return the next unconnected optical port."""
-        for port in self._oports:
-            if not port.connected:
-                return port
-        return None
-
-    def next_unconnected_eport(self) -> Optional[EPort]:
-        """Return the next unconnected electronic port."""
-        for port in self._eports:
-            if not port.connected:
-                return port
-        return None
-
-    def __repr__(self) -> str:
-        """Code representation of the circuit."""
-        return f'<{self.__class__.__name__} at {hex(id(self))} (o: [{", ".join(["+"+o.name if o.connected else o.name for o in self._oports])}], e: [{", ".join(["+"+e.name if e.connected else e.name for e in self._eports]) or None}])>'
-
+    
     def __iter__(self):
         yield self
 
