@@ -29,6 +29,7 @@ class Port:
     def __init__(self, name: str, instance: Union[Model, "Circuit"] = None) -> None:
         self.name = name
         self.instance = instance
+        self._original_instatance = instance
         self._connections = set()  # a list of all other ports the port is connected to
 
     def __repr__(self) -> str:
@@ -71,7 +72,6 @@ class OPort(Port):
         for port in self.instance._oports:
             port.instance = instance
         
-
 
 class EPort(Port):
     """Electrical ports can be connected to many other ports."""
