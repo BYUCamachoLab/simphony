@@ -200,7 +200,6 @@ def vector_innerconnect_s(S, k, l):
     # print("Wl", Wl)
 
     a = 1 / (1 - skl - slk + skl * slk - skk * sll)
-    print(slk)
     A = (1 - slk) * jnp.outer(Vl, jnp.transpose(Wk))
     B = skk * jnp.outer(Vl, jnp.transpose(Wl))
     C = (1 - skl) * jnp.outer(Vk, jnp.transpose(Wl))
