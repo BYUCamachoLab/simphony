@@ -192,7 +192,7 @@ def vector_innerconnect_s(S, k, l):
     sll = S[:, l, l]
     # print("sll", sll)
     Vl = S[:, :, l]  # column vector
-    print("Vl", Vl)
+    # print("Vl", Vl)
     Vk = S[:, :, k]  # column vector
     # print("Vk", Vk)
     Wk = S[:, k, :].T  # row vector

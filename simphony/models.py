@@ -7,17 +7,6 @@ from copy import deepcopy
 from typing import List, Optional, Union
 from functools import lru_cache, wraps
 
-try:
-    import jax
-    import jax.numpy as jnp
-
-    JAX_AVAILABLE = True
-except ImportError:
-    import numpy as jnp
-    from simphony.utils import jax
-
-    JAX_AVAILABLE = False
-
 from simphony.exceptions import ModelValidationError
 
 
@@ -29,6 +18,7 @@ class Port:
     def __init__(self, name: str, instance: Union[Model, "Circuit"] = None) -> None:
         self.name = name
         self.instance = instance
+        self._original_instatance = instance
         self._connections = set()  # a list of all other ports the port is connected to
 
     def __repr__(self) -> str:
@@ -71,7 +61,6 @@ class OPort(Port):
         for port in self.instance._oports:
             port.instance = instance
         
-
 
 class EPort(Port):
     """Electrical ports can be connected to many other ports."""
@@ -121,9 +110,15 @@ class Model:
         if hasattr(self, "ecount"):
             self.rename_eports([f"o{i}" for i in range(self.ecount)])
         if self._oports == []:
-            raise ModelValidationError(
-                "Model does not define 'onames' or 'ocount', which is required."
-            )
+            if hasattr(self, "exposed"):
+                if self.exposed:
+                    raise ModelValidationError(
+                        "Model does not define any optical ports, but 'exposed' is True."
+                    )
+            else:
+                raise ModelValidationError(
+                    "Model does not define 'onames' or 'ocount', which is required."
+                )
 
     def __init_subclass__(cls) -> None:
         """

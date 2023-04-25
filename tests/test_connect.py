@@ -1,5 +1,4 @@
 import pytest
-from cmath import exp
 from simphony.connect import connect_s, vector_innerconnect_s, innerconnect_s
 
 try:
@@ -38,10 +37,10 @@ ArrMultipleFreq_A = jnp.array(
       [1, 0]],
      [[0, .5],
       [.5, 0]],
-     [[0, .5*exp(1j*np.pi/2)],
-      [.5*exp(1j*jnp.pi/2), 0]],
-     [[0, .5*exp(1j*1.17*jnp.pi/2)],
-      [.5*exp(1j*1.17*jnp.pi/2), 0]]
+     [[0, .5*jnp.exp(1j*jnp.pi/2)],
+      [.5*jnp.exp(1j*jnp.pi/2), 0]],
+     [[0, .5*jnp.exp(1j*1.17*jnp.pi/2)],
+      [.5*jnp.exp(1j*1.17*jnp.pi/2), 0]]
      ])
 
 ArrMultipleFreq_B = jnp.array(
@@ -49,10 +48,10 @@ ArrMultipleFreq_B = jnp.array(
      [1, 0]],
      [[0, .5],
       [.5, 0]],
-     [[0, .5*exp(1j*jnp.pi/2)],
-      [.5*exp(1j*jnp.pi/2), 0]],
-     [[0, .5*exp(1j*1.17*jnp.pi/2)],
-      [.5*exp(1j*1.17*jnp.pi/2), 0]]
+     [[0, .5*jnp.exp(1j*jnp.pi/2)],
+      [.5*jnp.exp(1j*jnp.pi/2), 0]],
+     [[0, .5*jnp.exp(1j*1.17*jnp.pi/2)],
+      [.5*jnp.exp(1j*1.17*jnp.pi/2), 0]]
      ])
 
 ArrMultipleFreq_ALong = jnp.array(
@@ -60,10 +59,10 @@ ArrMultipleFreq_ALong = jnp.array(
       [1, 0]],
      [[0, .5],
       [.5, 0]],
-     [[0, .5*exp(1j*np.pi/2)],
-      [.5*exp(1j*jnp.pi/2), 0]],
-     [[0, .5*exp(1j*1.17*jnp.pi/2)],
-      [.5*exp(1j*1.17*jnp.pi/2), 0]]
+     [[0, .5*jnp.exp(1j*jnp.pi/2)],
+      [.5*jnp.exp(1j*jnp.pi/2), 0]],
+     [[0, .5*jnp.exp(1j*1.17*jnp.pi/2)],
+      [.5*jnp.exp(1j*1.17*jnp.pi/2), 0]]
      ])
 
 ArrMultipleFreq_BLong = jnp.array(
@@ -71,10 +70,10 @@ ArrMultipleFreq_BLong = jnp.array(
      [1, 0]],
      [[0, .5],
       [.5, 0]],
-     [[0, .5*exp(1j*jnp.pi/2)],
-      [.5*exp(1j*jnp.pi/2), 0]],
-     [[0, .5*exp(1j*1.17*jnp.pi/2)],
-      [.5*exp(1j*1.17*jnp.pi/2), 0]]
+     [[0, .5*jnp.exp(1j*jnp.pi/2)],
+      [.5*jnp.exp(1j*jnp.pi/2), 0]],
+     [[0, .5*jnp.exp(1j*1.17*jnp.pi/2)],
+      [.5*jnp.exp(1j*1.17*jnp.pi/2), 0]]
      ])
 
 SingleFreq = jnp.array(
