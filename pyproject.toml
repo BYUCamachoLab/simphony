@@ -12,7 +12,7 @@ keywords = ["photonics", "simulation", "circuits", "science", "engineering", "ph
 # listed.
 authors = [
   {name = "Sequoia Ploeg", email = "sequoiap4@gmail.com" },
-  {name = "AustP", email = "austp17@gmail.com"}, 
+  {name = "Hyrum Gunther"},
   {name = "BYU CamachoLab", email = "camacho@byu.edu"}
 ]
 
@@ -20,7 +20,7 @@ authors = [
 # maintains the project, and a valid email address corresponding to the name
 # listed.
 maintainers = [
-  {name = "Sequoia Ploeg", email = "sequoiap4@gmail.com" },
+  {name = "Sequoia Ploeg", email = "sequoiap4@gmail.com"},
   {name = "Christian Carver", email = "cjcarv3r@byu.edu"},
   {name = "BYU CamachoLab", email = "camacho@byu.edu"}
 ]
