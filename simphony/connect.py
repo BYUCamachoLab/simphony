@@ -101,8 +101,6 @@ def connect_s(A, k, B, l):
     nA = A.shape[1]  # num ports on A
 
     # call innerconnect_s() on composit matrix C
-    ##
-    # print("block diagonal", C)
     return vector_innerconnect_s(C, k, nA + l)
 
 
@@ -117,16 +115,10 @@ def create_block_diagonal(A, B):
     B
     """
     nf = A.shape[0]  # num frequency points
-    # print("freqs", nf)
     nA = A.shape[1]  # num ports on A
-    # print("num ports A", nA)
     nB = B.shape[1]  # num ports on B
-    # print("num ports B", nB)
     nC = nA + nB  # num ports on C
 
-    # print(A)
-    # print("shape of A", A.shape)
-    # print("last dim", A.ndim)
     # if complex values are in rectangular, convert to polar
     # TODO: we hope to handle arrays of many dimensions, not just 3, handle polar and rectangular
     # if A.ndim == 3:
@@ -140,13 +132,10 @@ def create_block_diagonal(A, B):
     # print("B after convert to polar", B)
     
     # create composite matrix, appending each sub-matrix diagonally
-    # print("copy of A", A.copy())
     C = jnp.zeros((nf, nC, nC), dtype = "complex_")
     if JAX_AVAILABLE is True:
         C = C.at[:, :nA, :nA].set(A.copy())
-        # print("C after copy A", C)
         C = C.at[:, nA:, nA:].set(B.copy())
-        # print("C after copy B", C)
     else:
         C[:, :nA, :nA] = A.copy()
         C[:, nA:, nA:] = B.copy()
@@ -184,26 +173,16 @@ def vector_innerconnect_s(S, k, l):
     """
 
     skl = S[:, k, l]
-    # print("skl", skl)
     slk = S[:, l, k]
-    # print("slk", slk)
     skk = S[:, k, k]
-    # print("skk", skk)
     sll = S[:, l, l]
-    # print("sll", sll)
     Vl = S[:, :, l]  # column vector
-    # print("Vl", Vl)
     Vk = S[:, :, k]  # column vector
-    # print("Vk", Vk)
     Wk = S[:, k, :].T  # row vector
-    print("Wk", Wk)
     Wl = S[:, l, :].T  # row vector
-    # print("Wl", Wl)
 
     a = 1 / (1 - skl - slk + skl * slk - skk * sll)
-    #print("transposed", jnp.transpose(Wk, axes = (1,0)))
     A = (1 - slk) * jnp.einsum('ij,ik->ijk',Vl,Wk)
-    print("shape of A",jnp.shape(A))
     B = skk * jnp.einsum('ij,ik->ijk',Vl,Wl)
     C = (1 - skl) * jnp.einsum('ij,ik->ijk',Vk, Wl)
     D = sll * jnp.einsum('ij,ik->ijk',Vk, Wk)
