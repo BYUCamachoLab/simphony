@@ -3,43 +3,7 @@
 # (see simphony/__init__.py for details)
 
 """
-simphony.connect
-================
-
-Code for s-parameter matrix cascading uses the scikit-rf implementation. Per
-their software license, the copyright notice is reproduced below:
-
-
-Copyright (c) 2010, Alexander Arsenovic
-All rights reserved.
-
-Copyright (c) 2017, scikit-rf Developers
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification,
-are permitted provided that the following conditions are met:
-
-* Redistributions of source code must retain the above copyright notice, this
-  list of conditions and the following disclaimer.
-
-* Redistributions in binary form must reproduce the above copyright notice, this
-  list of conditions and the following disclaimer in the documentation and/or
-  other materials provided with the distribution.
-
-* Neither the name of the scikit-rf nor the names of its
-  contributors may be used to endorse or promote products derived from
-  this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+Subnetwork growth algorithms for simphony.
 """
 
 try:
@@ -128,11 +92,11 @@ def create_block_diagonal(A, B):
     #     B = jnp.stack((jnp.abs(B), jnp.angle(B)), axis=-1)
 
     # print("A after convert to polar", A)
-    
+
     # print("B after convert to polar", B)
-    
+
     # create composite matrix, appending each sub-matrix diagonally
-    C = jnp.zeros((nf, nC, nC), dtype = "complex_")
+    C = jnp.zeros((nf, nC, nC), dtype="complex_")
     if JAX_AVAILABLE is True:
         C = C.at[:, :nA, :nA].set(A.copy())
         C = C.at[:, nA:, nA:].set(B.copy())
@@ -141,7 +105,6 @@ def create_block_diagonal(A, B):
         C[:, nA:, nA:] = B.copy()
     # C[:, nA:, nA:] = B.copy() numpy code
 
-    
     return C
 
 
@@ -149,10 +112,6 @@ def vector_innerconnect_s(S, k, l):
     """
     'Vectorization' of a matrix manipulation formula. Calculates new matrix
     based on S and indices k and l.
-
-    This function is obtained from: Filipsson, Gunnar. "A new general computer
-    algorithm for S-matrix calculation of interconnected multiports." 1981 11th
-    European Microwave Conference. IEEE, 1981.
 
     Parameters
     ----------
@@ -168,8 +127,11 @@ def vector_innerconnect_s(S, k, l):
     numpy 2-d array
         The new updated S-matrix
 
-    Credit to Hossam Shoman for the single frequency implementation of this
-    algorithm
+    Notes
+    -----
+    The equation implemented here is based on: Filipsson, Gunnar. "A new
+    general computer algorithm for S-matrix calculation of interconnected
+    multiports." 1981 11th European Microwave Conference. IEEE, 1981.
     """
 
     skl = S[:, k, l]
@@ -182,17 +144,17 @@ def vector_innerconnect_s(S, k, l):
     Wl = S[:, l, :].T  # row vector
 
     a = 1 / (1 - skl - slk + skl * slk - skk * sll)
-    A = (1 - slk) * jnp.einsum('ij,ik->ijk',Vl,Wk)
-    B = skk * jnp.einsum('ij,ik->ijk',Vl,Wl)
-    C = (1 - skl) * jnp.einsum('ij,ik->ijk',Vk, Wl)
-    D = sll * jnp.einsum('ij,ik->ijk',Vk, Wk)
+    A = (1 - slk) * jnp.einsum("ij,ik->ijk", Vl, Wk)
+    B = skk * jnp.einsum("ij,ik->ijk", Vl, Wl)
+    C = (1 - skl) * jnp.einsum("ij,ik->ijk", Vk, Wl)
+    D = sll * jnp.einsum("ij,ik->ijk", Vk, Wk)
     U = a * (A + B + C + D)  # update matrix
     Snew = S + U
-    
-    #TODO: is there a jittable way to do this part? what if we just leave the internally connected ports? and make them unavailable? OR just never make the block diagonal, make the smaller version from the get-go. Might also make it faster...
+
+    # TODO: is there a jittable way to do this part? what if we just leave the internally connected ports? and make them unavailable? OR just never make the block diagonal, make the smaller version from the get-go. Might also make it faster...
     Snew = jnp.delete(Snew, jnp.array((k, l)), 1)
     Snew = jnp.delete(Snew, jnp.array((k, l)), 2)
-    
+
     # C = jnp.delete(C, jnp.array((k, l)), 1)
 
     return Snew
