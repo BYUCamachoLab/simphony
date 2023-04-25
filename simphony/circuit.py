@@ -8,7 +8,7 @@ from collections import defaultdict
 from itertools import count
 
 from simphony.models import Model, Port, OPort, EPort
-from simphony.connect import connect_s, innerconnect_s
+from simphony.connect import connect_s, vector_innerconnect_s
 from simphony.exceptions import ModelValidationError
 
 
@@ -49,6 +49,7 @@ class Circuit(Model):
         self._enodes: List[Set[EPort]] = []  # electrical connections
         self._next_oidx = count()  # netid iterator
         self._next_eidx = count()  # netid iterator
+        self._sparams = None
         self.exposed = False
         self.sim_devices: List["SimDevice"] = []
 
@@ -64,8 +65,8 @@ class Circuit(Model):
         list
             List of all model instances in the circuit.
         """
-        oinstances = [port.instance for pair in self._onodes for port in pair]
-        einstances = [wire.instance for node in self._enodes for wire in node]
+        oinstances = [port._original_instatance for pair in self._onodes for port in pair]
+        einstances = [wire._original_instatance for node in self._enodes for wire in node]
         return list(set(oinstances + einstances))
 
     def _update_ports(
@@ -152,6 +153,7 @@ class Circuit(Model):
             if isinstance(port2, OPort):
                 self._connect_o(port1, port2)
             elif issubclass(type(port2), Model) or isinstance(port2, Circuit):
+            elif issubclass(type(port2), Model) or isinstance(port2, Circuit):
                 self._connect_o(port1, port2.next_unconnected_oport())
             else:
                 raise ValueError(
@@ -162,6 +164,7 @@ class Circuit(Model):
             """Connect an electronic port to a second port (type-inferred)."""
             if isinstance(port2, EPort):
                 self._connect_e(port1, port2)
+            elif issubclass(type(port2), Model) or isinstance(port2, Circuit):
             elif issubclass(type(port2), Model) or isinstance(port2, Circuit):
                 self._connect_e(port1, port2.next_unconnected_eport())
             else:
@@ -224,11 +227,8 @@ class Circuit(Model):
             raise ValueError(
                 f"Number of ports ({len(ports)}) does not match number of names ({len(names)})"
             )
-        for old_port, name in zip(ports, names):
-            if isinstance(old_port, OPort):
-                new_ports.append(OPort(name, self))
-            elif isinstance(old_port, EPort):
-                new_ports.append(EPort(name, self))
+
+        new_ports = ports # don't make new ports
 
         new_oports = [port for port in new_ports if isinstance(port, OPort)]
         new_eports = [port for port in new_ports if isinstance(port, EPort)]
@@ -241,6 +241,8 @@ class Circuit(Model):
 
     def s_params(self, wl):
         """Compute the scattering parameters for the circuit. Using the sub-network growth method."""
+        if self._sparams is not None:
+            return self._sparams
         if len(self._onodes) == 0:
             raise ModelValidationError("No devices in circuit.")
         if not self.exposed:
@@ -258,26 +260,26 @@ class Circuit(Model):
         for cnx in self._onodes:
             port1, port2 = cnx
             if port1.instance == port2.instance:
+                sparams = port1.instance.s_params(wl)
+                p1_idx = port1.instance._oports.index(port1)
+                p2_idx = port2.instance._oports.index(port2)
                 model = STemp(
-                    innerconnect_s(
-                        port1.instance.s_params(wl),
-                        port1.instance._oports.index(port1),
-                        port2.instance._oports.index(port2),
-                    ),
+                    vector_innerconnect_s(sparams, p1_idx, p2_idx),
                     port1.instance._oports,
                 )
             else:
+                p1_sparams = port1.instance.s_params(wl)
+                p1_idx = port1.instance._oports.index(port1)
+                p2_sparams = port2.instance.s_params(wl)
+                p2_idx = port2.instance._oports.index(port2)
                 model = STemp(
-                    connect_s(
-                        port1.instance.s_params(wl),
-                        port1.instance._oports.index(port1),
-                        port2.instance.s_params(wl),
-                        port2.instance._oports.index(port2),
-                    ),
+                    connect_s(p1_sparams, p1_idx, p2_sparams, p2_idx),
                     port1.instance._oports + port2.instance._oports,
                 )
-            model._oports.remove(port1, port2)
+            model._oports.remove(port1)
+            model._oports.remove(port2)
             port1._update_instance(model)
             port2._update_instance(model)
 
-        return model.s
+        self._sparams = model.s
+        return self._sparams

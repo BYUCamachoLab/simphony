@@ -191,16 +191,16 @@ def vector_innerconnect_s(S, k, l):
     sll = S[:, l, l]
     # print("sll", sll)
     Vl = S[:, :, l]  # column vector
-    print("Vl", Vl)
+    # print("Vl", Vl)
     Vk = S[:, :, k]  # column vector
     # print("Vk", Vk)
     Wk = S[:, k, :]  # row vector
-    print("Wk", Wk)
+    # print("Wk", Wk)
     Wl = S[:, l, :]  # row vector
     # print("Wl", Wl)
 
     a = 1 / (1 - skl - slk + skl * slk - skk * sll)
-    # print("shapes", Vl.shape(), Wk.shape())
+    print(slk)
     A = (1 - slk) * jnp.outer(Vl, jnp.transpose(Wk))
     B = skk * jnp.outer(Vl, jnp.transpose(Wl))
     C = (1 - skl) * jnp.outer(Vk, jnp.transpose(Wl))
