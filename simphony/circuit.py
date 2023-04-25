@@ -50,6 +50,7 @@ class Circuit(Model):
         self._next_oidx = count()  # netid iterator
         self._next_eidx = count()  # netid iterator
         self.exposed = False
+        self.sim_devices: List["SimDevice"] = []
 
     @property
     def components(self) -> List[Union[Model, Circuit]]:
@@ -150,7 +151,7 @@ class Circuit(Model):
             """Connect an optical port to a second port (type-inferred)."""
             if isinstance(port2, OPort):
                 self._connect_o(port1, port2)
-            elif (issubclass(type(port2), Model) or isinstance(port2, Circuit)):
+            elif issubclass(type(port2), Model) or isinstance(port2, Circuit):
                 self._connect_o(port1, port2.next_unconnected_oport())
             else:
                 raise ValueError(
@@ -161,7 +162,7 @@ class Circuit(Model):
             """Connect an electronic port to a second port (type-inferred)."""
             if isinstance(port2, EPort):
                 self._connect_e(port1, port2)
-            elif (issubclass(type(port2), Model) or isinstance(port2, Circuit)):
+            elif issubclass(type(port2), Model) or isinstance(port2, Circuit):
                 self._connect_e(port1, port2.next_unconnected_eport())
             else:
                 raise ValueError(
@@ -181,7 +182,7 @@ class Circuit(Model):
                 elif p1 := port1.next_unconnected_eport():
                     e2x(self, p1, p2)
                 else:
-                    if i==0:
+                    if i == 0:
                         raise ValueError(
                             f"Model argument in connect() must have at least one unconnected port."
                         )
@@ -234,7 +235,7 @@ class Circuit(Model):
         self._oports = new_oports
         self._eports = new_eports
         self.exposed = True
-    
+
     def __iter__(self):
         yield self
 
@@ -249,6 +250,7 @@ class Circuit(Model):
             def __init__(self, s, oports):
                 self.s = s
                 self._oports = oports
+
             def s_params(self, wl):
                 return self.s
 
@@ -260,9 +262,9 @@ class Circuit(Model):
                     innerconnect_s(
                         port1.instance.s_params(wl),
                         port1.instance._oports.index(port1),
-                        port2.instance._oports.index(port2)
-                    ), 
-                    port1.instance._oports
+                        port2.instance._oports.index(port2),
+                    ),
+                    port1.instance._oports,
                 )
             else:
                 model = STemp(
@@ -270,13 +272,12 @@ class Circuit(Model):
                         port1.instance.s_params(wl),
                         port1.instance._oports.index(port1),
                         port2.instance.s_params(wl),
-                        port2.instance._oports.index(port2)
+                        port2.instance._oports.index(port2),
                     ),
-                    port1.instance._oports + port2.instance._oports
+                    port1.instance._oports + port2.instance._oports,
                 )
             model._oports.remove(port1, port2)
             port1._update_instance(model)
             port2._update_instance(model)
 
         return model.s
-
