@@ -153,7 +153,6 @@ class Circuit(Model):
             if isinstance(port2, OPort):
                 self._connect_o(port1, port2)
             elif issubclass(type(port2), Model) or isinstance(port2, Circuit):
-            elif issubclass(type(port2), Model) or isinstance(port2, Circuit):
                 self._connect_o(port1, port2.next_unconnected_oport())
             else:
                 raise ValueError(
@@ -164,7 +163,6 @@ class Circuit(Model):
             """Connect an electronic port to a second port (type-inferred)."""
             if isinstance(port2, EPort):
                 self._connect_e(port1, port2)
-            elif issubclass(type(port2), Model) or isinstance(port2, Circuit):
             elif issubclass(type(port2), Model) or isinstance(port2, Circuit):
                 self._connect_e(port1, port2.next_unconnected_eport())
             else:
