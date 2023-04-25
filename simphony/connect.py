@@ -182,6 +182,7 @@ def vector_innerconnect_s(S, k, l):
     Credit to Hossam Shoman for the single frequency implementation of this
     algorithm
     """
+
     skl = S[:, k, l]
     # print("skl", skl)
     slk = S[:, l, k]
@@ -194,20 +195,22 @@ def vector_innerconnect_s(S, k, l):
     # print("Vl", Vl)
     Vk = S[:, :, k]  # column vector
     # print("Vk", Vk)
-    Wk = S[:, k, :]  # row vector
-    # print("Wk", Wk)
-    Wl = S[:, l, :]  # row vector
+    Wk = S[:, k, :].T  # row vector
+    print("Wk", Wk)
+    Wl = S[:, l, :].T  # row vector
     # print("Wl", Wl)
 
     a = 1 / (1 - skl - slk + skl * slk - skk * sll)
-    A = (1 - slk) * jnp.outer(Vl, jnp.transpose(Wk))
-    B = skk * jnp.outer(Vl, jnp.transpose(Wl))
-    C = (1 - skl) * jnp.outer(Vk, jnp.transpose(Wl))
-    D = sll * jnp.outer(Vk, jnp.transpose(Wk))
+    #print("transposed", jnp.transpose(Wk, axes = (1,0)))
+    A = (1 - slk) * jnp.einsum('ij,ik->ijk',Vl,Wk)
+    print("shape of A",jnp.shape(A))
+    B = skk * jnp.einsum('ij,ik->ijk',Vl,Wl)
+    C = (1 - skl) * jnp.einsum('ij,ik->ijk',Vk, Wl)
+    D = sll * jnp.einsum('ij,ik->ijk',Vk, Wk)
     U = a * (A + B + C + D)  # update matrix
     Snew = S + U
     
-    #TODO: is there a jittable way to do this?
+    #TODO: is there a jittable way to do this part? what if we just leave the internally connected ports? and make them unavailable? OR just never make the block diagonal, make the smaller version from the get-go. Might also make it faster...
     Snew = jnp.delete(Snew, jnp.array((k, l)), 1)
     Snew = jnp.delete(Snew, jnp.array((k, l)), 2)
     

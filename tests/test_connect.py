@@ -22,6 +22,16 @@ ArrSingleFreq_B = jnp.array(
      [.707+.707j, 0]]
      ])
 
+ArrSingleFreq_polar_A = jnp.array(
+    [[[0, 1*exp(1j*jnp.pi/4)],
+      [1*exp(1j*jnp.pi/4), 0]]
+     ])
+
+ArrSingleFreq_polar_B = jnp.array(
+    [[[0, .707+.707j],
+     [.707+.707j, 0]]
+     ])
+
 ArrMultipleFreq_A = jnp.array(
     [[[0, 1],
       [1, 0]],
@@ -74,10 +84,10 @@ SingleFreq = jnp.array(
 class TestConnect:
     def test_single_freq(self):
         Smatrix = connect_s(ArrSingleFreq_A, 0, ArrSingleFreq_B, 0)
-        # print("single connected:", Smatrix)
+        print("single connected:", Smatrix)
         assert jnp.allclose(Smatrix,SingleFreq,atol = 1e-3, rtol = 1e-3)
         
     def test_multiple_freq(self):
         Smatrix = connect_s(ArrMultipleFreq_A, 0, ArrMultipleFreq_A, 0)
         print("multiple connected:", Smatrix)
-        assert Smatrix == SingleFreq
+        assert jnp.allclose(Smatrix,SingleFreq,atol=1e-3,rtol=1e-3)
