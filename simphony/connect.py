@@ -140,15 +140,15 @@ def vector_innerconnect_s(S, k, l):
     sll = S[:, l, l]
     Vl = S[:, :, l]  # column vector
     Vk = S[:, :, k]  # column vector
-    Wk = S[:, k, :].T  # row vector
-    Wl = S[:, l, :].T  # row vector
+    Wk = S[:, k, :]  # row vector
+    Wl = S[:, l, :]  # row vector
 
     a = 1 / (1 - skl - slk + skl * slk - skk * sll)
-    A = (1 - slk) * jnp.einsum("ij,ik->ijk", Vl, Wk)
-    B = skk * jnp.einsum("ij,ik->ijk", Vl, Wl)
-    C = (1 - skl) * jnp.einsum("ij,ik->ijk", Vk, Wl)
-    D = sll * jnp.einsum("ij,ik->ijk", Vk, Wk)
-    U = a * (A + B + C + D)  # update matrix
+    A = (1-slk)[:, None, None] * jnp.einsum("ij,ik->ijk", Vl, Wk)
+    B = skk[:, None, None] * jnp.einsum("ij,ik->ijk", Vl, Wl)
+    C = (1 - skl)[:, None, None] * jnp.einsum("ij,ik->ijk", Vk, Wl)
+    D = sll[:, None, None] * jnp.einsum("ij,ik->ijk", Vk, Wk)
+    U = a[:, None, None] * (A + B + C + D)  # update matrix
     Snew = S + U
 
     # TODO: is there a jittable way to do this part? what if we just leave the internally connected ports? and make them unavailable? OR just never make the block diagonal, make the smaller version from the get-go. Might also make it faster...
