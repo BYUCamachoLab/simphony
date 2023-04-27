@@ -23,8 +23,8 @@ ArrSingleFreq_B = jnp.array(
      ])
 
 ArrSingleFreq_polar_A = jnp.array(
-    [[[0, 1*exp(1j*jnp.pi/4)],
-      [1*exp(1j*jnp.pi/4), 0]]
+    [[[0, 1*jnp.exp(1j*jnp.pi/4)],
+      [1*jnp.exp(1j*jnp.pi/4), 0]]
      ])
 
 ArrSingleFreq_polar_B = jnp.array(
