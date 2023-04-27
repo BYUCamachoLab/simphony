@@ -127,11 +127,16 @@ def vector_innerconnect_s(S, k, l):
     numpy 2-d array
         The new updated S-matrix
 
-    Notes
-    -----
-    The equation implemented here is based on: Filipsson, Gunnar. "A new
-    general computer algorithm for S-matrix calculation of interconnected
-    multiports." 1981 11th European Microwave Conference. IEEE, 1981.
+    References
+    ----------
+    .. [#] Compton, R.C.; , "Perspectives in microwave circuit analysis,"
+        Circuits and Systems, 1989., Proceedings of the 32nd Midwest Symposium
+        on , vol., no., pp.716-718 vol.2, 14-16 Aug 1989. URL:
+        http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=101955&isnumber=3167
+    .. [#] Filipsson, Gunnar; , "A New General Computer Algorithm for S-Matrix
+        Calculation of Interconnected Multiports," Microwave Conference, 1981.
+        11th European , vol., no., pp.700-704, 7-11 Sept. 1981. URL:
+        http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=4131699&isnumber=4131585
     """
 
     skl = S[:, k, l, None, None]
