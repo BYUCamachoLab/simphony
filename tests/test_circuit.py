@@ -193,8 +193,6 @@ class TestCircuit:
         ]
         wls = jnp.array([1.55])
         field_in = jnp.array([1.0, 0, 0, 0]).T
-        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-        print(wls)
 
         c1_sparams = coupler.s_params(wls)
         c2_sparams = coupler2.s_params(wls)
