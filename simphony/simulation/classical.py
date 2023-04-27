@@ -23,11 +23,11 @@ class ClassicalResult(SimulationResult):
     """
     Classical simulation results
     """
-    s_params = None
-    input_source = None
-    output = None
-    detectors = None
-    wl = None
+    s_params: jnp.ndarray
+    input_source: jnp.ndarray
+    output: jnp.ndarray
+    detectors: dict
+    wl: jnp.ndarray
 
 
 class ClassicalSim(Simulation):
@@ -103,6 +103,7 @@ class ClassicalSim(Simulation):
             input_source=input_source,
             output=output,
             detectors=self.detector_dict,
+            wl=self.wl,
         )
 
         return result
