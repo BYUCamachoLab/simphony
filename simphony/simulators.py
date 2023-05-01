@@ -17,7 +17,7 @@ import jax.numpy as np
 #import numpy as np
 
 from simphony import Model
-from simphony.tools import freq2wl, wl2freq
+from simphony.utils import freq2wl, wl2freq
 
 
 class Simulator(Model):
