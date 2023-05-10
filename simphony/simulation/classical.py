@@ -18,11 +18,13 @@ from .simulation import Simulation, SimulationResult
 from .simdevices import Laser, Detector
 from simphony.circuit import Circuit
 
+
 @dataclass
 class ClassicalResult(SimulationResult):
     """
     Classical simulation results
     """
+
     s_params: jnp.ndarray
     input_source: jnp.ndarray
     output: jnp.ndarray
@@ -52,14 +54,14 @@ class ClassicalSim(Simulation):
         self.laser_dict = {}
         for laser in ckt.sim_devices:
             if isinstance(laser, Laser):
-                laser_idx = ckt._oports.index(laser.port)
+                laser_idx = ckt._oports.index(laser.ports[0])
                 self.laser_dict[laser] = laser_idx
 
         # find the index of all detector simdevices
         self.detector_dict = {}
         for detector in ckt.sim_devices:
             if isinstance(detector, Detector):
-                detector_idx = ckt._oports.index(detector.port)
+                detector_idx = ckt._oports.index(detector.ports[0])
                 self.detector_dict[detector] = detector_idx
 
     def run(self) -> ClassicalResult:
@@ -94,7 +96,7 @@ class ClassicalSim(Simulation):
                 )
 
         # Caclulate the output from all detectors
-        output = (S_reduced @ input_source[..., None])[..., 0]
+        output = (S_reduced @ input_source[:, :, None])[:, :, 0]
         # TODO: This could be optimized by only using the rows corresponding to
         # the detectors
 

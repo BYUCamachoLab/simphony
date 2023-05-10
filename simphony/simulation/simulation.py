@@ -24,8 +24,6 @@ class Simulation:
 
     def __init__(self, ckt: Circuit, wl: jnp.ndarray) -> None:
         self.ckt = ckt
-        if not isinstance(wl, jnp.ndarray):
-            raise TypeError("wl must be a an array")
         self.wl = wl
 
     def run(self):
