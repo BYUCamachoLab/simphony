@@ -65,7 +65,7 @@ class Coupler(Model):
         try:
             T0, T1, T2, T3 = 10 ** (self.loss / 10)
         except:
-            T0 = T1 = T2 = T3 = 10 ** (self.loss / 10) ** (1 / 4)
+            T0 = T1 = T2 = T3 = (10 ** (self.loss / 10))**(1/2)
         t = jnp.sqrt(1 - self.coupling)
         r = jnp.sqrt(self.coupling)
         rp = jnp.conj(r)
