@@ -44,9 +44,9 @@ class Coupler(Model):
     phi : float
         Phase shift between the two output ports (in radians). Defaults to pi/2.
     loss : float or Tuple of floats
-        Loss of the component in dB (0 <= loss) assumed uniform loss across 
-        ports. If a list of 4 floats is given, the loss associated with each 
-        port is set individually.
+        Total transmission of the component in dB (0 <= loss) assumed uniform
+        loss across ports. If a list of 4 floats is given, the loss associated
+        with each port is set individually.
     """
     onames = ["o0", "o1", "o2", "o3"]
 
