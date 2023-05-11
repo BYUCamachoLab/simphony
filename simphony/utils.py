@@ -133,40 +133,40 @@ def mul_polar(c1, c2):
 
     return (r1 * r2, phi1 + phi2)
 
+
 def mat_mul_polar(array1: jnp.array, array2: jnp.array) -> jnp.array:
     """Multiplies two polar matrixes together
-    
+
     Parameters
     ----------
     array1 : ndarray
     array2 : ndarray
-    
+
     the arrays can be one of the following possiblities:
     #f x n x n x m1 x m2 x 2
     #f x n x n x m1 x m2 x 1
-    #f x n x n x m1 x 2 
-    #f x n x n x m1 x 1    
-    #f x n x n x m2 x 2 
+    #f x n x n x m1 x 2
+    #f x n x n x m1 x 1
+    #f x n x n x m2 x 2
     #f x n x n x m2 x 1
     f x n x n x 2
     f x n x n
     f is the frequency dimension
     n is the number of ports
     m1 is the number of TE modes
-    m2 is the number of TM modes 
+    m2 is the number of TM modes
     The last number of dimensions is 2 if polar and 1 if rectangular.
     Complex rectangular data is of the form a + bj
-    Complex polar data is of the form [r, theta]   
+    Complex polar data is of the form [r, theta]
     """
     # array1 and 2 should be identical in dimensions
     if jnp.shape(array1) != jnp.shape(array2):
-        raise RuntimeError("Arrays must be the same shape to matrix multiply them")    
-    
-       
-    #polar: multiply magnitudes, add angles, or convert to rectangular and call this function
+        raise RuntimeError("Arrays must be the same shape to matrix multiply them")
+
+    # polar: multiply magnitudes, add angles, or convert to rectangular and call this function
     if jnp.shape(array1)[-1] == 2:
         real1 = array1[..., 0]
-        imag1 = array1[..., 1]    
+        imag1 = array1[..., 1]
         real2 = array2[..., 0]
         imag2 = array2[..., 1]
         rect1 = rect(real1, imag1)
@@ -174,48 +174,49 @@ def mat_mul_polar(array1: jnp.array, array2: jnp.array) -> jnp.array:
         # return real1*real2+imag1+imag2
         return mat_mul_polar(rect1, rect2)
 
-    #rectangular: simply multiply them
-    return array1*array2
+    # rectangular: simply multiply them
+    return array1 * array2
+
 
 def mat_add_polar(array1: jnp.array, array2: jnp.array) -> jnp.array:
     """Adds two polar matrixes together
-    
+
     Parameters
     ----------
     array1 : ndarray
     array2 : ndarray
-    
+
     the arrays can be one of the following possiblities:
     f x n x n x m1 x m2 x 2
     f x n x n x m1 x m2 x 1
-    f x n x n x m1 x 2 
-    f x n x n x m1 x 1    
-    f x n x n x m2 x 2 
+    f x n x n x m1 x 2
+    f x n x n x m1 x 1
+    f x n x n x m2 x 2
     f x n x n x m2 x 1
     f is the frequency dimension
     n is the number of ports
     m1 is the number of TE modes
-    m2 is the number of TM modes 
+    m2 is the number of TM modes
     The last number of dimensions is 2 if polar and 1 if rectangular.
     Complex rectangular data is of the form a + bj
-    Complex polar data is of the form [r, theta]   
+    Complex polar data is of the form [r, theta]
     """
     # array1 and 2 should be identical in dimensions
     if jnp.shape(array1) != jnp.shape(array2):
         raise RuntimeError("Arrays must be the same shape to matrix multiply them")
-    
-    #polar: convert to rectangular, then return this function 
+
+    # polar: convert to rectangular, then return this function
     if jnp.shape(array1)[-1] == 2:
         real1 = array1[..., 0]
-        imag1 = array1[..., 1]    
+        imag1 = array1[..., 1]
         real2 = array2[..., 0]
         imag2 = array2[..., 1]
         rect1 = rect(real1, imag1)
         rect2 = rect(real2, imag2)
         return mat_add_polar(rect1, rect2)
-    
-    #rectangular: simply add them
-    return array1+array2
+
+    # rectangular: simply add them
+    return array1 + array2
 
 
 def str2float(num):
@@ -346,3 +347,44 @@ def interpolate(resampled, sampled, s_parameters):
     """
     func = interp1d(sampled, s_parameters, kind="cubic", axis=0)
     return func(resampled)
+
+
+def xxpp_to_xpxp(xxpp):
+    """Converts a NxN matrix or N shaped vector in xxpp convention to xpxp convention.
+
+    Parameters
+    ----------
+    xxpp : jnp.array
+        A NxN matrix or array of size N in xxpp format.
+
+    Returns
+    -------
+    xpxp : jnp.array
+        A NxN matrix or array of size N in xpxp format.
+    """
+    n = jnp.shape(xxpp)[0]
+    ind = jnp.arange(n).reshape(2, -1).T.flatten()
+    if len(xxpp.shape) == 1:
+        return xxpp[ind]
+    return xxpp[ind][:, ind]
+
+
+def xpxp_to_xxpp(xpxp):
+    """Converts a NxN matrix or N shaped vector in xpxp convention to xxpp convention.
+
+    Parameters
+    ----------
+    xpxp : jnp.array
+        A NxN matrix or array of size N in xpxp format.
+
+    Returns
+    -------
+    xxpp : jnp.array
+        A NxN matrix or array of size N in xxpp format.
+    """
+
+    n = jnp.shape(xpxp)[0]
+    ind = jnp.arange(n).reshape(-1, 2).T.flatten()
+    if len(xpxp.shape) == 1:
+        return xpxp[ind]
+    return xpxp[:, ind][ind]
