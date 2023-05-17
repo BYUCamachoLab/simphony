@@ -72,15 +72,6 @@ class ClassicalSim(Simulation):
         # Get the S-matrix for the circuit
         S = self.ckt.s_params(self.wl)
 
-        # simplify matrix for just the rows corresponding to the detectors
-        # detector_slice = [
-        #     self.detector_dict[detector]
-        #     for detector in self.ckt.sim_devices
-        #     if isinstance(detector, Detector)
-        # ]
-        # S_reduced = S[:, detector_slice, :]
-        S_reduced = S
-
         # Get input array from all lasers
         input_source = jnp.zeros(
             (len(self.wl), len(self.ckt._oports)), dtype=jnp.complex128
@@ -95,8 +86,8 @@ class ClassicalSim(Simulation):
                     laser.power
                 )
 
-        # Caclulate the output from all detectors
-        output = (S_reduced @ input_source[:, :, None])[:, :, 0]
+        # Calculate the output from all detectors
+        output = (S @ input_source[:, :, None])[:, :, 0]
         # TODO: This could be optimized by only using the rows corresponding to
         # the detectors
 
