@@ -186,8 +186,8 @@ class PhaseShifter(Model):
         self.loss = loss
 
     def s_params(self, wl):
-        s11 = s22 = jnp.array([0] * len(wl))
-        s21 = 10**(self.loss/20) * jnp.exp(1j * self.phase)
+        s11 = s22 = jnp.array([0] * len(wl), dtype=jnp.complex64)
+        s21 = jnp.array([10**(self.loss/20) * jnp.exp(1j * self.phase)] * len(wl))
         s12 = jnp.conj(s21)
         return jnp.stack([s11, s12, s21, s22], axis=1).reshape(-1, 2, 2)
 
