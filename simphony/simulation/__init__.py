@@ -1,3 +1,7 @@
+"""
+imports relevant classes and functions from the simulation module
+"""
+
 from .simulation import (
     Simulation,
     SimulationResult,
@@ -7,17 +11,12 @@ from .simulation import (
     TimeDomainSim,
 )
 from .classical import ClassicalSim, ClassicalResult
-from .quantum import (
-    QuantumSim,
-    QuantumResult,
+from .quantum_states import (
     QuantumState,
     CoherentState,
     SqueezedState,
     TwoModeSqueezed,
     compose_qstate,
 )
-from .simdevices import (
-    SimDevice,
-    Laser,
-    Detector,
-)
+from .quantum import QuantumSim, QuantumResult
+from .simdevices import SimDevice, Laser, Detector
