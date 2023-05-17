@@ -22,10 +22,11 @@ class Laser(SimDevice):
     Laser source.
     """
 
-    def __init__(self, ckt, port, power=1, mod_function=None) -> None:
+    def __init__(self, ckt, port, power=1, phase=0, mod_function=None) -> None:
         super().__init__(ckt, [port])
         self.power = power
         self.mod_function = mod_function
+        self.phase = phase
 
 
 class Detector(SimDevice):

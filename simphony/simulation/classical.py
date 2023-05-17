@@ -89,7 +89,7 @@ class ClassicalSim(Simulation):
             if laser.mod_function is None:
                 input_source[:, laser_idx] = jnp.ones_like(self.wl) * jnp.sqrt(
                     laser.power
-                )
+                ) * jnp.exp(1j*laser.phase)
             else:
                 input_source[:, laser_idx] = laser.mod_function(self.wl) * jnp.sqrt(
                     laser.power
