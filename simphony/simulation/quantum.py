@@ -15,6 +15,9 @@ except ImportError:
 
     JAX_AVAILABLE = False
 
+from scipy.stats import multivariate_normal
+import matplotlib.pyplot as plt
+
 from .simulation import Simulation, SimulationResult
 from .quantum_states import QuantumState
 from simphony.circuit import Circuit
@@ -36,8 +39,25 @@ class QuantumResult(SimulationResult):
     n_ports: int
 
 
-def plot_quantum_result(result: QuantumResult, port: int = 0):
-    pass
+def plot_quantum_result(result: QuantumResult, modes: list = None):
+    # create a grid of plots, a single plot for each mode
+    if modes is None:
+        modes = range(result.n_ports)
+    n_modes = len(modes)
+    # make subplots into a square grid
+    n_rows = int(n_modes ** 0.5)
+    n_cols = int(n_modes ** 0.5)
+    if n_rows * n_cols < n_modes:
+        n_cols += 1
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(10, 10))
+    axs = axs.flatten()
+    # plot each mode
+    wl_ind = 0
+    means = result.means[wl_ind]
+    for i, mode in enumerate(modes):
+        pass
+
+    
 
 
 class QuantumSim(Simulation):
