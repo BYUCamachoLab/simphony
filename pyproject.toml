@@ -122,17 +122,7 @@ include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
 line_length = 88
-known_third_party = [
-  "SiPANN", 
-  "gdsfactory", 
-  "jax", 
-  "matplotlib", 
-  "numpy", 
-  "packaging", 
-  "parsimonious", 
-  "pytest", 
-  "scipy"
-]
+known_third_party = ["SiPANN", "gdsfactory", "jax", "matplotlib", "numpy", "packaging", "parsimonious", "pytest", "scipy"]
 known_first_party = ["simphony"]
 
 [build-system]
