@@ -54,7 +54,6 @@ Simphony, to view the results of our simulation.
 
     from simphony.libraries import siepic
     from simphony.simulators import MonteCarloSweepSimulator, SweepSimulator
-      
 We then create all the components identified earlier. These
 include the grating couplers, the Y-branches, and the
 waveguides (which can be defined at any arbitrary length,
@@ -161,7 +160,7 @@ different curves on our graph due to random variation.
 
     results = simulator.simulate(runs=10)
     for f, p in results:
-      plt.plot(f, p)
+        plt.plot(f, p)
 
 Finally, we can plot the first simulation again with black,
 to make sure it displays on top. We want this because the

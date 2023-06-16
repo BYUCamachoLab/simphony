@@ -67,6 +67,7 @@ following:
 .. code-block:: python
 
     from simphony.libraries import siepic
+
     component1 = siepic.Waveguide(length=500e-9)
     component2 = siepic.Waveguide(length=1500e-9)
 
@@ -108,7 +109,7 @@ connect the pins explicitly:
 
 .. code-block:: python
 
-    component1['pin2'].connect(component2['pin1'])
+    component1["pin2"].connect(component2["pin1"])
 
 By default, a model instantiates its pins with names 'pin1', 
 'pin2', etc. Here we specify 'pin2' of ``component1`` must
@@ -116,9 +117,8 @@ connect to 'pin1' of ``component2``. We can also rename pins
 for semantic clarity:
 
 .. code-block:: python
-    
-    component1.rename_pins('input', 'output')
-    component1['output'].connect(component2)
+    component1.rename_pins("input", "output")
+    component1["output"].connect(component2)
 
 Here, we do the same as the previous example, except that we
 rename the two pins of ``component1`` to 'input' and
@@ -148,8 +148,9 @@ created:
 .. code-block:: python
 
     from simphony.simulators import SweepSimulator
+
     simulation = SweepSimulator(1500e-9, 1600e-9)
-    simulation.multiconnect(component1['input'], component2['pin2'])
+    simulation.multiconnect(component1["input"], component2["pin2"])
     result = simulation.simulate()
 
 We hooked up our simulator to our circuit, with the 'input'

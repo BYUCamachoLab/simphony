@@ -74,32 +74,32 @@ component can.
 .. code-block:: python
 
     def ring_factory(radius):
-      """Creates a full ring (with terminator) from a half ring.
+        """Creates a full ring (with terminator) from a half ring.
 
-      Resulting pins are ('pass', 'in', 'out').
+        Resulting pins are ('pass', 'in', 'out').
 
-      Parameters
-      ----------
-      radius : float
-          The radius of the ring resonator, in meters.
-      """
-      # Have rings for selecting out frequencies from the data line.
-      # See SiPANN's model API for argument order and units.
-      halfring1 = sipann.HalfRing(500e-9, 220e-9, radius, 100e-9)
-      halfring2 = sipann.HalfRing(500e-9, 220e-9, radius, 100e-9)
-      terminator = siepic.Terminator()
+        Parameters
+        ----------
+        radius : float
+            The radius of the ring resonator, in meters.
+        """
+        # Have rings for selecting out frequencies from the data line.
+        # See SiPANN's model API for argument order and units.
+        halfring1 = sipann.HalfRing(500e-9, 220e-9, radius, 100e-9)
+        halfring2 = sipann.HalfRing(500e-9, 220e-9, radius, 100e-9)
+        terminator = siepic.Terminator()
 
-      halfring1.rename_pins("pass", "midb", "in", "midt")
-      halfring2.rename_pins("out", "midt", "term", "midb")
+        halfring1.rename_pins("pass", "midb", "in", "midt")
+        halfring2.rename_pins("out", "midt", "term", "midb")
 
-      # the interface method will connect all of the pins with matching names
-      # between the two components together
-      halfring1.interface(halfring2)
-      halfring2["term"].connect(terminator)
+        # the interface method will connect all of the pins with matching names
+        # between the two components together
+        halfring1.interface(halfring2)
+        halfring2["term"].connect(terminator)
 
-      # bundling the circuit as a Subcircuit allows us to interact with it
-      # as if it were a component
-      return halfring1.circuit.to_subcircuit()
+        # bundling the circuit as a Subcircuit allows us to interact with it
+        # as if it were a component
+        return halfring1.circuit.to_subcircuit()
 
 .. note::
 
