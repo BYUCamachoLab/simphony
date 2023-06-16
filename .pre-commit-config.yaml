@@ -29,7 +29,7 @@ repos:
     rev: v3.6.0
     hooks:
       - id: pyupgrade
-        args: [--py38-plus]
+        args: [--py37-plus]
 
   - repo: https://github.com/psf/black
     rev: 23.3.0
@@ -60,8 +60,8 @@ repos:
       - id: docformatter
         args: [--in-place]
 
-  - repo: https://github.com/kynan/nbstripout
-    rev: 0.6.1
-    hooks:
-      - id: nbstripout
-        files: ".ipynb"
+  # - repo: https://github.com/kynan/nbstripout
+  #   rev: 0.6.1
+  #   hooks:
+  #     - id: nbstripout
+  #       files: ".ipynb"
