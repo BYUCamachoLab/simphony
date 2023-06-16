@@ -82,6 +82,14 @@ installed when invoking the make targets. Pre-commit will now run on every
 commit. If it makes any modifications, the commit will fail and you'll have
 to restage the changes before continuing with the commit.
 
+If you truly, desperately need to skip pre-commit in one instance, you can use:
+
+```bash
+git commit --no-verify -m "Commit message"
+```
+
+Pleasee don't make a habit of it.
+
 There are a few other useful targets in the Makefile:
 
 - ``make test``: Run the unit tests
