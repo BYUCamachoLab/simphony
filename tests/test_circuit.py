@@ -85,7 +85,7 @@ class TestCircuit:
     def test_connect_o2o(self, ckt, wg0, wg1):
         # Test model.o() to model.o()
         ckt.connect(wg0.o(0), wg1.o(0))
-        assert set([wg0, wg1]) <= set(ckt.components)
+        assert {wg0, wg1} <= set(ckt.components)
         assert len(ckt.components) == 2
         assert set(wg0._oports + wg1._oports) <= set(ckt._internal_oports)
         assert len(ckt._internal_oports) == 4
@@ -102,7 +102,7 @@ class TestCircuit:
 
     def test_connect_e2e(self, ckt, model_with_eport, model_with_two_eports):
         ckt.connect(model_with_eport.e(0), model_with_two_eports.e(0))
-        assert set([model_with_eport, model_with_two_eports]) <= set(ckt.components)
+        assert {model_with_eport, model_with_two_eports} <= set(ckt.components)
         assert len(ckt.components) == 2
         assert set(model_with_eport._eports + model_with_two_eports._eports) <= set(
             ckt._internal_eports
@@ -112,7 +112,7 @@ class TestCircuit:
 
     def test_connect_o2m(self, ckt, wg0, wg1):
         ckt.connect(wg0.o(0), wg1)
-        assert set([wg0, wg1]) <= set(ckt.components)
+        assert {wg0, wg1} <= set(ckt.components)
         assert len(ckt.components) == 2
         assert set(wg0._oports + wg1._oports) <= set(ckt._internal_oports)
         assert len(ckt._internal_oports) == 4
@@ -121,7 +121,7 @@ class TestCircuit:
 
     def test_connect_e2m(self, ckt, model_with_eport, model_with_two_eports):
         ckt.connect(model_with_eport.e(0), model_with_two_eports)
-        assert set([model_with_eport, model_with_two_eports]) <= set(ckt.components)
+        assert {model_with_eport, model_with_two_eports} <= set(ckt.components)
         assert len(ckt.components) == 2
         assert set(model_with_eport._eports + model_with_two_eports._eports) <= set(
             ckt._internal_eports
@@ -131,7 +131,7 @@ class TestCircuit:
 
     def test_connect_m2o(self, ckt, wg0, wg1):
         ckt.connect(wg0, wg1.o(0))
-        assert set([wg0, wg1]) <= set(ckt.components)
+        assert {wg0, wg1} <= set(ckt.components)
         assert len(ckt.components) == 2
         assert set(wg0._oports + wg1._oports) <= set(ckt._internal_oports)
         assert len(ckt._internal_oports) == 4
@@ -143,7 +143,7 @@ class TestCircuit:
             model_with_eport, [model_with_two_eports.o(0), model_with_two_eports.o(1)]
         )
         ckt.connect(model_with_eport, model_with_two_eports.e(0))  # test m2e
-        assert set([model_with_eport, model_with_two_eports]) <= set(ckt.components)
+        assert {model_with_eport, model_with_two_eports} <= set(ckt.components)
         assert len(ckt.components) == 2
         assert set(model_with_eport._eports + model_with_two_eports._eports) <= set(
             ckt._internal_eports
@@ -155,9 +155,7 @@ class TestCircuit:
         self, ckt, model_with_two_eports, model_with_three_eports
     ):
         ckt.connect(model_with_two_eports, model_with_three_eports)
-        assert set([model_with_three_eports, model_with_two_eports]) <= set(
-            ckt.components
-        )
+        assert {model_with_three_eports, model_with_two_eports} <= set(ckt.components)
         assert len(ckt.components) == 2
         assert set(
             model_with_three_eports._oports + model_with_two_eports._oports
@@ -172,7 +170,7 @@ class TestCircuit:
     def test_connect_m2m(self, ckt, wg0, wg1, coupler):
         ckt.connect(wg0.o(0), coupler)
         ckt.connect(coupler, wg1)
-        assert set([wg0, wg1, coupler]) <= set(ckt.components)
+        assert {wg0, wg1, coupler} <= set(ckt.components)
         assert len(ckt.components) == 3
         assert set(wg0._oports + wg1._oports + coupler._oports) <= set(
             ckt._internal_oports
@@ -222,11 +220,11 @@ class TestCircuit:
                 * c2_sparams[wl_ind, 1, 3]
                 * field_in[0]
             )
-            man_list.append(jnp.array([0,0,field_out_man_1,-field_out_man_2]))
+            man_list.append(jnp.array([0, 0, field_out_man_1, -field_out_man_2]))
         field_out_manual = jnp.stack(man_list, axis=0)
 
         print(field_out_manual)
-        
+
         ckt.s_params(wls)
         field_out = [ckt.s_params(wls)[wl_ind] @ field_in for wl_ind in range(len(wls))]
         field_out = jnp.stack(field_out, axis=0)

@@ -1,6 +1,4 @@
-"""
-Quantum states for Quantum simulators
-"""
+"""Quantum states for Quantum simulators."""
 
 try:
     import jax
@@ -9,20 +7,21 @@ try:
     JAX_AVAILABLE = True
 except ImportError:
     import numpy as jnp
+
     from simphony.utils import jax
 
     JAX_AVAILABLE = False
 
 from simphony.exceptions import ShapeMismatchError
-from simphony.utils import xxpp_to_xpxp, xpxp_to_xxpp
+from simphony.utils import xpxp_to_xxpp, xxpp_to_xpxp
+
 from .simdevices import SimDevice
 
 
 class QuantumState(SimDevice):
-    """
-    Represents a quantum state in a quantum model as a covariance matrix. All
-    quantum states are represented in the xpxp convention. TODO: switch to xxpp
-    convention
+    """Represents a quantum state in a quantum model as a covariance matrix.
+    All quantum states are represented in the xpxp convention. TODO: switch to
+    xxpp convention.
 
     Parameters
     ----------
@@ -31,12 +30,12 @@ class QuantumState(SimDevice):
     means :
         The means of the X and P quadratures of the quantum state. For example,
         a coherent state :math:`\alpha = 3+4i` has means defined as
-        :math:`\begin{bmatrix} 3 & 4 \end{bmatrix}'. The shape of the means
+        :math:`\begin{bmatrix} 3 & 4 \\end{bmatrix}'. The shape of the means
         must be 2 * N.
     cov :
         The covariance matrix of the quantum state. For example, all coherent
         states has a covariance matrix of :math:`\begin{bmatrix} 1/4 & 0 \\ 0 &
-        1/4 \end{bmatrix}`. The shape of the matrix must be 2 * N x 2 * N.
+        1/4 \\end{bmatrix}`. The shape of the matrix must be 2 * N x 2 * N.
     ports :
         The ports to which the quantum state is connected. Each mode
         corresponds in order to each port provided.
@@ -62,26 +61,22 @@ class QuantumState(SimDevice):
         self.convention = convention
 
     def to_xpxp(self) -> None:
-        """
-        Converts the means and covariance matrix to the xpxp convention.
-        """
+        """Converts the means and covariance matrix to the xpxp convention."""
         if self.convention == "xxpp":
             self.means = xxpp_to_xpxp(self.means)
             self.cov = xxpp_to_xpxp(self.cov)
             self.convention = "xpxp"
 
     def to_xxpp(self) -> None:
-        """
-        Converts the means and covariance matrix to the xxpp convention.
-        """
+        """Converts the means and covariance matrix to the xxpp convention."""
         if self.convention == "xpxp":
             self.means = xpxp_to_xxpp(self.means)
             self.cov = xpxp_to_xxpp(self.cov)
             self.convention = "xxpp"
 
     def modes(self, modes):
-        """
-        Returns the mean and covariance matrix of the specified modes.
+        """Returns the mean and covariance matrix of the specified modes.
+
         Parameters
         ----------
         modes :
@@ -106,8 +101,8 @@ class QuantumState(SimDevice):
         return means, cov
 
     def _add_vacuums(self, n_vacuums):
-        """
-        Adds vacuum states to the quantum state.
+        """Adds vacuum states to the quantum state.
+
         Parameters
         ----------
         n_vacuums :
@@ -126,9 +121,8 @@ class QuantumState(SimDevice):
 
 
 def compose_qstate(*args: QuantumState) -> QuantumState:
-    """
-    Combines the quantum states of the input ports into a single quantum state.
-    """
+    """Combines the quantum states of the input ports into a single quantum
+    state."""
     N = 0
     mean_list = []
     cov_list = []
@@ -158,8 +152,8 @@ def compose_qstate(*args: QuantumState) -> QuantumState:
 
 
 class CoherentState(QuantumState):
-    """
-    Represents a coherent state in a quantum model as a covariance matrix.
+    """Represents a coherent state in a quantum model as a covariance matrix.
+
     Parameters
     ----------
     alpha :
@@ -178,8 +172,8 @@ class CoherentState(QuantumState):
 
 
 class SqueezedState(QuantumState):
-    """
-    Represents a squeezed state in a quantum model as a covariance matrix.
+    """Represents a squeezed state in a quantum model as a covariance matrix.
+
     Parameters
     ----------
     r :
@@ -209,10 +203,10 @@ class SqueezedState(QuantumState):
 
 
 class TwoModeSqueezed(QuantumState):
-    """
-    Represents a two mode squeezed state in a quantum model as a covariance matrix.
-    This state is described by three parameters: a two-mode squeezing parameter r,
-    and the two initial thermal occupations n_a and n_b.
+    """Represents a two mode squeezed state in a quantum model as a covariance
+    matrix. This state is described by three parameters: a two-mode squeezing
+    parameter r, and the two initial thermal occupations n_a and n_b.
+
     Parameters
     ----------
     r :

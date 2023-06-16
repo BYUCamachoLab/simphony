@@ -14,7 +14,7 @@ class GratingCoupler(Model):
     def s_params(self, wl):
         print(f"cache miss ({self.k})")
         return wl * 1j * self.k
-    
+
 
 class YJunction(Model):
     onames = ["in", "o1", "o2"]
@@ -78,7 +78,7 @@ def mzi_factory(wg_length=50):
 
     cir = Circuit()
     cir.connect(gc_in.o(1), y_split)
-    
+
     # this
     cir.connect(y_split, wg_short)
     cir.connect(y_split, wg_long)

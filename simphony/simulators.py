@@ -1,7 +1,6 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
-
 """
 simphony.simulators
 ===================
@@ -15,10 +14,10 @@ from typing import Optional, Tuple
 
 import jax.numpy as np
 
-# import numpy as np
-
 from simphony import Model
 from simphony.utils import freq2wl, wl2freq
+
+# import numpy as np
 
 
 class Simulator(Model):

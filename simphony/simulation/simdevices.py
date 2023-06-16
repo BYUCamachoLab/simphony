@@ -1,12 +1,8 @@
-"""
-Module for simulation devices.
-"""
+"""Module for simulation devices."""
 
 
 class SimDevice:
-    """
-    Base class for all sources.
-    """
+    """Base class for all sources."""
 
     def __init__(self, ckt, ports: list) -> None:
         for p in ports:
@@ -18,9 +14,7 @@ class SimDevice:
 
 
 class Laser(SimDevice):
-    """
-    Laser source.
-    """
+    """Laser source."""
 
     def __init__(self, ckt, port, power=1, phase=0, mod_function=None) -> None:
         super().__init__(ckt, [port])
@@ -30,9 +24,7 @@ class Laser(SimDevice):
 
 
 class Detector(SimDevice):
-    """
-    Detector.
-    """
+    """Detector."""
 
     def __init__(self, ckt, port, responsivity=1.0) -> None:
         super().__init__(ckt, [port])

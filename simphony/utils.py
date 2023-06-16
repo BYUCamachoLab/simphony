@@ -2,10 +2,8 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-"""
-This package contains handy functions useful across simphony submodules
-and to the average user.
-"""
+"""This package contains handy functions useful across simphony submodules and
+to the average user."""
 
 import re
 import warnings
@@ -23,7 +21,10 @@ except ImportError:
     import numpy as jnp
 
     def jit(func, *args, **kwargs):
-        """Mock "jit" version of a function. Warning is only raised once."""
+        """Mock "jit" version of a function.
+
+        Warning is only raised once.
+        """
         warnings.warn("Jax not available, cannot compile using 'jit'!")
         return func
 
@@ -46,8 +47,7 @@ MATH_SUFFIXES = {
 
 
 def rect(r, phi) -> jnp.ndarray:
-    """
-    Convert from polar to rectangular coordinates element-wise.
+    """Convert from polar to rectangular coordinates element-wise.
 
     Parameters
     ----------
@@ -65,8 +65,7 @@ def rect(r, phi) -> jnp.ndarray:
 
 
 def polar(x) -> jnp.ndarray:
-    """
-    Convert from rectangular to polar coordinates element-wise.
+    """Convert from rectangular to polar coordinates element-wise.
 
     Parameters
     ----------
@@ -95,7 +94,8 @@ def add_polar(c1, c2):
     Returns
     -------
     result : (float, float)
-        The resulting polar coordinate"""
+        The resulting polar coordinate
+    """
     r1, phi1 = c1
     r2, phi2 = c2
 
@@ -127,7 +127,8 @@ def mul_polar(c1, c2):
     Returns
     -------
     result : (float, float)
-        The resulting polar coordinate"""
+        The resulting polar coordinate
+    """
     r1, phi1 = c1
     r2, phi2 = c2
 
@@ -135,7 +136,7 @@ def mul_polar(c1, c2):
 
 
 def mat_mul_polar(array1: jnp.array, array2: jnp.array) -> jnp.array:
-    """Multiplies two polar matrixes together
+    """Multiplies two polar matrixes together.
 
     Parameters
     ----------
@@ -179,7 +180,7 @@ def mat_mul_polar(array1: jnp.array, array2: jnp.array) -> jnp.array:
 
 
 def mat_add_polar(array1: jnp.array, array2: jnp.array) -> jnp.array:
-    """Adds two polar matrixes together
+    """Adds two polar matrixes together.
 
     Parameters
     ----------
@@ -267,7 +268,7 @@ def str2float(num):
         r"([-+]?[0-9]+(?:[.][0-9]+)?)((?:[eE][-+]?[0-9]+)|(?:[a-zA-Z]))?", num
     )
     if len(matches) > 1:
-        raise ValueError("'{}' is malformed".format(num))
+        raise ValueError(f"'{num}' is malformed")
     num, suffix = matches[0]
     try:
         if suffix.startswith("e") or suffix.startswith("E"):
@@ -275,7 +276,7 @@ def str2float(num):
         else:
             return float(num + (MATH_SUFFIXES[suffix] if suffix != "" else ""))
     except KeyError as e:
-        raise ValueError("Suffix {} in '{}' not recognized.".format(str(e), matches[0]))
+        raise ValueError(f"Suffix {str(e)} in '{matches[0]}' not recognized.")
 
 
 def freq2wl(freq):
@@ -350,7 +351,8 @@ def interpolate(resampled, sampled, s_parameters):
 
 
 def xxpp_to_xpxp(xxpp):
-    """Converts a NxN matrix or N shaped vector in xxpp convention to xpxp convention.
+    """Converts a NxN matrix or N shaped vector in xxpp convention to xpxp
+    convention.
 
     Parameters
     ----------
@@ -370,7 +372,8 @@ def xxpp_to_xpxp(xxpp):
 
 
 def xpxp_to_xxpp(xpxp):
-    """Converts a NxN matrix or N shaped vector in xpxp convention to xxpp convention.
+    """Converts a NxN matrix or N shaped vector in xpxp convention to xxpp
+    convention.
 
     Parameters
     ----------

@@ -1,7 +1,6 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
-
 """
 simphony.libraries.siepic.parser
 =======================
@@ -207,7 +206,7 @@ def read_params(filename):
         Dictionary contains frequency array, s-parameters, and other
         information on a port-by-port basis.
     """
-    with open(filename, "r") as f:
+    with open(filename) as f:
         tree = sparam_grammar.parse(f.read())
     pv = ParamVisitor()
     return pv.visit(tree)

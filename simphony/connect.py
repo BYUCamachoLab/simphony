@@ -1,10 +1,7 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
-
-"""
-Subnetwork growth algorithms for simphony.
-"""
+"""Subnetwork growth algorithms for simphony."""
 
 try:
     import jax
@@ -13,6 +10,7 @@ try:
     JAX_AVAILABLE = True
 except ImportError:
     import numpy as jnp
+
     from simphony.utils import jax
 
     JAX_AVAILABLE = False
@@ -22,8 +20,7 @@ from simphony.utils import add_polar, mul_polar
 
 # Functions operating on s-parameter matrices
 def connect_s(A, k, B, l):
-    """
-    Connect two n-port networks' s-matrices together.
+    """Connect two n-port networks' s-matrices together.
 
     Specifically, connect port `k` on network `A` to port `l` on network
     `B`. The resultant network has nports = (A.rank + B.rank-2). This
@@ -69,9 +66,8 @@ def connect_s(A, k, B, l):
 
 
 def create_block_diagonal(A, B):
-    """
-    Merges an fxnxn(x2) matrix with an fxmxm(x2) matrix to form a fx(n+m)x(n+m)(x2)
-    block diagonal matrix.
+    """Merges an fxnxn(x2) matrix with an fxmxm(x2) matrix to form a
+    fx(n+m)x(n+m)(x2) block diagonal matrix.
 
     Parameters
     ----------
@@ -109,8 +105,7 @@ def create_block_diagonal(A, B):
 
 
 def vector_innerconnect_s(S, k, l):
-    """
-    'Vectorization' of a matrix manipulation formula. Calculates new matrix
+    """'Vectorization' of a matrix manipulation formula. Calculates new matrix
     based on S and indices k and l.
 
     Parameters
@@ -166,8 +161,7 @@ def vector_innerconnect_s(S, k, l):
 
 
 def innerconnect_s(S, k, l):
-    """
-    connect two ports of a single n-port network's s-matrix.
+    """Connect two ports of a single n-port network's s-matrix.
 
     Specifically, connect port `k`  to port `l` on `S`. This results in a
     (n-2)-port network.  This     function operates on, and returns s-matrices.

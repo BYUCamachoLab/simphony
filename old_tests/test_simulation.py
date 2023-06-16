@@ -4,10 +4,12 @@
 
 try:
     import gdsfactory as gf
+
     _has_gf = True
 except ImportError:
     _has_gf = False
 import jax.numpy as np
+
 # import numpy as np
 import pytest
 

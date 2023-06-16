@@ -1,20 +1,18 @@
-"""
-Define circuit and connections in simphony.
-"""
+"""Define circuit and connections in simphony."""
 
 from __future__ import annotations
-from typing import List, Set, Tuple, Union, Optional
+
 from collections import defaultdict
 from itertools import count
+from typing import List, Optional, Set, Tuple, Union
 
-from simphony.models import Model, Port, OPort, EPort
 from simphony.connect import connect_s, vector_innerconnect_s
 from simphony.exceptions import ModelValidationError
+from simphony.models import EPort, Model, OPort, Port
 
 
 class Circuit(Model):
-    """
-    A circuit tracks connections between ports.
+    """A circuit tracks connections between ports.
 
     Examples
     --------
@@ -41,22 +39,21 @@ class Circuit(Model):
 
     def __init__(self, name: str = None) -> None:
         self.name = name or "circuit"
-        self._internal_oports: List[OPort] = []  # internal optical ports
-        self._internal_eports: List[EPort] = []  # internal electrical ports
-        self._oports: List[OPort] = []  # exposed optical ports
-        self._eports: List[EPort] = []  # exposed electrical ports
-        self._onodes: List[Tuple[OPort, OPort]] = []  # optical connections
-        self._enodes: List[Set[EPort]] = []  # electrical connections
+        self._internal_oports: list[OPort] = []  # internal optical ports
+        self._internal_eports: list[EPort] = []  # internal electrical ports
+        self._oports: list[OPort] = []  # exposed optical ports
+        self._eports: list[EPort] = []  # exposed electrical ports
+        self._onodes: list[tuple[OPort, OPort]] = []  # optical connections
+        self._enodes: list[set[EPort]] = []  # electrical connections
         self._next_oidx = count()  # netid iterator
         self._next_eidx = count()  # netid iterator
         self._sparams = None
         self.exposed = False
-        self.sim_devices: List["SimDevice"] = []
+        self.sim_devices: list[SimDevice] = []
 
     @property
-    def components(self) -> List[Union[Model, Circuit]]:
-        """
-        Return a list of components (model instances) in the circuit.
+    def components(self) -> list[Model | Circuit]:
+        """Return a list of components (model instances) in the circuit.
 
         Order in which models were added is not preserved.
 
@@ -73,9 +70,7 @@ class Circuit(Model):
         ]
         return list(set(oinstances + einstances))
 
-    def _update_ports(
-        self, model1: Union[Model, Circuit], model2: Union[Model, Circuit]
-    ) -> None:
+    def _update_ports(self, model1: Model | Circuit, model2: Model | Circuit) -> None:
         """Update the internal list of ports in the circuit."""
         if model1 not in self.components:
             self._internal_oports.extend(model1._oports)
@@ -96,7 +91,7 @@ class Circuit(Model):
         """Connect two ports in the internal netlist and update the connections
         vairable on the ports themselves."""
 
-        def update_connections(enodes: Set[EPort]):
+        def update_connections(enodes: set[EPort]):
             for eport in enodes:
                 eport._connections.update(enodes)
                 eport._connections.remove(eport)
@@ -110,12 +105,11 @@ class Circuit(Model):
                 return
 
         # EPort has not yet appeared in the netlist
-        self._enodes.append(set([port1, port2]))
+        self._enodes.append({port1, port2})
         update_connections(self._enodes[-1])
 
-    def connect(self, port1: Union[Model, Port], port2: Union[Model, Port]):
-        """
-        Connect two ports together and add to the internal netlist.
+    def connect(self, port1: Model | Port, port2: Model | Port):
+        """Connect two ports together and add to the internal netlist.
 
         If a Model is passed, the next available optical port is inferred. If
         no optical ports are available, the next available electronic port is
@@ -152,7 +146,7 @@ class Circuit(Model):
         >>> cir.connect(y_split, [wg_short, wg_long])
         """
 
-        def o2x(self, port1: OPort, port2: Union[Model, OPort]):
+        def o2x(self, port1: OPort, port2: Model | OPort):
             """Connect an optical port to a second port (type-inferred)."""
             if isinstance(port2, OPort):
                 self._connect_o(port1, port2)
@@ -163,7 +157,7 @@ class Circuit(Model):
                     f"Port types must match or be an instance of Model ({type(port1)} != {type(port2)})"
                 )
 
-        def e2x(self, port1: EPort, port2: Union[Model, EPort]):
+        def e2x(self, port1: EPort, port2: Model | EPort):
             """Connect an electronic port to a second port (type-inferred)."""
             if isinstance(port2, EPort):
                 self._connect_e(port1, port2)
@@ -199,11 +193,10 @@ class Circuit(Model):
 
     def expose(
         self,
-        ports: Optional[Union[Port, List[Port]]] = None,
-        names: Optional[Union[str, List[str]]] = None,
+        ports: Port | list[Port] | None = None,
+        names: str | list[str] | None = None,
     ) -> None:
-        """
-        Expose ports to the outside world.
+        """Expose ports to the outside world.
 
         Parameters
         ----------
@@ -242,7 +235,10 @@ class Circuit(Model):
         yield self
 
     def s_params(self, wl):
-        """Compute the scattering parameters for the circuit. Using the sub-network growth method."""
+        """Compute the scattering parameters for the circuit.
+
+        Using the sub-network growth method.
+        """
         if self._sparams is not None:
             return self._sparams
         if len(self._onodes) == 0:

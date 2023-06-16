@@ -1,7 +1,6 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
-
 """
 simphony.simulation
 ===================
@@ -41,12 +40,12 @@ from scipy.constants import h
 from scipy.linalg import cholesky, lu
 from scipy.signal import butter, sosfiltfilt
 
+from simphony.context import CTX
 from simphony.models import Model
 
 # from simphony.layout import Circuit
 # from simphony.libraries import siepic
 from simphony.utils import add_polar, wl2freq
-from simphony.context import CTX
 
 # this variable keeps track of the current simulation context (if any)
 context = None
@@ -303,7 +302,7 @@ class Simulation:
 
             # convert the output fields to powers
             self.transmissions.append(transmissions)
-            powers.append((transmissions[:, :, :, 0] ** 2))
+            powers.append(transmissions[:, :, :, 0] ** 2)
 
         return powers
 

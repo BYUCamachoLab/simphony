@@ -1,7 +1,6 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
-
 """
 simphony.layout
 ===============
@@ -16,9 +15,10 @@ from typing import TYPE_CHECKING, List, Optional
 
 import jax.numpy as np
 
+from simphony.formatters import CircuitFormatter, CircuitJSONFormatter
+
 # import numpy as np
 
-from simphony.formatters import CircuitFormatter, CircuitJSONFormatter
 
 if TYPE_CHECKING:
     from simphony import Model
@@ -214,7 +214,7 @@ class Circuit(list):
         os.chdir(dir)
 
         # parse the file
-        with open(filename, "r") as file:
+        with open(filename) as file:
             circuit = formatter.parse(file.read())
             file.close()
 

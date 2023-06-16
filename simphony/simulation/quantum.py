@@ -1,6 +1,4 @@
-"""
-Module for quantum simulation.
-"""
+"""Module for quantum simulation."""
 
 from dataclasses import dataclass
 
@@ -11,23 +9,23 @@ try:
     JAX_AVAILABLE = True
 except ImportError:
     import numpy as jnp
+
     from simphony.utils import jax
 
     JAX_AVAILABLE = False
 
-from scipy.stats import multivariate_normal
 import matplotlib.pyplot as plt
+from scipy.stats import multivariate_normal
 
-from .simulation import Simulation, SimulationResult
-from .quantum_states import QuantumState
 from simphony.circuit import Circuit
+
+from .quantum_states import QuantumState
+from .simulation import Simulation, SimulationResult
 
 
 @dataclass
 class QuantumResult(SimulationResult):
-    """
-    Quantum simulation results
-    """
+    """Quantum simulation results."""
 
     s_params: jnp.ndarray
     input_means: jnp.ndarray
@@ -59,9 +57,7 @@ def plot_quantum_result(result: QuantumResult, modes: list = None):
 
 
 class QuantumSim(Simulation):
-    """
-    Quantum simulation
-    """
+    """Quantum simulation."""
 
     def __init__(self, ckt: Circuit, wl: jnp.ndarray, input: QuantumState) -> None:
         super().__init__(ckt, wl)
@@ -76,8 +72,7 @@ class QuantumSim(Simulation):
 
     @staticmethod
     def to_unitary(s_params):
-        """
-        This method converts s-parameters into a unitary transform by adding
+        """This method converts s-parameters into a unitary transform by adding
         vacuum ports. The original ports maintain their index while new vacuum
         ports will always be the last n_ports.
 
@@ -110,9 +105,7 @@ class QuantumSim(Simulation):
         return unitary
 
     def run(self):
-        """
-        Run the simulation
-        """
+        """Run the simulation."""
         n_ports = len(self.ckt._oports)
         # get the unitary s-parameters of the circuit
         s_params = self.ckt.s_params(self.wl)

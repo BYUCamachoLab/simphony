@@ -4,22 +4,18 @@
 
 import matplotlib.pyplot as plt
 
-from simphony.libraries.siepic import (
-    GratingCoupler,
-    YBranch,
-    Waveguide
-)
+from simphony.libraries.siepic import GratingCoupler, YBranch, Waveguide
 from simphony.simulation import Detector, Laser, Simulation
 from simphony.circuit import Circuit
 
 # first we initialize all of the components in the MZI circuit
 with Circuit() as circuit:
     gc_input = circuit.add(GratingCoupler())
-    circuit.connect(gc_input.o(1), y_splitter:=YBranch())
-    circuit.connect(y_splitter.o(1), wg_long:=Waveguide(length=150e-6))
-    circuit.connect(y_splitter.o(2), wg_short:=Waveguide(length=50e-6))
-    circuit.connect(wg_long.o(1), y_recombiner:=YBranch())
-    circuit.connect(gc_output:=GratingCoupler())
+    circuit.connect(gc_input.o(1), y_splitter := YBranch())
+    circuit.connect(y_splitter.o(1), wg_long := Waveguide(length=150e-6))
+    circuit.connect(y_splitter.o(2), wg_short := Waveguide(length=50e-6))
+    circuit.connect(wg_long.o(1), y_recombiner := YBranch())
+    circuit.connect(gc_output := GratingCoupler())
 
 with Circuit() as cir:
     gc_input = cir.add(GratingCoupler())
@@ -28,10 +24,10 @@ with Circuit() as cir:
 
     wg_long = cir.add(Waveguide(length=150e-6))
     cir.connect(y_splitter.o(1), wg_long)
-    
-    cir.connect(y_splitter.o(2), wg_short:=Waveguide(length=50e-6))
-    cir.connect(wg_long.o(1), y_recombiner:=YBranch())
-    cir.connect(gc_output:=GratingCoupler())
+
+    cir.connect(y_splitter.o(2), wg_short := Waveguide(length=50e-6))
+    cir.connect(wg_long.o(1), y_recombiner := YBranch())
+    cir.connect(gc_output := GratingCoupler())
 
 # next we connect the components to each other
 # you can connect pins directly:

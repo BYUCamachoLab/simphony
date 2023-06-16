@@ -22,7 +22,6 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
 """
 simphony
 ========
@@ -30,11 +29,10 @@ simphony
 A Simulator for Photonic circuits
 """
 
-import sys
 import platform
+import sys
 import warnings
 from types import SimpleNamespace
-
 
 # from .models_old import Model  # noqa: F401
 

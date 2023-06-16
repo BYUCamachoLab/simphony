@@ -1,7 +1,6 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
-
 """
 simphony.models
 ===============
@@ -21,8 +20,8 @@ they form a circuit. There are three ways to connect components:
 import os
 from typing import ClassVar, Dict, List, Optional, Tuple, Union
 
-import numpy as testnp
 import jax.numpy as np
+import numpy as testnp
 
 # import numpy as np
 
@@ -215,7 +214,8 @@ class Model:
         pass
 
     def regenerate_layout_aware_monte_carlo_parameters(self):
-        """Reassigns dimension parameters to the nominal values for the component.
+        """Reassigns dimension parameters to the nominal values for the
+        component.
 
         If a monte carlo method is not implemented for a given model, this
         method does nothing. However, it can optionally be implemented so that
@@ -231,8 +231,11 @@ class Model:
         pass
 
     def update_variations(self, **kwargs):
-        """Update width and thickness variations for the component using correlated
-        samples. This is used for layout-aware Monte Carlo runs."""
+        """Update width and thickness variations for the component using
+        correlated samples.
+
+        This is used for layout-aware Monte Carlo runs.
+        """
         pass
 
 
@@ -451,7 +454,8 @@ class Subcircuit(Model):
             component.regenerate_monte_carlo_parameters()
 
     def regenerate_layout_aware_monte_carlo_parameters(self):
-        """Reassigns dimension parameters to the nominal values for the component.
+        """Reassigns dimension parameters to the nominal values for the
+        component.
 
         If a monte carlo method is not implemented for a given model, this
         method does nothing. However, it can optionally be implemented so that

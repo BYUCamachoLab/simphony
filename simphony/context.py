@@ -10,17 +10,16 @@ class Context(SimpleNamespace):
         setattr(self, key, value)
 
     def export(self) -> dict:
-        """
-        Simulations should export the context to a dictionary before
-        modifying it. This allows the context to be restored to its
-        original state after the simulation is complete.
+        """Simulations should export the context to a dictionary before
+        modifying it.
+
+        This allows the context to be restored to its original state
+        after the simulation is complete.
         """
         return deepcopy(self.__dict__)
 
     def load(self, d):
-        """
-        Reload the context from the dictionary returned by export().
-        """
+        """Reload the context from the dictionary returned by export()."""
         self.__dict__.update(d)
 
 

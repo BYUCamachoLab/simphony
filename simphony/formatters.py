@@ -1,7 +1,6 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
-
 """
 simphony.formatters
 ===================
@@ -19,9 +18,10 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import jax.numpy as np
 
+from simphony.tools import interpolate
+
 # import numpy as np
 
-from simphony.tools import interpolate
 
 if TYPE_CHECKING:
     from simphony import Model
@@ -30,8 +30,7 @@ if TYPE_CHECKING:
 
 class ModelFormatter:
     """Base model formatter class that is extended to provide functionality for
-    converting a component (model instance) to a string and vice-versa.
-    """
+    converting a component (model instance) to a string and vice-versa."""
 
     flatten_subcircuits = False
 
@@ -122,7 +121,8 @@ class ModelFormatter:
         return component
 
     def format(self, component: "Model", freqs: np.array) -> str:
-        """Returns a string representation of the component's scattering parameters.
+        """Returns a string representation of the component's scattering
+        parameters.
 
         Parameters
         ----------

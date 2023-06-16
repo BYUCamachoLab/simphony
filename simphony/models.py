@@ -1,21 +1,18 @@
-"""
-Base class for defining models.
-"""
+"""Base class for defining models."""
 
 from __future__ import annotations
+
 from copy import deepcopy
-from typing import List, Optional, Union
 from functools import lru_cache, wraps
+from typing import List, Optional, Union
 
 from simphony.exceptions import ModelValidationError
 
 
 class Port:
-    """
-    Port base class containing name and reference to Model instance.
-    """
+    """Port base class containing name and reference to Model instance."""
 
-    def __init__(self, name: str, instance: Union[Model, "Circuit"] = None) -> None:
+    def __init__(self, name: str, instance: Model | Circuit = None) -> None:
         self.name = name
         self.instance = instance
         self._original_instatance = instance
@@ -79,20 +76,20 @@ class EPort(Port):
 
 
 class Model:
-    """
-    Base model class that all components should inherit from.
+    """Base model class that all components should inherit from.
 
-    Models perform some basic validation on their subclasses, like making sure
-    functions required for simulation are present. Some functions, such as
-    those that calculate and return scattering parameters, are cached to reduce
-    memory usage and calculation times.
+    Models perform some basic validation on their subclasses, like
+    making sure functions required for simulation are present. Some
+    functions, such as those that calculate and return scattering
+    parameters, are cached to reduce memory usage and calculation times.
 
     The model tracks its own ports. Ports should not be interacted with
-    directly, but should be modified through the functions that Model provides.
+    directly, but should be modified through the functions that Model
+    provides.
     """
 
-    _oports: List[OPort] = []  # should only be manipulated by rename_oports()
-    _eports: List[EPort] = []  # should only be manipulated by rename_eports()
+    _oports: list[OPort] = []  # should only be manipulated by rename_oports()
+    _eports: list[EPort] = []  # should only be manipulated by rename_eports()
     _ignore_keys = [
         "onames",
         "ocount",
@@ -121,10 +118,8 @@ class Model:
                 )
 
     def __init_subclass__(cls) -> None:
-        """
-        Ensures subclasses define required functions and automatically calls
-        the super().__init__ function.
-        """
+        """Ensures subclasses define required functions and automatically calls
+        the super().__init__ function."""
         if not hasattr(cls, "s_params"):
             raise ModelValidationError(
                 f"Model '{cls.__name__}' does not define the required method 's_params(self, wl).'"
@@ -193,8 +188,8 @@ class Model:
         return self.s_params(wl)
 
     def s_params(self, wl):
-        """
-        Function to be implemented by subclasses to return scattering parameters.
+        """Function to be implemented by subclasses to return scattering
+        parameters.
 
         Parameters
         ----------
@@ -209,9 +204,8 @@ class Model:
         """
         raise NotImplementedError
 
-    def o(self, value: Union[str, int] = None):
-        """
-        Get a reference to an optical port.
+    def o(self, value: str | int = None):
+        """Get a reference to an optical port.
 
         Parameter
         ---------
@@ -231,9 +225,8 @@ class Model:
         else:
             return self.next_unconnected_oport()
 
-    def e(self, value: Union[str, int] = None):
-        """
-        Get a reference to an electrical port.
+    def e(self, value: str | int = None):
+        """Get a reference to an electrical port.
 
         Parameter
         ---------
@@ -253,9 +246,8 @@ class Model:
         else:
             return self.next_unconnected_eport()
 
-    def rename_oports(self, names: List[str]) -> Model:
-        """
-        Rename all optical ports.
+    def rename_oports(self, names: list[str]) -> Model:
+        """Rename all optical ports.
 
         Parameters
         ----------
@@ -277,9 +269,8 @@ class Model:
                 f"Number of renamed ports must be equal to number of current ports ({len(names)}!={len(self.onames)})"
             )
 
-    def rename_eports(self, names: List[str]) -> Model:
-        """
-        Rename all electrical ports.
+    def rename_eports(self, names: list[str]) -> Model:
+        """Rename all electrical ports.
 
         Parameters
         ----------
@@ -301,9 +292,8 @@ class Model:
                 f"Number of renamed ports must be equal to number of current ports ({len(names)}!={len(self.enames)})"
             )
 
-    def next_unconnected_oport(self) -> Optional[OPort]:
-        """
-        Gets the next unconnected optical port, or None if all connected.
+    def next_unconnected_oport(self) -> OPort | None:
+        """Gets the next unconnected optical port, or None if all connected.
 
         Returns
         -------
@@ -314,9 +304,8 @@ class Model:
             if not o.connected:
                 return o
 
-    def next_unconnected_eport(self) -> Optional[EPort]:
-        """
-        Gets the next unconnected electronic port, or None if all connected.
+    def next_unconnected_eport(self) -> EPort | None:
+        """Gets the next unconnected electronic port, or None if all connected.
 
         Returns
         -------
@@ -328,8 +317,7 @@ class Model:
                 return e
 
     def is_connected(self) -> bool:
-        """
-        Determines if this component is connected to any others.
+        """Determines if this component is connected to any others.
 
         Returns
         -------

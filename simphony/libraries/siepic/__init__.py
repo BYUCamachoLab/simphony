@@ -1,7 +1,6 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
-
 """
 simphony.libraries.siepic
 =========================
@@ -91,8 +90,8 @@ import numpy as np
 import scipy.interpolate as interp
 from scipy.constants import c as SPEED_OF_LIGHT
 
-from simphony.models import Model
 from simphony.libraries.siepic import parser
+from simphony.models import Model
 from simphony.utils import interpolate, str2float
 
 
@@ -437,7 +436,7 @@ class SiEPIC_PDK_Base(Model):
         except ValueError:
             adjusted_args = cls._find_closest(norm_args, req_args)
             msg = (
-                "Exact parameters not available for '{}', ".format(cls)
+                f"Exact parameters not available for '{cls}', "
                 + "using closest approximation (results may not be as accurate).\n"
                 + "{:<11}{}\n".format("Requested:", req_args)
                 + "{:<11}{}\n".format("Selected:", adjusted_args)
@@ -971,7 +970,7 @@ class Terminator(SiEPIC_PDK_Base):
         available = self._source_argsets()
         normalized = []
         for d in available:
-            w1, w2, L = [(key, d.get(key)) for key in self._args_keys]
+            w1, w2, L = ((key, d.get(key)) for key in self._args_keys)
             normalized.append(
                 {
                     w1[0]: round(str2float(w1[1]) * 1e-9, 15),
@@ -1082,9 +1081,9 @@ class GratingCoupler(SiEPIC_PDK_Base):
         available = self._source_argsets()
         normalized = []
         for d in available:
-            polarization, thickness, deltaw = [
+            polarization, thickness, deltaw = (
                 (key, d.get(key)) for key in self._args_keys
-            ]
+            )
             normalized.append(
                 {
                     polarization[0]: polarization[1],
@@ -1320,7 +1319,7 @@ class Waveguide(SiEPIC_PDK_Base):
                 nd_all = []
                 for idx in range(len(available)):
                     valid_args = available[idx]
-                    with open(self._get_file(valid_args), "r") as f:
+                    with open(self._get_file(valid_args)) as f:
                         params = f.read().rstrip("\n")
                     if self.polarization == "TE":
                         lam0, ne, _, ng, _, nd, _ = params.split(" ")
@@ -1378,7 +1377,7 @@ class Waveguide(SiEPIC_PDK_Base):
             idx = self._get_matched_args(normalized, self.args)
 
             valid_args = available[idx]
-            with open(self._get_file(valid_args), "r") as f:
+            with open(self._get_file(valid_args)) as f:
                 params = f.read().rstrip("\n")
             if self.polarization == "TE":
                 lam0, ne, _, ng, _, nd, _ = params.split(" ")
@@ -1432,10 +1431,11 @@ class Waveguide(SiEPIC_PDK_Base):
     def layout_aware_monte_carlo_s_parameters(self, freqs):
         """Returns a monte carlo (randomized) set of s-parameters.
 
-        In this implementation of the monte carlo routine, values generated
-        for lam0, ne, ng, and nd using the Reduced Spatial Correlation Matrix method
-        are used to return a set of s-parameters. This is repeated for each
-        run of the Monte Carlo analysis for every wavehuide component in the circuit.
+        In this implementation of the monte carlo routine, values
+        generated for lam0, ne, ng, and nd using the Reduced Spatial
+        Correlation Matrix method are used to return a set of
+        s-parameters. This is repeated for each run of the Monte Carlo
+        analysis for every wavehuide component in the circuit.
         """
         return self.calc_s_params(
             freqs, self.length, self.lam0, self.ne, self.ng, self.nd

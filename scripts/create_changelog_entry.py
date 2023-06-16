@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-"""
-This script will create a changelog entry for the specified version. Usually
+"""This script will create a changelog entry for the specified version. Usually
 called by the makefile when creating a new version.
 
 Usage:
@@ -56,4 +55,6 @@ with open("temp.md", "w", encoding="utf8") as f:
     f.write("\n\n---\n\n".join(entries[1:]))
     f.write("\n")
 
-print(f"Created entry for version {str(version)}. Don't forget to update the date in the changelog entry!")
+print(
+    f"Created entry for version {str(version)}. Don't forget to update the date in the changelog entry!"
+)

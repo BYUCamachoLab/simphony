@@ -1,6 +1,4 @@
-"""
-Module for classical simulation.
-"""
+"""Module for classical simulation."""
 from dataclasses import dataclass
 
 try:
@@ -10,20 +8,20 @@ try:
     JAX_AVAILABLE = True
 except ImportError:
     import numpy as jnp
+
     from simphony.utils import jax
 
     JAX_AVAILABLE = False
 
-from .simulation import Simulation, SimulationResult
-from .simdevices import Laser, Detector
 from simphony.circuit import Circuit
+
+from .simdevices import Detector, Laser
+from .simulation import Simulation, SimulationResult
 
 
 @dataclass
 class ClassicalResult(SimulationResult):
-    """
-    Classical simulation results
-    """
+    """Classical simulation results."""
 
     s_params: jnp.ndarray
     input_source: jnp.ndarray
@@ -33,13 +31,10 @@ class ClassicalResult(SimulationResult):
 
 
 class ClassicalSim(Simulation):
-    """
-    Classical simulation
-    """
+    """Classical simulation."""
 
     def __init__(self, ckt: Circuit, wl: jnp.ndarray) -> None:
-        """
-        Initialize the classical simulation.
+        """Initialize the classical simulation.
 
         Parameters
         ----------
@@ -65,9 +60,7 @@ class ClassicalSim(Simulation):
                 self.detector_dict[detector] = detector_idx
 
     def run(self) -> ClassicalResult:
-        """
-        Run the classical simulation.
-        """
+        """Run the classical simulation."""
 
         # Get the S-matrix for the circuit
         S = self.ckt.s_params(self.wl)

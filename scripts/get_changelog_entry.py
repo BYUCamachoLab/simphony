@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
-"""
-This script will print the changelog entry for the given version. If the 
-requested version is not found, it raise an error and print a list of available 
-versions. You can use the exit code to determine if the script ran 
+"""This script will print the changelog entry for the given version. If the
+requested version is not found, it raise an error and print a list of available
+versions. You can use the exit code to determine if the script ran
 successfully.
 
 Usage:
@@ -45,7 +44,7 @@ for entry in entries:
         if match:
             version = match.group("version")
             date = match.group("date")
-            
+
             # Validate the date
             def is_valid_date(date_string):
                 try:
@@ -53,7 +52,7 @@ for entry in entries:
                     return True
                 except ValueError:
                     return False
-                
+
             if not is_valid_date(date):
                 raise ValueError(f"Invalid date: {date}")
 

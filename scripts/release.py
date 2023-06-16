@@ -2,12 +2,11 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
+"""Automates the release process.
 
-"""
-Automates the release process.
-
-This script is intended to be run from the root of the repository. Addtionally,
-the environment in which simphony is installed must be activated.
+This script is intended to be run from the root of the repository.
+Addtionally, the environment in which simphony is installed must be
+activated.
 """
 
 from subprocess import Popen, PIPE
@@ -21,17 +20,17 @@ print(f"Directory: {HOME}")
 
 def execute(args):
     """Execute a command in the shell.
-    
+
     Parameters
     ----------
     args : list of str
         The command to execute.
-        
+
     Returns
     -------
     str
         The output of the command.
-        
+
     Raises
     ------
     Exception
@@ -50,7 +49,9 @@ result = execute(["git", "status", "--porcelain"])
 if result:
     raise Exception("working directory is not clean")
 
-SIMPHONY_VERSION = execute(["python3", "-c", "import simphony; print(simphony.__version__)"]).strip()
+SIMPHONY_VERSION = execute(
+    ["python3", "-c", "import simphony; print(simphony.__version__)"]
+).strip()
 print(f"Simphony version: {SIMPHONY_VERSION}")
 
 RELEASE_TEXT = execute(["python3", "get_changelog_entry.py", SIMPHONY_VERSION]).strip()
@@ -62,7 +63,7 @@ print(f"{'-'*bar}")
 
 TAG_NAME = f"v{SIMPHONY_VERSION}"
 print(f"Tag name: {TAG_NAME}")
-    
+
 # Check that the tag does not already exist
 result = execute(["git", "tag", "-l", TAG_NAME])
 if result:

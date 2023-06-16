@@ -381,7 +381,7 @@ def load_spi_from_file(path: str) -> Dict[str, Any]:
     if path != "":
         os.chdir(path)
 
-    with open(filename, "r") as f:
+    with open(filename) as f:
         res = load_spi_from_string(f.read())
         f.close()
 

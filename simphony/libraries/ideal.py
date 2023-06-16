@@ -7,17 +7,17 @@ try:
     JAX_AVAILABLE = True
 except ImportError:
     import numpy as jnp
+
     from simphony.utils import jax
 
     JAX_AVAILABLE = False
 
-from simphony.models import Model
 from simphony.context import CTX
+from simphony.models import Model
 
 
 class Coupler(Model):
-    r"""
-    2x2 photonic coupler model.
+    r"""2x2 photonic coupler model.
 
     .. image:: /reference/images/coupler.png
         :alt: coupler.png
@@ -33,7 +33,7 @@ class Coupler(Model):
                 r \sqrt{T_0 T_3} & t \sqrt{T_1 T_3} & 0 & 0
             \end{bmatrix}
 
-    where :math:`t = \sqrt{1 - \text{coupling}}` and :math:`r = 
+    where :math:`t = \sqrt{1 - \text{coupling}}` and :math:`r =
     \sqrt{\text{coupling}}`.
 
 
@@ -85,8 +85,8 @@ class Coupler(Model):
 
 
 class Waveguide(Model):
-    """
-    Model of a 500 nm wide, 220 nm tall waveguide with a 1.55 um center wavelength.
+    """Model of a 500 nm wide, 220 nm tall waveguide with a 1.55 um center
+    wavelength.
 
     An ideal waveguide has transmission that is affected only by the loss of the
     waveguide and no reflection. The accumulated phase of the waveguide is
@@ -115,27 +115,27 @@ class Waveguide(Model):
     The effective index of the waveguide is calculated as:
 
     .. math::
-        n_{eff} = n_g - \frac{\Delta \lambda}{\lambda_0} \frac{\partial n_g}{\partial \lambda}
+        n_{eff} = n_g - \frac{\\Delta \\lambda}{\\lambda_0} \frac{\\partial n_g}{\\partial \\lambda}
 
-    where :math:`n_g` is the group index, :math:`\Delta \lambda` is the
+    where :math:`n_g` is the group index, :math:`\\Delta \\lambda` is the
     wavelength difference between the center wavelength and the current
-    wavelength, and :math:`\lambda_0` is the center wavelength.
+    wavelength, and :math:`\\lambda_0` is the center wavelength.
 
     The transmission of the waveguide is calculated as:
 
     .. math::
-        T = \exp(-\frac{2 \pi n_{eff} L}{\lambda})
+        T = \\exp(-\frac{2 \\pi n_{eff} L}{\\lambda})
 
     where :math:`n_{eff}` is the effective index, :math:`L` is the length of the
-    waveguide, and :math:`\lambda` is the current wavelength.
+    waveguide, and :math:`\\lambda` is the current wavelength.
 
     The reflection of the waveguide is calculated as:
 
     .. math::
-        R = \exp(-\frac{2 \pi n_{eff} L}{\lambda}) \exp(-\frac{2 \pi n_{eff} L}{\lambda_0})
+        R = \\exp(-\frac{2 \\pi n_{eff} L}{\\lambda}) \\exp(-\frac{2 \\pi n_{eff} L}{\\lambda_0})
 
     where :math:`n_{eff}` is the effective index, :math:`L` is the length of the
-    waveguide, and :math:`\lambda` is the current wavelength.
+    waveguide, and :math:`\\lambda` is the current wavelength.
 
     The s-parameter matrix of the waveguide is calculated as:
 
@@ -143,7 +143,7 @@ class Waveguide(Model):
         M = \begin{bmatrix}
                 R & T \\
                 T & R
-            \end{bmatrix}
+            \\end{bmatrix}
     """
 
     ocount = 2
