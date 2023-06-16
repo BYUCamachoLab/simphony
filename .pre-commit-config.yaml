@@ -11,15 +11,10 @@ repos:
       - id: trailing-whitespace
         types: [python]
 
-  - repo: https://github.com/psf/black
-    rev: 23.3.0
-    hooks:
-      - id: black
-
   - repo: https://github.com/asottile/seed-isort-config
     rev: v2.1.1
     hooks:
-    -   id: seed-isort-config
+      - id: seed-isort-config
         exclude: '^(?!simphony/)'
 
   - repo: https://github.com/PyCQA/isort
@@ -30,17 +25,34 @@ repos:
         files: simphony/.*
         args: [--profile, black --filter-files]
 
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.6.0
+    hooks:
+      - id: pyupgrade
+        args: [--py38-plus]
+
+  - repo: https://github.com/psf/black
+    rev: 23.3.0
+    hooks:
+      - id: black
+
   - repo: https://github.com/PyCQA/flake8
     rev: 6.0.0
     hooks:
-    -   id: flake8
+      - id: flake8
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.3.0
+    hooks:
+      - id: mypy
+        exclude: ^(docs/)
 
   - repo: https://github.com/adamchainz/blacken-docs
     rev: 1.13.0
     hooks: 
-    - id: blacken-docs
-      additional_dependencies:
-        - black==23.3.0
+      - id: blacken-docs
+        additional_dependencies:
+          - black==23.3.0
 
   - repo: https://github.com/PyCQA/docformatter
     rev: v1.6.5

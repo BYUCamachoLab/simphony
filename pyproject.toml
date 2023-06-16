@@ -62,8 +62,25 @@ dev = [
   "pytest",
   "coverage",
   "build",
+  "pytest",
+  "coverage",
 ]
-test = ["pytest", "coverage"]
+doc = [
+  "sphinx-book-theme ~= 0.3.3",
+  "jupyter-book ~= 0.13.2",
+  "sphinx-design ~= 0.1.0",
+  "matplotlib",
+  "numpy",
+  "numpydoc",
+  # "sphinx-tippy",
+  # sphinx==5.3.0
+  # linkify-it-py==2.0.0
+  # sphinxcontrib-bibtex==2.5.0
+]
+test = [
+  "pytest", 
+  "coverage",
+]
 
 [project.urls]
 "Homepage" = "https://simphonyphotonics.readthedocs.io/en/stable/"
@@ -87,7 +104,7 @@ namespaces = false
 # where = ["."]
 
 # [project.scripts]
-# pyrolab = "simphony.cli:app"
+# simphony = "simphony.cli:app"
 
 [tool.pytest.ini_options]
 minversion = "6.0"

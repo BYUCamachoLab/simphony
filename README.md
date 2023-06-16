@@ -31,21 +31,15 @@ Developed by [CamachoLab](https://camacholab.byu.edu/) at
 
 ## Installation
 
-Simphony can be installed via pip using Python 3:
+Simphony can be installed via pip for Python 3.8+:
 
 ```
 python3 -m pip install simphony
 ```
 
-Please note that Python 2 is not supported. With the official deprecation of
-Python 2 (January 1, 2020), no future compatability is planned.
-
 ## Documentation
 
 The documentation is hosted [online](https://simphonyphotonics.readthedocs.io/en/latest/).
-
-Changelogs can be found in docs/changelog/. There is a changelog file for
-each released version of the software.
 
 ## Bibtex citation
 
@@ -66,3 +60,96 @@ each released version of the software.
   bibsource = {dblp computer science bibliography, https://dblp.org}
 }
 ```
+
+## Development
+
+We welcome contributions to Simphony in the form of bug reports, feature
+requests, and pull requests. Please see the [contributing
+guide](https://simphonyphotonics.readthedocs.io/en/stable/dev/contributing.html).
+
+To develop locally, clone the repository and run the ``make`` commands to set
+up your development environment.
+
+```bash
+git clone https://github.com/BYUCamachoLab/simphony.git
+python3 -m venv env   # or use your preferred virtual environment tool
+source env/bin/activate
+make install
+```
+
+We use pre-commit to maintain code quality. The hooks are automatically 
+installed when invoking the make targets. Pre-commit will now run on every
+commit. If it makes any modifications, the commit will fail and you'll have
+to restage the changes before continuing with the commit.
+
+There are a few other useful targets in the Makefile:
+
+- ``make test``: Run the unit tests
+- ``make doc``: Build the documentation
+
+## Distribution
+
+Simphony is available on PyPI and can be installed via pip:
+
+```
+python3 -m pip install simphony
+```
+
+## License
+
+Simphony is licensed under the MIT license. See the [LICENSE](LICENSE) file for
+more details.
+
+## Releasing (Danger Zone)
+
+**Only the project maintainer should create releases.**
+
+A note on the development cycle. The ``master`` branch is the "latest" branch
+with a version of the project that *always works*. Features and bug fixes are
+developed in separate branches and then merged into master when ready.
+
+When preparing for a new release, it's appropriate to increment the version
+number in advance of the release and before all the changes are merged in. You 
+can start the next version and increment the version number by running:
+
+```
+make major
+make minor
+make patch
+```
+
+This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html),
+which means that the version number is incremented according to the following
+rules:
+
+* MAJOR version when you make incompatible API changes,
+* MINOR version when you add functionality in a backwards compatible manner, and
+* PATCH version when you make backwards compatible bug fixes.
+
+There are also software lifecycle parts to the version number:
+
+* BUILD version is for multiple versions within a release (i.e. "rc1", "rc2", etc.)
+* RELEASE version cycles through "rc(n)" and then empty string for final release.
+
+A version with a "rc" number indicates it is not a final release. When you're
+ready to create the final release, make sure you've filled out the
+corresponding entry in the [CHANGELOG](CHANGELOG.md). Follow the format of
+previous recent entries. Make sure you have a clean working tree (git). Then,
+run:
+
+```
+make release
+```
+
+This will remove the "rc" number, tag the commit, push the tag to git, upload
+a build to PyPI, and publish the documentation to ReadTheDocs. Because this
+process is irreversible and version numbers cannot be reclaimed from PyPI, make
+sure all tests are passing and the documentation is up to date before running
+this command.
+
+A standard version number progression might look something like this:
+
+* 2.0.1
+* 2.0.2rc0
+* 2.0.2rc1
+* 2.0.2
