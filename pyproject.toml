@@ -51,11 +51,6 @@ dependencies = [
   "parsimonious>=0.8.1",
 ]
 
-# List additional groups of dependencies here (e.g. development
-# dependencies). Users will be able to install these using the "extras"
-# syntax, for example:
-#
-#   $ pip install sampleproject[dev]
 [project.optional-dependencies]
 jax = ["jax"]
 gdsfactory = ["gdsfactory"]
@@ -81,11 +76,18 @@ test = ["pytest", "coverage"]
 # include-package-data = true
 # package-data = {"sample" = ["*.dat"]}
 
+[tool.setuptools.packages.find]
+include = ["simphony"]
+namespaces = false
+
 # [tool.setuptools.package-data]
 # simphony = ["*.xml", "*.txt", "*.dat"]
 
 # [tool.setuptools.packages.find]
 # where = ["."]
+
+# [project.scripts]
+# pyrolab = "simphony.cli:app"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -95,6 +97,7 @@ console_output_style = "progress"
 filterwarnings = ["ignore::UserWarning", "ignore::DeprecationWarning"]
 
 [tool.isort]
+profile = "black"
 multi_line_output = 3
 include_trailing_comma = true
 force_grid_wrap = 0
@@ -109,8 +112,8 @@ known_third_party = [
     "scipy",
     "setuptools",
 ]
+known_first_party = ["simphony"]
 
 [build-system]
-# requires = ["setuptools>=62.0.0", "setuptools_scm[toml]>=6.2", "wheel"]
 requires = ["setuptools>=62.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
