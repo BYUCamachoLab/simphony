@@ -1,6 +1,6 @@
-# Simphony: A Simulator for Photonic circuits
+# Simphony: A Simulator for Photonic Circuits
 
-<p align="center">
+<div style="text-align: center">
 <img alt="Development version" src="https://img.shields.io/badge/master-v0.6.1-informational">
 <a href="https://pypi.python.org/pypi/simphony"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/simphony.svg"></a>
 <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/simphony">
@@ -9,9 +9,9 @@
 <a href="https://simphonyphotonics.readthedocs.io/"><img alt="Documentation Status" src="https://readthedocs.org/projects/simphonyphotonics/badge/?version=latest"></a>
 <a href="https://pypi.python.org/pypi/simphony/"><img alt="License" src="https://img.shields.io/pypi/l/simphony.svg"></a>
 <a href="https://github.com/BYUCamachoLab/simphony/commits/master"><img alt="Latest Commit" src="https://img.shields.io/github/last-commit/BYUCamachoLab/simphony.svg"></a>
-</p>
 
-![](simphony_logo.png)
+<img src="https://github.com/BYUCamachoLab/simphony/blob/v0.7.0beta/docs/simphony_logo.png?raw=true" style="max-width: 500px" alt="Simphony logo">
+</div>
 
 Simphony, a simulator for photonic circuits, is a fundamental package for designing and simulating photonic integrated circuits with Python.
 

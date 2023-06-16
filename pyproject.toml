@@ -57,7 +57,17 @@ dependencies = [
 #
 #   $ pip install sampleproject[dev]
 [project.optional-dependencies]
+jax = ["jax"]
 gdsfactory = ["gdsfactory"]
+dev = [
+  "pre-commit",
+  "matplotlib",
+  "bump2version~=1.0.0",
+  "flake8",
+  "pytest",
+  "coverage",
+  "build",
+]
 test = ["pytest", "coverage"]
 
 [project.urls]
@@ -77,7 +87,6 @@ test = ["pytest", "coverage"]
 # [tool.setuptools.packages.find]
 # where = ["."]
 
-# pyproject.toml
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "--maxfail=2 -rf"
