@@ -59,13 +59,12 @@ class Coupler(Model):
         self.coupling = coupling
         self.phi = phi
         self.loss = loss
-        
 
     def s_params(self, wl):
         try:
             T0, T1, T2, T3 = 10 ** (self.loss / 10)
         except:
-            T0 = T1 = T2 = T3 = (10 ** (self.loss / 10))**(1/2)
+            T0 = T1 = T2 = T3 = (10 ** (self.loss / 10)) ** (1 / 2)
         t = jnp.sqrt(1 - self.coupling)
         r = jnp.sqrt(self.coupling)
         rp = jnp.conj(r)
@@ -187,7 +186,7 @@ class PhaseShifter(Model):
 
     def s_params(self, wl):
         s11 = s22 = jnp.array([0] * len(wl), dtype=jnp.complex64)
-        s21 = jnp.array([10**(self.loss/20) * jnp.exp(1j * self.phase)] * len(wl))
+        s21 = jnp.array([10 ** (self.loss / 20) * jnp.exp(1j * self.phase)] * len(wl))
         s12 = jnp.conj(s21)
         return jnp.stack([s11, s12, s21, s22], axis=1).reshape(-1, 2, 2)
 
@@ -205,4 +204,3 @@ if __name__ == "__main__":
     circuit.connect(c2, wg1)
     circuit.connect(c2, wg2)
     print(circuit)
-    

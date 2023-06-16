@@ -23,7 +23,7 @@ class Port:
 
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__} "{self.name}" at {hex(id(self))}>'
-    
+
     def __iter__(self) -> Port:
         yield self
 
@@ -51,16 +51,16 @@ class OPort(Port):
             self._connections.add(port)
         else:
             raise ConnectionError(f"Port '{self.name}' is already connected!")
-    
+
     def _get_index(self) -> int:
         """Get the index of the port in the model's list of ports."""
         return self.instance._oports.index(self)
-    
+
     def _update_instance(self, instance: Model) -> None:
         """Update the port's model's ports' instance reference."""
         for port in self.instance._oports:
             port.instance = instance
-        
+
 
 class EPort(Port):
     """Electrical ports can be connected to many other ports."""
@@ -72,7 +72,7 @@ class EPort(Port):
             )
         else:
             self._connections.add(port)
-    
+
     def _get_index(self) -> int:
         """Get the index of the port in the model's list of ports."""
         return self.instance._eports.index(self)

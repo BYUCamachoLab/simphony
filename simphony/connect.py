@@ -149,7 +149,7 @@ def vector_innerconnect_s(S, k, l):
     Wl = S[:, l, :]  # row vector
 
     a = 1 / (1 - skl - slk + skl * slk - skk * sll)
-    A = (1-slk) * jnp.einsum("ij,ik->ijk", Vl, Wk)
+    A = (1 - slk) * jnp.einsum("ij,ik->ijk", Vl, Wk)
     B = skk * jnp.einsum("ij,ik->ijk", Vl, Wl)
     C = (1 - skl) * jnp.einsum("ij,ik->ijk", Vk, Wl)
     D = sll * jnp.einsum("ij,ik->ijk", Vk, Wk)

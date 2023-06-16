@@ -65,8 +65,12 @@ class Circuit(Model):
         list
             List of all model instances in the circuit.
         """
-        oinstances = [port._original_instatance for pair in self._onodes for port in pair]
-        einstances = [wire._original_instatance for node in self._enodes for wire in node]
+        oinstances = [
+            port._original_instatance for pair in self._onodes for port in pair
+        ]
+        einstances = [
+            wire._original_instatance for node in self._enodes for wire in node
+        ]
         return list(set(oinstances + einstances))
 
     def _update_ports(
@@ -226,7 +230,7 @@ class Circuit(Model):
                 f"Number of ports ({len(ports)}) does not match number of names ({len(names)})"
             )
 
-        new_ports = ports # don't make new ports
+        new_ports = ports  # don't make new ports
 
         new_oports = [port for port in new_ports if isinstance(port, OPort)]
         new_eports = [port for port in new_ports if isinstance(port, EPort)]

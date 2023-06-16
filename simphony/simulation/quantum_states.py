@@ -12,7 +12,7 @@ except ImportError:
     from simphony.utils import jax
 
     JAX_AVAILABLE = False
-    
+
 from simphony.exceptions import ShapeMismatchError
 from simphony.utils import xxpp_to_xpxp, xpxp_to_xxpp
 from .simdevices import SimDevice

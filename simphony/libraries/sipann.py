@@ -193,7 +193,7 @@ class GapFuncSymmetric(SipannWrapper):
         zmax: float,
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(
             scee.GapFuncSymmetric(
@@ -206,7 +206,7 @@ class GapFuncSymmetric(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
-            **kwargs
+            **kwargs,
         )
 
     def update_variations(self, **kwargs):
@@ -297,7 +297,7 @@ class GapFuncAntiSymmetric(SipannWrapper):
         arc4: float,
         sw_angle: Union[float, np.array] = 90,
         sigmas: dict = dict(),
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(
             scee.GapFuncAntiSymmetric(
@@ -313,7 +313,7 @@ class GapFuncAntiSymmetric(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
-            **kwargs
+            **kwargs,
         )
 
     def update_variations(self, **kwargs):
@@ -381,14 +381,14 @@ class HalfRing(SipannWrapper):
         gap: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(
             scee.HalfRing(
                 width * 1e9, thickness * 1e9, radius * 1e9, gap * 1e9, sw_angle
             ),
             sigmas,
-            **kwargs
+            **kwargs,
         )
 
     def update_variations(self, **kwargs):
@@ -461,7 +461,7 @@ class HalfRacetrack(SipannWrapper):
         length: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(
             scee.HalfRacetrack(
@@ -473,7 +473,7 @@ class HalfRacetrack(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
-            **kwargs
+            **kwargs,
         )
 
     def update_variations(self, **kwargs):
@@ -538,14 +538,14 @@ class StraightCoupler(SipannWrapper):
         length: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(
             scee.StraightCoupler(
                 width * 1e9, thickness * 1e9, gap * 1e9, length * 1e9, sw_angle
             ),
             sigmas,
-            **kwargs
+            **kwargs,
         )
 
     def update_variations(self, **kwargs):
@@ -624,7 +624,7 @@ class Standard(SipannWrapper):
         vertical: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(
             scee.Standard(
@@ -637,7 +637,7 @@ class Standard(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
-            **kwargs
+            **kwargs,
         )
 
     def update_variations(self, **kwargs):
@@ -707,14 +707,14 @@ class DoubleHalfRing(SipannWrapper):
         gap: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(
             scee.DoubleHalfRing(
                 width * 1e9, thickness * 1e9, radius * 1e9, gap * 1e9, sw_angle
             ),
             sigmas,
-            **kwargs
+            **kwargs,
         )
 
     def update_variations(self, **kwargs):
@@ -791,14 +791,14 @@ class AngledHalfRing(SipannWrapper):
         theta: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(
             scee.AngledHalfRing(
                 width * 1e9, thickness * 1e9, radius * 1e9, gap * 1e9, theta, sw_angle
             ),
             sigmas,
-            **kwargs
+            **kwargs,
         )
 
     def update_variations(self, **kwargs):
@@ -856,12 +856,12 @@ class Waveguide(SipannWrapper):
         length: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(
             scee.Waveguide(width * 1e9, thickness * 1e9, length * 1e9, sw_angle),
             sigmas,
-            **kwargs
+            **kwargs,
         )
 
     def update_variations(self, **kwargs):
@@ -933,7 +933,7 @@ class Racetrack(SipannWrapper):
         length: Union[float, np.array],
         sw_angle: Union[float, np.array] = 90,
         sigmas: Dict[str, float] = dict(),
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(
             comp.racetrack_sb_rr(
@@ -945,7 +945,7 @@ class Racetrack(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
-            **kwargs
+            **kwargs,
         )
 
     def update_variations(self, **kwargs):

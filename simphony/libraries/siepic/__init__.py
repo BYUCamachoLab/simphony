@@ -83,6 +83,7 @@ from collections import namedtuple
 try:
     import gdsfactory as gf
     from gdsfactory.types import Route
+
     _has_gf = True
 except ImportError:
     _has_gf = False
@@ -533,7 +534,9 @@ class BidirectionalCoupler(SiEPIC_PDK_Base):
 
         if _has_gf:
             gf.clear_cache()
-            self.component = gf.components.coupler(gap=0.2, length=50.55, dy=4.7, width=width * 1e6)
+            self.component = gf.components.coupler(
+                gap=0.2, length=50.55, dy=4.7, width=width * 1e6
+            )
             self.component.name = self.name
             pin_names = [pin.name for pin in self.pins]
             for i, port in enumerate(self.component.ports.values()):
@@ -670,7 +673,6 @@ class HalfRing(SiEPIC_PDK_Base):
         couple_length=0.0,
         **kwargs,
     ):
-
         super().__init__(
             **kwargs,
             gap=gap,
@@ -682,7 +684,12 @@ class HalfRing(SiEPIC_PDK_Base):
 
         if _has_gf:
             gf.clear_cache()
-            self.component = gf.components.coupler_ring(gap=gap * 1e6, length_x=couple_length * 1e6, radius=radius * 1e6, width=width * 1e6,)
+            self.component = gf.components.coupler_ring(
+                gap=gap * 1e6,
+                length_x=couple_length * 1e6,
+                radius=radius * 1e6,
+                width=width * 1e6,
+            )
             self.component.name = self.name
             pin_names = [pin.name for pin in self.pins]
             for i, port in enumerate(self.component.ports.values()):
@@ -805,7 +812,6 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
     )
 
     def __init__(self, gap=200e-9, Lc=10e-6, **kwargs):
-
         super().__init__(
             **kwargs,
             gap=gap,
@@ -814,7 +820,9 @@ class DirectionalCoupler(SiEPIC_PDK_Base):
 
         if _has_gf:
             gf.clear_cache()
-            self.component = gf.components.coupler(gap=gap * 1e6, length=Lc * 1e6, dy=10)
+            self.component = gf.components.coupler(
+                gap=gap * 1e6, length=Lc * 1e6, dy=10
+            )
             self.component.name = self.name
             pin_names = [pin.name for pin in self.pins]
             for i, port in enumerate(self.component.ports.values()):
@@ -939,7 +947,6 @@ class Terminator(SiEPIC_PDK_Base):
         L=10e-6,
         **kwargs,
     ):
-
         super().__init__(
             **kwargs,
             w1=w1,
@@ -949,7 +956,9 @@ class Terminator(SiEPIC_PDK_Base):
 
         if _has_gf:
             gf.clear_cache()
-            self.component = gf.components.taper(width1=w1 * 1e6, width2=w2 * 1e6, with_two_ports=False)
+            self.component = gf.components.taper(
+                width1=w1 * 1e6, width2=w2 * 1e6, with_two_ports=False
+            )
             self.component.name = self.name
             pin_names = [pin.name for pin in self.pins]
             for i, port in enumerate(self.component.ports.values()):
@@ -1033,7 +1042,6 @@ class GratingCoupler(SiEPIC_PDK_Base):
         polarization="TE",
         **kwargs,
     ):
-
         super().__init__(
             **kwargs,
             thickness=thickness,
@@ -1469,7 +1477,7 @@ class Waveguide(SiEPIC_PDK_Base):
         K = (
             2 * np.pi * ne / lam0
             + (ng / SPEED_OF_LIGHT) * (w - w0)
-            - (nd * lam0 ** 2 / (4 * np.pi * SPEED_OF_LIGHT)) * ((w - w0) ** 2)
+            - (nd * lam0**2 / (4 * np.pi * SPEED_OF_LIGHT)) * ((w - w0) ** 2)
         )
 
         for x in range(0, len(freqs)):  # build s-matrix from K and waveguide length
@@ -1537,11 +1545,34 @@ class YBranch(SiEPIC_PDK_Base):
 
         if _has_gf:
             gf.clear_cache()
-            self.component = gf.read.import_gds(os.path.join(os.path.dirname(__file__), 'source_data/ebeam_y_1550.gds'))
+            self.component = gf.read.import_gds(
+                os.path.join(os.path.dirname(__file__), "source_data/ebeam_y_1550.gds")
+            )
             self.component.name = self.name
-            self.component.ports[self.pins[0].name] = gf.Port(self.pins[0].name, 180, center=(-7.4, 0), width=width * 1e6, layer="PORT", parent=self.component)
-            self.component.ports[self.pins[1].name] = gf.Port(self.pins[1].name, 0, center=(7.4, 2.75), width=width * 1e6, layer="PORT", parent=self.component)
-            self.component.ports[self.pins[2].name] = gf.Port(self.pins[2].name, 0, center=(7.4, -2.75), width=width * 1e6, layer="PORT", parent=self.component)
+            self.component.ports[self.pins[0].name] = gf.Port(
+                self.pins[0].name,
+                180,
+                center=(-7.4, 0),
+                width=width * 1e6,
+                layer="PORT",
+                parent=self.component,
+            )
+            self.component.ports[self.pins[1].name] = gf.Port(
+                self.pins[1].name,
+                0,
+                center=(7.4, 2.75),
+                width=width * 1e6,
+                layer="PORT",
+                parent=self.component,
+            )
+            self.component.ports[self.pins[2].name] = gf.Port(
+                self.pins[2].name,
+                0,
+                center=(7.4, -2.75),
+                width=width * 1e6,
+                layer="PORT",
+                parent=self.component,
+            )
 
     def on_args_changed(self):
         try:

@@ -45,8 +45,8 @@ def plot_quantum_result(result: QuantumResult, modes: list = None):
         modes = range(result.n_ports)
     n_modes = len(modes)
     # make subplots into a square grid
-    n_rows = int(n_modes ** 0.5)
-    n_cols = int(n_modes ** 0.5)
+    n_rows = int(n_modes**0.5)
+    n_cols = int(n_modes**0.5)
     if n_rows * n_cols < n_modes:
         n_cols += 1
     fig, axs = plt.subplots(n_rows, n_cols, figsize=(10, 10))
@@ -56,8 +56,6 @@ def plot_quantum_result(result: QuantumResult, modes: list = None):
     means = result.means[wl_ind]
     for i, mode in enumerate(modes):
         pass
-
-    
 
 
 class QuantumSim(Simulation):
@@ -129,7 +127,6 @@ class QuantumSim(Simulation):
         self.input.to_xxpp()
         input_means, input_cov = self.input.modes(input_indices)
 
-
         transforms = []
         means = []
         covs = []
@@ -137,7 +134,7 @@ class QuantumSim(Simulation):
             s_wl = unitary[wl_ind]
             transform = jnp.zeros((n_modes * 2, n_modes * 2))
             n = n_modes
-        
+
             transform[:n, :n] = s_wl.real
             transform[:n, n:] = -s_wl.imag
             transform[n:, :n] = s_wl.imag
@@ -154,7 +151,7 @@ class QuantumSim(Simulation):
             transforms.append(transform)
             means.append(output_means)
             covs.append(output_cov)
-            
+
         return QuantumResult(
             s_params=s_params,
             input_means=input_means,
@@ -162,6 +159,6 @@ class QuantumSim(Simulation):
             transforms=jnp.stack(transforms),
             means=jnp.stack(means),
             cov=jnp.stack(covs),
-            n_ports = n_ports,
-            wl = self.wl,
+            n_ports=n_ports,
+            wl=self.wl,
         )

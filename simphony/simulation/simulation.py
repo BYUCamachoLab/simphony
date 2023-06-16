@@ -32,9 +32,10 @@ class Simulation:
         """
         raise NotImplementedError
 
+
 class SimulationResult:
     pass
-    
+
 
 # class ClassicalSim(Simulation):
 #     """
@@ -44,6 +45,7 @@ class SimulationResult:
 #     def __init__(self,  ckt: Circuit, wl: jnp.ndarray) -> None:
 #         super().__init__(ckt, wl)
 
+
 class MonteCarloSim(Simulation):
     """
     Monte Carlo simulation
@@ -51,6 +53,7 @@ class MonteCarloSim(Simulation):
 
     def __init__(self, ckt: Circuit, wl: jnp.ndarray) -> None:
         super().__init__(ckt, wl)
+
 
 class LayoutAwareSim(Simulation):
     """
@@ -60,6 +63,7 @@ class LayoutAwareSim(Simulation):
     def __init__(self, cir: Circuit, wl: jnp.ndarray) -> None:
         super().__init__(cir, wl)
 
+
 class SamplingSim(Simulation):
     """
     Sampling simulation
@@ -68,6 +72,7 @@ class SamplingSim(Simulation):
     def __init__(self, ckt: Circuit, wl: jnp.ndarray) -> None:
         super().__init__(ckt, wl)
 
+
 class TimeDomainSim(Simulation):
     """
     Time-domain simulation
@@ -75,6 +80,7 @@ class TimeDomainSim(Simulation):
 
     def __init__(self, ckt: Circuit, wl: jnp.ndarray) -> None:
         super().__init__(ckt, wl)
+
 
 class QuantumSim(Simulation):
     """

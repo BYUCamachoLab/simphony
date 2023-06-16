@@ -23,6 +23,10 @@ install:
 	pip install -e .[dev,doc,test]
 	pre-commit install
 
+precommit:
+	pre-commit install
+	pre-commit run --all-files
+
 doc:
 	rm -r docs/api
 	jb clean docs && jb build docs

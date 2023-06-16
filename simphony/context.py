@@ -5,7 +5,7 @@ from types import SimpleNamespace
 class Context(SimpleNamespace):
     def __getitem__(self, key):
         return getattr(self, key)
-    
+
     def __setitem__(self, key, value):
         setattr(self, key, value)
 
@@ -16,7 +16,7 @@ class Context(SimpleNamespace):
         original state after the simulation is complete.
         """
         return deepcopy(self.__dict__)
-    
+
     def load(self, d):
         """
         Reload the context from the dictionary returned by export().
@@ -30,11 +30,11 @@ CTX = Context()
 CTX.neff = 2.34
 CTX.ng = 3.4
 
-# Temperature in C 
-CTX.TC = 30 
+# Temperature in C
+CTX.TC = 30
 
 # Rectangular or polar coordinates
-CTX.form = "rect" or "polar" 
+CTX.form = "rect" or "polar"
 
 # Loss in dB/cm
 CTX.loss_db_cm = 1.5

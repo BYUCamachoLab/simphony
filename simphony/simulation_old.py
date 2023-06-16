@@ -21,10 +21,11 @@ try:
     import jax
     import jax.numpy as np
     import jax.random as jnprand
-    
+
     JAX_AVAILABLE = True
 except ImportError:
     import numpy as np
+
     JAX_AVAILABLE = False
 # import numpy as np
 # JAX_AVAILABLE = False
@@ -41,6 +42,7 @@ from scipy.linalg import cholesky, lu
 from scipy.signal import butter, sosfiltfilt
 
 from simphony.models import Model
+
 # from simphony.layout import Circuit
 # from simphony.libraries import siepic
 from simphony.utils import add_polar, wl2freq
@@ -70,7 +72,7 @@ class SimulationTmp:
     def run(self):
         global CTX
         self._OLD_CTX = CTX.export()
-        
+
         CTX.neff = 2.5
         CTX.form = "polar"
 
@@ -136,7 +138,7 @@ class Simulation:
             self.rng = testnp.random.default_rng(seed)
         else:
             self.rng = testnp.random.default_rng(seed)
-        #JAX note, the above line creates a new generator
+        # JAX note, the above line creates a new generator
         self.powers = np.array([])
         self.shape = [0, 0]
         self.sources = []
@@ -289,10 +291,14 @@ class Simulation:
                     for j in range(self.shape[1]):
                         for k in range(self.num_samples):
                             if JAX_AVAILABLE:
-                                transmissions = transmissions.at[i, j ,k].set(add_polar(transmissions[i, j, k], contributions[i, j, k]))
+                                transmissions = transmissions.at[i, j, k].set(
+                                    add_polar(
+                                        transmissions[i, j, k], contributions[i, j, k]
+                                    )
+                                )
                             else:
                                 transmissions[i, j, k] = add_polar(
-                                transmissions[i, j, k], contributions[i, j, k]
+                                    transmissions[i, j, k], contributions[i, j, k]
                                 )
 
             # convert the output fields to powers
@@ -397,7 +403,6 @@ class Simulation:
         # generate correlation values
         for i in range(n):
             for k in range(n):
-
                 corr_val = np.exp(
                     -((x[k] - x[i]) ** 2 + (y[k] - y[i]) ** 2) / (0.5 * (l**2))
                 )

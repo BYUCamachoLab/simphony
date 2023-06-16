@@ -14,7 +14,8 @@ that exist on a component.
 from typing import Optional, Tuple
 
 import jax.numpy as np
-#import numpy as np
+
+# import numpy as np
 
 from simphony import Model
 from simphony.utils import freq2wl, wl2freq

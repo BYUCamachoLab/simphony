@@ -23,10 +23,12 @@ from typing import ClassVar, Dict, List, Optional, Tuple, Union
 
 import numpy as testnp
 import jax.numpy as np
+
 # import numpy as np
 
 try:
     from gdsfactory import Component, ComponentReference
+
     _has_gf = True
 except ImportError:
     _has_gf = False
@@ -113,7 +115,9 @@ class Model:
                 component_or_pin, component1_ref, component2_ref
             )
         else:
-            raise ImportError("gdsfactory must be installed to connect gdsfactory components. Try `pip install gdsfactory`.")
+            raise ImportError(
+                "gdsfactory must be installed to connect gdsfactory components. Try `pip install gdsfactory`."
+            )
 
         return self
 
@@ -139,7 +143,9 @@ class Model:
                     if selfpin.name[0:3] != "pin" and selfpin.name == componentpin.name:
                         selfpin.connect(componentpin, component1_ref, component2_ref)
         else:
-            raise ImportError("gdsfactory must be installed to connect gdsfactory components. Try `pip install gdsfactory`.")
+            raise ImportError(
+                "gdsfactory must be installed to connect gdsfactory components. Try `pip install gdsfactory`."
+            )
         return self
 
     def monte_carlo_s_parameters(self, freqs: "np.array") -> "np.ndarray":
@@ -275,7 +281,6 @@ class Subcircuit(Model):
         pin_names = {}
 
         for component in circuit:
-
             # figure out which pins to re-expose
             for pin in component.pins:
                 # re-expose unconnected pins or pins connected to simulators
@@ -307,7 +312,9 @@ class Subcircuit(Model):
             pins=pins,
         )
 
-    def __get_s_params_from_cache(self, component, freqs: "np.array", s_parameters_method: str = "s_parameters"):
+    def __get_s_params_from_cache(
+        self, component, freqs: "np.array", s_parameters_method: str = "s_parameters"
+    ):
         """Get the s_params from the cache if possible."""
         if s_parameters_method == "s_parameters":
             # each frequency has a different s-matrix, so we need to cache
@@ -317,32 +324,32 @@ class Subcircuit(Model):
             for freq in freqs:
                 try:
                     # use the cached s-matrix if available
-                    #print(self.__class__.scache)
+                    # print(self.__class__.scache)
                     s_matrix = self.__class__.scache[component][freq]
                 except KeyError:
                     # make sure the frequency dict is created
                     if component not in self.__class__.scache:
-                        #print("component not in scache:", component)
+                        # print("component not in scache:", component)
                         self.__class__.scache[component] = {}
-                    #print("scache:", self.__class__.scache[component])
+                    # print("scache:", self.__class__.scache[component])
                     # store the s-matrix for the frequency and component
                     s_matrix = getattr(component, s_parameters_method)(
                         np.array([freq])
                     )[0]
-                    #x = tuple(freq)
-                    #x = testnp.load(freq, allow_pickle=True)
-                    #print("s matrix", s_matrix, "component", component, "freq", freq)
-                    #print("freq", type(freq))
-                    #print("type x:", type(testnp.array(freq)))
+                    # x = tuple(freq)
+                    # x = testnp.load(freq, allow_pickle=True)
+                    # print("s matrix", s_matrix, "component", component, "freq", freq)
+                    # print("freq", type(freq))
+                    # print("type x:", type(testnp.array(freq)))
                     x = testnp.array(freq)
-                    #print(x)
-                          #, freq.at[0].get())
+                    # print(x)
+                    # , freq.at[0].get())
                     x1 = testnp.reshape(x, 1)
                     freqtup = tuple(x1)
-                    #print("scache:", self.__class__.scache[component][freqtup])
+                    # print("scache:", self.__class__.scache[component][freqtup])
                     self.__class__.scache[component][freqtup] = s_matrix
-                    #print("scache now:", self.__class__.scache[component][freqtup])
-                    #self.__class__.scache.at[component][freq].set(s_matrix)
+                    # print("scache now:", self.__class__.scache[component][freqtup])
+                    # self.__class__.scache.at[component][freq].set(s_matrix)
 
                 # add the s-matrix to our list of s-matrices
                 s_params.append(s_matrix)
@@ -410,7 +417,9 @@ class Subcircuit(Model):
                 continue
 
             # get the s_params from the cache if possible
-            s_params = self.__get_s_params_from_cache(component, freqs, s_parameters_method)
+            s_params = self.__get_s_params_from_cache(
+                component, freqs, s_parameters_method
+            )
 
             # merge the s_params into the block diagonal matrix
             if s_block is None:

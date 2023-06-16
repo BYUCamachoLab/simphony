@@ -15,6 +15,7 @@ import os
 from typing import TYPE_CHECKING, List, Optional
 
 import jax.numpy as np
+
 # import numpy as np
 
 from simphony.formatters import CircuitFormatter, CircuitJSONFormatter
