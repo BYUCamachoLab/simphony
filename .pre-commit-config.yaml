@@ -11,19 +11,12 @@ repos:
       - id: trailing-whitespace
         types: [python]
 
-  - repo: https://github.com/asottile/seed-isort-config
-    rev: v2.1.1
-    hooks:
-      - id: seed-isort-config
-        exclude: '^(?!simphony/)'
-
   - repo: https://github.com/PyCQA/isort
     rev: 5.12.0
     hooks:
       - id: isort
         name: isort (python)
         files: simphony/.*
-        args: [--profile, black --filter-files]
 
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.6.0
