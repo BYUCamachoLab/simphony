@@ -1,0 +1,21 @@
+# Table of contents
+# Learn more at https://jupyterbook.org/customize/toc.html
+
+format: jb-book
+root: index
+parts:
+- caption: Tutorials
+  chapters:
+  - file: tutorials/intro
+  - file: tutorials/mzi
+  - file: tutorials/filters
+  - file: tutorials/layout_aware
+- caption: Reference
+  chapters:
+  - file: api_reference
+  # - file: model_libraries
+- caption: Development
+  chapters:
+  - file: dev/contributing
+  - file: dev/developing
+  - file: dev/documenting

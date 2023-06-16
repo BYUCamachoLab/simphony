@@ -171,7 +171,7 @@ package to PyPI, creates a GitHub release, and updates the
 documentation to the most recent stable release.
 
 Before the release, all deprecated code should be removed,
-and a changelog should be written for the new version. For
+and a changelog entry should be written for the new version. For
 the changelog, follow the style of previous changelogs when
 writing. The documentation should be ready for build, see
 :doc:`documenting` for how to build. Use `bump2version`_

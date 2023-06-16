@@ -8,11 +8,13 @@ simphony
    :caption: API Reference
    :toctree: ./api/
 
+   simphony.circuit
    simphony.connect
+   simphony.context
+   simphony.exceptions
    simphony.formatters
    simphony.layout
    simphony.models
-   simphony.pins
    simphony.simulation
    simphony.simulators
-   simphony.tools
+   simphony.utils

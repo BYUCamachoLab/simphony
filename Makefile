@@ -24,7 +24,7 @@ install:
 	pre-commit install
 
 doc:
-	rm docs/api
+	rm -r docs/api
 	jb clean docs && jb build docs
 
 serve:

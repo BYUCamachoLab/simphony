@@ -17,7 +17,7 @@ down two paths of differing lengths. When the light is
 recombined, it interferes, and the output is
 frequency-dependent.
 
-.. figure:: images/mzi.png
+.. figure:: /_static/images/mzi.png
     :alt: mzi
     :align: center
 
@@ -27,7 +27,7 @@ The MZI we'll create can be broken down into constituent
 parts. Simphony includes models for these constituent parts
 below:
 
-.. image:: images/mzi_outline_ports_marked.png
+.. image:: /_static/images/mzi_outline_ports_marked.png
     :alt: waveguide
     :align: center
 
@@ -137,7 +137,7 @@ works).
 When you run your MZI python file, it should bring up a
 graph showing something similar to this:
 
-.. image:: images/plot_mzi.png
+.. image:: /_static/images/plot_mzi.png
     :align: center
 
 Monte-Carlo Simulation
@@ -178,7 +178,7 @@ first simulation records results for ideal conditions.
 You should see something similar to this graph when you run
 your MZI now:
 
-.. image:: images/plot_mzi_mc2.png
+.. image:: /_static/images/plot_mzi_mc2.png
     :align: center
 
 We have now defined and simulated our MZI! This completes

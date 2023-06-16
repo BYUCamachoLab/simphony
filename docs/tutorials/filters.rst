@@ -16,7 +16,7 @@ An add-drop filter uses rings of different radii to select
 specific frequencies from an input waveguide and convey them
 to an output.
 
-.. figure:: images/filters.png
+.. figure:: /_static/images/filters.png
     :alt: Add-Drop Filter
     :align: center
 
@@ -37,7 +37,7 @@ such light.
 Notice how the Add-Drop Filter is composed of three similar
 rings, differing only by their radius:
 
-.. figure:: images/ring.png
+.. figure:: /_static/images/ring.png
     :align: center
 
     An isolated, single ring resonator.
@@ -135,7 +135,7 @@ behaving as expected.
 When you run your python file up to this point, you should
 see a graph similar to this:
 
-.. figure:: images/10um_ring_res.png
+.. figure:: /_static/images/10um_ring_res.png
     :align: center
 
     The through-port frequency response of a 10 micron ring
@@ -263,7 +263,7 @@ Finally, we show our plot.
 What you should see when you run your Add-Drop circuit is
 something like this:
 
-.. figure:: images/add_drop_response.png
+.. figure:: /_static/images/add_drop_response.png
     :align: center
 
     The response of our designed add-drop filter.

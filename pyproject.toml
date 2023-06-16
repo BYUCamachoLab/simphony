@@ -72,6 +72,8 @@ doc = [
   "matplotlib",
   "numpy",
   "numpydoc",
+  # sphinx-copybutton==0.5.1
+  # sphinx-togglebutton==0.3.2
   # "sphinx-tippy",
   # sphinx==5.3.0
   # linkify-it-py==2.0.0

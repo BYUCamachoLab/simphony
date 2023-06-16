@@ -114,7 +114,7 @@ We can then call the function, and visualize the layout in KLayout.
     c = mzi()
     c.show()
 
-.. image:: images/mzi_layout_aware.png
+.. image:: /_static/images/mzi_layout_aware.png
     :alt: layout
     :align: center
 
@@ -171,7 +171,7 @@ due to random variations incorporated into the components' widths and thicknesse
 You should see something similar to this graph when you run
 your MZI now:
 
-.. image:: images/layout_aware.png
+.. image:: /_static/images/layout_aware.png
     :alt: layout-aware simulation
     :align: center
 
