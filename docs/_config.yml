@@ -4,10 +4,13 @@ author: Sequoia Ploeg, et al.
 copyright: "2019-2023 Simphony Project Contributors"
 logo: simphony_logo.png
 
+exclude_patterns: [_build, Thumbs.db, .DS_Store, "**.ipynb_checkpoints"]
+only_build_toc_files: true
+
 # Force re-execution of notebooks on each build.
 # See https://jupyterbook.org/content/execute.html
 execute:
-  execute_notebooks: force
+  execute_notebooks: off #force
 
 parse:
   myst_enable_extensions:
