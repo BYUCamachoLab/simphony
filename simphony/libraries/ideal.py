@@ -167,7 +167,7 @@ class Waveguide(Model):
 
         _neff = self.neff or CTX.neff
         _ng = self.ng or CTX.ng
-        _loss = self.loss or CTX.loss_db_cm / 100
+        _loss = self.loss if self.loss is not None else CTX.loss_db_cm / 100
 
         neff = _neff - (wl - self.wl0) * (_ng - _neff) / self.wl0
         amp = 10 ** (-_loss * self.length / 20)
