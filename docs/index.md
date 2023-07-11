@@ -39,10 +39,27 @@ even better! See [Contributing](dev/contributing) to learn how.
 
 **Citing this work**
 
+::::{tab-set}
+
+:::{tab-item} Text
 > S. Ploeg, H. Gunther and R. M. Camacho, "Simphony: An Open-Source Photonic 
 > Integrated Circuit Simulation Framework," in Computing in Science & 
 > Engineering, vol. 23, no. 1, pp. 65-74, 1 Jan.-Feb. 2021, doi: 10.1109/MCSE.2020.3012099.
+:::
 
-
-```{tableofcontents}
+:::{tab-item} BibTeX
+```bibtex
+@article{Ploeg2021,
+  author="Ploeg, Sequoia and Gunther, Hyrum and Camacho, Ryan M.",
+  journal="Computing in Science \& Engineering", 
+  title="Simphony: An Open-Source Photonic Integrated Circuit Simulation Framework", 
+  year=2021,
+  volume="23",
+  number="1",
+  pages="65--74",
+  doi="10.1109/MCSE.2020.3012099"
+}
 ```
+:::
+
+::::
