@@ -4,15 +4,20 @@ from __future__ import annotations
 
 from copy import deepcopy
 from functools import lru_cache, wraps
-from typing import List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
+
+import numpy as np
 
 from simphony.exceptions import ModelValidationError
+
+if TYPE_CHECKING:
+    from simphony.circuit import Circuit
 
 
 class Port:
     """Port base class containing name and reference to Model instance."""
 
-    def __init__(self, name: str, instance: Model | Circuit = None) -> None:
+    def __init__(self, name: str, instance: Model | Circuit | None = None) -> None:
         self.name = name
         self.instance = instance
         self._original_instatance = instance
@@ -86,6 +91,50 @@ class Model:
     The model tracks its own ports. Ports should not be interacted with
     directly, but should be modified through the functions that Model
     provides.
+
+    Notes
+    -----
+    Models are the building blocks of simphony. Without the ability to define
+    custom models or use models from other libraries, simphony essentially
+    loses all functionality.
+
+    Models must have certain attributes defined. These are:
+
+    - `onames` or `ocount`: the names of the optical ports or the number of
+        optical ports, respectively.
+    - `enames` or `ecount`: the names of the electrical ports or the number of'
+        electrical ports, respectively.
+    - `s_params`: a function that returns the scattering parameters of the
+        model. This function should take a wavelength as an argument and
+        return a 2D numpy array of the scattering parameters.
+
+    Models can have the following attributes defined:
+
+    - `__init__`: the model's constructor, in the case of a parameterized
+        model. This function should take any parameters as arguments and
+        store them as attributes of the model. Any attributes set here, so long
+        as they are saved to the ``self`` attribute, are accessible to the
+        `s_params` function.
+    - `exposed`: a boolean that determines if the model is exposed to the
+        circuit. If `exposed` is `True`, the model will be exposed to the
+        circuit and can be connected to other models. If `exposed` is `False`,
+        the model will not be exposed to the circuit and cannot be connected
+        to other models. This is useful for models that are used internally
+        by other models, but should not be exposed to the user.
+
+    An example of a model definition is shown below. This would be equivalent
+    to a straight, lossless, broadband waveguide.
+
+    .. code-block:: python
+
+        class MyWaveguide(Model):
+            onames = ["in", "out"]
+
+            def __init__(self, length):
+                self.length = length
+
+            def s_params(self, wavelength):
+                return np.array([[0, 1], [1, 0]])
     """
 
     _oports: list[OPort] = []  # should only be manipulated by rename_oports()
@@ -187,7 +236,7 @@ class Model:
         # https://docs.python.org/3/faq/programming.html#how-do-i-cache-method-calls
         return self.s_params(wl)
 
-    def s_params(self, wl):
+    def s_params(self, wl: float | np.ndarray) -> np.ndarray:
         """Function to be implemented by subclasses to return scattering
         parameters.
 
@@ -204,7 +253,7 @@ class Model:
         """
         raise NotImplementedError
 
-    def o(self, value: str | int = None):
+    def o(self, value: str | int | None = None):
         """Get a reference to an optical port.
 
         Parameter
@@ -225,7 +274,7 @@ class Model:
         else:
             return self.next_unconnected_oport()
 
-    def e(self, value: str | int = None):
+    def e(self, value: str | int | None = None) -> EPort | None:
         """Get a reference to an electrical port.
 
         Parameter
@@ -246,7 +295,7 @@ class Model:
         else:
             return self.next_unconnected_eport()
 
-    def rename_oports(self, names: list[str]) -> Model:
+    def rename_oports(self, names: list[str]):
         """Rename all optical ports.
 
         Parameters
@@ -269,7 +318,7 @@ class Model:
                 f"Number of renamed ports must be equal to number of current ports ({len(names)}!={len(self.onames)})"
             )
 
-    def rename_eports(self, names: list[str]) -> Model:
+    def rename_eports(self, names: list[str]):
         """Rename all electrical ports.
 
         Parameters
