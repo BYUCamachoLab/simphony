@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import collections.abc
+import logging
 from copy import deepcopy
 from functools import lru_cache, wraps
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -14,22 +16,34 @@ if TYPE_CHECKING:
     from simphony.circuit import Circuit
 
 
+log = logging.getLogger(__name__)
+
+
 class Port:
-    """Port base class containing name and reference to Model instance."""
+    """Port abstract base class containing name and reference to Model
+    instance."""
 
     def __init__(self, name: str, instance: Model | Circuit | None = None) -> None:
         self.name = name
         self.instance = instance
-        self._original_instatance = instance
+        self._original_instance = instance
         self._connections = set()  # a list of all other ports the port is connected to
 
     def __repr__(self) -> str:
+        """Return a string representation of the port."""
         return f'<{self.__class__.__name__} "{self.name}" at {hex(id(self))}>'
 
-    def __iter__(self) -> Port:
+    def __iter__(self):
         yield self
 
     def rename(self, name: str) -> None:
+        """Rename the port.
+
+        Parameters
+        ----------
+        name : str
+            The new name of the port.
+        """
         self.name = name
 
     @property
@@ -38,6 +52,18 @@ class Port:
         return bool(self._connections)
 
     def connect_to(self, port: Port) -> None:
+        """Connect the port to another port.
+
+        Parameters
+        ----------
+        port : Port
+            The port to connect to.
+
+        Raises
+        ------
+        NotImplementedError
+            Implemented by subclasses.
+        """
         raise NotImplementedError
 
 
@@ -108,7 +134,7 @@ class Model:
         model. This function should take a wavelength as an argument and
         return a 2D numpy array of the scattering parameters.
 
-    Models can have the following attributes defined:
+    Models can optionally have the following attributes defined:
 
     - `__init__`: the model's constructor, in the case of a parameterized
         model. This function should take any parameters as arguments and
@@ -135,6 +161,29 @@ class Model:
 
             def s_params(self, wavelength):
                 return np.array([[0, 1], [1, 0]])
+
+    Note that the `s_params` function is cached internally by the simulation
+    engine. If a model loads s-parameters from a file, for example, this
+    significantly cuts down on read times because s-parameters is called on
+    each instantiated instance of a model, not just once for each model
+    type. Multiple instances of the same model do, however, share the same
+    s-parameters if their public attributes (or parameters) are equal. If you
+    want to save attributes to the model, but don't want them to be used in the
+    caching, prefix the attribute name with an underscore (e.g. `_my_attr`).
+
+    Therefore, the following example is essentially equivalent to what happens
+    during a simulation:
+
+    1. Instantiate YBranch1, an instance of YBranch
+    2. Instantiate YBranch2 with the same parameters as YBranch1
+    3. Call simulation with a given wavelength array
+    4. Call s-parameters calculation/loading for YBranch1
+        a. Function has not been called previously, cache the result
+    5. Call s-parameters calculation/loading for YBranch2
+        a. YBranch2 is an instance of YBranch
+        b. Check if ``YBranch2 == YBranch1``, ignoring private attributes
+        c. Check if arguments (wavelength array) are equal
+        d. If equal, return cached result
     """
 
     _oports: list[OPort] = []  # should only be manipulated by rename_oports()
@@ -187,8 +236,13 @@ class Model:
         """Compares instance dictionaries to determine equality."""
         d1 = deepcopy(self.__dict__)
         d2 = deepcopy(other.__dict__)
+        # Remove keys that should be ignored
         for key in self._ignore_keys:
             d1.pop(key, None), d2.pop(key, None)
+        # Remove private variable keys
+        private_attrs = [key for key in d1.keys() if key.startswith("_")]
+        for attr in private_attrs:
+            d1.pop(attr, None), d2.pop(attr, None)
         return d1 == d2
 
     def __hash__(self):
@@ -198,7 +252,12 @@ class Model:
                 [
                     (k, v)
                     for k, v in vars(self).items()
-                    if (not k.startswith("_") and (k not in self._ignore_keys))
+                    if (
+                        not k.startswith("_")
+                        and (k not in self._ignore_keys)
+                        and isinstance(k, collections.abc.Hashable)
+                        and isinstance(v, collections.abc.Hashable)
+                    )
                 ]
             )
         except TypeError:
@@ -232,9 +291,25 @@ class Model:
                 yield port
 
     @lru_cache
-    def _s(self, wl):
+    def _s(self, wl: tuple[float]) -> np.ndarray:
+        """Internal function to cache the s_params function.
+
+        Parameters
+        ----------
+        wl : tuple of float
+            The wavelength(s) to calculate scattering parameters for. This
+            needs to be a hashable type for the caching to work. It is
+            internally converted to a numpy array.
+
+        Returns
+        -------
+        s : ndarray
+            Scattering parameters for the model. The shape of the array should
+            be (len(wl), n, n) where n is the number of ports.
+        """
         # https://docs.python.org/3/faq/programming.html#how-do-i-cache-method-calls
-        return self.s_params(wl)
+        log.debug("Cache miss (%s)", str(self))
+        return self.s_params(np.array(wl))
 
     def s_params(self, wl: float | np.ndarray) -> np.ndarray:
         """Function to be implemented by subclasses to return scattering
@@ -244,6 +319,7 @@ class Model:
         ----------
         wl : float or ndarray
             The wavelength(s) to calculate scattering parameters for.
+            Wavelength is assumed to be in microns.
 
         Returns
         -------

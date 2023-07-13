@@ -1,7 +1,9 @@
 import pytest
+import numpy as np
 
 from simphony.models import Model, OPort, EPort
 from simphony.exceptions import ModelValidationError
+from simphony.libraries.siepic import YBranch
 
 
 class TestModelDeclaration:
@@ -182,9 +184,67 @@ class TestModelPorts:
         pass
 
 
-class TestModelCaching:
-    def test_model_instance_attributes_constant(self):
-        pass
+class TestModelEquality:
+    pass
 
-    def test_model_instance_attributes_variable(self):
-        pass
+
+class TestModelHashability:
+    pass
+
+
+class TestModelCopying:
+    def test_shallow_copy(self):
+        assert False
+
+    def test_deep_copy(self):
+        assert False
+
+
+@pytest.fixture
+def wl_array():
+    return np.linspace(1.5, 1.6, 1000) * 1e-6
+
+
+class TestModelCaching:
+    def test_same_model_two_instances_attributes_identical(self, wl_array):
+        yb1 = YBranch(pol="te")
+        yb2 = YBranch(pol="te")
+
+        s1 = yb1._s(tuple(wl_array))
+        s2 = yb2._s(tuple(wl_array))
+
+        np.testing.assert_array_equal(s1, s2)
+
+    def test_same_model_two_instances_attributes_different(self, wl_array):
+        yb1 = YBranch(pol="te")
+        yb2 = YBranch(pol="tm")
+        assert yb1 is not yb2
+        assert yb1 != yb2
+
+        s1 = yb1._s(tuple(wl_array))
+        s2 = yb2._s(tuple(wl_array))
+
+        with pytest.raises(AssertionError):
+            np.testing.assert_array_equal(s1, s2)
+
+    def test_different_wl_array(self):
+        yb1 = YBranch()
+        yb2 = YBranch()
+        assert yb1 is not yb2
+
+        arr1 = np.linspace(1.5, 1.6, 1000) * 1e-6
+        arr2 = np.linspace(1.52, 1.58, 1000) * 1e-6
+
+        s1 = yb1._s(tuple(arr1))
+        s2 = yb2._s(tuple(arr2))
+
+        with pytest.raises(AssertionError):
+            np.testing.assert_array_equal(s1, s2)
+
+    def test_s_params_are_ordered_by_wavelength(self, wl_array):
+        yb = YBranch()
+
+        s1 = yb._s(tuple(wl_array))
+        s2 = yb._s(tuple(wl_array[::-1]))
+        with pytest.raises(AssertionError):
+            np.testing.assert_array_equal(s1, s2)
