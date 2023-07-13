@@ -106,11 +106,13 @@ the components to form a circuit, route the Waveguides using ``gdsfactory's`` ro
      c.add_port("o2", port=gcout.ports["pin2"])
 
      return c
+
 We can then call the function, and visualize the layout in KLayout.
 
 .. code-block:: python
-  c = mzi()
-  c.show()
+
+    c = mzi()
+    c.show()
 
 .. image:: /_static/images/mzi_layout_aware.png
     :alt: layout

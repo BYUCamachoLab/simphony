@@ -54,7 +54,7 @@ class BidirectionalCouplerTE(Model):
     interferes lights from two adjacent inputs, efficiently splitting the
     interfered signal between the two ports on the opposing side.
 
-    .. image:: /reference/images/ebeam_bdc_te1550.png
+    .. image:: /_static/images/ebeam_bdc_te1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -128,7 +128,7 @@ class DirectionalCoupler(Model):
     interferes lights from two adjacent inputs, efficiently splitting the
     interfered signal between the two ports on the opposing side.
 
-    .. image:: /reference/images/ebeam_bdc_te1550.png
+    .. image:: /_static/images/ebeam_bdc_te1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -242,7 +242,7 @@ class GratingCoupler(Model):
     above the chip into the circuit. For the TE mode, the angle is -25 degrees
     [needs citation].
 
-    .. image:: /reference/images/ebeam_gc_te1550.png
+    .. image:: /_static/images/ebeam_gc_te1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -313,7 +313,7 @@ class HalfRing(Model):
 
     The halfring has 4 ports, labeled as pictured.
 
-    .. image:: /reference/images/halfring.png
+    .. image:: /_static/images/halfring.png
         :alt: halfring.png
 
     Parameters
@@ -498,7 +498,7 @@ class Taper(Model):
 
     This taper is simulated for TE operation at 1550 nanometers.
 
-    .. image:: /reference/images/ebeam_taper_te1550.png
+    .. image:: /_static/images/ebeam_taper_te1550.png
         :alt: ebeam_taper_te1550.png
 
     Parameters
@@ -777,7 +777,7 @@ class Terminator(Model):
     where the light doesn't need to be measured but you don't want it reflecting
     back into the circuit, you can use a terminator to release it from the circuit.
 
-    .. image:: /reference/images/ebeam_terminator_te1550.png
+    .. image:: /_static/images/ebeam_terminator_te1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -837,7 +837,7 @@ class Waveguide(Model):
 
     A waveguide easily connects other optical components within a circuit.
 
-    .. image:: /reference/images/ebeam_wg_integral_1550.png
+    .. image:: /_static/images/ebeam_wg_integral_1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters
@@ -1132,7 +1132,6 @@ class Waveguide(Model):
         return s
 
 
-# TODO: Make sure the linked image displays in the docs
 # TODO: Make sure the width parameter is accurately documented
 class YBranch(Model):
     """SiEPIC EBeam PDK Y-branch model.
@@ -1141,7 +1140,7 @@ class YBranch(Model):
     It can also be used as a combiner if used in the opposite direction,
     combining and interfering the light from two inputs into the one output.
 
-    .. image:: /reference/images/ebeam_y_1550.png
+    .. image:: /_static/images/ebeam_y_1550.png
         :alt: ebeam_bdc_te1550.png
 
     Parameters

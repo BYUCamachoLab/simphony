@@ -13,7 +13,7 @@ parts:
 - caption: Reference
   chapters:
   - file: api_reference
-  # - file: model_libraries
+  - file: model_libraries
 - caption: Development
   chapters:
   - file: dev/contributing
