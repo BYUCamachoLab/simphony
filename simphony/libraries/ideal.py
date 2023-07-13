@@ -1,5 +1,7 @@
 from typing import List, Tuple, Union
 
+import numpy as np
+
 try:
     import jax
     import jax.numpy as jnp
@@ -189,6 +191,15 @@ class PhaseShifter(Model):
         s21 = jnp.array([10 ** (self.loss / 20) * jnp.exp(1j * self.phase)] * len(wl))
         s12 = jnp.conj(s21)
         return jnp.stack([s11, s12, s21, s22], axis=1).reshape(-1, 2, 2)
+
+
+class Terminator(Model):
+    ocount = 1
+
+    def s_params(self, wl: float | np.ndarray) -> np.ndarray:
+        wl = np.asarray(wl).reshape(-1)
+        s = np.zeros((len(wl), 1, 1), dtype=np.complex128)
+        return s
 
 
 if __name__ == "__main__":
