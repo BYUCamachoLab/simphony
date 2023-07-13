@@ -41,7 +41,7 @@ class ClassicalSim(Simulation):
         ckt : Circuit
             The circuit to simulate.
         wl : jnp.ndarray
-            The wavelengths to simulate.
+            The array of wavelengths to simulate (in microns).
         """
         super().__init__(ckt, wl)
 
@@ -63,6 +63,7 @@ class ClassicalSim(Simulation):
         """Run the classical simulation."""
 
         # Get the S-matrix for the circuit
+        # TODO: Switch to calling cached ``._s(wl)`` method
         S = self.ckt.s_params(self.wl)
 
         # Get input array from all lasers
