@@ -87,8 +87,7 @@ class TestCircuit:
         ckt.connect(wg0.o(0), wg1.o(0))
         assert {wg0, wg1} <= set(ckt.components)
         assert len(ckt.components) == 2
-        assert set(wg0._oports + wg1._oports) <= set(ckt._internal_oports)
-        assert len(ckt._internal_oports) == 4
+        assert {wg0.o(1), wg1.o(1)} <= set(ckt._oports)
         assert (wg0.o(0), wg1.o(0)) in ckt._onodes
         assert len(ckt._onodes) == 1
 
