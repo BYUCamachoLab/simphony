@@ -9,8 +9,10 @@ from functools import lru_cache, wraps
 from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 import numpy as np
+import skrf
 
 from simphony.exceptions import ModelValidationError
+from simphony.utils import wl2freq
 
 if TYPE_CHECKING:
     from simphony.circuit import Circuit
@@ -24,14 +26,13 @@ class Port:
     instance."""
 
     def __init__(self, name: str, instance: Model | Circuit | None = None) -> None:
-        self.name = name
-        self.instance = instance
-        self._original_instance = instance
+        self.name: str = name
+        self.instance: Model = instance
         self._connections = set()  # a list of all other ports the port is connected to
 
     def __repr__(self) -> str:
         """Return a string representation of the port."""
-        return f'<{self.__class__.__name__} "{self.name}" at {hex(id(self))}>'
+        return f'<{self.__class__.__name__} "{self.name}"{" (connected)" if self.connected else ""} at {hex(id(self))}>'
 
     def __iter__(self):
         yield self
@@ -80,15 +81,6 @@ class OPort(Port):
         else:
             raise ConnectionError(f"Port '{self.name}' is already connected!")
 
-    def _get_index(self) -> int:
-        """Get the index of the port in the model's list of ports."""
-        return self.instance._oports.index(self)
-
-    def _update_instance(self, instance: Model) -> None:
-        """Update the port's model's ports' instance reference."""
-        for port in self.instance._oports:
-            port.instance = instance
-
 
 class EPort(Port):
     """Electrical ports can be connected to many other ports."""
@@ -100,10 +92,6 @@ class EPort(Port):
             )
         else:
             self._connections.add(port)
-
-    def _get_index(self) -> int:
-        """Get the index of the port in the model's list of ports."""
-        return self.instance._eports.index(self)
 
 
 class Model:
@@ -118,6 +106,17 @@ class Model:
     directly, but should be modified through the functions that Model
     provides.
 
+    Attributes
+    ----------
+    ocount : int, optional
+        The number of optical ports on the model.
+    onames : list of str, optional
+        The names of the optical ports.
+    ecount : int, optional
+        The number of electrical ports on the model.
+    enames : list of str, optional
+        The names of the electrical ports.
+
     Notes
     -----
     Models are the building blocks of simphony. Without the ability to define
@@ -126,13 +125,21 @@ class Model:
 
     Models must have certain attributes defined. These are:
 
-    - `onames` or `ocount`: the names of the optical ports or the number of
-        optical ports, respectively.
+    - `onames` or `ocount`. ``onames`` is a list of strings, equal in length to
+        the number of ports on the device. ``ocount`` is simply the number of
+        ports, and port names will be generated automatically as ``"o1"``,
+        ``"o2"``, etc. Only declare one or the other; ``onames`` and ``ocount``
+        are mutually exclusive.
     - `enames` or `ecount`: the names of the electrical ports or the number of'
-        electrical ports, respectively.
+        electrical ports, respectively. Rules for `onames` and `ocount` apply
+        here as well, except that the auto-generated names will be ``"e1"``,
+        ``"e2"``, etc.
     - `s_params`: a function that returns the scattering parameters of the
-        model. This function should take a wavelength as an argument and
-        return a 2D numpy array of the scattering parameters.
+        model. This function should take a wavelength (in microns) as an
+        argument and return a 2D numpy array of the scattering parameters. If
+        your calculation is in frequency or SI units, be sure to make the
+        appropriate conversions! You can use convenience functions in the
+        `simphony.utils` module to help with this.
 
     Models can optionally have the following attributes defined:
 
@@ -197,19 +204,21 @@ class Model:
 
     def __init__(self) -> None:
         if hasattr(self, "onames"):
-            self.rename_oports(self.onames)
+            self.rename_oports(getattr(self, "onames"))
         if hasattr(self, "ocount"):
-            self.rename_oports([f"o{i}" for i in range(self.ocount)])
+            self.rename_oports([f"o{i}" for i in range(getattr(self, "ocount"))])
         if hasattr(self, "enames"):
-            self.rename_eports(self.enames)
+            self.rename_eports(getattr(self, "enames"))
         if hasattr(self, "ecount"):
-            self.rename_eports([f"o{i}" for i in range(self.ecount)])
+            self.rename_eports([f"o{i}" for i in range(getattr(self, "ecount"))])
         if self._oports == []:
             if hasattr(self, "exposed"):
-                if self.exposed:
+                if getattr(self, "exposed"):
                     raise ModelValidationError(
                         "Model does not define any optical ports, but 'exposed' is True."
                     )
+            elif hasattr(self, "exempt"):
+                pass
             else:
                 raise ModelValidationError(
                     "Model does not define 'onames' or 'ocount', which is required."
@@ -243,7 +252,12 @@ class Model:
         private_attrs = [key for key in d1.keys() if key.startswith("_")]
         for attr in private_attrs:
             d1.pop(attr, None), d2.pop(attr, None)
-        return d1 == d2
+        try:
+            return d1 == d2
+        except ValueError as e:
+            print(d1)
+            print(d2)
+            raise e
 
     def __hash__(self):
         """Hashes the instance dictionary to calculate the hash."""
@@ -454,3 +468,21 @@ class Model:
         if any([e.connected for e in self._eports]):
             return True
         return False
+
+    def to_network(self, wl) -> skrf.Network:
+        """Converts the component to a scikit-rf network.
+
+        Parameters
+        ----------
+        wl : float or ndarray
+            The wavelength(s) to calculate scattering parameters for.
+            Wavelength is assumed to be in microns.
+
+        Returns
+        -------
+        Network
+            The network representation of the component.
+        """
+        s = self._s(tuple(wl))
+        f = wl2freq(wl * 1e-6)
+        return skrf.Network(f=f[::-1], s=s[::-1], f_unit="Hz")
