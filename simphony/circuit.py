@@ -39,14 +39,20 @@ class Circuit(Model):
 
     def __init__(self, name: str = None) -> None:
         self.name = name or "circuit"
+
+        # self._components = []  # list of model instances in the circuit
+
         self._internal_oports: list[OPort] = []  # internal optical ports
         self._internal_eports: list[EPort] = []  # internal electrical ports
         self._oports: list[OPort] = []  # exposed optical ports
         self._eports: list[EPort] = []  # exposed electrical ports
+
         self._onodes: list[tuple[OPort, OPort]] = []  # optical connections
         self._enodes: list[set[EPort]] = []  # electrical connections
+
         self._next_oidx = count()  # netid iterator
         self._next_eidx = count()  # netid iterator
+
         self._sparams = None
         self.exposed = False
         self.sim_devices: list[SimDevice] = []
@@ -62,13 +68,10 @@ class Circuit(Model):
         list
             List of all model instances in the circuit.
         """
-        oinstances = [
-            port._original_instatance for pair in self._onodes for port in pair
-        ]
-        einstances = [
-            wire._original_instatance for node in self._enodes for wire in node
-        ]
+        oinstances = [port._original_instance for pair in self._onodes for port in pair]
+        einstances = [wire._original_instance for node in self._enodes for wire in node]
         return list(set(oinstances + einstances))
+        # return self._components
 
     def _update_ports(self, model1: Model | Circuit, model2: Model | Circuit) -> None:
         """Update the internal list of ports in the circuit."""
@@ -119,9 +122,11 @@ class Circuit(Model):
         Parameters
         ----------
         port1 : Circuit, Model or Port
-            The first port to be connected.
-        port2 : Circuit, Model or Port
-            The second port to connect to.
+            The first port to be connected, or a model with unconnected ports.
+            Connections will be made by iterating through unconnected ports
+            in their declared order.
+        port2 : Circuit, Model, Port, or list
+            The second port to connect to, or a list of ports or models.
 
         Raises
         ------
@@ -168,18 +173,25 @@ class Circuit(Model):
                     f"Port types must match or be an instance of Model ({type(port1)} != {type(port2)})"
                 )
 
+        # Single optical port to second port
         if isinstance(port1, OPort):
             return o2x(self, port1, port2)
 
+        # Single electronic port to second port
         if isinstance(port1, EPort):
             return e2x(self, port1, port2)
 
+        # If the first port is a model, we're doing a multiconnect.
+        # Iterate through the second object until we run out of ports.
         if issubclass(type(port1), Model):
             for i, p2 in enumerate(list(port2)):
+                # If the model has unconnected optical ports, use those first.
                 if p1 := port1.next_unconnected_oport():
                     o2x(self, p1, p2)
+                # Otherwise, try to use the electronic ports.
                 elif p1 := port1.next_unconnected_eport():
                     e2x(self, p1, p2)
+                # If we run out of ports, raise an error.
                 else:
                     if i == 0:
                         raise ValueError(
@@ -239,8 +251,11 @@ class Circuit(Model):
 
         Using the sub-network growth method.
         """
+        # TODO: What if a different wavelength range is passed in? This seems
+        # like a bad idea.
         if self._sparams is not None:
             return self._sparams
+
         if len(self._onodes) == 0:
             raise ModelValidationError("No devices in circuit.")
         if not self.exposed:
