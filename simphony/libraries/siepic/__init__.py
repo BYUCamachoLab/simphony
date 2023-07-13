@@ -22,9 +22,14 @@ See their repository for more details (https://github.com/SiEPIC/SiEPIC_EBeam_PD
 # import scipy.interpolate as interp
 # from scipy.constants import c as SPEED_OF_LIGHT
 
-from .models import (  # DirectionalCoupler,; HalfRing,; Taper,; Terminator,; Waveguide,
+from .models import (
     BidirectionalCouplerTE,
+    DirectionalCoupler,
     GratingCoupler,
+    HalfRing,
+    Taper,
+    Terminator,
+    Waveguide,
     YBranch,
 )
 
@@ -549,37 +554,11 @@ from .models import (  # DirectionalCoupler,; HalfRing,; Taper,; Terminator,; Wa
 # class Waveguide(SiEPIC_PDK_Base):
 
 #     def __init__(
-#         self,
-#         length=0.0,
-#         width=500e-9,
-#         height=220e-9,
-#         polarization="TE",
 #         sigma_ne=0.05,
 #         sigma_ng=0.05,
 #         sigma_nd=0.0001,
 #         **kwargs,
 #     ):
-#         if polarization not in ["TE", "TM"]:
-#             raise ValueError(
-#                 "Unknown polarization value '{}', must be one of 'TE' or 'TM'".format(
-#                     polarization
-#                 )
-#             )
-
-#         # TODO: TM calculations
-#         if polarization == "TM":
-#             raise NotImplementedError
-
-#         super().__init__(
-#             **kwargs,
-#             length=length,
-#             width=width,
-#             height=height,
-#             polarization=polarization,
-#             sigma_ne=sigma_ne,
-#             sigma_ng=sigma_ng,
-#             sigma_nd=sigma_nd,
-#         )
 
 #         if _has_gf:
 #             self.path: Route = None
