@@ -77,10 +77,7 @@ class SparamsTransformer(Transformer):
     @v_args(inline=True)
     def start(self, header, *datablocks):
         data = pd.concat(datablocks, ignore_index=True)
-        return {
-            "header": header,
-            "data": data,
-        }
+        return header, data
 
     @v_args(inline=True)
     def datablock(self, ports, shape, values):
@@ -175,13 +172,13 @@ def load_sparams(filename: Union[Path, str]) -> dict:
 
     Parameters
     ----------
-    filename : Union[Path, str]
+    filename : Path or str
         Path to the file.
 
     Returns
     -------
-    dict
-        Dictionary with the following keys:
+    header, data : tuple of dict, pd.DataFrame
+        Tuple with the following order:
         - header: dict
             Dictionary with the header information.
         - data: pd.DataFrame
