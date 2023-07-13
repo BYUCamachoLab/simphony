@@ -112,7 +112,6 @@ namespaces = false
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "--maxfail=2 -rf"
 testpaths = ["tests"]
 console_output_style = "progress"
 filterwarnings = ["ignore::UserWarning", "ignore::DeprecationWarning"]
