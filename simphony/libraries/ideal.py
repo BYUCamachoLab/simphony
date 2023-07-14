@@ -1,5 +1,7 @@
 from typing import List, Tuple, Union
 
+import numpy as np
+
 try:
     import jax
     import jax.numpy as jnp
@@ -96,15 +98,15 @@ class Waveguide(Model):
     ----------
     length : float
         Length of the waveguide in microns.
-    wl0 : float
+    wl0 : float, optional
         Center wavelength of the waveguide in microns. Defaults to 1.55.
-    neff : float
+    neff : float, optional
         Effective index of the waveguide. If not set, reads the global effective
         index from the context.
-    ng : float
+    ng : float, optional
         Group index of the waveguide. If not set, reads the global group index
         from the context.
-    loss : float
+    loss : float, optional
         Loss of the waveguide in dB/micron. If not set, reads the global loss
         from the context.
 
@@ -189,6 +191,15 @@ class PhaseShifter(Model):
         s21 = jnp.array([10 ** (self.loss / 20) * jnp.exp(1j * self.phase)] * len(wl))
         s12 = jnp.conj(s21)
         return jnp.stack([s11, s12, s21, s22], axis=1).reshape(-1, 2, 2)
+
+
+class Terminator(Model):
+    ocount = 1
+
+    def s_params(self, wl: float | np.ndarray) -> np.ndarray:
+        wl = np.asarray(wl).reshape(-1)
+        s = np.zeros((len(wl), 1, 1), dtype=np.complex128)
+        return s
 
 
 if __name__ == "__main__":

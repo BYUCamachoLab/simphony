@@ -1102,6 +1102,7 @@ class Waveguide(Model):
 
     # TODO: Is this correct?
     def s_params(self, wl: Union[float, np.ndarray]):
+        # Load data file, extract coefficients
         path = resolve_source_filepath(self._datafile)
         arr = np.loadtxt(path)
         if self.pol == "te":
@@ -1109,13 +1110,16 @@ class Waveguide(Model):
         else:  # tm
             lam0, _, ne, _, ng, _, nd = arr
 
+        wl = np.asarray(wl).reshape(-1) * 1e-6  # convert microns to meters
+        freqs = wl2freq(wl)  # convert wavelengths to freqs
+        length = self.length * 1e-6  # convert microns to meters
+        loss = self.loss * 100  # convert loss from dB/cm to dB/m
+
         # Initialize array to hold s-params
-        wl = np.array(wl) * 1e-6  # convert microns to meters
-        s = np.zeros((len(wl), 2, 2), dtype=complex)
+        s = np.zeros((len(freqs), 2, 2), dtype=np.complex128)
 
         # Loss calculation (convert loss to dB/m)
-        alpha = (self.loss * 100) / (20 * np.log10(np.exp(1)))
-        freqs = wl2freq(wl)  # convert wavelengths to freqs
+        alpha = loss / (20 * np.log10(np.exp(1)))
         w = 2 * np.pi * np.asarray(freqs)  # get angular freqs from freqs
         w0 = (2 * np.pi * SPEED_OF_LIGHT) / lam0  # center freqs (angular)
 
@@ -1127,8 +1131,7 @@ class Waveguide(Model):
         )
 
         # build s-matrix from K and waveguide length
-        s[:, 0, 1] = s[:, 1, 0] = np.exp(-alpha * self.length + (1j * K * self.length))
-
+        s[:, 0, 1] = s[:, 1, 0] = np.exp(-alpha * length + (1j * K * length))
         return s
 
 

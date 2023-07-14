@@ -9,8 +9,10 @@ from functools import lru_cache, wraps
 from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 import numpy as np
+import skrf
 
 from simphony.exceptions import ModelValidationError
+from simphony.utils import wl2freq
 
 if TYPE_CHECKING:
     from simphony.circuit import Circuit
@@ -24,17 +26,29 @@ class Port:
     instance."""
 
     def __init__(self, name: str, instance: Model | Circuit | None = None) -> None:
-        self.name = name
-        self.instance = instance
-        self._original_instance = instance
+        self.name: str = name
+        self.instance: Model | None = instance
         self._connections = set()  # a list of all other ports the port is connected to
 
     def __repr__(self) -> str:
         """Return a string representation of the port."""
-        return f'<{self.__class__.__name__} "{self.name}" at {hex(id(self))}>'
+        return f'<{self.__class__.__name__} "{self.name}"{" (connected)" if self.connected else ""} at {hex(id(self))}>'
 
     def __iter__(self):
         yield self
+
+    def __deepcopy__(self, memo):
+        """Deep copy the circuit.
+
+        Copied pins lose connections and reference to an instance.
+        """
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        result.name = deepcopy(self.name, memo)
+        result.instance = None
+        result._connections = set()
+        return result
 
     def rename(self, name: str) -> None:
         """Rename the port.
@@ -80,15 +94,6 @@ class OPort(Port):
         else:
             raise ConnectionError(f"Port '{self.name}' is already connected!")
 
-    def _get_index(self) -> int:
-        """Get the index of the port in the model's list of ports."""
-        return self.instance._oports.index(self)
-
-    def _update_instance(self, instance: Model) -> None:
-        """Update the port's model's ports' instance reference."""
-        for port in self.instance._oports:
-            port.instance = instance
-
 
 class EPort(Port):
     """Electrical ports can be connected to many other ports."""
@@ -100,10 +105,6 @@ class EPort(Port):
             )
         else:
             self._connections.add(port)
-
-    def _get_index(self) -> int:
-        """Get the index of the port in the model's list of ports."""
-        return self.instance._eports.index(self)
 
 
 class Model:
@@ -118,6 +119,17 @@ class Model:
     directly, but should be modified through the functions that Model
     provides.
 
+    Attributes
+    ----------
+    ocount : int, optional
+        The number of optical ports on the model.
+    onames : list of str, optional
+        The names of the optical ports.
+    ecount : int, optional
+        The number of electrical ports on the model.
+    enames : list of str, optional
+        The names of the electrical ports.
+
     Notes
     -----
     Models are the building blocks of simphony. Without the ability to define
@@ -126,13 +138,21 @@ class Model:
 
     Models must have certain attributes defined. These are:
 
-    - `onames` or `ocount`: the names of the optical ports or the number of
-        optical ports, respectively.
+    - `onames` or `ocount`. ``onames`` is a list of strings, equal in length to
+        the number of ports on the device. ``ocount`` is simply the number of
+        ports, and port names will be generated automatically as ``"o1"``,
+        ``"o2"``, etc. Only declare one or the other; ``onames`` and ``ocount``
+        are mutually exclusive.
     - `enames` or `ecount`: the names of the electrical ports or the number of'
-        electrical ports, respectively.
+        electrical ports, respectively. Rules for `onames` and `ocount` apply
+        here as well, except that the auto-generated names will be ``"e1"``,
+        ``"e2"``, etc.
     - `s_params`: a function that returns the scattering parameters of the
-        model. This function should take a wavelength as an argument and
-        return a 2D numpy array of the scattering parameters.
+        model. This function should take a wavelength (in microns) as an
+        argument and return a 2D numpy array of the scattering parameters. If
+        your calculation is in frequency or SI units, be sure to make the
+        appropriate conversions! You can use convenience functions in the
+        `simphony.utils` module to help with this.
 
     Models can optionally have the following attributes defined:
 
@@ -141,12 +161,6 @@ class Model:
         store them as attributes of the model. Any attributes set here, so long
         as they are saved to the ``self`` attribute, are accessible to the
         `s_params` function.
-    - `exposed`: a boolean that determines if the model is exposed to the
-        circuit. If `exposed` is `True`, the model will be exposed to the
-        circuit and can be connected to other models. If `exposed` is `False`,
-        the model will not be exposed to the circuit and cannot be connected
-        to other models. This is useful for models that are used internally
-        by other models, but should not be exposed to the user.
 
     An example of a model definition is shown below. This would be equivalent
     to a straight, lossless, broadband waveguide.
@@ -174,46 +188,52 @@ class Model:
     Therefore, the following example is essentially equivalent to what happens
     during a simulation:
 
-    1. Instantiate YBranch1, an instance of YBranch
-    2. Instantiate YBranch2 with the same parameters as YBranch1
-    3. Call simulation with a given wavelength array
-    4. Call s-parameters calculation/loading for YBranch1
-        a. Function has not been called previously, cache the result
-    5. Call s-parameters calculation/loading for YBranch2
-        a. YBranch2 is an instance of YBranch
-        b. Check if ``YBranch2 == YBranch1``, ignoring private attributes
-        c. Check if arguments (wavelength array) are equal
-        d. If equal, return cached result
+    #. Instantiate ``YBranch1``, an instance of YBranch
+    #. Instantiate ``YBranch2`` with the same parameters as YBranch1
+    #. Call simulation with a given wavelength array
+    #. Call s-parameters calculation/loading for YBranch1
+
+       a. Function has not been called previously, cache the result
+
+    #. Call s-parameters calculation/loading for ``YBranch2``
+
+       a. ``YBranch2`` is an instance of YBranch
+       b. Check if ``YBranch2 == YBranch1``, ignoring private attributes
+       c. Check if arguments (wavelength array) are equal
+       d. If equal, return cached result
     """
 
+    # Default keys to ignore when checking for equality or hashing. Private
+    # attributes are always ignored when checking for equality.
+    _ignore_keys = ["onames", "ocount", "enames", "ecount"]
+
+    # These should always be instance attributes, not treated as class
+    # attributes. They are set on the instance by the super initializer when
+    # rename_ports() is called.
     _oports: list[OPort] = []  # should only be manipulated by rename_oports()
     _eports: list[EPort] = []  # should only be manipulated by rename_eports()
-    _ignore_keys = [
-        "onames",
-        "ocount",
-        "enames",
-        "ecount",
-    ]  # ignore when checking for equality or hashing
 
     def __init__(self) -> None:
+        if hasattr(self, "_exempt"):
+            return
+
+        if hasattr(self, "onames") and hasattr(self, "ocount"):
+            raise ModelValidationError(
+                "Model defines both 'onames' and 'ocount', which is not allowed."
+            )
         if hasattr(self, "onames"):
-            self.rename_oports(self.onames)
-        if hasattr(self, "ocount"):
-            self.rename_oports([f"o{i}" for i in range(self.ocount)])
+            self.rename_oports(getattr(self, "onames"))
+        elif hasattr(self, "ocount"):
+            self.rename_oports([f"o{i}" for i in range(getattr(self, "ocount"))])
+        else:
+            raise ModelValidationError(
+                "Model does not define 'onames' or 'ocount', which is required."
+            )
+
         if hasattr(self, "enames"):
-            self.rename_eports(self.enames)
-        if hasattr(self, "ecount"):
-            self.rename_eports([f"o{i}" for i in range(self.ecount)])
-        if self._oports == []:
-            if hasattr(self, "exposed"):
-                if self.exposed:
-                    raise ModelValidationError(
-                        "Model does not define any optical ports, but 'exposed' is True."
-                    )
-            else:
-                raise ModelValidationError(
-                    "Model does not define 'onames' or 'ocount', which is required."
-                )
+            self.rename_eports(getattr(self, "enames"))
+        elif hasattr(self, "ecount"):
+            self.rename_eports([f"o{i}" for i in range(getattr(self, "ecount"))])
 
     def __init_subclass__(cls) -> None:
         """Ensures subclasses define required functions and automatically calls
@@ -243,7 +263,12 @@ class Model:
         private_attrs = [key for key in d1.keys() if key.startswith("_")]
         for attr in private_attrs:
             d1.pop(attr, None), d2.pop(attr, None)
-        return d1 == d2
+        try:
+            return d1 == d2
+        except ValueError as e:
+            print(d1)
+            print(d2)
+            raise e
 
     def __hash__(self):
         """Hashes the instance dictionary to calculate the hash."""
@@ -278,7 +303,13 @@ class Model:
         memo[id(self)] = result
         for k, v in self.__dict__.items():
             setattr(result, k, deepcopy(v, memo))
+        for port in result._oports + result._eports:
+            port.instance = result
         return result
+
+    def copy(self) -> Model:
+        """Deep copy the model instance."""
+        return deepcopy(self)
 
     def __repr__(self) -> str:
         """Code representation of the model."""
@@ -454,3 +485,24 @@ class Model:
         if any([e.connected for e in self._eports]):
             return True
         return False
+
+    def to_network(
+        self, wl: float | list[float] | tuple[float] | np.ndarray
+    ) -> skrf.Network:
+        """Converts the component to a scikit-rf network.
+
+        Parameters
+        ----------
+        wl : float or ndarray
+            The wavelength(s) to calculate scattering parameters for.
+            Wavelength is assumed to be in microns.
+
+        Returns
+        -------
+        Network
+            The network representation of the component.
+        """
+        wl = np.asarray(wl).reshape(-1)
+        s = self._s(tuple(wl))
+        f = wl2freq(wl * 1e-6)
+        return skrf.Network(f=f[::-1], s=s[::-1], f_unit="Hz")
