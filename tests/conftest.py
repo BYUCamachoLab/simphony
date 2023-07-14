@@ -10,5 +10,10 @@ def data_dir():
 
 
 @pytest.fixture
+def std_wl_um():
+    return np.linspace(1.5, 1.6, 1000)
+
+
+@pytest.fixture
 def std_wl():
     return np.linspace(1.5, 1.6, 1000) * 1e-6

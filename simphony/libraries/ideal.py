@@ -98,15 +98,15 @@ class Waveguide(Model):
     ----------
     length : float
         Length of the waveguide in microns.
-    wl0 : float
+    wl0 : float, optional
         Center wavelength of the waveguide in microns. Defaults to 1.55.
-    neff : float
+    neff : float, optional
         Effective index of the waveguide. If not set, reads the global effective
         index from the context.
-    ng : float
+    ng : float, optional
         Group index of the waveguide. If not set, reads the global group index
         from the context.
-    loss : float
+    loss : float, optional
         Loss of the waveguide in dB/micron. If not set, reads the global loss
         from the context.
 
