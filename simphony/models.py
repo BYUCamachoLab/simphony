@@ -27,7 +27,7 @@ class Port:
 
     def __init__(self, name: str, instance: Model | Circuit | None = None) -> None:
         self.name: str = name
-        self.instance: Model = instance
+        self.instance: Model | None = instance
         self._connections = set()  # a list of all other ports the port is connected to
 
     def __repr__(self) -> str:
@@ -36,6 +36,19 @@ class Port:
 
     def __iter__(self):
         yield self
+
+    def __deepcopy__(self, memo):
+        """Deep copy the circuit.
+
+        Copied pins lose connections and reference to an instance.
+        """
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        result.name = deepcopy(self.name, memo)
+        result.instance = None
+        result._connections = set()
+        return result
 
     def rename(self, name: str) -> None:
         """Rename the port.
@@ -148,12 +161,6 @@ class Model:
         store them as attributes of the model. Any attributes set here, so long
         as they are saved to the ``self`` attribute, are accessible to the
         `s_params` function.
-    - `exposed`: a boolean that determines if the model is exposed to the
-        circuit. If `exposed` is `True`, the model will be exposed to the
-        circuit and can be connected to other models. If `exposed` is `False`,
-        the model will not be exposed to the circuit and cannot be connected
-        to other models. This is useful for models that are used internally
-        by other models, but should not be exposed to the user.
 
     An example of a model definition is shown below. This would be equivalent
     to a straight, lossless, broadband waveguide.
@@ -181,48 +188,52 @@ class Model:
     Therefore, the following example is essentially equivalent to what happens
     during a simulation:
 
-    1. Instantiate YBranch1, an instance of YBranch
-    2. Instantiate YBranch2 with the same parameters as YBranch1
-    3. Call simulation with a given wavelength array
-    4. Call s-parameters calculation/loading for YBranch1
-        a. Function has not been called previously, cache the result
-    5. Call s-parameters calculation/loading for YBranch2
-        a. YBranch2 is an instance of YBranch
-        b. Check if ``YBranch2 == YBranch1``, ignoring private attributes
-        c. Check if arguments (wavelength array) are equal
-        d. If equal, return cached result
+    #. Instantiate ``YBranch1``, an instance of YBranch
+    #. Instantiate ``YBranch2`` with the same parameters as YBranch1
+    #. Call simulation with a given wavelength array
+    #. Call s-parameters calculation/loading for YBranch1
+
+       a. Function has not been called previously, cache the result
+
+    #. Call s-parameters calculation/loading for ``YBranch2``
+
+       a. ``YBranch2`` is an instance of YBranch
+       b. Check if ``YBranch2 == YBranch1``, ignoring private attributes
+       c. Check if arguments (wavelength array) are equal
+       d. If equal, return cached result
     """
 
+    # Default keys to ignore when checking for equality or hashing. Private
+    # attributes are always ignored when checking for equality.
+    _ignore_keys = ["onames", "ocount", "enames", "ecount"]
+
+    # These should always be instance attributes, not treated as class
+    # attributes. They are set on the instance by the super initializer when
+    # rename_ports() is called.
     _oports: list[OPort] = []  # should only be manipulated by rename_oports()
     _eports: list[EPort] = []  # should only be manipulated by rename_eports()
-    _ignore_keys = [
-        "onames",
-        "ocount",
-        "enames",
-        "ecount",
-    ]  # ignore when checking for equality or hashing
 
     def __init__(self) -> None:
+        if hasattr(self, "_exempt"):
+            return
+
+        if hasattr(self, "onames") and hasattr(self, "ocount"):
+            raise ModelValidationError(
+                "Model defines both 'onames' and 'ocount', which is not allowed."
+            )
         if hasattr(self, "onames"):
             self.rename_oports(getattr(self, "onames"))
-        if hasattr(self, "ocount"):
+        elif hasattr(self, "ocount"):
             self.rename_oports([f"o{i}" for i in range(getattr(self, "ocount"))])
+        else:
+            raise ModelValidationError(
+                "Model does not define 'onames' or 'ocount', which is required."
+            )
+
         if hasattr(self, "enames"):
             self.rename_eports(getattr(self, "enames"))
-        if hasattr(self, "ecount"):
+        elif hasattr(self, "ecount"):
             self.rename_eports([f"o{i}" for i in range(getattr(self, "ecount"))])
-        if self._oports == []:
-            if hasattr(self, "exposed"):
-                if getattr(self, "exposed"):
-                    raise ModelValidationError(
-                        "Model does not define any optical ports, but 'exposed' is True."
-                    )
-            elif hasattr(self, "exempt"):
-                pass
-            else:
-                raise ModelValidationError(
-                    "Model does not define 'onames' or 'ocount', which is required."
-                )
 
     def __init_subclass__(cls) -> None:
         """Ensures subclasses define required functions and automatically calls
@@ -292,7 +303,13 @@ class Model:
         memo[id(self)] = result
         for k, v in self.__dict__.items():
             setattr(result, k, deepcopy(v, memo))
+        for port in result._oports + result._eports:
+            port.instance = result
         return result
+
+    def copy(self) -> Model:
+        """Deep copy the model instance."""
+        return deepcopy(self)
 
     def __repr__(self) -> str:
         """Code representation of the model."""
@@ -469,7 +486,9 @@ class Model:
             return True
         return False
 
-    def to_network(self, wl) -> skrf.Network:
+    def to_network(
+        self, wl: float | list[float] | tuple[float] | np.ndarray
+    ) -> skrf.Network:
         """Converts the component to a scikit-rf network.
 
         Parameters
@@ -483,6 +502,7 @@ class Model:
         Network
             The network representation of the component.
         """
+        wl = np.asarray(wl).reshape(-1)
         s = self._s(tuple(wl))
         f = wl2freq(wl * 1e-6)
         return skrf.Network(f=f[::-1], s=s[::-1], f_unit="Hz")

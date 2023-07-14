@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import pytest
 
 try:
@@ -229,3 +231,47 @@ class TestCircuit:
         field_out = jnp.stack(field_out, axis=0)
 
         assert jnp.allclose(field_out, field_out_manual)
+
+    def test_circuit_copy(self):
+        assert False
+
+    def test_circuit_deepcopy(self):
+        wg1 = Waveguide(length=1.0)
+        wg2 = Waveguide(length=2.0)
+
+        ckt1 = Circuit()
+        ckt1.connect(wg1, wg2)
+
+        ckt2 = deepcopy(ckt1)
+        assert ckt1 is not ckt2
+        for comp1, comp2 in zip(ckt1.components, ckt2.components):
+            assert comp1 is not comp2
+            for port1, port2 in zip(comp1._oports, comp2._oports):
+                assert port1 is not port2
+                assert port1.instance is not port2.instance
+                assert port1.instance is comp1
+                assert port2.instance is comp2
+            for port1, port2 in zip(comp1._eports, comp2._eports):
+                assert port1 is not port2
+                assert port1.instance is not port2.instance
+                assert port1.instance is comp1
+                assert port2.instance is comp2
+        for onode1, onode2 in zip(ckt1._onodes, ckt2._onodes):
+            assert onode1 is not onode2
+            for port1, port2 in zip(onode1, onode2):
+                assert port1 is not port2
+                assert port1.instance is not port2.instance
+        for enode1, enode2 in zip(ckt1._enodes, ckt2._enodes):
+            assert enode1 is not enode2
+            for port1, port2 in zip(enode1, enode2):
+                assert port1 is not port2
+                assert port1.instance is not port2.instance
+
+    def test_circuit_equality(self):
+        assert False
+
+    def test_circuit_inequality(self):
+        assert False
+
+    def test_circuit_hash(self):
+        assert False
