@@ -89,8 +89,14 @@ class Circuit(Model):
         self._onodes: list[tuple[OPort, OPort]] = []  # optical netlist
         self._enodes: list[set[EPort]] = []  # electrical netlist
 
-        # TODO: Do we need this?
-        self.sim_devices: list[SimDevice] = []
+        # These are set when the circuit is simulated and the ports need to
+        # correspond to the correct indices in the S matrix.
+        self._cascaded_oports: list[OPort] = []
+        self._cascaded_eports: list[EPort] = []
+
+        # TODO: Do we want to implement a "frozen" such that, once s_params has
+        # been called, connections can no longer be made, changed, etc, since
+        # running s_params modifies the underlying ports?
 
     def __iter__(self):
         yield self
@@ -204,8 +210,22 @@ class Circuit(Model):
         return self._components
 
     @property
+    def sim_devices(self) -> list[SimDevice]:
+        """Return a list of simulation devices in the circuit in the order they
+        were added.
+
+        Returns
+        -------
+        list
+            List of all simulation devices in the circuit.
+        """
+        return [comp for comp in self.components if isinstance(comp, SimDevice)]
+
+    @property
     def _oports(self):
         """Return a list of all unconnected optical ports in the circuit."""
+        if self._cascaded_oports:
+            return self._cascaded_oports
         return [
             port
             for comp in self.components
@@ -216,6 +236,8 @@ class Circuit(Model):
     @property
     def _eports(self):
         """Return a list of all unconnected electrical ports in the circuit."""
+        if self._cascaded_eports:
+            return self._cascaded_eports
         return [
             port
             for comp in self.components
@@ -308,6 +330,21 @@ class Circuit(Model):
     ) -> None:
         """Connect two ports together and add to the internal netlist.
 
+        Connections can be defined in the following ways:
+
+        * **port to port** (connect two explicit ports)
+        * **port to model** (connect an explicit port to the next available
+          port on a model)
+        * **model to port** (connect the next available port on a model to an
+          explicit port)
+        * **model to model** (iterate over the next available ports on a model
+          to the next available ports on another model)
+        * **model to list of ports** (sequentially connect the next available
+          port on a model to a list of explicit ports)
+        * **model to list of models** (sequentially connect the next available
+          port on a model to the first available port from each model in a
+          list)
+
         If a ``Model`` is passed, the next available optical port is used. If
         no optical ports are available, the next available electronic port is
         used. In this way, the first argument can be thought about as an
@@ -324,8 +361,8 @@ class Circuit(Model):
         ----------
         port1 : Circuit, Model or Port
             The first port to be connected, or a model with unconnected ports.
-            Connections will be made by iterating through unconnected ports
-            in their declared order.
+            Connections will be made by iterating through unconnected ports in
+            their declared order.
         port2 : Circuit, Model, Port, or list
             The second port to connect to, or a list of ports or models.
 
@@ -490,5 +527,8 @@ class Circuit(Model):
                 raise SeparatedCircuitError(
                     f"Two or more disconnected subcircuits contained within the same circuit."
                 )
+            port.instance = self
+
+        self._cascaded_oports = model._oports
 
         return model._sparams
