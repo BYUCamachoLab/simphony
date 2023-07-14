@@ -21,7 +21,7 @@ class Simulation:
 
     def __init__(self, ckt: Circuit, wl: jnp.ndarray) -> None:
         self.ckt = ckt
-        self.wl = wl
+        self.wl = jnp.asarray(wl).reshape(-1)
 
     def run(self):
         """Run the simulation."""
@@ -30,47 +30,3 @@ class Simulation:
 
 class SimulationResult:
     pass
-
-
-# class ClassicalSim(Simulation):
-#     """
-#     Classical simulation
-#     """
-
-#     def __init__(self,  ckt: Circuit, wl: jnp.ndarray) -> None:
-#         super().__init__(ckt, wl)
-
-
-class MonteCarloSim(Simulation):
-    """Monte Carlo simulation."""
-
-    def __init__(self, ckt: Circuit, wl: jnp.ndarray) -> None:
-        super().__init__(ckt, wl)
-
-
-class LayoutAwareSim(Simulation):
-    """Layout-aware simulation."""
-
-    def __init__(self, cir: Circuit, wl: jnp.ndarray) -> None:
-        super().__init__(cir, wl)
-
-
-class SamplingSim(Simulation):
-    """Sampling simulation."""
-
-    def __init__(self, ckt: Circuit, wl: jnp.ndarray) -> None:
-        super().__init__(ckt, wl)
-
-
-class TimeDomainSim(Simulation):
-    """Time-domain simulation."""
-
-    def __init__(self, ckt: Circuit, wl: jnp.ndarray) -> None:
-        super().__init__(ckt, wl)
-
-
-class QuantumSim(Simulation):
-    """Quantum simulation."""
-
-    def __init__(self, ckt: Circuit, wl: jnp.ndarray) -> None:
-        super().__init__(ckt, wl)

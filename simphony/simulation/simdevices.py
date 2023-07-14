@@ -1,31 +1,80 @@
 """Module for simulation devices."""
 
 
-class SimDevice:
-    """Base class for all sources."""
+import warnings
 
-    def __init__(self, ckt, ports: list) -> None:
-        for p in ports:
-            if (p not in ckt._oports) and (p not in ckt._eports):
-                raise ValueError(f"Port {p} is not available on the circuit.")
-        ckt.sim_devices.append(self)
-        self.ckt = ckt
+import matplotlib.pyplot as plt
+
+from simphony.models import OPort
+
+
+class SimDevice:
+    """Base class for all source or measure devices."""
+
+    def __init__(self, ports: list) -> None:
         self.ports = ports
 
 
 class Laser(SimDevice):
-    """Laser source."""
+    """Ideal laser source.
 
-    def __init__(self, ckt, port, power=1, phase=0, mod_function=None) -> None:
-        super().__init__(ckt, [port])
+    Parameters
+    ----------
+    ports : OPort | list[OPort]
+        The ports to which the laser is connected.
+    power : float, optional
+        The power of the laser (in mW), by default 1.0
+    phase : float, optional
+        The phase of the laser (in radians), by default 0.0
+    mod_function : Callable, optional
+        The modulation function, by default None.
+    """
+
+    def __init__(
+        self,
+        ports: OPort | list[OPort],
+        power: float = 1.0,
+        phase: float = 0.0,
+        mod_function=None,
+    ) -> None:
+        super().__init__(list(ports))
         self.power = power
-        self.mod_function = mod_function
         self.phase = phase
+        self.mod_function = mod_function
 
 
 class Detector(SimDevice):
-    """Detector."""
+    """Ideal photodetector.
 
-    def __init__(self, ckt, port, responsivity=1.0) -> None:
-        super().__init__(ckt, [port])
+    Attributes
+    ----------
+    wl : jnp.ndarray
+        The wavelengths at which the detector was simulated.
+    power : jnp.ndarray
+        The power at each wavelength.
+
+    Parameters
+    ----------
+    port : OPort
+        The port to which the detector is connected.
+    responsivity : float, optional
+        The responsivity of the detector (in A/W), by default 1.0
+    """
+
+    def __init__(self, port: OPort, responsivity: float = 1.0) -> None:
+        super().__init__(list(port))
+        warnings.warn("Responsivity is not yet implemented, so it is ignored.")
         self.responsivity = responsivity
+
+    def set_result(self, wl, power):
+        self.wl = wl
+        self.power = power
+
+    def plot(self, ax=None, **kwargs):
+        """Plot the detector response."""
+        if ax is None:
+            fig, ax = plt.subplots()
+        ax.plot(self.wl, self.power, **kwargs)
+        ax.set_xlabel("Wavelength (um)")
+        ax.set_ylabel("Power (mW)")
+        return ax
