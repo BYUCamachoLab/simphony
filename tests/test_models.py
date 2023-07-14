@@ -3,10 +3,34 @@ from copy import deepcopy
 import pytest
 import numpy as np
 
-from simphony.models import Model, OPort, EPort
+from simphony.models import Model, Port, OPort, EPort
 from simphony.exceptions import ModelValidationError
 from simphony.libraries.siepic import YBranch
 from simphony.libraries.ideal import Waveguide
+
+
+class TestPort:
+    def test_port(self):
+        port = Port("test")
+        assert port.name == "test"
+
+    def test_port_deepcopy(self):
+        port = Port("test")
+        port.instance = object()
+
+        port_copy = deepcopy(port)
+        assert port_copy.name == "test"
+        assert port_copy is not port
+        assert port_copy != port
+        assert port_copy.instance is not port.instance
+
+    def test_port_equality(self):
+        port1 = Port("test")
+        port2 = Port("test")
+
+        l = [port1]
+        with pytest.raises(ValueError):
+            l.index(port2)
 
 
 class TestModelDeclaration:
