@@ -9,7 +9,8 @@ parts:
   - file: tutorials/intro
   - file: tutorials/mzi
   - file: tutorials/filters
-  - file: tutorials/layout_aware
+  # - file: tutorials/monte_carlo
+  # - file: tutorials/layout_aware
 - caption: Reference
   chapters:
   - file: api_reference
