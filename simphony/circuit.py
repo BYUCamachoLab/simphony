@@ -245,6 +245,8 @@ class Circuit(Model):
             if not port.connected
         ]
 
+    # TODO: Add net ID/number to the output so it's easier to see what's
+    # connected to what.
     def port_info(self) -> str:
         """Return a string containing information about the ports in the
         circuit.
