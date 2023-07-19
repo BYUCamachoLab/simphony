@@ -49,7 +49,7 @@ dependencies = [
   "scipy>=1.5.4",
   "numpy>=1.19.5",
   "pandas>=2.0.0",
-  "skrf>=0.28.0",
+  "scikit-rf>=0.28.0",
   "lark~=1.1.5",
 ]
 
