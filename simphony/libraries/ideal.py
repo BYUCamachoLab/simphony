@@ -47,7 +47,7 @@ class Coupler(Model):
         Phase shift between the two output ports (in radians). Defaults to pi/2.
     loss : float or Tuple of floats
         Total transmission of the component in dB (0 <= loss) assumed uniform
-        loss across ports. If a list of 4 floats is given, the loss associated
+        loss across ports. If a tuple of 4 floats is given, the loss associated
         with each port is set individually.
     """
     onames = ["o0", "o1", "o2", "o3"]
@@ -58,13 +58,28 @@ class Coupler(Model):
         phi: float = jnp.pi / 2,
         loss: Union[float, Tuple[float]] = 0.0,
     ):
+        if not 0 <= coupling <= 1:
+            raise ValueError("coupling must be between 0 and 1")
         self.coupling = coupling
-        self.phi = phi
+        # check if loss is iterable
+        if isinstance(loss, tuple):
+            if len(loss) != 4:
+                raise ValueError("loss must be a single value or a tuple of 4 values")
+            for l in loss:
+                if not 0 <= l:
+                    raise ValueError("loss must be greater than or equal to 0")
+        elif isinstance(loss, float):
+            if not 0 <= loss:
+                raise ValueError("loss must be greater than 0")
+        else:
+            raise ValueError("loss must be a single value or a tuple of 4 values")
         self.loss = loss
+        self.phi = phi
 
     def s_params(self, wl):
         try:
-            T0, T1, T2, T3 = 10 ** (self.loss / 10)
+            L0, L1, L2, L3 = self.loss
+            T0, T1, T2, T3 = 10 ** (-jnp.asarray([L0, L1, L2, L3]) / 10)
         except:
             T0 = T1 = T2 = T3 = (10 ** (self.loss / 10)) ** (1 / 2)
         t = jnp.sqrt(1 - self.coupling)
@@ -107,7 +122,7 @@ class Waveguide(Model):
         Group index of the waveguide. If not set, reads the global group index
         from the context.
     loss : float, optional
-        Loss of the waveguide in dB/micron. If not set, reads the global loss
+        Loss of the waveguide in dB/micron (must be >= 0). If not set, reads the global loss
         from the context.
 
     TODO: Check the following note for accuracy.
@@ -181,6 +196,21 @@ class Waveguide(Model):
 
 
 class PhaseShifter(Model):
+    """Ideal phase shifter model.
+
+    The ideal phase shifter has 2 ports ('o0', 'o1'), it acts as a waveguide
+    with a set amount of phase shift.
+
+    Parameters
+    ----------
+    onames : List[str]
+        Names of the output ports. Defaults to ['o0', 'o1'].
+    phase : float
+        Phase shift of the phase shifter in radians. Defaults to 0.
+    loss : float
+        Loss of the phase shifter in dB. Defaults to 0.
+    """
+
     def __init__(self, onames=["o0", "o1"], phase=0, loss=0):
         self.onames = onames
         self.phase = phase
@@ -194,6 +224,17 @@ class PhaseShifter(Model):
 
 
 class Terminator(Model):
+    """Ideal terminator model.
+
+    The ideal terminator has 1 port ('o0'), it is essentially an ideal dump
+    port. Useful for when you want to terminate unused ports.
+
+    Parameters
+    ----------
+    onames : List[str]
+        Name of the termination port. Defaults to ['o0'].
+    """
+
     ocount = 1
 
     def s_params(self, wl: float | np.ndarray) -> np.ndarray:
