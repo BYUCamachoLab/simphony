@@ -105,18 +105,16 @@ class TestCircuit:
         ckt.connect(model_with_eport.e(0), model_with_two_eports.e(0))
         assert {model_with_eport, model_with_two_eports} <= set(ckt.components)
         assert len(ckt.components) == 2
-        assert set(model_with_eport._eports + model_with_two_eports._eports) <= set(
-            ckt._internal_eports
-        )
-        assert len(ckt._internal_eports) == 3
+        assert model_with_eport.e(0)._connections <= set(model_with_two_eports.e(0))
+        assert model_with_two_eports.e(0)._connections <= set(model_with_eport.e(0))
         assert len(ckt._enodes) == 1
 
     def test_connect_o2m(self, ckt, wg0, wg1):
         ckt.connect(wg0.o(0), wg1)
         assert {wg0, wg1} <= set(ckt.components)
         assert len(ckt.components) == 2
-        assert set(wg0._oports + wg1._oports) <= set(ckt._internal_oports)
-        assert len(ckt._internal_oports) == 4
+        assert wg0.o(0)._connections <= set(wg1.o(0))
+        assert wg1.o(0)._connections <= set(wg0.o(0))
         assert (wg0.o(0), wg1.o(0)) in ckt._onodes
         assert len(ckt._onodes) == 1
 
@@ -124,18 +122,16 @@ class TestCircuit:
         ckt.connect(model_with_eport.e(0), model_with_two_eports)
         assert {model_with_eport, model_with_two_eports} <= set(ckt.components)
         assert len(ckt.components) == 2
-        assert set(model_with_eport._eports + model_with_two_eports._eports) <= set(
-            ckt._internal_eports
-        )
-        assert len(ckt._internal_eports) == 3
+        assert model_with_eport.e(0)._connections <= set(model_with_two_eports.e(0))
+        assert model_with_two_eports.e(0)._connections <= set(model_with_eport.e(0))
         assert len(ckt._enodes) == 1
 
     def test_connect_m2o(self, ckt, wg0, wg1):
         ckt.connect(wg0, wg1.o(0))
         assert {wg0, wg1} <= set(ckt.components)
         assert len(ckt.components) == 2
-        assert set(wg0._oports + wg1._oports) <= set(ckt._internal_oports)
-        assert len(ckt._internal_oports) == 4
+        assert wg0.o(0)._connections <= set(wg1.o(0))
+        assert wg1.o(0)._connections <= set(wg0.o(0))
         assert (wg0.o(0), wg1.o(0)) in ckt._onodes
 
     def test_connect_m2e(self, ckt, model_with_eport, model_with_two_eports):
@@ -146,10 +142,9 @@ class TestCircuit:
         ckt.connect(model_with_eport, model_with_two_eports.e(0))  # test m2e
         assert {model_with_eport, model_with_two_eports} <= set(ckt.components)
         assert len(ckt.components) == 2
-        assert set(model_with_eport._eports + model_with_two_eports._eports) <= set(
-            ckt._internal_eports
-        )
-        assert len(ckt._internal_eports) == 3
+        assert model_with_eport.e(0)._connections <= set(model_with_two_eports.e(0))
+        assert model_with_two_eports.e(0)._connections <= set(model_with_eport.e(0))
+        assert model_with_two_eports.e(1)._connections <= set(model_with_eport.e(0))
         assert len(ckt._enodes) == 1
 
     def test_connect_m2m_oports_and_eports(
@@ -158,14 +153,31 @@ class TestCircuit:
         ckt.connect(model_with_two_eports, model_with_three_eports)
         assert {model_with_three_eports, model_with_two_eports} <= set(ckt.components)
         assert len(ckt.components) == 2
-        assert set(
-            model_with_three_eports._oports + model_with_two_eports._oports
-        ) <= set(ckt._internal_oports)
-        assert len(ckt._internal_oports) == 4
-        assert set(
-            model_with_three_eports._eports + model_with_two_eports._eports
-        ) <= set(ckt._internal_eports)
-        assert len(ckt._internal_eports) == 5
+        assert model_with_two_eports.o(0)._connections <= set(
+            model_with_three_eports.o(0)
+        )
+        assert model_with_three_eports.o(0)._connections <= set(
+            model_with_two_eports.o(0)
+        )
+        assert model_with_two_eports.o(1)._connections <= set(
+            model_with_three_eports.o(1)
+        )
+        assert model_with_three_eports.o(1)._connections <= set(
+            model_with_two_eports.o(1)
+        )
+        assert model_with_two_eports.e(0)._connections <= set(
+            model_with_three_eports.e(0)
+        )
+        assert model_with_three_eports.e(0)._connections <= set(
+            model_with_two_eports.e(0)
+        )
+        assert model_with_two_eports.e(1)._connections <= set(
+            model_with_three_eports.e(1)
+        )
+        assert model_with_three_eports.e(1)._connections <= set(
+            model_with_two_eports.e(1)
+        )
+        assert len(ckt._onodes) == 2
         assert len(ckt._enodes) == 2
 
     def test_connect_m2m(self, ckt, wg0, wg1, coupler):
@@ -173,13 +185,9 @@ class TestCircuit:
         ckt.connect(coupler, wg1)
         assert {wg0, wg1, coupler} <= set(ckt.components)
         assert len(ckt.components) == 3
-        assert set(wg0._oports + wg1._oports + coupler._oports) <= set(
-            ckt._internal_oports
-        )
-        assert len(ckt._internal_oports) == 8
         assert (wg0.o(0), coupler.o(0)) in ckt._onodes
         assert (coupler.o(1), wg1.o(0)) in ckt._onodes
-        assert (coupler.o(2), wg1.o(1)) in ckt._onodes  # Failed here
+        assert (coupler.o(2), wg1.o(1)) in ckt._onodes
         assert len(ckt._onodes) == 3
 
     def test_subnetwork_growth(self, ckt, coupler, coupler2, wg0, wg1):
