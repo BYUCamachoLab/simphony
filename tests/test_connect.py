@@ -73,6 +73,23 @@ ArrMultipleFreq_BLong = jnp.array(
 )
 
 SingleFreq = jnp.array([[[0.0 + 0.0j, 0.0 + 1.0j], [0.0 + 1.0j, 0.0 + 0.0j]]])
+MultipleFreq = jnp.array(
+    [
+        [[0.0 + 0.0j, 1.0 + 0.0j], [1.0 + 0.0j, 0.0 + 0.0j]],
+        [
+            [0.0 + 0.0j, 0.25 + 0.0j],
+            [0.25 + 0.0j, 0.0 + 0.0j],
+        ],
+        [
+            [0.0 + 0.0j, -0.25 - 2.1855694e-08j],
+            [-0.25 - 2.1855694e-08j, 0.0 + 0.0j],
+        ],
+        [
+            [0.0 + 0.0j, -0.2151855 - 1.2726036e-01j],
+            [-0.2151855 - 1.2726036e-01j, 0.0 + 0.0j],
+        ],
+    ]
+)
 
 
 class TestConnect:
@@ -84,4 +101,4 @@ class TestConnect:
     def test_multiple_freq(self):
         Smatrix = connect_s(ArrMultipleFreq_A, 0, ArrMultipleFreq_A, 0)
         print("multiple connected:", Smatrix)
-        assert jnp.allclose(Smatrix, SingleFreq, atol=1e-3, rtol=1e-3)
+        assert jnp.allclose(Smatrix, MultipleFreq, atol=1e-3, rtol=1e-3)
