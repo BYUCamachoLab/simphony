@@ -2,6 +2,7 @@
 
 
 import warnings
+from typing import List, Union
 
 import matplotlib.pyplot as plt
 
@@ -20,7 +21,7 @@ class Laser(SimDevice):
 
     Parameters
     ----------
-    ports : OPort | list[OPort]
+    ports : OPort or list of OPort
         The ports to which the laser is connected.
     power : float, optional
         The power of the laser (in mW), by default 1.0
@@ -32,7 +33,7 @@ class Laser(SimDevice):
 
     def __init__(
         self,
-        ports: OPort | list[OPort],
+        ports: Union[OPort, List[OPort]],
         power: float = 1.0,
         phase: float = 0.0,
         mod_function=None,

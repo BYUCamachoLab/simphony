@@ -8,7 +8,17 @@ from copy import deepcopy
 from functools import lru_cache, wraps
 from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
-import numpy as np
+try:
+    import jax
+    import jax.numpy as jnp
+
+    JAX_AVAILABLE = True
+except ImportError:
+    import numpy as jnp
+
+    from simphony.utils import jax
+
+    JAX_AVAILABLE = False
 import skrf
 
 from simphony.exceptions import ModelValidationError
@@ -25,9 +35,11 @@ class Port:
     """Port abstract base class containing name and reference to Model
     instance."""
 
-    def __init__(self, name: str, instance: Model | Circuit | None = None) -> None:
+    def __init__(
+        self, name: str, instance: Optional[Union[Model, Circuit]] = None
+    ) -> None:
         self.name: str = name
-        self.instance: Model | None = instance
+        self.instance: Optional[Model] = instance
         self._connections = set()  # a list of all other ports the port is connected to
 
     def __repr__(self) -> str:
@@ -322,7 +334,7 @@ class Model:
                 yield port
 
     @lru_cache
-    def _s(self, wl: tuple[float]) -> np.ndarray:
+    def _s(self, wl: tuple[float]) -> jnp.ndarray:
         """Internal function to cache the s_params function.
 
         Parameters
@@ -340,9 +352,9 @@ class Model:
         """
         # https://docs.python.org/3/faq/programming.html#how-do-i-cache-method-calls
         log.debug("Cache miss (%s)", str(self))
-        return self.s_params(np.array(wl))
+        return self.s_params(jnp.array(wl))
 
-    def s_params(self, wl: float | np.ndarray) -> np.ndarray:
+    def s_params(self, wl: Union[float, jnp.ndarray]) -> jnp.ndarray:
         """Function to be implemented by subclasses to return scattering
         parameters.
 
@@ -360,7 +372,7 @@ class Model:
         """
         raise NotImplementedError
 
-    def o(self, value: str | int | None = None):
+    def o(self, value: Union[str, int, None] = None):
         """Get a reference to an optical port.
 
         Parameter
@@ -381,7 +393,7 @@ class Model:
         else:
             return self.next_unconnected_oport()
 
-    def e(self, value: str | int | None = None) -> EPort | None:
+    def e(self, value: Union[str, int, None] = None) -> Union[EPort, None]:
         """Get a reference to an electrical port.
 
         Parameter
@@ -448,7 +460,7 @@ class Model:
                 f"Number of renamed ports must be equal to number of current ports ({len(names)}!={len(self.enames)})"
             )
 
-    def next_unconnected_oport(self) -> OPort | None:
+    def next_unconnected_oport(self) -> Union[OPort, None]:
         """Gets the next unconnected optical port, or None if all connected.
 
         Returns
@@ -460,7 +472,7 @@ class Model:
             if not o.connected:
                 return o
 
-    def next_unconnected_eport(self) -> EPort | None:
+    def next_unconnected_eport(self) -> Union[EPort, None]:
         """Gets the next unconnected electronic port, or None if all connected.
 
         Returns
@@ -487,7 +499,7 @@ class Model:
         return False
 
     def to_network(
-        self, wl: float | list[float] | tuple[float] | np.ndarray
+        self, wl: Union[float, list[float], tuple[float], jnp.ndarray]
     ) -> skrf.Network:
         """Converts the component to a scikit-rf network.
 
@@ -502,7 +514,7 @@ class Model:
         Network
             The network representation of the component.
         """
-        wl = np.asarray(wl).reshape(-1)
+        wl = jnp.asarray(wl).reshape(-1)
         s = self._s(tuple(wl))
         f = wl2freq(wl * 1e-6)
         return skrf.Network(f=f[::-1], s=s[::-1], f_unit="Hz")

@@ -237,7 +237,7 @@ class Terminator(Model):
 
     ocount = 1
 
-    def s_params(self, wl: float | np.ndarray) -> np.ndarray:
+    def s_params(self, wl: Union[float, np.ndarray]) -> np.ndarray:
         wl = np.asarray(wl).reshape(-1)
         s = np.zeros((len(wl), 1, 1), dtype=np.complex128)
         return s

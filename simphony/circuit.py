@@ -198,7 +198,7 @@ class Circuit(Model):
         return super().__hash__()
 
     @property
-    def components(self) -> list[Model | Circuit]:
+    def components(self) -> List[Union[Model, Circuit]]:
         """Return a list of components (model instances) in the circuit in the
         order they were added.
 
@@ -303,7 +303,7 @@ class Circuit(Model):
         self._enodes.append({port1, port2})
         update_connections(self._enodes[-1])
 
-    def _o2x(self, port1: OPort, port2: Model | OPort):
+    def _o2x(self, port1: OPort, port2: Union[Model, OPort]):
         """Connect an optical port to a second port (type-inferred)."""
         if isinstance(port2, OPort):
             self._connect_o(port1, port2)
@@ -314,7 +314,7 @@ class Circuit(Model):
                 f"Port types must match or be an instance of Model ({type(port1)} != {type(port2)})"
             )
 
-    def _e2x(self, port1: EPort, port2: Model | EPort):
+    def _e2x(self, port1: EPort, port2: Union[Model, EPort]):
         """Connect an electronic port to a second port (type-inferred)."""
         if isinstance(port2, EPort):
             self._connect_e(port1, port2)
@@ -327,8 +327,8 @@ class Circuit(Model):
 
     def connect(
         self,
-        port1: Model | OPort | EPort,
-        port2: Model | OPort | EPort | list[Model | OPort | EPort],
+        port1: Union[Model, OPort, EPort],
+        port2: Union[Model, OPort, EPort, List[Union[Model, OPort, EPort]]],
     ) -> None:
         """Connect two ports together and add to the internal netlist.
 
@@ -421,13 +421,13 @@ class Circuit(Model):
         )
 
     def from_connections(
-        self, connections: list[tuple[OPort | EPort, OPort | EPort]]
+        self, connections: List[Tuple[Union[OPort, EPort], Union[OPort, EPort]]]
     ) -> None:
         """Connect a list of ports together.
 
         Parameters
         ----------
-        connections : list[tuple[OPort | EPort, OPort | EPort]]
+        connections : list[tuple[OPort or EPort, OPort or EPort]]
             A list of tuples of ports to connect together.
 
         Examples
@@ -437,7 +437,7 @@ class Circuit(Model):
         for port1, port2 in connections:
             self.connect(port1, port2)
 
-    def s_params(self, wl: float | np.ndarray) -> np.ndarray:
+    def s_params(self, wl: Union[float, np.ndarray]) -> np.ndarray:
         """Compute the scattering parameters for the circuit.
 
         Parameters

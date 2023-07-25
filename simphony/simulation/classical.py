@@ -1,6 +1,6 @@
 """Module for classical simulation."""
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, List, Union
 
 from simphony.models import OPort
 
@@ -67,7 +67,7 @@ class ClassicalSim(Simulation):
 
     def add_laser(
         self,
-        ports: OPort | list[OPort],
+        ports: Union[OPort, List[OPort]],
         power: float = 1.0,
         phase: float = 0.0,
         mod_function: Callable = None,
@@ -79,7 +79,7 @@ class ClassicalSim(Simulation):
 
         Parameters
         ----------
-        ports : OPort | list[OPort]
+        ports : OPort or list of OPort
             The ports to which the laser is connected.
         power : float, optional
             The power of the laser (in mW), by default 1.0
@@ -94,8 +94,8 @@ class ClassicalSim(Simulation):
         return laser
 
     def add_detector(
-        self, ports: OPort | list[OPort], responsivity: float = 1.0
-    ) -> Detector | list[Detector]:
+        self, ports: Union[OPort, List[OPort]], responsivity: float = 1.0
+    ) -> Union[Detector, list[Detector]]:
         """Add an ideal photodetector.
 
         If multiple ports are specified, multiple detectors will be created
@@ -103,14 +103,14 @@ class ClassicalSim(Simulation):
 
         Parameters
         ----------
-        ports : OPort | list[OPort]
+        ports : OPort or list of OPort
             The ports to which the detector is connected.
         responsivity : float, optional
             The responsivity of the detector (in A/W), by default 1.0
 
         Returns
         -------
-        Detector | list[Detector]
+        Detector or list of Detector
             The created detector(s).
         """
         ports = list(ports)
