@@ -92,6 +92,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+nojax/
 
 # Spyder project settings
 .spyderproject
