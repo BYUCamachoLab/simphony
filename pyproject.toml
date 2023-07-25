@@ -51,6 +51,7 @@ dependencies = [
   "pandas>=2.0.0",
   "scikit-rf>=0.28.0",
   "lark~=1.1.5",
+  "tabulate",
 ]
 
 [project.optional-dependencies]
