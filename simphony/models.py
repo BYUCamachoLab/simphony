@@ -419,7 +419,7 @@ class Model:
         if len(self._oports) == 0:
             self._oports = list(OPort(name, self) for name in names)
         elif len(names) == len(self._oports):
-            (port.rename(name) for port, name in zip(self._oports, names))
+            _ = [port.rename(name) for port, name in zip(self._oports, names)]
         else:
             raise ModelValidationError(
                 f"Number of renamed ports must be equal to number of current ports ({len(names)}!={len(self.onames)})"
@@ -442,7 +442,7 @@ class Model:
         if len(self._eports) == 0:
             self._eports = list(EPort(name, self) for name in names)
         elif len(names) == len(self._eports):
-            (port.rename(name) for port, name in zip(self._eports, names))
+            _ = [port.rename(name) for port, name in zip(self._eports, names)]
         else:
             raise ValueError(
                 f"Number of renamed ports must be equal to number of current ports ({len(names)}!={len(self.enames)})"
