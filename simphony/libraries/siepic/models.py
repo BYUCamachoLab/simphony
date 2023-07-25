@@ -15,12 +15,12 @@ from scipy.constants import c as SPEED_OF_LIGHT
 from skrf.frequency import Frequency
 from tabulate import tabulate
 
-import simphony
+import simphony.libraries
 from simphony.models import Model
 from simphony.plugins.lumerical import load_sparams
 from simphony.utils import wl2freq
 
-SOURCE_DATA_PATH = "libraries/siepic/source_data"
+SOURCE_DATA_PATH = "siepic/source_data"
 
 
 def resolve_source_filepath(filename: str) -> Path:
@@ -38,9 +38,11 @@ def resolve_source_filepath(filename: str) -> Path:
     """
     filepath = Path(SOURCE_DATA_PATH) / filename
     try:  # python >= 3.9
-        return importlib.resources.files(simphony) / filepath
+        return importlib.resources.files(simphony.libraries) / filepath
     except AttributeError:  # fall back to method deprecated in 3.11.
-        return importlib.resources.path(simphony, filepath)
+        ctx = importlib.resources.path(simphony, "libraries")
+        with ctx as path:
+            return path / filepath
 
 
 class BidirectionalCouplerTE(Model):
