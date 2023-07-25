@@ -2,8 +2,6 @@
 from dataclasses import dataclass
 from typing import Callable
 
-from charset_normalizer import detect
-
 from simphony.models import OPort
 
 try:
