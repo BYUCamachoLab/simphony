@@ -8,6 +8,8 @@ from copy import copy, deepcopy
 from itertools import count
 from typing import TYPE_CHECKING, List, Optional, Set, Tuple, Union
 
+import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 
 from simphony.connect import connect_s, vector_innerconnect_s
@@ -264,6 +266,53 @@ class Circuit(Model):
                 info += f"  {'|' if port.connected else 'O'} {port}\n"
         header = f'"{self.name}" contains {len(comps)} models:\n'
         return header + info
+
+    def plot_networkx(self):
+        """Plot the circuit optical port connections using NetworkX.
+
+        Returns
+        -------
+        fig, ax
+            Figure and axis objects.
+        """
+
+        G = nx.Graph()
+
+        for o1, o2 in self._onodes:
+            G.add_edge(
+                f"{o1.instance.name}",
+                f"{o2.instance.name}",
+                label=f"{o1.name} : {o2.name}",
+            )
+        for i, oport in enumerate(self._oports):
+            G.add_edge(f"{oport.instance.name}", f"o({i})")
+
+        options = {
+            # "font_size": 12,
+            # "node_size": 3000,
+            # "node_color": "white",
+            # "node_shape": "s",
+            "node_color": None,
+            "edgecolors": "black",
+            # "linewidths": 5,
+            # "width": 5,
+            "bbox": dict(
+                facecolor="skyblue", edgecolor="black", boxstyle="round,pad=0.2"
+            ),
+        }
+        edge_options = {
+            # "font_size": 12,
+            # "font_weight": "bold",
+        }
+
+        pos = nx.spring_layout(G, k=0.35)
+        nx.draw_networkx(G, pos, with_labels=True, **options)
+        nx.draw_networkx_edge_labels(
+            G, pos, edge_labels=nx.get_edge_attributes(G, "label"), **edge_options
+        )
+
+        plt.tight_layout()
+        return plt.gcf(), plt.gca()
 
     def _connect_o(self, port1: OPort, port2: OPort) -> None:
         """Connect two ports in the internal netlist and update the connections

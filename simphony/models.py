@@ -6,6 +6,7 @@ import collections.abc
 import logging
 from copy import deepcopy
 from functools import lru_cache, wraps
+from itertools import count
 from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 try:
@@ -217,7 +218,8 @@ class Model:
 
     # Default keys to ignore when checking for equality or hashing. Private
     # attributes are always ignored when checking for equality.
-    _ignore_keys = ["onames", "ocount", "enames", "ecount"]
+    _ignore_keys = ["onames", "ocount", "enames", "ecount", "icount", "counter"]
+    counter = count()
 
     # These should always be instance attributes, not treated as class
     # attributes. They are set on the instance by the super initializer when
@@ -246,6 +248,9 @@ class Model:
             self.rename_eports(getattr(self, "enames"))
         elif hasattr(self, "ecount"):
             self.rename_eports([f"o{i}" for i in range(getattr(self, "ecount"))])
+
+        self.icount = next(self.counter)
+        self._name = None
 
     def __init_subclass__(cls) -> None:
         """Ensures subclasses define required functions and automatically calls
@@ -353,6 +358,16 @@ class Model:
         # https://docs.python.org/3/faq/programming.html#how-do-i-cache-method-calls
         log.debug("Cache miss (%s)", str(self))
         return self.s_params(jnp.array(wl))
+
+    @property
+    def name(self) -> str:
+        """Returns the name of the model."""
+        return self._name or self.__class__.__name__ + str(self.icount)
+
+    @name.setter
+    def name(self, value: str) -> None:
+        """Sets the name of the model."""
+        self._name = value
 
     def s_params(self, wl: Union[float, jnp.ndarray]) -> jnp.ndarray:
         """Function to be implemented by subclasses to return scattering
