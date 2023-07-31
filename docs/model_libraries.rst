@@ -8,6 +8,6 @@ simphony.libraries
    :caption: Libraries
    :toctree: ./api/
 
-   simphony.libraries.siepic
-   simphony.libraries.siepic.models
    simphony.libraries.ideal
+   simphony.libraries.siepic
+   simphony.libraries.sipann
