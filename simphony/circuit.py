@@ -16,9 +16,6 @@ from simphony.connect import connect_s, vector_innerconnect_s
 from simphony.exceptions import ModelValidationError, SeparatedCircuitError
 from simphony.models import EPort, Model, OPort, Port
 
-if TYPE_CHECKING:
-    from simphony.simulation.simdevices import SimDevice
-
 log = logging.getLogger(__name__)
 
 
@@ -210,18 +207,6 @@ class Circuit(Model):
             List of all model instances in the circuit.
         """
         return self._components
-
-    @property
-    def sim_devices(self) -> list[SimDevice]:
-        """Return a list of simulation devices in the circuit in the order they
-        were added.
-
-        Returns
-        -------
-        list
-            List of all simulation devices in the circuit.
-        """
-        return [comp for comp in self.components if isinstance(comp, SimDevice)]
 
     @property
     def _oports(self):
