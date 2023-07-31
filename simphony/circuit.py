@@ -511,7 +511,7 @@ class Circuit(Model):
                 port2.instance,
             )
             # innerconnect
-            if port1.instance == port2.instance:
+            if port1.instance is port2.instance:
                 log.debug("Innerconnecting %s and %s", port1, port2)
                 sparams = (
                     port1.instance._s(wl)
