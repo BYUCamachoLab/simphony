@@ -227,7 +227,7 @@ class Model:
     _oports: list[OPort] = []  # should only be manipulated by rename_oports()
     _eports: list[EPort] = []  # should only be manipulated by rename_eports()
 
-    def __init__(self) -> None:
+    def _validate(self) -> None:
         if hasattr(self, "_exempt"):
             return
 
@@ -265,12 +265,14 @@ class Model:
         @wraps(orig_init)
         def __init__(self, *args, **kwargs):
             orig_init(self, *args, **kwargs)
-            super(self.__class__, self).__init__()
+            super(self.__class__, self)._validate()
 
         cls.__init__ = __init__
 
     def __eq__(self, other: Model):
         """Compares instance dictionaries to determine equality."""
+        if self.__class__.__name__ != other.__class__.__name__:
+            return False
         d1 = deepcopy(self.__dict__)
         d2 = deepcopy(other.__dict__)
         # Remove keys that should be ignored
@@ -390,8 +392,8 @@ class Model:
     def o(self, value: Union[str, int, None] = None):
         """Get a reference to an optical port.
 
-        Parameter
-        ---------
+        Parameters
+        ----------
         value : str or int, optional
             The port name or index to get (default None). If not provided, next
             unconnected port is returned.
@@ -411,8 +413,8 @@ class Model:
     def e(self, value: Union[str, int, None] = None) -> Union[EPort, None]:
         """Get a reference to an electrical port.
 
-        Parameter
-        ---------
+        Parameters
+        ----------
         value : str or int, optional
             The port name or index to get (default None). If not provided, next
             unconnected port is returned.
@@ -530,6 +532,6 @@ class Model:
             The network representation of the component.
         """
         wl = jnp.asarray(wl).reshape(-1)
-        s = self._s(tuple(wl))
+        s = self._s(tuple(wl.tolist()))
         f = wl2freq(wl * 1e-6)
         return skrf.Network(f=f[::-1], s=s[::-1], f_unit="Hz")
