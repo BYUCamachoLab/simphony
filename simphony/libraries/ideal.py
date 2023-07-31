@@ -21,13 +21,14 @@ from simphony.models import Model
 class Coupler(Model):
     r"""2x2 photonic coupler model.
 
-    .. image:: /reference/images/coupler.png
+    .. image:: /_static/images/coupler.png
         :alt: coupler.png
 
     The coupler has 2 inputs ('o0', 'o1') and 2 outputs ('o2', 'o3').
     The coupler has the following s-parameter matrix:
 
     .. math::
+
         M = \begin{bmatrix}
                 0 & 0 & t \sqrt{T_0 T_2} & r^* \sqrt{T_0 T_3} \\
                 0 & 0 & -r \sqrt{T_1 T_2} & t \sqrt{T_1 T_3} \\
@@ -37,7 +38,6 @@ class Coupler(Model):
 
     where :math:`t = \sqrt{1 - \text{coupling}}` and :math:`r =
     \sqrt{\text{coupling}}`.
-
 
     Parameters
     ----------
@@ -101,8 +101,9 @@ class Coupler(Model):
         return jnp.stack([smatrix] * len(wl), axis=0)
 
 
+# TODO: Check the Notes section for accuracy.
 class Waveguide(Model):
-    """Model of a 500 nm wide, 220 nm tall waveguide with a 1.55 um center
+    r"""Model of a 500 nm wide, 220 nm tall waveguide with a 1.55 um center
     wavelength.
 
     An ideal waveguide has transmission that is affected only by the loss of the
@@ -125,42 +126,44 @@ class Waveguide(Model):
         Loss of the waveguide in dB/micron (must be >= 0). If not set, reads the global loss
         from the context.
 
-    TODO: Check the following note for accuracy.
-
     Notes
     -----
     The effective index of the waveguide is calculated as:
 
     .. math::
-        n_{eff} = n_g - \frac{\\Delta \\lambda}{\\lambda_0} \frac{\\partial n_g}{\\partial \\lambda}
+
+        n_{eff} = n_g - \frac{\Delta \lambda}{\lambda_0} \frac{\partial n_g}{\partial \lambda}
 
     where :math:`n_g` is the group index, :math:`\\Delta \\lambda` is the
     wavelength difference between the center wavelength and the current
-    wavelength, and :math:`\\lambda_0` is the center wavelength.
+    wavelength, and :math:`\lambda_0` is the center wavelength.
 
     The transmission of the waveguide is calculated as:
 
     .. math::
-        T = \\exp(-\frac{2 \\pi n_{eff} L}{\\lambda})
+
+        T = \exp(-\frac{2 \pi n_{eff} L}{\lambda})
 
     where :math:`n_{eff}` is the effective index, :math:`L` is the length of the
-    waveguide, and :math:`\\lambda` is the current wavelength.
+    waveguide, and :math:`\lambda` is the current wavelength.
 
     The reflection of the waveguide is calculated as:
 
     .. math::
-        R = \\exp(-\frac{2 \\pi n_{eff} L}{\\lambda}) \\exp(-\frac{2 \\pi n_{eff} L}{\\lambda_0})
+
+        R = \exp(-\frac{2 \pi n_{eff} L}{\lambda}) \exp(-\frac{2 \pi n_{eff} L}{\lambda_0})
 
     where :math:`n_{eff}` is the effective index, :math:`L` is the length of the
-    waveguide, and :math:`\\lambda` is the current wavelength.
+    waveguide, and :math:`\lambda` is the current wavelength.
 
     The s-parameter matrix of the waveguide is calculated as:
 
     .. math::
+
         M = \begin{bmatrix}
-                R & T \\
+                R & T \
                 T & R
-            \\end{bmatrix}
+            \end{bmatrix}
     """
 
     ocount = 2

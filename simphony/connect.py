@@ -28,7 +28,7 @@ def connect_s(A, k, B, l):
     :func:`connect` operates on :class:`Network` types.
 
     Parameters
-    -----------
+    ----------
     A : np.ndarray
             S-parameter matrix of `A`, shape is fxnxn(x2)
     k : int
@@ -44,7 +44,7 @@ def connect_s(A, k, B, l):
         new S-parameter matrix
 
     Notes
-    -------
+    -----
     Internally, this function creates a larger composite network
     and calls the  :func:`innerconnect_s` function. see that function for more
     details about the implementation
@@ -110,7 +110,7 @@ def vector_innerconnect_s(S, k, l):
 
     Parameters
     ----------
-    S : numpy 2-d array
+    S : array-like
         The matrix that will be updated
     k : int
         The index of the first connected port
@@ -119,7 +119,7 @@ def vector_innerconnect_s(S, k, l):
 
     Returns
     -------
-    numpy 2-d array
+    np.ndarray
         The new updated S-matrix
 
     References
@@ -168,9 +168,9 @@ def innerconnect_s(S, k, l):
     The function :func:`innerconnect` operates on :class:`Network` types.
 
     Parameters
-    -----------
+    ----------
     S : :class:`numpy.ndarray`
-        S-parameter matrix of `S`, shape is fxnxnx2
+        S-parameter matrix of `S`, shape is f x n x n x 2
     k : int
         port index on `S` (port indices start from 0)
     l : int
