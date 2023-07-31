@@ -2,8 +2,7 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-import os
-
+import pytest
 from simphony.plugins.siepic import load_spi_from_file
 
 # ==============================================================================
@@ -539,36 +538,21 @@ top_result = {
 }
 
 
-def test_EBeam_sequoiap_A_v2():
-    filename = os.path.join(
-        os.path.dirname(__file__),
-        "spice",
-        "EBeam_sequoiap_A_v2",
-        "EBeam_sequoiap_A_v2_main.spi",
+def test_EBeam_sequoiap_A_v2(data_dir):
+    filename = (
+        data_dir / "spice" / "EBeam_sequoiap_A_v2" / "EBeam_sequoiap_A_v2_main.spi"
     )
     res = load_spi_from_file(filename)
     assert res == EBeam_sequoiap_A_v2_result
 
 
-def test_MZI4():
-    filename = os.path.join(os.path.dirname(__file__), "spice", "MZI4", "MZI4_main.spi")
+def test_MZI4(data_dir):
+    filename = data_dir / "spice" / "MZI4" / "MZI4_main.spi"
     res = load_spi_from_file(filename)
     assert res == MZI4_result
 
 
-def test_top():
-    filename = os.path.join(os.path.dirname(__file__), "spice", "top", "top_main.spi")
+def test_top(data_dir):
+    filename = data_dir / "spice" / "top" / "top_main.spi"
     res = load_spi_from_file(filename)
     assert res == top_result
-
-
-# ==============================================================================
-# Test the builder
-# ==============================================================================
-# import os
-# filename = os.path.join('tests', 'spice', 'MZI4', 'MZI4_main.spi')
-# filename = os.path.join('tests', 'spice', 'EBeam_sequoiap_A_v2', 'EBeam_sequoiap_A_v2_main.spi')
-# filename = os.path.join('tests', 'spice', 'top', 'top_main.spi')
-# data = load_spi_from_file(filename)
-# from simphony.plugins.siepic.builders import build_circuit
-# build_circuit(data, 'simphony.libraries.siepic')

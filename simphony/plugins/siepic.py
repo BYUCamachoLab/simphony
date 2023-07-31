@@ -9,7 +9,7 @@ from typing import Any, Dict
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
 
-from simphony.tools import str2float
+from simphony.utils import str2float
 
 
 # The "dynamic list" isn't it's own class, but a regular
