@@ -56,6 +56,7 @@ dependencies = [
 [project.optional-dependencies]
 jax = ["jax"]
 gdsfactory = ["gdsfactory"]
+sipann = ["SiPANN"]
 dev = [
   "pre-commit",
   "matplotlib",
