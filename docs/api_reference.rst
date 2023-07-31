@@ -12,9 +12,7 @@ simphony
    simphony.connect
    simphony.context
    simphony.exceptions
-   simphony.formatters
-   simphony.layout
    simphony.models
+   simphony.plugins
    simphony.simulation
-   simphony.simulators
    simphony.utils
