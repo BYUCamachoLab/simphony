@@ -7,6 +7,7 @@ simphony
 .. autosummary::
    :caption: API Reference
    :toctree: ./api/
+   :recursive:
 
    simphony.circuit
    simphony.connect

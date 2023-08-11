@@ -6,6 +6,7 @@ simphony.libraries
 
 .. autosummary::
    :caption: Libraries
+   :recursive:
    :toctree: ./api/
 
    simphony.libraries.ideal

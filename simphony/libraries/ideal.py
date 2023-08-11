@@ -1,3 +1,11 @@
+# Copyright © Simphony Project Contributors
+# Licensed under the terms of the MIT License
+# (see simphony/__init__.py for details)
+"""Ideal models for common photonic components.
+
+These are typically lossless and have no wavelength dependance.
+"""
+
 from typing import List, Tuple, Union
 
 import numpy as np
