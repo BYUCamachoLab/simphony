@@ -93,6 +93,7 @@ ENV/
 env.bak/
 venv.bak/
 nojax/
+py38/
 
 # Spyder project settings
 .spyderproject
