@@ -1,12 +1,10 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
-"""
-simphony.plugins.lumerical
-==========================
+"""This module contains convenience functions for parsing Lumerical .sparam
+data files.
 
-This module contains convenience functions for parsing Lumerical .sparam data
-files. It works with all formats with optional extras as described on their
+It works with all formats with optional extras as described on their
 `website <https://optics.ansys.com/hc/en-us/articles/360036618513-S-parameter-file-formats>`_.
 Results are compiled into a pandas DataFrame that can be filtered and grouped
 as needed to construct the desired s-parameter matrix.

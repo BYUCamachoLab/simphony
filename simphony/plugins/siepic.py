@@ -1,6 +1,7 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
+"""Parse netlist instructions for siepic tools."""
 
 import os
 from enum import Enum

@@ -45,17 +45,19 @@ classifiers = [
 ]
 
 dependencies = [
-  "scipy>=1.5.4",
-  "numpy>=1.19.5",
-  "pandas>=2.0.0",
-  "scikit-rf>=0.28.0",
-  "lark~=1.1.5",
-  "tabulate",
+  "scipy >= 1.5.4",
+  "numpy >= 1.19.5",
+  "pandas >= 2.0.0",
+  "scikit-rf >= 0.28.0",
+  "lark ~= 1.1.5",
+  "tabulate ~= 0.9.0",
+  "networkx >= 3.1",
 ]
 
 [project.optional-dependencies]
 jax = ["jax"]
 gdsfactory = ["gdsfactory"]
+sipann = ["SiPANN"]
 dev = [
   "pre-commit",
   "matplotlib",
@@ -65,7 +67,6 @@ dev = [
   "coverage",
   "build",
   "pytest",
-  "coverage",
 ]
 doc = [
   "sphinx-book-theme ~= 0.3.3",
