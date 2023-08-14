@@ -92,7 +92,7 @@ def create_block_diagonal(A, B):
     # print("B after convert to polar", B)
 
     # create composite matrix, appending each sub-matrix diagonally
-    C = jnp.zeros((nf, nC, nC), dtype="complex_")
+    C = jnp.zeros((nf, nC, nC), dtype=jnp.complex64)
     if JAX_AVAILABLE is True:
         C = C.at[:, :nA, :nA].set(A.copy())
         C = C.at[:, nA:, nA:].set(B.copy())
