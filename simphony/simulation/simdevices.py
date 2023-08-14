@@ -64,7 +64,8 @@ class Detector(SimDevice):
 
     def __init__(self, port: OPort, responsivity: float = 1.0) -> None:
         super().__init__(list(port))
-        warnings.warn("Responsivity is not yet implemented, so it is ignored.")
+        if responsivity != 1.0:
+            warnings.warn("Responsivity is not yet implemented, so it is ignored.")
         self.responsivity = responsivity
 
     def set_result(self, wl, power):
