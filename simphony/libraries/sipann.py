@@ -14,8 +14,15 @@ from pathlib import Path
 from typing import Callable, Dict, TypeVar, Union
 
 import numpy as np
-from SiPANN import comp, scee
-from SiPANN.scee_opt import premade_coupler
+
+try:
+    from SiPANN import comp, scee
+    from SiPANN.scee_opt import premade_coupler
+except ImportError:
+    raise ImportError(
+        "SiPANN must be installed to use the SiPANN wrappers. "
+        "To install SiPANN, run `pip install SiPANN`."
+    )
 
 from simphony.models import Model
 
@@ -43,7 +50,13 @@ class SipannWrapper(Model):
         needed, pass in an empty dictionary.
     """
 
-    def __init__(self, model: TypeVar("M"), sigmas: Dict[str, float]) -> None:
+    def __init__(
+        self,
+        model: TypeVar("M"),
+        sigmas: Dict[str, float],
+        name: str = None,
+    ) -> None:
+        super().__init__(name=name)
         self.model = model
         self.sigmas = sigmas
 
@@ -165,7 +178,14 @@ class GapFuncSymmetric(SipannWrapper):
         zmax: float,
         sw_angle: Union[float, np.ndarray] = 90,
         sigmas: Dict[str, float] = dict(),
+        name: str = None,
     ) -> None:
+        if width < 400 or width > 600:
+            raise ValueError("Width must be between 400 and 600 nm")
+        if thickness < 180 or thickness > 240:
+            raise ValueError("Thickness must be between 180 and 240 nm")
+        if sw_angle < 80 or sw_angle > 90:
+            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
         super().__init__(
             scee.GapFuncSymmetric(
                 width,
@@ -177,6 +197,7 @@ class GapFuncSymmetric(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
+            name=name,
         )
 
     # def update_variations(self, **kwargs):
@@ -215,7 +236,7 @@ class GapFuncAntiSymmetric(SipannWrapper):
     width : float
         Width of waveguides in nanometers (valid from 400 to 600).
     thickness : float
-        Thickness of waveguides in meters (Valid from 180e-9 to 240e-9).
+        Thickness of waveguides in nanometers (valid from 180 to 240).
     gap : callable
         Gap function along the waveguide, values it returns must be in
         nanometers (and must always be greater than 100).
@@ -254,7 +275,16 @@ class GapFuncAntiSymmetric(SipannWrapper):
         arc4: float,
         sw_angle: Union[float, np.ndarray] = 90,
         sigmas: dict = dict(),
+        name: str = None,
     ) -> None:
+        if width < 400 or width > 600:
+            raise ValueError("Width must be between 400 and 600 nm")
+        if thickness < 180 or thickness > 240:
+            raise ValueError("Thickness must be between 180 and 240 nm")
+        if gap < 100:
+            raise ValueError("Gap must be greater than 100 nm")
+        if sw_angle < 80 or sw_angle > 90:
+            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
         super().__init__(
             scee.GapFuncAntiSymmetric(
                 width,
@@ -269,6 +299,7 @@ class GapFuncAntiSymmetric(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
+            name=name,
         )
 
     # def update_variations(self, **kwargs):
@@ -302,14 +333,14 @@ class HalfRing(SipannWrapper):
     width : float
         Width of waveguides in nanometers (valid from 400 to 600).
     thickness : float
-        Thickness of waveguides in meters (Valid from 180e-9 to 240e-9).
+        Thickness of waveguides in nanometers (valid from 180 to 240).
     radius : float
         Distance from center of ring to middle of waveguide, in nanometers.
     gap : float
         Minimum distance from ring waveguide edge to straight waveguide edge,
         in nanometers (must be greater than 100).
     sw_angle : float, optional
-        Sidewall angle of waveguide from horizontal in degrees (Valid from 80
+        Sidewall angle of waveguide from horizontal in degrees (valid from 80
         to 90, defaults to 90).
     sigmas : dict, optional
         Dictionary mapping parameters to sigma values for Monte-Carlo
@@ -330,7 +361,16 @@ class HalfRing(SipannWrapper):
         gap: Union[float, np.ndarray],
         sw_angle: Union[float, np.ndarray] = 90,
         sigmas: Dict[str, float] = dict(),
+        name: str = None,
     ) -> None:
+        if width < 400 or width > 600:
+            raise ValueError("Width must be between 400 and 600 nm")
+        if thickness < 180 or thickness > 240:
+            raise ValueError("Thickness must be between 180 and 240 nm")
+        if gap < 100:
+            raise ValueError("Gap must be greater than 100 nm")
+        if sw_angle < 80 or sw_angle > 90:
+            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
         super().__init__(
             scee.HalfRing(
                 width,
@@ -340,6 +380,7 @@ class HalfRing(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
+            name=name,
         )
 
     def s_params(self, wl):
@@ -419,7 +460,16 @@ class HalfRacetrack(SipannWrapper):
         length: Union[float, np.ndarray],
         sw_angle: Union[float, np.ndarray] = 90,
         sigmas: Dict[str, float] = dict(),
+        name: str = None,
     ) -> None:
+        if width < 400 or width > 600:
+            raise ValueError("Width must be between 400 and 600 nm")
+        if thickness < 180 or thickness > 240:
+            raise ValueError("Thickness must be between 180 and 240 nm")
+        if gap < 100:
+            raise ValueError("Gap must be greater than 100 nm")
+        if sw_angle < 80 or sw_angle > 90:
+            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
         super().__init__(
             scee.HalfRacetrack(
                 width,
@@ -430,6 +480,7 @@ class HalfRacetrack(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
+            name=name,
         )
 
     # def update_variations(self, **kwargs):
@@ -463,7 +514,7 @@ class StraightCoupler(SipannWrapper):
     width : float
         Width of waveguides in nanometers (valid from 400 to 600).
     thickness : float
-        Thickness of waveguides in nanometers (balid from 180 to 240).
+        Thickness of waveguides in nanometers (valid from 180 to 240).
     gap : float
         Distance between the two waveguide edges, in nanometers (must be greater
         than 100).
@@ -491,7 +542,16 @@ class StraightCoupler(SipannWrapper):
         length: Union[float, np.ndarray],
         sw_angle: Union[float, np.ndarray] = 90,
         sigmas: Dict[str, float] = dict(),
+        name: str = None,
     ) -> None:
+        if width < 400 or width > 600:
+            raise ValueError("Width must be between 400 and 600 nm")
+        if thickness < 180 or thickness > 240:
+            raise ValueError("Thickness must be between 180 and 240 nm")
+        if gap < 100:
+            raise ValueError("Gap must be greater than 100 nm")
+        if sw_angle < 80 or sw_angle > 90:
+            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
         super().__init__(
             scee.StraightCoupler(
                 width,
@@ -501,6 +561,7 @@ class StraightCoupler(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
+            name=name,
         )
 
     # def update_variations(self, **kwargs):
@@ -571,7 +632,16 @@ class StandardCoupler(SipannWrapper):
         vertical: Union[float, np.ndarray],
         sw_angle: Union[float, np.ndarray] = 90,
         sigmas: Dict[str, float] = dict(),
+        name: str = None,
     ) -> None:
+        if width < 400 or width > 600:
+            raise ValueError("Width must be between 400 and 600 nm")
+        if thickness < 180 or thickness > 240:
+            raise ValueError("Thickness must be between 180 and 240 nm")
+        if gap < 100:
+            raise ValueError("Gap must be greater than 100 nm")
+        if sw_angle < 80 or sw_angle > 90:
+            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
         super().__init__(
             scee.Standard(
                 width,
@@ -583,6 +653,7 @@ class StandardCoupler(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
+            name=name,
         )
 
     # def update_variations(self, **kwargs):
@@ -648,7 +719,16 @@ class DoubleHalfRing(SipannWrapper):
         gap: Union[float, np.ndarray],
         sw_angle: Union[float, np.ndarray] = 90,
         sigmas: Dict[str, float] = dict(),
+        name: str = None,
     ) -> None:
+        if width < 400 or width > 600:
+            raise ValueError("Width must be between 400 and 600 nm")
+        if thickness < 180 or thickness > 240:
+            raise ValueError("Thickness must be between 180 and 240 nm")
+        if gap < 100:
+            raise ValueError("Gap must be greater than 100 nm")
+        if sw_angle < 80 or sw_angle > 90:
+            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
         super().__init__(
             scee.DoubleHalfRing(
                 width,
@@ -658,6 +738,7 @@ class DoubleHalfRing(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
+            name=name,
         )
 
     # def update_variations(self, **kwargs):
@@ -728,7 +809,16 @@ class AngledHalfRing(SipannWrapper):
         theta: Union[float, np.ndarray],
         sw_angle: Union[float, np.ndarray] = 90,
         sigmas: Dict[str, float] = dict(),
+        name: str = None,
     ) -> None:
+        if width < 400 or width > 600:
+            raise ValueError("Width must be between 400 and 600 nm")
+        if thickness < 180 or thickness > 240:
+            raise ValueError("Thickness must be between 180 and 240 nm")
+        if gap < 100:
+            raise ValueError("Gap must be greater than 100 nm")
+        if sw_angle < 80 or sw_angle > 90:
+            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
         super().__init__(
             scee.AngledHalfRing(
                 width,
@@ -739,6 +829,7 @@ class AngledHalfRing(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
+            name=name,
         )
 
     # def update_variations(self, **kwargs):
@@ -791,10 +882,18 @@ class Waveguide(SipannWrapper):
         length: Union[float, np.ndarray],
         sw_angle: Union[float, np.ndarray] = 90,
         sigmas: Dict[str, float] = dict(),
+        name: str = None,
     ) -> None:
+        if width < 400 or width > 600:
+            raise ValueError("Width must be between 400 and 600 nm")
+        if thickness < 180 or thickness > 240:
+            raise ValueError("Thickness must be between 180 and 240 nm")
+        if sw_angle < 80 or sw_angle > 90:
+            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
         super().__init__(
             scee.Waveguide(width, thickness, length, sw_angle),
             sigmas,
+            name=name,
         )
 
     # def update_variations(self, **kwargs):
@@ -858,7 +957,16 @@ class Racetrack(SipannWrapper):
         length: Union[float, np.ndarray],
         sw_angle: Union[float, np.ndarray] = 90,
         sigmas: Dict[str, float] = dict(),
+        name: str = None,
     ) -> None:
+        if width < 400 or width > 600:
+            raise ValueError("Width must be between 400 and 600 nm")
+        if thickness < 180 or thickness > 240:
+            raise ValueError("Thickness must be between 180 and 240 nm")
+        if gap < 100:
+            raise ValueError("Gap must be greater than 100 nm")
+        if sw_angle < 80 or sw_angle > 90:
+            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
         super().__init__(
             comp.racetrack_sb_rr(
                 width,
@@ -869,6 +977,7 @@ class Racetrack(SipannWrapper):
                 sw_angle,
             ),
             sigmas,
+            name=name,
         )
 
     def write_gds(self, filename: Union[Path, str]) -> None:
@@ -924,5 +1033,7 @@ class PremadeCoupler(SipannWrapper):
 
     ocount = 4
 
-    def __init__(self, split: int, sigmas: Dict[str, float] = dict(), **kwargs) -> None:
-        super().__init__(premade_coupler(split)[0], sigmas, **kwargs)
+    def __init__(
+        self, split: int, sigmas: Dict[str, float] = dict(), name: str = None, **kwargs
+    ) -> None:
+        super().__init__(premade_coupler(split)[0], sigmas, name=name, **kwargs)

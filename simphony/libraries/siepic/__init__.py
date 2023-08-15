@@ -83,7 +83,8 @@ class BidirectionalCouplerTE(Model):
 
     ocount = 4
 
-    def __init__(self, pol="te", thickness=220.0, width=500):
+    def __init__(self, pol="te", thickness=220.0, width=500, name: str = None):
+        super().__init__(name=name)
         if pol not in ["te", "tm"]:
             raise ValueError("'pol' must be one of 'te' or 'tm'")
         self.pol = pol
@@ -169,7 +170,8 @@ class DirectionalCoupler(Model):
 
     ocount = 4
 
-    def __init__(self, gap=200, coupling_length=0):
+    def __init__(self, gap=200, coupling_length=0, name: str = None):
+        super().__init__(name=name)
         df = self._generate_parameter_sets()
         if not ((df["gap"] == gap) & (df["coupling_length"] == coupling_length)).any():
             raise ValueError(
@@ -283,7 +285,8 @@ class GratingCoupler(Model):
 
     ocount = 2
 
-    def __init__(self, pol="te", thickness=220.0, dwidth=0):
+    def __init__(self, pol="te", thickness=220.0, dwidth=0, name: str = None):
+        super().__init__(name=name)
         if pol not in ["te", "tm"]:
             raise ValueError("'pol' must be either 'te' or 'tm'")
         self.pol = pol.upper()
@@ -407,8 +410,16 @@ class HalfRing(Model):
     ocount = 4
 
     def __init__(
-        self, pol="te", gap=50, radius=5, width=500, thickness=220, coupling_length=0
+        self,
+        pol="te",
+        gap=50,
+        radius=5,
+        width=500,
+        thickness=220,
+        coupling_length=0,
+        name: str = None,
     ):
+        super().__init__(name=name)
         if pol not in ["te", "tm"]:
             raise ValueError("'pol' must be one of 'te' or 'tm'")
 
@@ -711,7 +722,10 @@ class Taper(Model):
 
     ocount = 2
 
-    def __init__(self, w1: float = 0.5, w2: float = 1.0, length: float = 10.0):
+    def __init__(
+        self, w1: float = 0.5, w2: float = 1.0, length: float = 10.0, name: str = None
+    ):
+        super().__init__(name=name)
         df = self._generate_parameter_sets()
         if not ((df["w1"] == w1) & (df["w2"] == w2) & (df["length"] == length)).any():
             raise ValueError(
@@ -798,7 +812,8 @@ class Terminator(Model):
 
     ocount = 1
 
-    def __init__(self, pol="te"):
+    def __init__(self, pol="te", name: str = None):
+        super().__init__(name=name)
         if pol not in ["te", "tm"]:
             raise ValueError("'pol' must be one of 'te' or 'tm'")
         self.pol = pol
@@ -1052,7 +1067,9 @@ class Waveguide(Model):
         sigma_ne=0.05,
         sigma_ng=0.05,
         sigma_nd=0.0001,
+        name: str = None,
     ):
+        super().__init__(name=name)
         if pol not in ["te", "tm"]:
             raise ValueError("Invalid polarization, must be either 'te' or 'tm'")
 
@@ -1176,7 +1193,8 @@ class YBranch(Model):
     ocount = 3
     _POL_MAPPING = {"te": 1, "tm": 2}
 
-    def __init__(self, pol="te", thickness=220.0, width=500):
+    def __init__(self, pol="te", thickness=220.0, width=500, name: str = None):
+        super().__init__(name=name)
         if pol not in ["te", "tm"]:
             raise ValueError("'pol' must be one of 'te' or 'tm'")
         self.pol = pol

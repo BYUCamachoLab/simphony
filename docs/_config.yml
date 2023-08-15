@@ -70,7 +70,7 @@ sphinx:
   config:
     autosummary_generate: true
     autodoc_typehints: 'signature'
-    autodoc_mock_imports: []
+    autodoc_mock_imports: ["SiPANN", "parsimonious", "jax"]
     autodoc_default_options: {"show-inheritance": True}
     # autoclass_content: "class
     autodoc_inherit_docstrings: true

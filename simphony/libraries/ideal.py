@@ -65,7 +65,9 @@ class Coupler(Model):
         coupling: float = 0.5,
         phi: float = jnp.pi / 2,
         loss: Union[float, Tuple[float]] = 0.0,
+        name: str = None,
     ):
+        super().__init__(name=name)
         if not 0 <= coupling <= 1:
             raise ValueError("coupling must be between 0 and 1")
         self.coupling = coupling
@@ -183,7 +185,9 @@ class Waveguide(Model):
         neff: float = None,
         ng: float = None,
         loss: float = None,
+        name: str = None,
     ):
+        super().__init__(name=name)
         self.length = length
         self.wl0 = wl0
         self.neff = neff
@@ -222,8 +226,10 @@ class PhaseShifter(Model):
         Loss of the phase shifter in dB. Defaults to 0.
     """
 
-    def __init__(self, onames=["o0", "o1"], phase=0, loss=0):
-        self.onames = onames
+    onames = ["o0", "o1"]
+
+    def __init__(self, phase: float = 0, loss: float = 0, name: str = None):
+        super().__init__(name=name)
         self.phase = phase
         self.loss = loss
 
