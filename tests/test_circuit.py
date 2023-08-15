@@ -283,3 +283,33 @@ class TestCircuit:
 
     def test_circuit_hash(self):
         assert False
+
+
+@pytest.fixture
+def mzi_s_params(data_dir):
+    import numpy as np
+
+    return np.load(data_dir / "mzi_s_params.npy")
+
+
+class TestMZIExample:
+    def test_s_params(self, mzi_s_params):
+        from simphony.libraries import siepic
+        import numpy as np
+
+        gc_input = siepic.GratingCoupler()
+        y_splitter = siepic.YBranch()
+        wg_long = siepic.Waveguide(length=150)
+        wg_short = siepic.Waveguide(length=50)
+        y_recombiner = siepic.YBranch()
+        gc_output = siepic.GratingCoupler()
+
+        ckt = Circuit()
+        ckt.connect(gc_input.o(0), y_splitter.o(0))
+        ckt.connect(y_splitter, [wg_short, wg_long])
+        ckt.connect(gc_output.o(), y_recombiner)
+        ckt.connect(y_recombiner, [wg_short, wg_long])
+
+        wl = np.linspace(1.5, 1.6, 1000)
+        res_s = ckt.s_params(wl)
+        np.testing.assert_allclose(res_s, mzi_s_params)  # , atol=1e-3)
