@@ -137,7 +137,7 @@ class ClassicalSim(Simulation):
             s = self.ckt._s(tuple(jnp.asarray(self.wl).reshape(-1)))
 
         # Create input vector from all lasers
-        src_v = jnp.zeros((len(self.wl), len(self.ckt._oports)), dtype=jnp.complex128)
+        src_v = jnp.zeros((len(self.wl), len(self.ckt._oports)), dtype=jnp.complex64)
         for laser, ports in self.lasers.items():
             idx = [self.ckt._oports.index(port) for port in ports]
             if laser.mod_function is None:
