@@ -227,7 +227,7 @@ class Model:
     _oports: list[OPort] = []  # should only be manipulated by rename_oports()
     _eports: list[EPort] = []  # should only be manipulated by rename_eports()
 
-    def _validate(self) -> None:
+    def __init__(self, name: str = None) -> None:
         if hasattr(self, "_exempt"):
             return
 
@@ -250,24 +250,16 @@ class Model:
             self.rename_eports([f"o{i}" for i in range(getattr(self, "ecount"))])
 
         self.icount = next(self.counter)
-        self._name = None
+        self._name = name
 
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls, **kwargs):
         """Ensures subclasses define required functions and automatically calls
         the super().__init__ function."""
-        if not hasattr(cls, "s_params"):
+        if cls.s_params == Model.s_params:
             raise ModelValidationError(
                 f"Model '{cls.__name__}' does not define the required method 's_params(self, wl).'"
             )
-
-        orig_init = cls.__init__
-
-        @wraps(orig_init)
-        def __init__(self, *args, **kwargs):
-            orig_init(self, *args, **kwargs)
-            super(self.__class__, self)._validate()
-
-        cls.__init__ = __init__
+        super().__init_subclass__(**kwargs)
 
     def __eq__(self, other: Model):
         """Compares instance dictionaries to determine equality."""
