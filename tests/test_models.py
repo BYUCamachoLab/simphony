@@ -3,7 +3,14 @@ from copy import deepcopy
 import pytest
 import numpy as np
 
-from simphony.models import Model, Port, OPort, EPort
+from simphony.models import (
+    Model,
+    Port,
+    OPort,
+    EPort,
+    _NAME_REGISTER,
+    clear_name_register,
+)
 from simphony.exceptions import ModelValidationError
 from simphony.libraries.siepic import YBranch
 from simphony.libraries.ideal import Waveguide
@@ -303,3 +310,48 @@ class TestModelCaching:
         s2 = yb._s(tuple(std_wl_um[::-1]))
         with pytest.raises(AssertionError):
             np.testing.assert_array_equal(s1, s2)
+
+
+@pytest.fixture
+def dummy_model():
+    class MyModel(Model):
+        ocount = 2
+
+        def s_params(self, wl):
+            return wl
+
+    return MyModel
+
+
+class TestModelNaming:
+    def test_model_name(self, dummy_model):
+        clear_name_register()
+        assert dummy_model(name="Waveguide").name == "Waveguide"
+
+    def test_model_name_unique(self, dummy_model):
+        clear_name_register()
+        wg1 = dummy_model(name="Waveguide")
+        with pytest.raises(ValueError):
+            wg2 = dummy_model(name="Waveguide")
+
+    def test_auto_naming(self, dummy_model):
+        clear_name_register()
+        m1 = dummy_model()
+        m2 = dummy_model()
+        assert m1.name == "MyModel0"
+        assert m2.name == "MyModel1"
+
+    def test_auto_naming_with_name(self, dummy_model):
+        clear_name_register()
+        m1 = dummy_model(name="You can")
+        m2 = dummy_model(name="name models")
+        assert m1.name == "You can"
+        assert m2.name == "name models"
+
+    def test_auto_naming_with_name_and_auto(self, dummy_model):
+        clear_name_register()
+        m1 = dummy_model(name="You can")
+        m2 = dummy_model(name="name models")
+        m3 = dummy_model()
+        with pytest.raises(ValueError):
+            m4 = dummy_model(name="MyModel0")

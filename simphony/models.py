@@ -32,6 +32,9 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
+_NAME_REGISTER = set()
+
+
 class Port:
     """Port abstract base class containing name and reference to Model
     instance."""
@@ -218,7 +221,7 @@ class Model:
 
     # Default keys to ignore when checking for equality or hashing. Private
     # attributes are always ignored when checking for equality.
-    _ignore_keys = ["onames", "ocount", "enames", "ecount", "icount", "counter"]
+    _ignore_keys = ["onames", "ocount", "enames", "ecount", "counter"]
     counter = count()
 
     # These should always be instance attributes, not treated as class
@@ -249,8 +252,21 @@ class Model:
         elif hasattr(self, "ecount"):
             self.rename_eports([f"o{i}" for i in range(getattr(self, "ecount"))])
 
-        self.icount = next(self.counter)
-        self._name = name
+        if name:
+            if name in _NAME_REGISTER:
+                raise ValueError(
+                    f"Name '{name}' is already in use. Please choose a different name."
+                )
+            else:
+                _NAME_REGISTER.add(name)
+                self._name = name
+        else:
+            name = self.__class__.__name__ + str(next(self.counter))
+            while name in _NAME_REGISTER:
+                name = self.__class__.__name__ + str(next(self.counter))
+            else:
+                _NAME_REGISTER.add(name)
+                self._name = name
 
     def __init_subclass__(cls, **kwargs):
         """Ensures subclasses define required functions and automatically calls
@@ -324,7 +340,7 @@ class Model:
 
     def __repr__(self) -> str:
         """Code representation of the model."""
-        return f'<{self.__class__.__name__} at {hex(id(self))} (o: [{", ".join(["+"+o.name if o.connected else o.name for o in self._oports])}], e: [{", ".join(["+"+e.name if e.connected else e.name for e in self._eports]) or None}])>'
+        return f'<{self.__class__.__name__} "{self.name}" (o: [{", ".join(["+"+o.name if o.connected else o.name for o in self._oports])}], e: [{", ".join(["+"+e.name if e.connected else e.name for e in self._eports]) or None}])>'
 
     def __iter__(self):
         """Iterate over unconnected ports."""
@@ -356,7 +372,7 @@ class Model:
     @property
     def name(self) -> str:
         """Returns the name of the model."""
-        return self._name or self.__class__.__name__ + str(self.icount)
+        return self._name
 
     @name.setter
     def name(self, value: str) -> None:
@@ -527,3 +543,9 @@ class Model:
         s = self._s(tuple(wl.tolist()))
         f = wl2freq(wl * 1e-6)
         return skrf.Network(f=f[::-1], s=s[::-1], f_unit="Hz")
+
+
+def clear_name_register():
+    """Clears the name register."""
+    _NAME_REGISTER.clear()
+    Model.counter = count()

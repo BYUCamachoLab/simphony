@@ -14,7 +14,7 @@ import numpy as np
 
 from simphony.connect import connect_s, vector_innerconnect_s
 from simphony.exceptions import ModelValidationError, SeparatedCircuitError
-from simphony.models import EPort, Model, OPort, Port
+from simphony.models import _NAME_REGISTER, EPort, Model, OPort, Port
 
 log = logging.getLogger(__name__)
 
@@ -79,10 +79,23 @@ class Circuit(Model):
     """
 
     _exempt = True
-    _next_idx = count()
 
     def __init__(self, name: str = None) -> None:
-        self.name = name or f"circuit{next(self._next_idx)}"
+        if name:
+            if name in _NAME_REGISTER:
+                raise ValueError(
+                    f"Name '{name}' is already in use. Please choose a different name."
+                )
+            else:
+                _NAME_REGISTER.add(name)
+                self._name = name
+        else:
+            name = self.__class__.__name__ + str(next(self.counter))
+            while name in _NAME_REGISTER:
+                name = self.__class__.__name__ + str(next(self.counter))
+            else:
+                _NAME_REGISTER.add(name)
+                self._name = name
 
         self._components = []  # list of model instances in the circuit
         self._onodes: list[tuple[OPort, OPort]] = []  # optical netlist

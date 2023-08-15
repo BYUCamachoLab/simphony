@@ -14,7 +14,7 @@ except ImportError:
     JAX_AVAILABLE = False
 
 from simphony.circuit import Circuit
-from simphony.models import Model, OPort, EPort
+from simphony.models import Model, OPort, EPort, clear_name_register
 from simphony.libraries.ideal import Coupler, Waveguide
 
 
@@ -313,3 +313,21 @@ class TestMZIExample:
         wl = np.linspace(1.5, 1.6, 1000)
         res_s = ckt.s_params(wl)
         np.testing.assert_allclose(res_s, mzi_s_params)  # , atol=1e-3)
+
+
+class TestCircuitNaming:
+    def test_circuit_naming(self):
+        clear_name_register()
+        ckt = Circuit(name="MyCircuit")
+        assert ckt.name == "MyCircuit"
+
+    def test_circuit_autonaming(self):
+        clear_name_register()
+        ckt = Circuit()
+        assert ckt.name == "Circuit0"
+
+    def test_circuit_duplicate_naming(self):
+        clear_name_register()
+        ckt = Circuit(name="MyCircuit")
+        with pytest.raises(ValueError):
+            Circuit(name="MyCircuit")
