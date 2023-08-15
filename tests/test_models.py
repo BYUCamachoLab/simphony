@@ -35,14 +35,14 @@ class TestPort:
 
 class TestModelDeclaration:
     def test_missing_sparams(self):
+        """Should fail because s-params function is missing."""
         with pytest.raises(ModelValidationError):
 
             class BadModel(Model):
                 pass
 
-            BadModel()
-
     def test_missing_onames(self):
+        """Should fail because ocount or onames is missing."""
         with pytest.raises(ModelValidationError):
 
             class BadModel(Model):
@@ -61,6 +61,7 @@ class TestModelDeclaration:
             BadModel()
 
     def test_ocount_and_onames_mismatch(self):
+        """Should fail because both ocount and onames are defined."""
         with pytest.raises(ModelValidationError):
 
             class BadModel(Model):
@@ -73,6 +74,7 @@ class TestModelDeclaration:
             BadModel()
 
     def test_ocount_and_onames_length_match(self):
+        """Should fail because both ocount and onames are defined."""
         with pytest.raises(ModelValidationError):
 
             class GoodModel(Model):
