@@ -31,6 +31,7 @@ class Coupler(Model):
 
     .. image:: /_static/images/coupler.png
         :alt: coupler.png
+        :align: center
 
     The coupler has 2 inputs ('o0', 'o1') and 2 outputs ('o2', 'o3').
     The coupler has the following s-parameter matrix:
@@ -49,11 +50,11 @@ class Coupler(Model):
 
     Parameters
     ----------
-    coupling : float
+    coupling : float, optional
         Coupling coefficient (0 <= coupling <= 1). Defaults to 0.5.
-    phi : float
+    phi : float, optional
         Phase shift between the two output ports (in radians). Defaults to pi/2.
-    loss : float or Tuple of floats
+    loss : float or tuple of floats, optional
         Total transmission of the component in dB (0 <= loss) assumed uniform
         loss across ports. If a tuple of 4 floats is given, the loss associated
         with each port is set individually.
@@ -142,9 +143,9 @@ class Waveguide(Model):
 
     .. math::
 
-        n_{eff} = n_g - \frac{\Delta \lambda}{\lambda_0} \frac{\partial n_g}{\partial \lambda}
+        n_{\text{eff}} = n_g - \frac{\Delta \lambda}{\lambda_0} \frac{\partial n_g}{\partial \lambda}
 
-    where :math:`n_g` is the group index, :math:`\\Delta \\lambda` is the
+    where :math:`n_g` is the group index, :math:`\Delta \lambda` is the
     wavelength difference between the center wavelength and the current
     wavelength, and :math:`\lambda_0` is the center wavelength.
 
@@ -152,18 +153,18 @@ class Waveguide(Model):
 
     .. math::
 
-        T = \exp(-\frac{2 \pi n_{eff} L}{\lambda})
+        T = \exp \left( -\frac{2 \pi n_{\text{eff}} L}{\lambda} \right)
 
-    where :math:`n_{eff}` is the effective index, :math:`L` is the length of the
+    where :math:`n_{\text{eff}}` is the effective index, :math:`L` is the length of the
     waveguide, and :math:`\lambda` is the current wavelength.
 
     The reflection of the waveguide is calculated as:
 
     .. math::
 
-        R = \exp(-\frac{2 \pi n_{eff} L}{\lambda}) \exp(-\frac{2 \pi n_{eff} L}{\lambda_0})
+        R = \exp \left( -\frac{2 \pi n_{\text{eff}} L}{\lambda} \right) \exp \left( -\frac{2 \pi n_{\text{eff}} L}{\lambda_0} \right)
 
-    where :math:`n_{eff}` is the effective index, :math:`L` is the length of the
+    where :math:`n_{\text{eff}}` is the effective index, :math:`L` is the length of the
     waveguide, and :math:`\lambda` is the current wavelength.
 
     The s-parameter matrix of the waveguide is calculated as:
@@ -171,7 +172,7 @@ class Waveguide(Model):
     .. math::
 
         M = \begin{bmatrix}
-                R & T \
+                R & T \\
                 T & R
             \end{bmatrix}
     """
@@ -258,18 +259,3 @@ class Terminator(Model):
         wl = np.asarray(wl).reshape(-1)
         s = np.zeros((len(wl), 1, 1), dtype=np.complex128)
         return s
-
-
-if __name__ == "__main__":
-    from simphony.circuit import Circuit
-
-    c1 = Coupler()
-    c2 = Coupler()
-    wg1 = Waveguide(length=100)
-    wg2 = Waveguide(length=10)
-
-    circuit = Circuit()
-    circuit.connect(c1, [wg1, wg2])
-    circuit.connect(c2, wg1)
-    circuit.connect(c2, wg2)
-    print(circuit)

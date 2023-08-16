@@ -176,11 +176,8 @@ def load_sparams(filename: Union[Path, str]) -> dict:
     Returns
     -------
     header, data : tuple of dict, pd.DataFrame
-        Tuple with the following order:
-        - header: dict
-            Dictionary with the header information.
-        - data: pd.DataFrame
-            DataFrame with the S-parameters.
+        Tuple, where the first item is the header information dictionary and
+        the second item is a DataFrame with the s-parameters.
 
     Notes
     -----

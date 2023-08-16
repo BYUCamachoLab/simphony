@@ -14,7 +14,7 @@ execute:
 
 parse:
   myst_enable_extensions:
-    # - amsmath
+    - amsmath
     - colon_fence
     # - deflist
     - dollarmath
@@ -70,7 +70,7 @@ sphinx:
   config:
     autosummary_generate: true
     autodoc_typehints: 'signature'
-    autodoc_mock_imports: ["SiPANN", "parsimonious", "jax"]
+    autodoc_mock_imports: ["SiPANN", "parsimonious"]
     autodoc_default_options: {"show-inheritance": True}
     # autoclass_content: "class
     autodoc_inherit_docstrings: true
@@ -78,6 +78,7 @@ sphinx:
     # html_css_files: []
     templates_path: ['_templates']
     exclude_patterns: ['_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints']
+    mathjax_path: https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
   intersphinx_mapping:
     ebp:
       - "https://executablebooks.org/en/latest/"
