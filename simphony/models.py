@@ -48,7 +48,7 @@ class Port:
 
     def __repr__(self) -> str:
         """Return a string representation of the port."""
-        return f'<{self.__class__.__name__} "{self.name}"{" (connected)" if self.connected else ""} at {hex(id(self))}>'
+        return f'<{self.__class__.__name__} "{self.name}"{" (connected)" if self.connected else ""} at {getattr(self.instance, "name", None) or hex(id(self))}>'
 
     def __iter__(self):
         yield self
