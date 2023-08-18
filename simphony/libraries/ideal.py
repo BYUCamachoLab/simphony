@@ -219,12 +219,12 @@ class PhaseShifter(Model):
 
     Parameters
     ----------
-    onames : List[str]
-        Names of the output ports. Defaults to ['o0', 'o1'].
     phase : float
         Phase shift of the phase shifter in radians. Defaults to 0.
     loss : float
         Loss of the phase shifter in dB. Defaults to 0.
+    name : str, optional
+        Optional name for the component in the circuit.
     """
 
     onames = ["o0", "o1"]
