@@ -101,21 +101,16 @@ class Circuit(Model):
         self._onodes: list[tuple[OPort, OPort]] = []  # optical netlist
         self._enodes: list[set[EPort]] = []  # electrical netlist
 
-        # These are set when the circuit is simulated and the ports need to
-        # correspond to the correct indices in the S matrix.
-        self._cascaded_oports: list[OPort] = []
-        self._cascaded_eports: list[EPort] = []
-
-        # TODO: Do we want to implement a "frozen" such that, once s_params has
-        # been called, connections can no longer be made, changed, etc, since
-        # running s_params modifies the underlying ports?
+        # Exposed ports point from a ports belonging to the
+        # original component port to a new port pointing to the circuit.
+        self.exposed_ports = {}
 
     def __iter__(self):
         yield self
 
     def __deepcopy__(self, memo):
         """Deep copy the circuit."""
-        MANUAL_COPY = ["_components", "_onodes", "_enodes"]
+        MANUAL_COPY = ["_components", "_onodes", "_enodes", "exposed_ports"]
         cls = self.__class__
         result = cls.__new__(cls)
         memo[id(self)] = result
@@ -126,6 +121,7 @@ class Circuit(Model):
         setattr(result, "_components", [])
         setattr(result, "_onodes", [])
         setattr(result, "_enodes", [])
+        setattr(result, "exposed_ports", {})
 
         # Copying strategy:
         # Copy all components, which each get their own port instances.
@@ -135,51 +131,91 @@ class Circuit(Model):
         # but get added to the circuit when they are connected.
         components_copy = [deepcopy(comp, memo) for comp in self.components]
 
+        def get_component_index(port):
+            """Given a port, gets the index of its parent component in the
+            components list."""
+            for idx, comp in enumerate(self._components):
+                if comp is port.instance:
+                    return idx
+
+        def get_oport_index(port, component):
+            """Given a port and its parent component, gets the index of the
+            port in the component's oport list."""
+            for idx, p in enumerate(component._oports):
+                if p.name == port.name:
+                    return idx
+
+        def get_eport_index(port, component):
+            """Given a port and its parent component, gets the index of the
+            port in the component's eport list."""
+            for idx, p in enumerate(component._eports):
+                if p.name == port.name:
+                    return idx
+
         for o1, o2 in self._onodes:
             # Get the index of the oports' parents in the original component list
-            idx1 = next(
-                idx for idx, comp in enumerate(self._components) if comp is o1.instance
-            )
-            idx2 = next(
-                idx for idx, comp in enumerate(self._components) if comp is o2.instance
-            )
+            o1_component_idx = get_component_index(o1)
+            o2_component_idx = get_component_index(o2)
             # Get the corresponding oports in the copied component list
-            o1_copy = next(
-                idx
-                for idx, port in enumerate(components_copy[idx1]._oports)
-                if port.name == o1.name
-            )
-            o2_copy = next(
-                idx
-                for idx, port in enumerate(components_copy[idx2]._oports)
-                if port.name == o2.name
-            )
+            o1_port_idx = get_oport_index(o1, components_copy[o1_component_idx])
+            o2_port_idx = get_oport_index(o2, components_copy[o2_component_idx])
+
             result._connect_o(
-                components_copy[idx1].o(o1_copy), components_copy[idx2].o(o2_copy)
+                components_copy[o1_component_idx].o(o1_port_idx),
+                components_copy[o2_component_idx].o(o2_port_idx),
             )
 
-        for e1, e2 in self._enodes:
-            # Get the index of the eports' parents in the original component list
-            idx1 = next(
-                idx for idx, comp in enumerate(self._components) if comp is e1.instance
-            )
-            idx2 = next(
-                idx for idx, comp in enumerate(self._components) if comp is e2.instance
-            )
-            # Get the corresponding eports in the copied component list
-            e1_copy = next(
-                idx
-                for idx, port in enumerate(components_copy[idx1]._eports)
-                if port.name == e1.name
-            )
-            e2_copy = next(
-                idx
-                for idx, port in enumerate(components_copy[idx2]._eports)
-                if port.name == e2.name
-            )
-            result._connect_e(
-                components_copy[idx1].e(e1_copy), components_copy[idx2].e(e2_copy)
-            )
+        # It is essential that the order of the exposed ports in the copy is
+        # the same as the order of the exposed ports in the original circuit.
+        for oport in self.exposed_ports.keys():
+            cidx = get_component_index(oport)
+            pidx = get_oport_index(oport, components_copy[cidx])
+
+            # Create a new port on the copied circuit and point it to the
+            # appropriate copied port from the copied component.
+            new_port = deepcopy(oport)
+            new_port.instance = result
+            result.exposed_ports[components_copy[cidx].o(pidx)] = new_port
+
+        # for oport in self._internal_oports:
+        #     cidx = get_component_index(oport)
+        #     pidx = get_oport_index(oport, components_copy[cidx])
+
+        #     # If the port is one of the exposed ports,
+        #     if oport in self.exposed_ports.keys():
+        #         # Create a new port on the copied circuit and point it to the
+        #         # appropriate copied port from the copied component.
+        #         new_port = deepcopy(oport)
+        #         new_port.instance = result
+        #         result.exposed_ports[components_copy[cidx].o(pidx)] = new_port
+
+        for es in self._enodes:
+            indices = []
+            ports = []
+            for e_n in es:
+                # Get the index of the eports' parents in the original component list
+                component_idx = get_component_index(e_n)
+                indices.append(component_idx)
+
+                # Get the corresponding eports in the copied component list
+                port_idx = get_eport_index(e_n, components_copy[component_idx])
+                ports.append(port_idx)
+
+            for idx1, idx2, p1, p2 in zip(indices, indices[1:], ports, ports[1:]):
+                result._connect_e(
+                    components_copy[idx1].e(p1), components_copy[idx2].e(p2)
+                )
+
+            # TODO: Implement exposed eports
+            # # For each of the two ports,
+            # for oi, cidx, pidx in zip([o1, o2], [o1_component_idx, o2_component_idx], [o1_port_idx, o2_port_idx]):
+            #     # If the port is one of the exposed ports,
+            #     if oi in self.exposed_ports.values():
+            #         # Create a new port on the copied circuit and point it to the
+            #         # appropriate copied port from the copied component.
+            #         new_port = deepcopy(oi)
+            #         new_port.instance = result
+            #         result.exposed_ports[new_port] = components_copy[cidx].o(pidx)
 
         return result
 
@@ -223,9 +259,22 @@ class Circuit(Model):
 
     @property
     def _oports(self):
+        """Return a list of all exposed ports, or if none are exposed, all
+        unconnected optical ports in the circuit."""
+        if self.exposed_ports:
+            return [
+                port for port in self.exposed_ports.values() if isinstance(port, OPort)
+            ]
+        return [
+            port
+            for comp in self.components
+            for port in comp._oports
+            if not port.connected
+        ]
+
+    @property
+    def _internal_oports(self):
         """Return a list of all unconnected optical ports in the circuit."""
-        if self._cascaded_oports:
-            return self._cascaded_oports
         return [
             port
             for comp in self.components
@@ -236,8 +285,10 @@ class Circuit(Model):
     @property
     def _eports(self):
         """Return a list of all unconnected electrical ports in the circuit."""
-        if self._cascaded_eports:
-            return self._cascaded_eports
+        if self.exposed_ports:
+            return [
+                port for port in self.exposed_ports.values() if isinstance(port, EPort)
+            ]
         return [
             port
             for comp in self.components
@@ -282,8 +333,9 @@ class Circuit(Model):
                 f"{o2.instance.name}",
                 label=f"{o1.name} : {o2.name}",
             )
-        for i, oport in enumerate(self._oports):
-            G.add_edge(f"{oport.instance.name}", f"o({i})")
+
+        for i, (oldport, newport) in enumerate(self.exposed_ports.items()):
+            G.add_edge(f"{oldport.instance.name}", f"o[{i}]")
 
         options = {
             # "font_size": 12,
@@ -320,6 +372,15 @@ class Circuit(Model):
             self._components.append(port1.instance)
         if not any(port2.instance is comp for comp in self._components):
             self._components.append(port2.instance)
+
+        # Don't double-connnect optical ports
+        existing_connections = [
+            port for connection in self._onodes for port in connection
+        ]
+        if port1 in existing_connections:
+            raise ValueError(f"Port '{port1.name}' is already connected.")
+        if port2 in existing_connections:
+            raise ValueError(f"Port '{port2.name}' is already connected.")
 
         self._onodes.append((port1, port2))
         port1._connections.add(port2)
@@ -371,6 +432,33 @@ class Circuit(Model):
             raise ValueError(
                 f"Port types must match or be an instance of Model ({type(port1)} != {type(port2)})"
             )
+
+    def add(self, component: Model) -> Model:
+        """Add a component to the circuit.
+
+        Parameters
+        ----------
+        component : Model or Circuit
+            Component to add to the circuit.
+
+        Returns
+        -------
+        Model
+            The component that was added.
+
+        Examples
+        --------
+        You can add components to a circuit
+        >>> cir.add(gc_in)
+
+        See Also
+        --------
+        connect : Connect components together.
+        """
+        if component in self.components:
+            raise ValueError(f"Component '{component.name}' is already in the circuit.")
+        self.components.append(component)
+        return component
 
     def connect(
         self,
@@ -484,6 +572,32 @@ class Circuit(Model):
         for port1, port2 in connections:
             self.connect(port1, port2)
 
+    def expose(
+        self, ports: Union[Union[OPort, EPort], List[Union[OPort, EPort]]]
+    ) -> None:
+        """Expose a list of ports.
+
+        Scattering parameters of the subcircuit will be computed and indexed
+        using the exposed ports.
+
+        Parameters
+        ----------
+        ports : OPort or EPort or list of OPort or EPort
+            Port or list of ports to expose.
+
+        Examples
+        --------
+        >>> cir.expose([gc_in.o(1), gc_out.o(1)])
+        """
+        for port in list(ports):
+            if port in self.exposed_ports.values():
+                raise ValueError(f"Port '{port.name}' is already exposed.")
+            if port not in self._internal_oports and port not in self._eports:
+                raise ValueError(f"Port '{port.name}' is not in the circuit.")
+            new_port = deepcopy(port)
+            new_port.instance = self
+            self.exposed_ports[port] = new_port
+
     def s_params(self, wl: Union[float, np.ndarray]) -> np.ndarray:
         """Compute the scattering parameters for the circuit.
 
@@ -504,6 +618,10 @@ class Circuit(Model):
         if len(self._onodes) == 0:
             raise ModelValidationError("No connections in circuit.")
 
+        # Automatically expose all unconnected ports if not explicitly exposed
+        if not self.exposed_ports:
+            self.expose(self._oports)
+
         class STemp:
             def __init__(self, s, oports):
                 self._sparams = s
@@ -514,8 +632,10 @@ class Circuit(Model):
 
         wl = tuple(np.asarray(wl).reshape(-1))
 
+        ckt_temp = deepcopy(self)
+
         # Iterate through all connections and update the s-parameters
-        for port1, port2 in self._onodes:
+        for port1, port2 in ckt_temp._onodes:
             log.debug(
                 "Connecting %s from %s to %s from %s",
                 port1,
@@ -570,14 +690,13 @@ class Circuit(Model):
 
         # Make sure all leftover ports in the circuit point to the same model,
         # otherwise we have a disconnected circuit.
-        for port in self._oports:
+        for port in ckt_temp._internal_oports:
             if port.instance is not model:
-                print(port)
                 raise SeparatedCircuitError(
                     f"Two or more disconnected subcircuits contained within the same circuit."
                 )
-            port.instance = self
+            # port.instance = ckt_temp
 
-        self._cascaded_oports = model._oports
-
-        return model._sparams
+        idx = [model._oports.index(port) for port in ckt_temp.exposed_ports.keys()]
+        s = model._sparams[:, idx, :][:, :, idx]
+        return s

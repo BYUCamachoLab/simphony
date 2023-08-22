@@ -198,6 +198,7 @@ class TestCircuit:
                 [wg0, wg1, wg0, wg1],
             )
         ]
+        ckt.expose([coupler.o(0), coupler.o(1), coupler2.o(2), coupler2.o(3)])
         wls = jnp.array([1.55])
         field_in = jnp.array([1.0, 0, 0, 0]).T
 
@@ -293,25 +294,36 @@ def mzi_s_params(data_dir):
 
 
 class TestMZIExample:
-    def test_s_params(self, mzi_s_params):
+    def test_mzi_s_params(self, ckt, mzi_s_params):
         from simphony.libraries import siepic
         import numpy as np
 
         gc_input = siepic.GratingCoupler()
+        gc_input.rename_oports(["o0", "input"])
         y_splitter = siepic.YBranch()
         wg_long = siepic.Waveguide(length=150)
         wg_short = siepic.Waveguide(length=50)
         y_recombiner = siepic.YBranch()
         gc_output = siepic.GratingCoupler()
+        gc_output.rename_oports(["o0", "output"])
 
-        ckt = Circuit()
         ckt.connect(gc_input.o(0), y_splitter.o(0))
         ckt.connect(y_splitter, [wg_short, wg_long])
         ckt.connect(gc_output.o(), y_recombiner)
         ckt.connect(y_recombiner, [wg_short, wg_long])
 
         wl = np.linspace(1.5, 1.6, 1000)
-        res_s = ckt.s_params(wl)
+
+        ckt1 = deepcopy(ckt)
+        ckt1.expose([ckt1.o("input"), ckt1.o("output")])
+        res_s = ckt1.s_params(wl)
+        np.testing.assert_allclose(
+            res_s[:, [1, 0], :][:, :, [1, 0]], mzi_s_params
+        )  # , atol=1e-3)
+
+        ckt2 = deepcopy(ckt)
+        ckt2.expose([ckt2.o("output"), ckt2.o("input")])
+        res_s = ckt2.s_params(wl)
         np.testing.assert_allclose(res_s, mzi_s_params)  # , atol=1e-3)
 
 

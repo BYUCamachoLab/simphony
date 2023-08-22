@@ -450,8 +450,8 @@ class Model:
 
         Examples
         --------
-        c = Coupler()
-        c.rename_oports(["in", "through", "add", "drop"])
+        >>> c = Coupler()
+        >>> c.rename_oports(["in", "through", "add", "drop"])
         """
         if len(self._oports) == 0:
             self._oports = list(OPort(name, self) for name in names)
@@ -473,8 +473,8 @@ class Model:
 
         Examples
         --------
-        c = ThermalPhaseShifter()
-        c.rename_oports(["gnd", "bias"])
+        >>> c = ThermalPhaseShifter()
+        >>> c.rename_oports(["gnd", "bias"])
         """
         if len(self._eports) == 0:
             self._eports = list(EPort(name, self) for name in names)
