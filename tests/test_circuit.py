@@ -66,12 +66,12 @@ def model_with_three_eports():
 
 @pytest.fixture
 def coupler():
-    return Coupler()
+    return Coupler(coupling=0.45)
 
 
 @pytest.fixture
 def coupler2():
-    return Coupler()
+    return Coupler(coupling=0.58)
 
 
 @pytest.fixture
@@ -207,39 +207,24 @@ class TestCircuit:
         wg0_sparams = wg0.s_params(wls)
         wg1_sparams = wg1.s_params(wls)
 
-        man_list = []
-        for wl_ind in range(len(wls)):
-            # Ignores reflections since these are ideal models
-            field_out_man_1 = (
-                c1_sparams[wl_ind, 0, 2]
-                * wg0_sparams[wl_ind, 0, 1]
-                * c2_sparams[wl_ind, 0, 2]
-                * field_in[0]
-                + c1_sparams[wl_ind, 0, 3]
-                * wg1_sparams[wl_ind, 0, 1]
-                * c2_sparams[wl_ind, 1, 2]
-                * field_in[0]
-            )
-            field_out_man_2 = (
-                c1_sparams[wl_ind, 0, 2]
-                * wg0_sparams[wl_ind, 0, 1]
-                * c2_sparams[wl_ind, 0, 3]
-                * field_in[0]
-                + c1_sparams[wl_ind, 0, 3]
-                * wg1_sparams[wl_ind, 0, 1]
-                * c2_sparams[wl_ind, 1, 3]
-                * field_in[0]
-            )
-            man_list.append(jnp.array([0, 0, field_out_man_1, -field_out_man_2]))
-        field_out_manual = jnp.stack(man_list, axis=0)
-
-        print(field_out_manual)
+        # Ignores reflections since these are ideal models
+        # Fout_1 = (t_1 * wg0 * t_2 * + k_1 * wg1 * k_2) * Fin
+        field_out_man_1 = (
+            c1_sparams[:, 2, 0] * wg0_sparams[:, 1, 0] * c2_sparams[:, 2, 0]
+            + c1_sparams[:, 3, 0] * wg1_sparams[:, 1, 0] * c2_sparams[:, 2, 1]
+        ) * field_in[0]
+        # Fout_2 = (t_1 * wg0 * k_2 * + k_1 * wg1 * t_2) * Fin
+        field_out_man_2 = (
+            c1_sparams[:, 2, 0] * wg0_sparams[:, 1, 0] * c2_sparams[:, 3, 0]
+            + c1_sparams[:, 3, 0] * wg1_sparams[:, 1, 0] * c2_sparams[:, 3, 1]
+        ) * field_in[0]
 
         ckt.s_params(wls)
         field_out = [ckt.s_params(wls)[wl_ind] @ field_in for wl_ind in range(len(wls))]
         field_out = jnp.stack(field_out, axis=0)
 
-        assert jnp.allclose(field_out, field_out_manual)
+        assert jnp.allclose(field_out[:, 2], field_out_man_1)
+        assert jnp.allclose(field_out[:, 3], field_out_man_2)
 
     def test_circuit_copy(self):
         assert False
