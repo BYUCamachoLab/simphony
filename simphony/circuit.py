@@ -744,6 +744,67 @@ class Circuit(Model):
             warnings.warn(
                 f"Two or more disconnected subcircuits contained within the same circuit."
             )
+
+            for component in instances:
+                if s_param_stack is None:
+                    if hasattr(component, "_s"):
+                        s_param_stack = component._s(wl)
+                    else:
+                        s_param_stack = component.s_params(wl)
+
+                else:
+                    if hasattr(component, "_s"):
+                        s_param_stack = np.block(
+                            [
+                                [
+                                    s_param_stack,
+                                    np.zeros(
+                                        (
+                                            len(wl),
+                                            s_param_stack.shape[1],
+                                            component._s(wl).shape[2],
+                                        )
+                                    ),
+                                ],
+                                [
+                                    np.zeros(
+                                        (
+                                            len(wl),
+                                            component._s(wl).shape[1],
+                                            s_param_stack.shape[2],
+                                        )
+                                    ),
+                                    component._s(wl),
+                                ],
+                            ]
+                        )
+                    else:
+                        new_s = component.s_params(wl)
+                        s_param_stack = np.block(
+                            [
+                                [
+                                    s_param_stack,
+                                    np.zeros(
+                                        (
+                                            len(wl),
+                                            s_param_stack.shape[0],
+                                            new_s.shape[1],
+                                        )
+                                    ),
+                                ],
+                                [
+                                    np.zeros(
+                                        (
+                                            len(wl),
+                                            new_s.shape[0],
+                                            s_param_stack.shape[1],
+                                        )
+                                    ),
+                                    new_s,
+                                ],
+                            ]
+                        )
+
             model = STemp(
                 la.block_diag(
                     *[
