@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import functools
 import logging
+import operator
+import warnings
 from collections import defaultdict
 from copy import copy, deepcopy
 from itertools import count
@@ -11,6 +14,7 @@ from typing import TYPE_CHECKING, List, Optional, Set, Tuple, Union
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
+import scipy.linalg as la
 
 from simphony.connect import connect_s, vector_innerconnect_s
 from simphony.exceptions import ModelValidationError, SeparatedCircuitError
@@ -177,7 +181,7 @@ class Circuit(Model):
             new_port.instance = result
             result.exposed_ports[components_copy[cidx].o(pidx)] = new_port
 
-        # for oport in self._internal_oports:
+        # for oport in self._unconnected_oports:
         #     cidx = get_component_index(oport)
         #     pidx = get_oport_index(oport, components_copy[cidx])
 
@@ -273,7 +277,7 @@ class Circuit(Model):
         ]
 
     @property
-    def _internal_oports(self):
+    def _unconnected_oports(self):
         """Return a list of all unconnected optical ports in the circuit."""
         return [
             port
@@ -455,7 +459,7 @@ class Circuit(Model):
         --------
         connect : Connect components together.
         """
-        if component in self.components:
+        if id(component) in [id(c) for c in self.components]:
             raise ValueError(f"Component '{component.name}' is already in the circuit.")
         self.components.append(component)
         return component
@@ -555,6 +559,51 @@ class Circuit(Model):
             f"Ports must be optical (OPort), electronic (EPort), or a Model/Circuit (got '{type(port1)}' and '{type(port2)}')"
         )
 
+    def autoconnect(self, comp1: Model, comp2: Model) -> None:
+        """Connect two compnents together if they have the same port names.
+
+        Parameters
+        ----------
+        comp1 : Model
+            The first component to be connected.
+        comp2 : Model
+            The second component to be connected.
+        Examples
+        --------
+        First instantiate the components and add them to the circuit:
+        >>> coupler1 = ckt.add(Ideal.Coupler())
+        >>> coupler2 = ckt.add(Ideal.Coupler())
+        Then rename the ports to be connected:
+        >>> coupler1.rename_ports(['in1', 'in2', 'c1', 'c2'])
+        >>> coupler2.rename_ports(['c1', 'c2', 'out1', 'out2'])
+        Finally, connect the components together:
+        >>> ckt.autoconnect(coupler1, coupler2)
+        Which connects the two components at the ports with the same names
+        """
+
+        # Get the names of the ports in each component
+        comp1_ports = [port.name for port in comp1._oports]
+        comp2_ports = [port.name for port in comp2._oports]
+
+        # Find the common ports
+        common_ports = list(set(comp1_ports).intersection(comp2_ports))
+
+        # check for default port names and warn the user
+        if len(common_ports) == 0:
+            warnings.warn(
+                f"Components '{comp1.name}' and '{comp2.name}' have no common ports."
+            )
+            return
+        default_port_names = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
+        if default_port_names.intersection(common_ports) != set():
+            warnings.warn(
+                f"Components '{comp1.name}' and '{comp2.name}' have common ports with default names."
+            )
+
+        # Connect the common ports
+        for port in common_ports:
+            self.connect(comp1.o(port), comp2.o(port))
+
     def from_connections(
         self, connections: List[Tuple[Union[OPort, EPort], Union[OPort, EPort]]]
     ) -> None:
@@ -592,7 +641,7 @@ class Circuit(Model):
         for port in list(ports):
             if port in self.exposed_ports.values():
                 raise ValueError(f"Port '{port.name}' is already exposed.")
-            if port not in self._internal_oports and port not in self._eports:
+            if port not in self._unconnected_oports and port not in self._eports:
                 raise ValueError(f"Port '{port.name}' is not in the circuit.")
             new_port = deepcopy(port)
             new_port.instance = self
@@ -615,8 +664,8 @@ class Circuit(Model):
             Circuits and Systems, Champaign, IL, USA, 1989, pp. 716-718 vol.2,
             doi: 10.1109/MWSCAS.1989.101955. url: http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=101955&isnumber=3167
         """
-        if len(self._onodes) == 0:
-            raise ModelValidationError("No connections in circuit.")
+        if len(self._components) == 0:
+            raise ModelValidationError("No components in circuit.")
 
         # Automatically expose all unconnected ports if not explicitly exposed
         if not self.exposed_ports:
@@ -689,14 +738,26 @@ class Circuit(Model):
                 port.instance = model
 
         # Make sure all leftover ports in the circuit point to the same model,
-        # otherwise we have a disconnected circuit.
-        for port in ckt_temp._internal_oports:
-            if port.instance is not model:
-                raise SeparatedCircuitError(
-                    f"Two or more disconnected subcircuits contained within the same circuit."
-                )
-            # port.instance = ckt_temp
+        # otherwise connect them in a block diagonal.
+        instances = [port.instance for port in ckt_temp._unconnected_oports]
+        if len(set(instances)) > 1:
+            warnings.warn(
+                f"Two or more disconnected subcircuits contained within the same circuit."
+            )
+            model = STemp(
+                la.block_diag(
+                    *[
+                        component._s(wl)
+                        if hasattr(component, "_s")
+                        else component.s_params(wl)
+                        for component in instances
+                    ]
+                ),
+                functools.reduce(operator.add, [inst._oports for inst in instances]),
+            )
 
+            # port.instance = ckt_temp
+        # rearrange the s-parameters to match the order of the exposed ports
         idx = [model._oports.index(port) for port in ckt_temp.exposed_ports.keys()]
         s = model._sparams[:, idx, :][:, :, idx]
         return s

@@ -226,6 +226,27 @@ class TestCircuit:
         assert jnp.allclose(field_out[:, 2], field_out_man_1)
         assert jnp.allclose(field_out[:, 3], field_out_man_2)
 
+    def test_add_to_circuit(self, ckt, wg0, wg1):
+        ckt.add(wg0)
+        assert {wg0} <= set(ckt.components)
+        assert len(ckt.components) == 1
+        assert {wg0.o(0)} <= set(ckt._oports)
+        ckt.add(wg1)
+        assert {wg0, wg1} <= set(ckt.components)
+        assert len(ckt.components) == 2
+        assert {wg0.o(0), wg1.o(0)} <= set(ckt._oports)
+        assert ckt._onodes == []
+        assert ckt._enodes == []
+
+    def test_auto_connect(self, ckt, coupler, coupler2):
+        coupler.rename_oports(["in1", "in2", "con1", "con2"])
+        coupler2.rename_oports(["con1", "con2", "out1", "out2"])
+        ckt.auto_connect(coupler, coupler2)
+        assert len(ckt.components) == 2
+        assert (coupler.o("con1"), coupler2.o("con1")) in ckt._onodes
+        assert (coupler.o("con2"), coupler2.o("con2")) in ckt._onodes
+        assert len(ckt._onodes) == 2
+
     def test_circuit_copy(self):
         assert False
 
