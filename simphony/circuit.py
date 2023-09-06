@@ -689,11 +689,8 @@ class Circuit(Model):
 
         ckt_temp = deepcopy(self)
 
-        if len(self._components) == 1:
-            print(
-                "Only one component in circuit, returning s-parameters of that component."
-            )
-            print(self._components)
+        if len(ckt_temp._components) == 1:
+            model = ckt_temp.components[0]
 
         # Iterate through all connections and update the s-parameters
         for port1, port2 in ckt_temp._onodes:
@@ -762,6 +759,7 @@ class Circuit(Model):
                 zerosT = np.zeros([s1.shape[0], s2.shape[1], s1.shape[2]])
                 return np.block([[s1, zeros], [zerosT, s2]])
 
+            s_param_stack = None
             for component in instances:
                 if s_param_stack is None:
                     if hasattr(component, "_s"):
@@ -777,19 +775,12 @@ class Circuit(Model):
                         s_param_stack = diag_stack(s_param_stack, new_s)
 
             model = STemp(
-                la.block_diag(
-                    *[
-                        component._s(wl)
-                        if hasattr(component, "_s")
-                        else component.s_params(wl)
-                        for component in instances
-                    ]
-                ),
+                s_param_stack,
                 functools.reduce(operator.add, [inst._oports for inst in instances]),
             )
 
             # port.instance = ckt_temp
         # rearrange the s-parameters to match the order of the exposed ports
         idx = [model._oports.index(port) for port in ckt_temp.exposed_ports.keys()]
-        s = model._s()[:, idx, :][:, :, idx]
+        s = model._s(wl)[:, idx, :][:, :, idx]
         return s
