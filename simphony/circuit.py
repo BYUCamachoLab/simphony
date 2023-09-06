@@ -134,6 +134,7 @@ class Circuit(Model):
         # The copied components are not actually set on the resulting circuit,
         # but get added to the circuit when they are connected.
         components_copy = [deepcopy(comp, memo) for comp in self.components]
+        result._components = components_copy
 
         def get_component_index(port):
             """Given a port, gets the index of its parent component in the
@@ -679,9 +680,18 @@ class Circuit(Model):
             def s_params(self, wl):
                 return self._sparams
 
+            def _s(self, wl):
+                return self._sparams
+
         wl = tuple(np.asarray(wl).reshape(-1))
 
         ckt_temp = deepcopy(self)
+
+        if len(self._components) == 1:
+            print(
+                "Only one component in circuit, returning s-parameters of that component."
+            )
+            print(self._components)
 
         # Iterate through all connections and update the s-parameters
         for port1, port2 in ckt_temp._onodes:
@@ -745,6 +755,11 @@ class Circuit(Model):
                 f"Two or more disconnected subcircuits contained within the same circuit."
             )
 
+            def diag_stack(s1, s2):
+                zeros = np.zeros([s1.shape[0], s1.shape[1], s2.shape[2]])
+                zerosT = np.zeros([s1.shape[0], s2.shape[1], s1.shape[2]])
+                return np.block([[s1, zeros], [zerosT, s2]])
+
             for component in instances:
                 if s_param_stack is None:
                     if hasattr(component, "_s"):
@@ -754,56 +769,10 @@ class Circuit(Model):
 
                 else:
                     if hasattr(component, "_s"):
-                        s_param_stack = np.block(
-                            [
-                                [
-                                    s_param_stack,
-                                    np.zeros(
-                                        (
-                                            len(wl),
-                                            s_param_stack.shape[1],
-                                            component._s(wl).shape[2],
-                                        )
-                                    ),
-                                ],
-                                [
-                                    np.zeros(
-                                        (
-                                            len(wl),
-                                            component._s(wl).shape[1],
-                                            s_param_stack.shape[2],
-                                        )
-                                    ),
-                                    component._s(wl),
-                                ],
-                            ]
-                        )
+                        s_param_stack = diag_stack(s_param_stack, component._s(wl))
                     else:
                         new_s = component.s_params(wl)
-                        s_param_stack = np.block(
-                            [
-                                [
-                                    s_param_stack,
-                                    np.zeros(
-                                        (
-                                            len(wl),
-                                            s_param_stack.shape[0],
-                                            new_s.shape[1],
-                                        )
-                                    ),
-                                ],
-                                [
-                                    np.zeros(
-                                        (
-                                            len(wl),
-                                            new_s.shape[0],
-                                            s_param_stack.shape[1],
-                                        )
-                                    ),
-                                    new_s,
-                                ],
-                            ]
-                        )
+                        s_param_stack = diag_stack(s_param_stack, new_s)
 
             model = STemp(
                 la.block_diag(
@@ -820,5 +789,5 @@ class Circuit(Model):
             # port.instance = ckt_temp
         # rearrange the s-parameters to match the order of the exposed ports
         idx = [model._oports.index(port) for port in ckt_temp.exposed_ports.keys()]
-        s = model._sparams[:, idx, :][:, :, idx]
+        s = model._s()[:, idx, :][:, :, idx]
         return s
