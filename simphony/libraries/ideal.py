@@ -94,14 +94,14 @@ class Coupler(Model):
         except:
             T0 = T1 = T2 = T3 = (10 ** (self.loss / 10)) ** (1 / 2)
         t = jnp.sqrt(1 - self.coupling)
-        r = jnp.sqrt(self.coupling) * jnp.exp(-1j * self.phi)
+        r = jnp.sqrt(self.coupling) * jnp.exp(1j * self.phi)
         rp = jnp.conj(r)
 
         # fmt: off
         smatrix = jnp.array(
             [
-                [0, 0, t * jnp.sqrt(T0*T2),  rp * jnp.sqrt(T0*T3)],
-                [0, 0, -r * jnp.sqrt(T1*T2),  t * jnp.sqrt(T1*T3)],
+                [0, 0, t * jnp.sqrt(T0*T2),  -rp * jnp.sqrt(T0*T3)],
+                [0, 0, r * jnp.sqrt(T1*T2),  t * jnp.sqrt(T1*T3)],
                 [t * jnp.sqrt(T0*T2), -rp * jnp.sqrt(T1*T2), 0, 0],
                 [r * jnp.sqrt(T0*T3), t * jnp.sqrt(T1*T3), 0, 0]
             ]
@@ -206,7 +206,7 @@ class Waveguide(Model):
         amp = 10 ** (-_loss * self.length / 20)
         phase = 2 * jnp.pi * neff * self.length / wl
         s21 = amp * jnp.exp(-1j * phase)
-        s12 = jnp.conj(s21)
+        s12 = s21
         s11 = s22 = jnp.array([0] * len(wl))
         return jnp.stack([s11, s12, s21, s22], axis=1).reshape(-1, 2, 2)
 
@@ -237,7 +237,7 @@ class PhaseShifter(Model):
     def s_params(self, wl):
         s11 = s22 = jnp.array([0] * len(wl), dtype=jnp.complex64)
         s21 = jnp.array([10 ** (self.loss / 20) * jnp.exp(1j * self.phase)] * len(wl))
-        s12 = jnp.conj(s21)
+        s12 = s21
         return jnp.stack([s11, s12, s21, s22], axis=1).reshape(-1, 2, 2)
 
 
