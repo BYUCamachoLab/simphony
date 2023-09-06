@@ -94,7 +94,7 @@ class Coupler(Model):
         except:
             T0 = T1 = T2 = T3 = (10 ** (self.loss / 10)) ** (1 / 2)
         t = jnp.sqrt(1 - self.coupling)
-        r = jnp.sqrt(self.coupling)
+        r = jnp.sqrt(self.coupling) * jnp.exp(-1j * self.phi)
         rp = jnp.conj(r)
 
         # fmt: off
@@ -104,7 +104,7 @@ class Coupler(Model):
                 [0, 0, -r * jnp.sqrt(T1*T2),  t * jnp.sqrt(T1*T3)],
                 [t * jnp.sqrt(T0*T2), -rp * jnp.sqrt(T1*T2), 0, 0],
                 [r * jnp.sqrt(T0*T3), t * jnp.sqrt(T1*T3), 0, 0]
-            ], dtype=jnp.float32
+            ]
         )
         # fmt: on
 
