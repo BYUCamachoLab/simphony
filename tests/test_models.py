@@ -34,6 +34,7 @@ class TestPort:
     def test_port_equality(self):
         port1 = Port("test")
         port2 = Port("test")
+        assert port1 != port2
 
         l = [port1]
         with pytest.raises(ValueError):

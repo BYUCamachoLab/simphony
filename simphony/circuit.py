@@ -238,13 +238,15 @@ class Circuit(Model):
         return deepcopy(self)
 
     def __eq__(self, other: Circuit):
-        if self.components != other.components:
-            return False
-        if self._onodes != other._onodes:
-            return False
-        if self._enodes != other._enodes:
-            return False
-        return super().__eq__(other)
+        """Equality is defined by identity."""
+        return self is other
+        # if self.components != other.components:
+        #     return False
+        # if self._onodes != other._onodes:
+        #     return False
+        # if self._enodes != other._enodes:
+        #     return False
+        # return super().__eq__(other)
 
     def __hash__(self):
         """Hashes the instance dictionary to calculate the hash."""
