@@ -235,16 +235,17 @@ class Model:
             return
 
         if hasattr(self, "onames") and hasattr(self, "ocount"):
-            raise ModelValidationError(
-                "Model defines both 'onames' and 'ocount', which is not allowed."
-            )
+            if len(self.onames) != self.ocount:
+                raise ModelValidationError(
+                    "Number of 'onames' does not match 'ocount', either define just one of the two or adjust ocount."
+                )
         if hasattr(self, "onames"):
             self.rename_oports(getattr(self, "onames"))
         elif hasattr(self, "ocount"):
             self.rename_oports([f"o{i}" for i in range(getattr(self, "ocount"))])
         else:
             raise ModelValidationError(
-                "Model does not define 'onames' or 'ocount', which is required."
+                "Model does not define 'onames' or 'ocount', of which at least one is required to be defined."
             )
 
         if hasattr(self, "enames"):
