@@ -71,15 +71,9 @@ dev = [
 doc = [
   "sphinx-book-theme ~= 0.3.3",
   "jupyter-book ~= 0.13.2",
-  "sphinx-design ~= 0.1.0",
   "matplotlib",
   "numpydoc",
-  # sphinx-copybutton==0.5.1
-  # sphinx-togglebutton==0.3.2
   # "sphinx-tippy",
-  # sphinx==5.3.0
-  # linkify-it-py==2.0.0
-  # sphinxcontrib-bibtex==2.5.0
 ]
 test = [
   "pytest", 
@@ -127,5 +121,5 @@ known_third_party = ["SiPANN", "gdsfactory", "jax", "matplotlib", "numpy", "pack
 known_first_party = ["simphony"]
 
 [build-system]
-requires = ["setuptools>=62.0.0", "wheel"]
+requires = ["setuptools>=62.0.0", "wheel", "pip<=23.1.2"]
 build-backend = "setuptools.build_meta"
