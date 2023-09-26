@@ -80,6 +80,20 @@ def ckt():
     return Circuit()
 
 
+@pytest.fixture
+def detached_s_params(data_dir):
+    import numpy as np
+
+    return np.load(data_dir / "detached_s_params.npy")
+
+
+@pytest.fixture
+def exposed_s_params(data_dir):
+    import numpy as np
+
+    return np.load(data_dir / "exposed_s_params.npy")
+
+
 class TestCircuit:
     def test_circuit(self):
         ckt = Circuit()
@@ -247,6 +261,20 @@ class TestCircuit:
         assert (coupler.o("con1"), coupler2.o("con1")) in ckt._onodes
         assert (coupler.o("con2"), coupler2.o("con2")) in ckt._onodes
         assert len(ckt._onodes) == 2
+
+    def test_detached_s_params(self, ckt, coupler, wg0, wg1, exposed_s_params):
+        ckt.add(coupler)
+        ckt.add(wg0)
+        ckt.add(wg1)
+        s = ckt.s_params([1.55])
+        assert s == detached_s_params
+
+    def test_expose(self, ckt, coupler, wg0, wg1):
+        ckt.connect(coupler.o(2), wg0)
+        ckt.connect(coupler.o(3), wg1)
+        ckt.expose([wg0.o(1), coupler.o(0), wg1.o(1), coupler.o(1)])
+        assert len(ckt.exposed_ports) == 4
+        assert ckt.s_params([1.55]) == exposed_s_params
 
     def test_circuit_copy(self, ckt):
         # copied from test_circuit_deepcopy(), same behavior
