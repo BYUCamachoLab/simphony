@@ -3,16 +3,14 @@ from copy import deepcopy
 
 import pytest
 
-try:
-    import jax
-    import jax.numpy as jnp
 
-    JAX_AVAILABLE = True
-except ImportError:
-    import numpy as jnp
-    from simphony.utils import jax
+# TODO: Create tests with/without jax. S parameters will be slightly different
+# When using or not using jax. Different tests will fail depending on whether jax is
+# installed or not.
 
-    JAX_AVAILABLE = False
+import numpy as np
+from simphony.utils import jax
+
 
 from simphony.circuit import Circuit
 from simphony.models import Model, OPort, EPort, clear_name_register
@@ -36,7 +34,7 @@ def model_with_eport():
         enames = ["e0"]
 
         def s_params(self, wl):
-            return jnp.eye((2, 2))
+            return np.eye((2, 2))
 
     return ModelWithEPorts()
 
@@ -48,7 +46,7 @@ def model_with_two_eports():
         enames = ["e0", "e1"]
 
         def s_params(self, wl):
-            return jnp.eye((2, 2))
+            return np.eye((2, 2))
 
     return ModelWithEPorts()
 
@@ -60,7 +58,7 @@ def model_with_three_eports():
         enames = ["e0", "e1", "e2"]
 
         def s_params(self, wl):
-            return jnp.eye((2, 2))
+            return np.eye((2, 2))
 
     return ModelWithEPorts()
 
@@ -214,8 +212,8 @@ class TestCircuit:
             )
         ]
         ckt.expose([coupler.o(0), coupler.o(1), coupler2.o(2), coupler2.o(3)])
-        wls = jnp.array([1.55])
-        field_in = jnp.array([1.0, 0, 0, 0]).T
+        wls = np.array([1.55])
+        field_in = np.array([1.0, 0, 0, 0]).T
 
         c1_sparams = coupler.s_params(wls)
         c2_sparams = coupler2.s_params(wls)
@@ -236,10 +234,10 @@ class TestCircuit:
 
         ckt.s_params(wls)
         field_out = [ckt.s_params(wls)[wl_ind] @ field_in for wl_ind in range(len(wls))]
-        field_out = jnp.stack(field_out, axis=0)
+        field_out = np.stack(field_out, axis=0)
 
-        assert jnp.allclose(field_out[:, 2], field_out_man_1)
-        assert jnp.allclose(field_out[:, 3], field_out_man_2)
+        np.testing.assert_allclose(field_out[:, 2], field_out_man_1)
+        np.testing.assert_allclose(field_out[:, 3], field_out_man_2)
 
     def test_add_to_circuit(self, ckt, wg0, wg1):
         ckt.add(wg0)
@@ -263,8 +261,6 @@ class TestCircuit:
         assert len(ckt._onodes) == 2
 
     def test_detached_s_params(self, ckt, coupler, wg0, wg1, detached_s_params):
-        import numpy as np
-
         ckt.add(coupler)
         ckt.add(wg0)
         ckt.add(wg1)
