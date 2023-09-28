@@ -82,17 +82,16 @@ class TestModelDeclaration:
             BadModel()
 
     def test_ocount_and_onames_length_match(self):
-        """Should fail because both ocount and onames are defined."""
-        with pytest.raises(ModelValidationError):
+        """Should succeed because ocount matches the number of onames."""
 
-            class GoodModel(Model):
-                ocount = 3
-                onames = ["o0", "o1", "o2"]
+        class GoodModel(Model):
+            ocount = 3
+            onames = ["o0", "o1", "o2"]
 
-                def s_params(self, wl):
-                    pass
+            def s_params(self, wl):
+                pass
 
-            GoodModel()
+        GoodModel()
 
     def test_good_model_onames(self):
         class GoodModel(Model):
