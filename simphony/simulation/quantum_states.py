@@ -44,9 +44,9 @@ class QuantumState(SimDevice):
     """
 
     def __init__(
-        self, ckt, ports, means: jnp.ndarray, cov: jnp.ndarray, convention="xpxp"
+        self, ports, means: jnp.ndarray, cov: jnp.ndarray, convention="xpxp"
     ) -> None:
-        super().__init__(ckt, ports)
+        super().__init__(ports)
         self.N = len(ports)
         if means.shape != (2 * self.N,):
             raise ShapeMismatchError("The shape of the means must be 2 * N.")
@@ -131,15 +131,16 @@ def compose_qstate(*args: QuantumState) -> QuantumState:
     for qstate in args:
         # if not isinstance(qstate, QuantumState):
         #     raise TypeError("Input must be a QuantumState.")
-        ckts.append(qstate.ckt)
         N += qstate.N
         mean_list.append(qstate.means)
         cov_list.append(qstate.cov)
         port_list += qstate.ports
-    # check if all ckts are the same
-    for ckt in ckts:
-        if ckt is not ckts[0]:
-            raise ValueError("All quantum states must be attached to the same circuit.")
+    # TODO: Do we need to check if we have the same circuit?
+    #     ckts.append(qstate.ckt)
+    # # check if all ckts are the same
+    # for ckt in ckts:
+    #     if ckt is not ckts[0]:
+    #         raise ValueError("All quantum states must be attached to the same circuit.")
     means = jnp.concatenate(mean_list)
     covs = jnp.zeros((2 * N, 2 * N), dtype=float)
     left = 0
@@ -148,7 +149,7 @@ def compose_qstate(*args: QuantumState) -> QuantumState:
         rowcol = qstate.N * 2 + left
         covs[left:rowcol, left:rowcol] = qstate.cov
         left = rowcol
-    return QuantumState(ckts[0], port_list, means, covs)
+    return QuantumState(port_list, means, covs)
 
 
 class CoherentState(QuantumState):
@@ -162,13 +163,13 @@ class CoherentState(QuantumState):
         The port to which the coherent state is connected.
     """
 
-    def __init__(self, ckt, port, alpha: complex) -> None:
+    def __init__(self, port, alpha: complex) -> None:
         self.alpha = alpha
         self.N = 1
         means = jnp.array([alpha.real, alpha.imag])
         cov = jnp.array([[1 / 4, 0], [0, 1 / 4]])
         ports = [port]
-        super().__init__(ckt, ports, means, cov)
+        super().__init__(ports, means, cov)
 
 
 class SqueezedState(QuantumState):
@@ -186,7 +187,7 @@ class SqueezedState(QuantumState):
         The complex displacement of the squeezed state. Default is 0.
     """
 
-    def __init__(self, ckt, port, r: float, phi: float, alpha: complex = 0) -> None:
+    def __init__(self, port, r: float, phi: float, alpha: complex = 0) -> None:
         self.r = r
         self.phi = phi
         self.N = 1
@@ -199,7 +200,7 @@ class SqueezedState(QuantumState):
             @ rot_mat.T
         )
         ports = [port]
-        super().__init__(ckt, ports, means, cov)
+        super().__init__(ports, means, cov)
 
 
 class TwoModeSqueezed(QuantumState):
@@ -221,7 +222,7 @@ class TwoModeSqueezed(QuantumState):
         The port to which the second mode is connected.
     """
 
-    def __init__(self, ckt, r: float, n_a: float, n_b: float, port_a, port_b) -> None:
+    def __init__(self, r: float, n_a: float, n_b: float, port_a, port_b) -> None:
         self.r = r
         self.n_a = n_a
         self.n_b = n_b
@@ -237,4 +238,4 @@ class TwoModeSqueezed(QuantumState):
             / 2
         )
         ports = [port_a, port_b]
-        super().__init__(ckt, ports, means, cov)
+        super().__init__(ports, means, cov)
