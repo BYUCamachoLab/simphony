@@ -12,6 +12,9 @@ except ImportError:
 
     JAX_AVAILABLE = False
 
+import matplotlib.pyplot as plt
+from scipy.stats import multivariate_normal
+
 from simphony.exceptions import ShapeMismatchError
 from simphony.utils import xpxp_to_xxpp, xxpp_to_xpxp
 
@@ -99,6 +102,52 @@ class QuantumState(SimDevice):
             means = self.means[inds]
             cov = self.cov[jnp.ix_(inds, inds)]
         return means, cov
+
+    def plot_mode(self, mode, n=100, x_range=None, y_range=None, ax=None, **kwargs):
+        """Plots the Wigner function of the specified mode.
+
+        Parameters
+        ----------
+        mode : int
+            The mode to plot.
+        n : int
+            The number of points per axis to plot. Default is 100.
+        x_range : tuple
+            The range of the x axis to plot as a tuple, (eg. (-5,5)). Defualt
+            attempts to find the range automatically.
+        y_range : tuple
+            The range of the y axis to plot as a tuple, (eg. (-5,5)). Defualt
+            attempts to find the range automatically.
+        ax : matplotlib.axes.Axes
+            The axis to plot on, by default it creates a new figure.
+        **kwargs :
+            Keyword arguments to pass to matplotlib.pyplot.contourf.
+        """
+        means, cov = self.modes(mode)
+        if ax is None:
+            fig, ax = plt.subplots()
+        if x_range is None:
+            x_range = (
+                means[0] - 5 * jnp.sqrt(cov[0, 0]),
+                means[0] + 5 * jnp.sqrt(cov[0, 0]),
+            )
+        if y_range is None:
+            y_range = (
+                means[1] - 5 * jnp.sqrt(cov[1, 1]),
+                means[1] + 5 * jnp.sqrt(cov[1, 1]),
+            )
+        x = jnp.linspace(x_range[0], x_range[1], n)
+        y = jnp.linspace(y_range[0], y_range[1], n)
+        X, Y = jnp.meshgrid(x, y)
+        pos = jnp.dstack((X, Y))
+        dist = multivariate_normal(means, cov)
+        pdf = dist.pdf(pos)
+        ax.contourf(X, Y, pdf, **kwargs)
+        ax.set_aspect("equal")
+        ax.set_xlabel("X")
+        ax.set_ylabel("P")
+        ax.set_title(f"Mode {mode}")
+        return ax
 
     def _add_vacuums(self, n_vacuums):
         """Adds vacuum states to the quantum state.
