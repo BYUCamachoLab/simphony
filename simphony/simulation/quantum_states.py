@@ -28,8 +28,9 @@ class QuantumState(SimDevice):
 
     Parameters
     ----------
-    N :
-        The number of modes in the quantum state.
+    ports :
+        The ports to which the quantum state is connected. Each mode
+        corresponds in order to each port provided.
     means :
         The means of the X and P quadratures of the quantum state. For example,
         a coherent state :math:`\alpha = 3+4i` has means defined as
@@ -39,18 +40,15 @@ class QuantumState(SimDevice):
         The covariance matrix of the quantum state. For example, all coherent
         states has a covariance matrix of :math:`\begin{bmatrix} 1/4 & 0 \\ 0 &
         1/4 \\end{bmatrix}`. The shape of the matrix must be 2 * N x 2 * N.
-    ports :
-        The ports to which the quantum state is connected. Each mode
-        corresponds in order to each port provided.
     convention :
         The convention of the means and covariance matrix. Default is 'xpxp'.
     """
 
     def __init__(
-        self, ports, means: jnp.ndarray, cov: jnp.ndarray, convention="xpxp"
+        self, means: jnp.ndarray, cov: jnp.ndarray, ports=None, convention="xpxp"
     ) -> None:
         super().__init__(ports)
-        self.N = len(ports)
+        self.N = ports if type(ports) == int else len(ports)
         if means.shape != (2 * self.N,):
             raise ShapeMismatchError("The shape of the means must be 2 * N.")
         if cov.shape != (2 * self.N, 2 * self.N):
@@ -136,6 +134,12 @@ class QuantumState(SimDevice):
                 means[1] - 5 * jnp.sqrt(cov[1, 1]),
                 means[1] + 5 * jnp.sqrt(cov[1, 1]),
             )
+        x_max = jnp.max(jnp.abs(x_range))
+        y_max = jnp.max(jnp.abs(y_range))
+        r_max = jnp.max((x_max, y_max))
+        x_range = (-r_max, r_max)
+        y_range = (-r_max, r_max)
+
         x = jnp.linspace(x_range[0], x_range[1], n)
         y = jnp.linspace(y_range[0], y_range[1], n)
         X, Y = jnp.meshgrid(x, y)
@@ -198,7 +202,7 @@ def compose_qstate(*args: QuantumState) -> QuantumState:
         rowcol = qstate.N * 2 + left
         covs[left:rowcol, left:rowcol] = qstate.cov
         left = rowcol
-    return QuantumState(port_list, means, covs)
+    return QuantumState(means, covs, port_list)
 
 
 class CoherentState(QuantumState):
@@ -218,7 +222,7 @@ class CoherentState(QuantumState):
         means = jnp.array([alpha.real, alpha.imag])
         cov = jnp.array([[1 / 4, 0], [0, 1 / 4]])
         ports = [port]
-        super().__init__(ports, means, cov)
+        super().__init__(means, cov, ports)
 
 
 class SqueezedState(QuantumState):
@@ -249,7 +253,7 @@ class SqueezedState(QuantumState):
             @ rot_mat.T
         )
         ports = [port]
-        super().__init__(ports, means, cov)
+        super().__init__(means, cov, ports)
 
 
 class TwoModeSqueezed(QuantumState):
@@ -287,4 +291,4 @@ class TwoModeSqueezed(QuantumState):
             / 2
         )
         ports = [port_a, port_b]
-        super().__init__(ports, means, cov)
+        super().__init__(means, cov, ports)

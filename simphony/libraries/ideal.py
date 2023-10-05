@@ -55,7 +55,7 @@ class Coupler(Model):
     phi : float, optional
         Phase shift between the two output ports (in radians). Defaults to pi/2.
     loss : float or tuple of floats, optional
-        Total transmission of the component in dB (0 <= loss) assumed uniform
+        Total transmission of the component in dB (0 >= loss) assumed uniform
         loss across ports. If a tuple of 4 floats is given, the loss associated
         with each port is set individually.
     """
@@ -77,11 +77,15 @@ class Coupler(Model):
             if len(loss) != 4:
                 raise ValueError("loss must be a single value or a tuple of 4 values")
             for l in loss:
-                if not 0 <= l:
+                if not 0 >= l:
                     raise ValueError("loss must be greater than or equal to 0")
         elif isinstance(loss, float):
-            if not 0 <= loss:
+            if not 0 >= loss:
                 raise ValueError("loss must be greater than 0")
+        elif isinstance(loss, int):
+            if not 0 >= loss:
+                raise ValueError("loss must be greater than 0")
+            loss = float(loss)
         else:
             raise ValueError("loss must be a single value or a tuple of 4 values")
         self.loss = loss

@@ -37,23 +37,48 @@ class QuantumResult(SimulationResult):
     n_ports: int
 
 
-def plot_quantum_result(result: QuantumResult, modes: list = None):
+def plot_quantum_result(
+    result: QuantumResult,
+    modes: list = None,
+    freq_ind: int = 0,
+    include_loss_modes=False,
+):
+    """Plot the means and covariance matrix of the quantum result.
+
+    Parameters
+    ----------
+    result : QuantumResult
+        The quantum simulation result.
+    modes : list, optional
+        The modes to plot. Defaults to all modes.
+    freq_ind : int, optional
+        The frequency index to plot. Defaults to 0.
+    include_loss_modes : bool, optional
+        Whether to include the loss modes in the plot. Defaults to False.
+    """
     # create a grid of plots, a single plot for each mode
     if modes is None:
-        modes = range(result.n_ports)
+        n_modes = result.n_ports * 2 if include_loss_modes else result.n_ports
+        modes = jnp.linspace(0, int(n_modes) - 1, int(n_modes), dtype=int)
     n_modes = len(modes)
     # make subplots into a square grid
     n_rows = int(n_modes**0.5)
     n_cols = int(n_modes**0.5)
     if n_rows * n_cols < n_modes:
+        n_rows += 1
         n_cols += 1
+    print(n_rows, n_cols, n_modes)
     fig, axs = plt.subplots(n_rows, n_cols, figsize=(10, 10))
     axs = axs.flatten()
-    # plot each mode
-    wl_ind = 0
-    means = result.means[wl_ind]
+    # convert quantum result into quantum state
+    means = result.means[freq_ind]
+    cov = result.cov[freq_ind]
+    qstate = QuantumState(means, cov, result.n_ports * 2, "xxpp")
     for i, mode in enumerate(modes):
-        pass
+        # plot the means
+        ax = axs[i]
+        qstate.plot_mode(mode, x_range=(-6, 6), y_range=(-6, 6), ax=ax)
+    return axs
 
 
 class QuantumSim(Simulation):
@@ -104,7 +129,7 @@ class QuantumSim(Simulation):
 
         return unitary
 
-    def run(self):
+    def run(self) -> QuantumResult:
         """Run the simulation."""
         n_ports = len(self.ckt._oports)
         # get the unitary s-parameters of the circuit
@@ -112,7 +137,7 @@ class QuantumSim(Simulation):
         unitary = self.to_unitary(s_params)
         # get an array of the indices of the input ports
         input_indices = [self.ckt._oports.index(port) for port in self.input.ports]
-        # create vacuum ports for each every extra mode in the unitary matrix
+        # create vacuum ports for each extra mode in the unitary matrix
         n_modes = unitary.shape[1]
         n_vacuum = n_modes - len(input_indices)
         self.input._add_vacuums(n_vacuum)
