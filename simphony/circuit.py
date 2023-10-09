@@ -634,7 +634,8 @@ class Circuit(Model):
 
         wl = tuple(np.asarray(wl).reshape(-1))
 
-        ckt_temp = deepcopy(self)
+        # ckt_temp = deepcopy(self)
+        ckt_temp = self
 
         # Iterate through all connections and update the s-parameters
         for port1, port2 in ckt_temp._onodes:
