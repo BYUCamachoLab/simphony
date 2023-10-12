@@ -10,6 +10,7 @@ Results are compiled into a pandas DataFrame that can be filtered and grouped
 as needed to construct the desired s-parameter matrix.
 """
 
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Tuple, Union
 
@@ -165,6 +166,7 @@ parser = Lark(
 )
 
 
+@lru_cache
 def load_sparams(filename: Union[Path, str]) -> dict:
     """Load S-parameters from a Lumerical ".sparam" or ".dat" file.
 
