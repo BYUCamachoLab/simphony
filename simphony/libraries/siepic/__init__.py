@@ -17,7 +17,16 @@ Usage:
     wg = siepic.waveguide()
 """
 
-from .models import grating_coupler, waveguide, y_branch
+from simphony.libraries.siepic.models import (
+    bidirectional_coupler,
+    directional_coupler,
+    grating_coupler,
+    half_ring,
+    taper,
+    terminator,
+    waveguide,
+    y_branch,
+)
 
 # class GratingCoupler(SiEPIC_PDK_Base):
 

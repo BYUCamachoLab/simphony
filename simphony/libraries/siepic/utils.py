@@ -4,7 +4,11 @@
 """Utilities for loading and caching data files."""
 
 import importlib.resources
+from functools import lru_cache
 from pathlib import Path
+from typing import Union
+
+import numpy as np
 
 import simphony.libraries
 
@@ -31,3 +35,20 @@ def _resolve_source_filepath(filename: str) -> Path:
         ctx = importlib.resources.path(simphony, "libraries")
         with ctx as path:
             return path / filepath
+
+
+@lru_cache()
+def _load_txt_cached(path: Union[Path, str]) -> np.ndarray:
+    """Loads a text file from the source_data directory and caches it.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file to be loaded.
+
+    Returns
+    -------
+    content : str
+        The contents of the file.
+    """
+    return np.loadtxt(path)
