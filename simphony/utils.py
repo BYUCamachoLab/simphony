@@ -8,29 +8,14 @@ to the average user."""
 import re
 import warnings
 from types import SimpleNamespace
+from typing import Union
 
+import jax.numpy as jnp
+import numpy as np
+from jax import Array
+from jax.typing import ArrayLike
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import interp1d
-
-try:
-    import jax
-    import jax.numpy as jnp
-
-    JAX_AVAILABLE = True
-except ImportError:
-    import numpy as jnp
-
-    def jit(func, *args, **kwargs):
-        """Mock "jit" version of a function.
-
-        Warning is only raised once.
-        """
-        warnings.warn("Jax not available, cannot compile using 'jit'!")
-        return func
-
-    jax = SimpleNamespace(jit=jit)
-    JAX_AVAILABLE = False
-
 
 MATH_SUFFIXES = {
     "f": "e-15",
