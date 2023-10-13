@@ -166,7 +166,7 @@ parser = Lark(
 )
 
 
-@lru_cache
+@lru_cache()
 def load_sparams(filename: Union[Path, str]) -> dict:
     """Load S-parameters from a Lumerical ".sparam" or ".dat" file.
 
