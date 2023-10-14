@@ -1,22 +1,11 @@
 """Module for classical simulation."""
 from dataclasses import dataclass
+from functools import partial
 from typing import Callable, List, Union
 
-from simphony.models import OPort
-
-try:
-    import jax
-    import jax.numpy as jnp
-
-    JAX_AVAILABLE = True
-except ImportError:
-    import numpy as jnp
-
-    from simphony.utils import jax
-
-    JAX_AVAILABLE = False
-
-from simphony.circuit import Circuit
+import jax
+import jax.numpy as jnp
+import saxtypes
 
 from .simdevices import Detector, Laser
 from .simulation import Simulation, SimulationResult
@@ -51,7 +40,7 @@ class ClassicalResult(SimulationResult):
 class ClassicalSim(Simulation):
     """Classical simulation."""
 
-    def __init__(self, ckt: Circuit, wl: jnp.ndarray) -> None:
+    def __init__(self, ckt: saxtypes.Model, wl: jnp.ndarray, **kwargs) -> None:
         """Initialize the classical simulation.
 
         Parameters
@@ -60,14 +49,17 @@ class ClassicalSim(Simulation):
             The circuit to simulate.
         wl : jnp.ndarray
             The array of wavelengths to simulate (in microns).
+        **kwargs : dict
+            Additional keyword arguments to pass to the sax circuit.
         """
+        ckt = partial(ckt, **kwargs)
         super().__init__(ckt, wl)
-        self.lasers: dict[Laser, list[OPort]] = {}
-        self.detectors: dict[Detector, list[OPort]] = {}
+        self.lasers: dict[Laser, list[str]] = {}
+        self.detectors: dict[Detector, list[str]] = {}
 
     def add_laser(
         self,
-        ports: Union[OPort, List[OPort]],
+        ports: Union[str, List[str]],
         power: float = 1.0,
         phase: float = 0.0,
         mod_function: Callable = None,
@@ -94,7 +86,7 @@ class ClassicalSim(Simulation):
         return laser
 
     def add_detector(
-        self, ports: Union[OPort, List[OPort]], responsivity: float = 1.0
+        self, ports: Union[str, List[str]], responsivity: float = 1.0
     ) -> Union[Detector, list[Detector]]:
         """Add an ideal photodetector.
 
@@ -131,10 +123,7 @@ class ClassicalSim(Simulation):
         """
 
         # Get the S-matrix for the circuit
-        if JAX_AVAILABLE:
-            s = self.ckt._s(tuple(self.wl.tolist()))
-        else:
-            s = self.ckt._s(tuple(jnp.asarray(self.wl).reshape(-1)))
+        s = self.ckt(wl=self.wl)
 
         # Create input vector from all lasers
         src_v = jnp.zeros((len(self.wl), len(self.ckt._oports)), dtype=jnp.complex64)
