@@ -5,8 +5,7 @@ import warnings
 from typing import List, Union
 
 import matplotlib.pyplot as plt
-
-from simphony.models import OPort
+from jaxtyping import ArrayLike
 
 
 class SimDevice:
@@ -21,7 +20,7 @@ class Laser(SimDevice):
 
     Parameters
     ----------
-    ports : OPort or list of OPort
+    ports : str or list of str
         The ports to which the laser is connected.
     power : float, optional
         The power of the laser (in mW), by default 1.0
@@ -33,7 +32,7 @@ class Laser(SimDevice):
 
     def __init__(
         self,
-        ports: Union[OPort, List[OPort]],
+        ports: Union[str, List[str]],
         power: float = 1.0,
         phase: float = 0.0,
         mod_function=None,
@@ -56,19 +55,19 @@ class Detector(SimDevice):
 
     Parameters
     ----------
-    port : OPort
+    port : str
         The port to which the detector is connected.
     responsivity : float, optional
         The responsivity of the detector (in A/W), by default 1.0
     """
 
-    def __init__(self, port: OPort, responsivity: float = 1.0) -> None:
+    def __init__(self, port: str, responsivity: float = 1.0) -> None:
         super().__init__(list(port))
         if responsivity != 1.0:
             warnings.warn("Responsivity is not yet implemented, so it is ignored.")
         self.responsivity = responsivity
 
-    def set_result(self, wl, power):
+    def set_result(self, wl: ArrayLike, power: ArrayLike) -> None:
         self.wl = wl
         self.power = power
 
