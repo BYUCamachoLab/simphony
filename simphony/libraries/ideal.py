@@ -28,7 +28,7 @@ def coupler(
     return sdict
 
 
-def straight(
+def waveguide(
     *,
     wl: ArrayLike | float = 1.55,
     wl0: float = 1.55,
