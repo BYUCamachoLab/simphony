@@ -10,124 +10,62 @@ The wrappers defined here integrate SiPANN models into Simphony for
 easier use.
 """
 
+from itertools import product
 from pathlib import Path
 from typing import Callable, Dict, TypeVar, Union
 
+# import jax.numpy as jnp
 import numpy as np
+import sax
+from jax import Array
+from jax.typing import ArrayLike
 
 try:
     from SiPANN import comp, scee
     from SiPANN.scee_opt import premade_coupler
-except ImportError:
+except ImportError as exc:
     raise ImportError(
         "SiPANN must be installed to use the SiPANN wrappers. "
         "To install SiPANN, run `pip install SiPANN`."
-    )
-
-from simphony.models import Model
+    ) from exc
 
 
-class SipannWrapper(Model):
-    """Allows wrapping models from SCEE for use in simphony. This class should
-    be extended, with each extending class wrapping one model.
-
-    Each extending class should convert parameters passed in from meters (which
-    simphony uses) to nanometers (which SiPANN uses). Each extending class
-    should also define a class-wide field for 'ocount', equal to the number
-    of pins the subcircuit has.
-
-    Note that the wrapped SCEE models cannot have varying geometries; such a
-    device can't be cascaded properly.
+def _create_sdict_from_model(model, wl: Union[float, ArrayLike]) -> sax.SDict:
+    """Create s-parameter dict from model.
 
     Parameters
     ----------
-    model
-        Model from `SiPANN.scee` or `SiPANN.comp` modules, must have the
-        'sparams' method
-    sigmas : dict
-        Dictionary mapping parameters to sigma values for Monte-Carlo
-        simulations, values should be in meters. If Monte-Carlo simulations are not
-        needed, pass in an empty dictionary.
+    model : SiPANN model
+        The component model to call.
+    wl : float or ArrayLike
+        Wavelength to evaluate at in microns.
+
+    Returns
+    -------
+    sdict : sax.SDict
+        The s-parameter dictionary.
     """
+    wl = np.array(wl).reshape(-1)  # microns
+    s = model.sparams(wl * 1e3)  # convert to nanometers, s is shape f x n x n
+    ports = list(range(s.shape[1]))
 
-    def __init__(
-        self,
-        model: TypeVar("M"),
-        sigmas: Dict[str, float],
-        name: str = None,
-    ) -> None:
-        super().__init__(name=name)
-        self.model = model
-        self.sigmas = sigmas
+    sdict = {}
+    for p_out, p_in in product(ports, ports):
+        sdict[(f"o{p_out}", f"o{p_in}")] = s[:, p_out, p_in]
 
-        # catch varying geometries
-        args = self.model._clean_args(None)
-        if len(args[0]) != 1:
-            raise ValueError(
-                "You have changing geometries, use in simphony doesn't make sense!"
-            )
-
-        # self.params = self.model.__dict__.copy()
-        # self.rand_params = dict()
-        # self.regenerate_monte_carlo_parameters()
-
-    def s_params(self, wl):
-        """Get the s-parameters of the SCEE Model.
-
-        Parameters
-        ----------
-        wl : float or array-like
-            Wavelength array to sample s-parameters at, in microns.
-
-        Returns
-        -------
-        s : array-like
-            The s-parameter matrix sampled at the given wavelengths.
-        """
-        return self.model.sparams(wl * 1e3)
-
-    def write_gds(self, filename: Union[Path, str]) -> None:
-        """Write the model to a GDS file.
-
-        Parameters
-        ----------
-        filename : str or Path
-            Path to write the GDS file to.
-        """
-        self.model.gds(str(filename), units="microns")
-
-    # def monte_carlo_s_parameters(self, freqs: np.ndarray) -> np.ndarray:
-    #     """Get the s-parameters of the SCEE Model, influenced by noise from
-    #     sigma values.
-
-    #     Parameters
-    #     ----------
-    #     `freqs`
-    #     Frequency array to calculate s-parameters over, in
-    #     Hz
-
-    #     Returns
-    #     -------
-    #     `s`
-    #     The s-parameter matrix
-    #     """
-    #     wl = freq2wl(freqs) * 1e9
-
-    #     # Change to noise params for monte carlo, then change back
-    #     self.model.update(**self.rand_params)
-    #     sparams = self.model.sparams(wl)
-    #     self.model.update(**self.params)
-
-    #     return sparams
-
-    # def regenerate_monte_carlo_parameters(self) -> None:
-    #     """For each sigma value given to the wrapper, will apply noise the
-    #     matching parameter."""
-    #     for param, sigma in self.sigmas.items():
-    #         self.rand_params[param] = np.random.normal(self.params[param], sigma * 1e9)
+    return sdict
 
 
-class GapFuncSymmetric(SipannWrapper):
+def gap_func_symmetric(
+    wl: Union[float, ArrayLike] = 1.55,
+    width: float = 500.0,
+    thickness: float = 220.0,
+    gap: Callable[[float], float] = 100.0,
+    dgap: Callable[[float], float] = 0.0,
+    zmin: float = 0.0,
+    zmax: float = 10e3,
+    sw_angle: float = 90.0,
+) -> sax.SDict:
     r"""Symmetric directional coupler, meaning both waveguides are the same
     shape.
 
@@ -161,62 +99,32 @@ class GapFuncSymmetric(SipannWrapper):
     sw_angle : float, optional
         Sidewall angle of waveguide from horizontal in degrees (valid from 80
         to 90, defaults to 90).
-    sigmas : dict, optional
-        Dictionary mapping parameters to sigma values for Monte-Carlo
-        simulations, values should be in meters.
     """
+    if width < 400 or width > 600:
+        raise ValueError("Width must be between 400 and 600 nm")
+    if thickness < 180 or thickness > 240:
+        raise ValueError("Thickness must be between 180 and 240 nm")
+    if sw_angle < 80 or sw_angle > 90:
+        raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    ocount = 4
-
-    def __init__(
-        self,
-        width: Union[float, np.ndarray],
-        thickness: Union[float, np.ndarray],
-        gap: Callable[[float], float],
-        dgap: Callable[[float], float],
-        zmin: float,
-        zmax: float,
-        sw_angle: Union[float, np.ndarray] = 90,
-        sigmas: Dict[str, float] = dict(),
-        name: str = None,
-    ) -> None:
-        if width < 400 or width > 600:
-            raise ValueError("Width must be between 400 and 600 nm")
-        if thickness < 180 or thickness > 240:
-            raise ValueError("Thickness must be between 180 and 240 nm")
-        if sw_angle < 80 or sw_angle > 90:
-            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
-        super().__init__(
-            scee.GapFuncSymmetric(
-                width,
-                thickness,
-                gap,
-                dgap,
-                zmin,
-                zmax,
-                sw_angle,
-            ),
-            sigmas,
-            name=name,
-        )
-
-    # def update_variations(self, **kwargs):
-    #     self.nominal_width = self.params["width"]
-    #     self.nominal_thickness = self.params["thickness"]
-
-    #     w = self.params["width"] + kwargs.get("corr_w")
-    #     h = self.params["thickness"] + kwargs.get("corr_t")
-
-    #     self.layout_aware = True
-    #     self.params["width"] = w
-    #     self.params["thickness"] = h
-
-    # def regenerate_layout_aware_monte_carlo_parameters(self):
-    #     self.params["width"] = self.nominal_width
-    #     self.params["thickness"] = self.nominal_thickness
+    model = scee.GapFuncSymmetric(width, thickness, gap, dgap, zmin, zmax, sw_angle)
+    sdict = _create_sdict_from_model(model, wl)
+    return sdict
 
 
-class GapFuncAntiSymmetric(SipannWrapper):
+def gap_func_antisymmetric(
+    wl: Union[float, ArrayLike] = 1.55,
+    width: float = 500.0,
+    thickness: float = 220.0,
+    gap: Callable[[float], float] = 100.0,
+    zmin: float = 0.0,
+    zmax: float = 100.0,
+    arc1: float = 10e3,
+    arc2: float = 10e3,
+    arc3: float = 10e3,
+    arc4: float = 10e3,
+    sw_angle: Union[float, np.ndarray] = 90,
+) -> sax.SDict:
     r"""Antisymmetric directional coupler, meaning both waveguides are
     differently shaped.
 
@@ -255,70 +163,31 @@ class GapFuncAntiSymmetric(SipannWrapper):
     sw_angle : float, optional
         Sidewall angle of waveguide from horizontal in degrees (valid from 80
         to 90, defaults to 90).
-    sigmas : dict, optional
-        Dictionary mapping parameters to sigma values for Monte-Carlo
-        simulations, values should be in meters.
     """
+    if width < 400 or width > 600:
+        raise ValueError("Width must be between 400 and 600 nm")
+    if thickness < 180 or thickness > 240:
+        raise ValueError("Thickness must be between 180 and 240 nm")
+    if gap < 100:
+        raise ValueError("Gap must be greater than 100 nm")
+    if sw_angle < 80 or sw_angle > 90:
+        raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    ocount = 4
-
-    def __init__(
-        self,
-        width: Union[float, np.ndarray],
-        thickness: Union[float, np.ndarray],
-        gap: Callable[[float], float],
-        zmin: float,
-        zmax: float,
-        arc1: float,
-        arc2: float,
-        arc3: float,
-        arc4: float,
-        sw_angle: Union[float, np.ndarray] = 90,
-        sigmas: dict = dict(),
-        name: str = None,
-    ) -> None:
-        if width < 400 or width > 600:
-            raise ValueError("Width must be between 400 and 600 nm")
-        if thickness < 180 or thickness > 240:
-            raise ValueError("Thickness must be between 180 and 240 nm")
-        if gap < 100:
-            raise ValueError("Gap must be greater than 100 nm")
-        if sw_angle < 80 or sw_angle > 90:
-            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
-        super().__init__(
-            scee.GapFuncAntiSymmetric(
-                width,
-                thickness,
-                gap,
-                zmin,
-                zmax,
-                arc1,
-                arc2,
-                arc3,
-                arc4,
-                sw_angle,
-            ),
-            sigmas,
-            name=name,
-        )
-
-    # def update_variations(self, **kwargs):
-    #     self.nominal_width = self.params["width"]
-    #     self.nominal_thickness = self.params["thickness"]
-
-    #     w = self.params["width"] + kwargs.get("corr_w")
-    #     h = self.params["thickness"] + kwargs.get("corr_t")
-
-    #     self.layout_aware = True
-    #     self.params["width"] = w
-    #     self.params["thickness"] = h
-
-    # def regenerate_layout_aware_monte_carlo_parameters(self):
-    #     self.params["width"] = self.nominal_width
-    #     self.params["thickness"] = self.nominal_thickness
+    model = scee.GapFuncAntiSymmetric(
+        width, thickness, gap, zmin, zmax, arc1, arc2, arc3, arc4, sw_angle
+    )
+    sdict = _create_sdict_from_model(model, wl)
+    return sdict
 
 
-class HalfRing(SipannWrapper):
+def half_ring(
+    wl: float | ArrayLike = 1.55,
+    width: float = 500.0,
+    thickness: float = 220.0,
+    radius: float = 10000.0,
+    gap: float = 100.0,
+    sw_angle: float = 90.0,
+) -> sax.SDict:
     """Half of a ring resonator.
 
     Uses a radius and a gap to describe the shape.
@@ -330,6 +199,8 @@ class HalfRing(SipannWrapper):
 
     Parameters
     ----------
+    wl : float or ArrayLike
+        The wavelengths to evaluate at in microns.
     width : float
         Width of waveguides in nanometers (valid from 400 to 600).
     thickness : float
@@ -342,164 +213,33 @@ class HalfRing(SipannWrapper):
     sw_angle : float, optional
         Sidewall angle of waveguide from horizontal in degrees (valid from 80
         to 90, defaults to 90).
-    sigmas : dict, optional
-        Dictionary mapping parameters to sigma values for Monte-Carlo
-        simulations, values should be in meters.
 
     Examples
     --------
-    >>> dev = HalfRing(500, 220, 5000, 100)
+    >>> s = half_ring(wl, 500, 220, 5000, 100)
     """
+    if width < 400 or width > 600:
+        raise ValueError("Width must be between 400 and 600 nm")
+    if thickness < 180 or thickness > 240:
+        raise ValueError("Thickness must be between 180 and 240 nm")
+    if gap < 100:
+        raise ValueError("Gap must be greater than 100 nm")
+    if sw_angle < 80 or sw_angle > 90:
+        raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    ocount = 4
-
-    def __init__(
-        self,
-        width: Union[float, np.ndarray],
-        thickness: Union[float, np.ndarray],
-        radius: Union[float, np.ndarray],
-        gap: Union[float, np.ndarray],
-        sw_angle: Union[float, np.ndarray] = 90,
-        sigmas: Dict[str, float] = dict(),
-        name: str = None,
-    ) -> None:
-        if width < 400 or width > 600:
-            raise ValueError("Width must be between 400 and 600 nm")
-        if thickness < 180 or thickness > 240:
-            raise ValueError("Thickness must be between 180 and 240 nm")
-        if gap < 100:
-            raise ValueError("Gap must be greater than 100 nm")
-        if sw_angle < 80 or sw_angle > 90:
-            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
-        super().__init__(
-            scee.HalfRing(
-                width,
-                thickness,
-                radius,
-                gap,
-                sw_angle,
-            ),
-            sigmas,
-            name=name,
-        )
-
-    def s_params(self, wl):
-        """Get the s-parameters of the SCEE Model.
-
-        Parameters
-        ----------
-        wl : float or array-like
-            Wavelength array to sample s-parameters at, in microns.
-
-        Returns
-        -------
-        s : array-like
-            The s-parameter matrix sampled at the given wavelengths.
-        """
-        return self.model.sparams(wl * 1e3)
-
-    # def update_variations(self, **kwargs):
-    #     self.nominal_width = self.params["width"]
-    #     self.nominal_thickness = self.params["thickness"]
-
-    #     w = self.params["width"] + kwargs.get("corr_w")
-    #     h = self.params["thickness"] + kwargs.get("corr_t")
-
-    #     self.layout_aware = True
-    #     self.params["width"] = w
-    #     self.params["thickness"] = h
-
-    # def regenerate_layout_aware_monte_carlo_parameters(self):
-    #     self.params["width"] = self.nominal_width
-    #     self.params["thickness"] = self.nominal_thickness
+    model = scee.HalfRing(width, thickness, radius, gap, sw_angle)
+    sdict = _create_sdict_from_model(model, wl)
+    return sdict
 
 
-class HalfRacetrack(SipannWrapper):
-    """Half of a ring resonator, similar to the HalfRing class.
-
-    Uses a radius, gap and length to describe the shape of the device.
-
-    .. image:: /_static/images/sipann_half_racetrack.png
-        :alt: Half racetrack port numbering.
-        :width: 400px
-        :align: center
-
-    Parameters
-    ----------
-    width : float
-        Width of waveguides in nanometers (valid from 400 to 600).
-    thickness : float
-        Thickness of waveguides in nanometers (valid from 180 to 240).
-    radius : float
-        Distance from center of ring to middle of waveguide, in nanometers.
-    gap : float
-        Minimum distance from ring waveguide edge to straight waveguide edge,
-        in nanometers (must be greater than 100).
-    length : float
-        Length of straight portion of ring waveguide, in nanometers.
-    sw_angle : float, optional
-        Sidewall angle of waveguide from horizontal in degrees (valid from 80
-        to 90, defaults to 90).
-    sigmas : dict, optional
-        Dictionary mapping parameters to sigma values for Monte-Carlo
-        simulations, values should be in meters.
-
-    Examples
-    --------
-    >>> dev = HalfRacetrack(500, 220, 5000, 100, 5000)
-    """
-
-    ocount = 4
-
-    def __init__(
-        self,
-        width: Union[float, np.ndarray],
-        thickness: Union[float, np.ndarray],
-        radius: Union[float, np.ndarray],
-        gap: Union[float, np.ndarray],
-        length: Union[float, np.ndarray],
-        sw_angle: Union[float, np.ndarray] = 90,
-        sigmas: Dict[str, float] = dict(),
-        name: str = None,
-    ) -> None:
-        if width < 400 or width > 600:
-            raise ValueError("Width must be between 400 and 600 nm")
-        if thickness < 180 or thickness > 240:
-            raise ValueError("Thickness must be between 180 and 240 nm")
-        if gap < 100:
-            raise ValueError("Gap must be greater than 100 nm")
-        if sw_angle < 80 or sw_angle > 90:
-            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
-        super().__init__(
-            scee.HalfRacetrack(
-                width,
-                thickness,
-                radius,
-                gap,
-                length,
-                sw_angle,
-            ),
-            sigmas,
-            name=name,
-        )
-
-    # def update_variations(self, **kwargs):
-    #     self.nominal_width = self.params["width"]
-    #     self.nominal_thickness = self.params["thickness"]
-
-    #     w = self.params["width"] + kwargs.get("corr_w")
-    #     h = self.params["thickness"] + kwargs.get("corr_t")
-
-    #     self.layout_aware = True
-    #     self.params["width"] = w
-    #     self.params["thickness"] = h
-
-    # def regenerate_layout_aware_monte_carlo_parameters(self):
-    #     self.params["width"] = self.nominal_width
-    #     self.params["thickness"] = self.nominal_thickness
-
-
-class StraightCoupler(SipannWrapper):
+def straight_coupler(
+    wl: Union[float, ArrayLike] = 1.55,
+    width: float = 500.0,
+    thickness: float = 220.0,
+    gap: float = 100.0,
+    length: float = 1000.0,
+    sw_angle: float = 90.0,
+) -> sax.SDict:
     """Straight directional coupler, both waveguides run parallel.
 
     Described by a gap and a length.
@@ -523,64 +263,35 @@ class StraightCoupler(SipannWrapper):
     sw_angle : float, optional
         Sidewall angle of waveguide from horizontal in degrees (Valid from 80
         to 90, defaults to 90).
-    sigmas : dict, optional
-        Dictionary mapping parameters to sigma values for Monte-Carlo
-        simulations, values should be in meters.
 
     Examples
     --------
-    >>> dev = StraightCoupler(500, 220, 100, 5000)
+    >>> s = straight_coupler(wl, 500, 220, 100, 1000)
     """
+    if width < 400 or width > 600:
+        raise ValueError("Width must be between 400 and 600 nm")
+    if thickness < 180 or thickness > 240:
+        raise ValueError("Thickness must be between 180 and 240 nm")
+    if gap < 100:
+        raise ValueError("Gap must be greater than 100 nm")
+    if sw_angle < 80 or sw_angle > 90:
+        raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    ocount = 4
-
-    def __init__(
-        self,
-        width: Union[float, np.ndarray],
-        thickness: Union[float, np.ndarray],
-        gap: Union[float, np.ndarray],
-        length: Union[float, np.ndarray],
-        sw_angle: Union[float, np.ndarray] = 90,
-        sigmas: Dict[str, float] = dict(),
-        name: str = None,
-    ) -> None:
-        if width < 400 or width > 600:
-            raise ValueError("Width must be between 400 and 600 nm")
-        if thickness < 180 or thickness > 240:
-            raise ValueError("Thickness must be between 180 and 240 nm")
-        if gap < 100:
-            raise ValueError("Gap must be greater than 100 nm")
-        if sw_angle < 80 or sw_angle > 90:
-            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
-        super().__init__(
-            scee.StraightCoupler(
-                width,
-                thickness,
-                gap,
-                length,
-                sw_angle,
-            ),
-            sigmas,
-            name=name,
-        )
-
-    # def update_variations(self, **kwargs):
-    #     self.nominal_width = self.params["width"]
-    #     self.nominal_thickness = self.params["thickness"]
-
-    #     w = self.params["width"] + kwargs.get("corr_w")
-    #     h = self.params["thickness"] + kwargs.get("corr_t")
-
-    #     self.layout_aware = True
-    #     self.params["width"] = w
-    #     self.params["thickness"] = h
-
-    # def regenerate_layout_aware_monte_carlo_parameters(self):
-    #     self.params["width"] = self.nominal_width
-    #     self.params["thickness"] = self.nominal_thickness
+    model = scee.StraightCoupler(width, thickness, gap, length, sw_angle)
+    sdict = _create_sdict_from_model(model, wl)
+    return sdict
 
 
-class StandardCoupler(SipannWrapper):
+def standard_coupler(
+    wl: Union[float, ArrayLike] = 1.55,
+    width: float = 500.0,
+    thickness: float = 220.0,
+    gap: float = 100.0,
+    length: float = 1000.0,
+    horizontal: float = 10e3,
+    vertical: float = 10e3,
+    sw_angle: float = 90.0,
+) -> sax.SDict:
     """Standard-shaped directional coupler.
 
     Described by a gap, length, horizontal and vertical
@@ -611,68 +322,33 @@ class StandardCoupler(SipannWrapper):
     sw_angle : float, optional
         Sidewall angle of waveguide from horizontal in degrees (valid from 80
         to 90, defaults to 90).
-    sigmas : dict, optional
-        Dictionary mapping parameters to sigma values for Monte-Carlo
-        simulations, values should be in meters.
 
     Examples
     --------
-    >>> dev = StandardCoupler(500, 220, 100, 5000, 5e3, 2e3)
+    >>> s = standard_coupler(wl, 500, 220, 100, 5000, 5e3, 2e3)
     """
+    if width < 400 or width > 600:
+        raise ValueError("Width must be between 400 and 600 nm")
+    if thickness < 180 or thickness > 240:
+        raise ValueError("Thickness must be between 180 and 240 nm")
+    if gap < 100:
+        raise ValueError("Gap must be greater than 100 nm")
+    if sw_angle < 80 or sw_angle > 90:
+        raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    ocount = 4
-
-    def __init__(
-        self,
-        width: Union[float, np.ndarray],
-        thickness: Union[float, np.ndarray],
-        gap: Union[float, np.ndarray],
-        length: Union[float, np.ndarray],
-        horizontal: Union[float, np.ndarray],
-        vertical: Union[float, np.ndarray],
-        sw_angle: Union[float, np.ndarray] = 90,
-        sigmas: Dict[str, float] = dict(),
-        name: str = None,
-    ) -> None:
-        if width < 400 or width > 600:
-            raise ValueError("Width must be between 400 and 600 nm")
-        if thickness < 180 or thickness > 240:
-            raise ValueError("Thickness must be between 180 and 240 nm")
-        if gap < 100:
-            raise ValueError("Gap must be greater than 100 nm")
-        if sw_angle < 80 or sw_angle > 90:
-            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
-        super().__init__(
-            scee.Standard(
-                width,
-                thickness,
-                gap,
-                length,
-                horizontal,
-                vertical,
-                sw_angle,
-            ),
-            sigmas,
-            name=name,
-        )
-
-    # def update_variations(self, **kwargs):
-    #     self.nominal_width = self.params["width"]
-    #     self.nominal_thickness = self.params["thickness"]
-
-    #     w = self.params["width"] + kwargs.get("corr_w")
-    #     h = self.params["thickness"] + kwargs.get("corr_t")
-
-    #     self.layout_aware = True
-    #     self.params["width"] = w
-    #     self.params["thickness"] = h
-
-    # def regenerate_layout_aware_monte_carlo_parameters(self):
-    #     self.params["width"] = self.nominal_width
-    #     self.params["thickness"] = self.nominal_thickness
+    model = scee.Standard(width, thickness, gap, length, horizontal, vertical, sw_angle)
+    sdict = _create_sdict_from_model(model, wl)
+    return sdict
 
 
-class DoubleHalfRing(SipannWrapper):
+def double_half_ring(
+    wl: Union[float, ArrayLike] = 1.55,
+    width: float = 500.0,
+    thickness: float = 220.0,
+    radius: float = 10e3,
+    gap: float = 100.0,
+    sw_angle: float = 90.0,
+) -> sax.SDict:
     r"""Two equally sized half-rings coupling along their edges.
 
     Described by a radius and a gap between the two rings.
@@ -700,64 +376,33 @@ class DoubleHalfRing(SipannWrapper):
     sw_angle : float, optional
         Sidewall angle of waveguide from horizontal in degrees (valid from 80
         to 90, defaults to 90).
-    sigmas : dict, optional
-        Dictionary mapping parameters to sigma values for Monte-Carlo
-        simulations, values should be in meters.
 
     Notes
     -----
     Writing to GDS is not supported for this component.
     """
+    if width < 400 or width > 600:
+        raise ValueError("Width must be between 400 and 600 nm")
+    if thickness < 180 or thickness > 240:
+        raise ValueError("Thickness must be between 180 and 240 nm")
+    if gap < 100:
+        raise ValueError("Gap must be greater than 100 nm")
+    if sw_angle < 80 or sw_angle > 90:
+        raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    ocount = 4
-
-    def __init__(
-        self,
-        width: Union[float, np.ndarray],
-        thickness: Union[float, np.ndarray],
-        radius: Union[float, np.ndarray],
-        gap: Union[float, np.ndarray],
-        sw_angle: Union[float, np.ndarray] = 90,
-        sigmas: Dict[str, float] = dict(),
-        name: str = None,
-    ) -> None:
-        if width < 400 or width > 600:
-            raise ValueError("Width must be between 400 and 600 nm")
-        if thickness < 180 or thickness > 240:
-            raise ValueError("Thickness must be between 180 and 240 nm")
-        if gap < 100:
-            raise ValueError("Gap must be greater than 100 nm")
-        if sw_angle < 80 or sw_angle > 90:
-            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
-        super().__init__(
-            scee.DoubleHalfRing(
-                width,
-                thickness,
-                radius,
-                gap,
-                sw_angle,
-            ),
-            sigmas,
-            name=name,
-        )
-
-    # def update_variations(self, **kwargs):
-    #     self.nominal_width = self.params["width"]
-    #     self.nominal_thickness = self.params["thickness"]
-
-    #     w = self.params["width"] + kwargs.get("corr_w")
-    #     h = self.params["thickness"] + kwargs.get("corr_t")
-
-    #     self.layout_aware = True
-    #     self.params["width"] = w
-    #     self.params["thickness"] = h
-
-    # def regenerate_layout_aware_monte_carlo_parameters(self):
-    #     self.params["width"] = self.nominal_width
-    #     self.params["thickness"] = self.nominal_thickness
+    model = scee.DoubleHalfRing(width, thickness, radius, gap, sw_angle)
+    sdict = _create_sdict_from_model(model, wl)
+    return sdict
 
 
-class AngledHalfRing(SipannWrapper):
+def angled_half_ring(
+    wl: Union[float, ArrayLike] = 1.55,
+    width: float = 500.0,
+    thickness: float = 220.0,
+    radius: float = 10e3,
+    gap: float = 100.0,
+    sw_angle: float = 90.0,
+) -> sax.SDict:
     r"""A halfring resonator, except what was the straight waveguide is now
     curved.
 
@@ -789,66 +434,38 @@ class AngledHalfRing(SipannWrapper):
     sw_angle : float, optional
         Sidewall angle of waveguide from horizontal in degrees (Valid from 80
         to 90, defaults to 90).
-    sigmas : dict, optional
-        Dictionary mapping parameters to sigma values for Monte-Carlo
-        simulations, values should be in meters.
 
     Notes
     -----
     Writing to GDS is not supported for this component.
     """
+    width: float = (500.0,)
+    thickness: float = (220.0,)
+    radius: float = (10e3,)
+    gap: float = (100.0,)
+    theta: float = (0.0,)
+    sw_angle: float = (90,)
+    if width < 400 or width > 600:
+        raise ValueError("Width must be between 400 and 600 nm")
+    if thickness < 180 or thickness > 240:
+        raise ValueError("Thickness must be between 180 and 240 nm")
+    if gap < 100:
+        raise ValueError("Gap must be greater than 100 nm")
+    if sw_angle < 80 or sw_angle > 90:
+        raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    ocount = 4
-
-    def __init__(
-        self,
-        width: Union[float, np.ndarray],
-        thickness: Union[float, np.ndarray],
-        radius: Union[float, np.ndarray],
-        gap: Union[float, np.ndarray],
-        theta: Union[float, np.ndarray],
-        sw_angle: Union[float, np.ndarray] = 90,
-        sigmas: Dict[str, float] = dict(),
-        name: str = None,
-    ) -> None:
-        if width < 400 or width > 600:
-            raise ValueError("Width must be between 400 and 600 nm")
-        if thickness < 180 or thickness > 240:
-            raise ValueError("Thickness must be between 180 and 240 nm")
-        if gap < 100:
-            raise ValueError("Gap must be greater than 100 nm")
-        if sw_angle < 80 or sw_angle > 90:
-            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
-        super().__init__(
-            scee.AngledHalfRing(
-                width,
-                thickness,
-                radius,
-                gap,
-                theta,
-                sw_angle,
-            ),
-            sigmas,
-            name=name,
-        )
-
-    # def update_variations(self, **kwargs):
-    #     self.nominal_width = self.params["width"]
-    #     self.nominal_thickness = self.params["thickness"]
-
-    #     w = self.params["width"] + kwargs.get("corr_w")
-    #     h = self.params["thickness"] + kwargs.get("corr_t")
-
-    #     self.layout_aware = True
-    #     self.params["width"] = w
-    #     self.params["thickness"] = h
-
-    # def regenerate_layout_aware_monte_carlo_parameters(self):
-    #     self.params["width"] = self.nominal_width
-    #     self.params["thickness"] = self.nominal_thickness
+    model = scee.AngledHalfRing(width, thickness, radius, gap, theta, sw_angle)
+    sdict = _create_sdict_from_model(model, wl)
+    return sdict
 
 
-class Waveguide(SipannWrapper):
+def waveguide(
+    wl: Union[float, ArrayLike] = 1.55,
+    width: float = 500.0,
+    thickness: float = 220.0,
+    length: float = 10e3,
+    sw_angle: float = 90.0,
+) -> sax.SDict:
     """Lossless model for a straight waveguide. Main use case is for playing
     nice with other models in SCEE.
 
@@ -868,51 +485,28 @@ class Waveguide(SipannWrapper):
     sw_angle : float, optional
         Sidewall angle of waveguide from horizontal in degrees (valid from 80
         to 90, defaults to 90).
-    sigmas : dict, optional
-        Dictionary mapping parameters to sigma values for Monte-Carlo
-        simulations, values should be in meters.
     """
+    if width < 400 or width > 600:
+        raise ValueError("Width must be between 400 and 600 nm")
+    if thickness < 180 or thickness > 240:
+        raise ValueError("Thickness must be between 180 and 240 nm")
+    if sw_angle < 80 or sw_angle > 90:
+        raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    ocount = 2
-
-    def __init__(
-        self,
-        width: Union[float, np.ndarray],
-        thickness: Union[float, np.ndarray],
-        length: Union[float, np.ndarray],
-        sw_angle: Union[float, np.ndarray] = 90,
-        sigmas: Dict[str, float] = dict(),
-        name: str = None,
-    ) -> None:
-        if width < 400 or width > 600:
-            raise ValueError("Width must be between 400 and 600 nm")
-        if thickness < 180 or thickness > 240:
-            raise ValueError("Thickness must be between 180 and 240 nm")
-        if sw_angle < 80 or sw_angle > 90:
-            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
-        super().__init__(
-            scee.Waveguide(width, thickness, length, sw_angle),
-            sigmas,
-            name=name,
-        )
-
-    # def update_variations(self, **kwargs):
-    #     self.nominal_width = self.params["width"]
-    #     self.nominal_thickness = self.params["thickness"]
-
-    #     w = self.params["width"] + kwargs.get("corr_w")
-    #     h = self.params["thickness"] + kwargs.get("corr_t")
-
-    #     self.layout_aware = True
-    #     self.params["width"] = w
-    #     self.params["thickness"] = h
-
-    # def regenerate_layout_aware_monte_carlo_parameters(self):
-    #     self.params["width"] = self.nominal_width
-    #     self.params["thickness"] = self.nominal_thickness
+    model = scee.Waveguide(width, thickness, length, sw_angle)
+    sdict = _create_sdict_from_model(model, wl)
+    return sdict
 
 
-class Racetrack(SipannWrapper):
+def racetrack(
+    wl: Union[float, ArrayLike] = 1.55,
+    width: float = 500.0,
+    thickness: float = 220.0,
+    radius: float = 10e3,
+    gap: float = 100.0,
+    length: float = 10e3,
+    sw_angle: float = 90.0,
+) -> sax.SDict:
     """Racetrack waveguide arc, used to connect to a racetrack directional
     coupler.
 
@@ -937,103 +531,65 @@ class Racetrack(SipannWrapper):
     sw_angle : float, optional
         Sidewall angle of waveguide from horizontal in degrees (valid from 80
         to 90, defaults to 90).
-    sigmas : dict, optional
-        Dictionary mapping parameters to sigma values for Monte-Carlo
-        simulations, values should be in meters.
 
     Examples
     --------
     >>> dev = Racetrack(500, 220, 5000, 200, 5000)
     """
 
-    ocount = 2
+    if width < 400 or width > 600:
+        raise ValueError("Width must be between 400 and 600 nm")
+    if thickness < 180 or thickness > 240:
+        raise ValueError("Thickness must be between 180 and 240 nm")
+    if gap < 100:
+        raise ValueError("Gap must be greater than 100 nm")
+    if sw_angle < 80 or sw_angle > 90:
+        raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    def __init__(
-        self,
-        width: Union[float, np.ndarray],
-        thickness: Union[float, np.ndarray],
-        radius: Union[float, np.ndarray],
-        gap: Union[float, np.ndarray],
-        length: Union[float, np.ndarray],
-        sw_angle: Union[float, np.ndarray] = 90,
-        sigmas: Dict[str, float] = dict(),
-        name: str = None,
-    ) -> None:
-        if width < 400 or width > 600:
-            raise ValueError("Width must be between 400 and 600 nm")
-        if thickness < 180 or thickness > 240:
-            raise ValueError("Thickness must be between 180 and 240 nm")
-        if gap < 100:
-            raise ValueError("Gap must be greater than 100 nm")
-        if sw_angle < 80 or sw_angle > 90:
-            raise ValueError("Sidewall angle must be between 80 and 90 degrees")
-        super().__init__(
-            comp.racetrack_sb_rr(
-                width,
-                thickness,
-                radius,
-                gap,
-                length,
-                sw_angle,
-            ),
-            sigmas,
-            name=name,
-        )
-
-    def write_gds(self, filename: Union[Path, str]) -> None:
-        """Write the model to a GDS file.
-
-        Parameters
-        ----------
-        filename : str or Path
-            Path to write the GDS file to.
-        """
-        self.model.gds(str(filename), units="nms")
-
-    # def update_variations(self, **kwargs):
-    #     self.nominal_width = self.params["width"]
-    #     self.nominal_thickness = self.params["thickness"]
-
-    #     w = self.params["width"] + kwargs.get("corr_w")
-    #     h = self.params["thickness"] + kwargs.get("corr_t")
-
-    #     self.layout_aware = True
-    #     self.params["width"] = w
-    #     self.params["thickness"] = h
-
-    # def regenerate_layout_aware_monte_carlo_parameters(self):
-    #     self.params["width"] = self.nominal_width
-    #     self.params["thickness"] = self.nominal_thickness
+    model = comp.racetrack_sb_rr(width, thickness, radius, gap, length, sw_angle)
+    sdict = _create_sdict_from_model(model, wl)
+    return sdict
 
 
-class PremadeCoupler(SipannWrapper):
-    r"""Loads premade couplers based on the given split value.
+#     def write_gds(self, filename: Union[Path, str]) -> None:
+#         """Write the model to a GDS file.
 
-    Various splitting ratio couplers have been made and saved. This
-    function reloads them. Note that each of their lengths are different
-    and are also returned for the users info. These have all been
-    designed with waveguide geometry 500nm x 220nm.
+#         Parameters
+#         ----------
+#         filename : str or Path
+#             Path to write the GDS file to.
+#         """
+#         self.model.gds(str(filename), units="nms")
 
-    Ports are numbered as:
 
-    |       2---\      /---4       |
-    |            ------            |
-    |            ------            |
-    |       1---/      \---3       |
+# def premade_coupler(
+#     wl: Union[float, ArrayLike] = 1.55,
+#     split: int = 50,
+# ) -> sax.SDict:
+#     r"""Loads premade couplers based on the given split value.
 
-    Parameters
-    ----------
-    split : int
-        Percent of light coming out cross port. Valid numbers are 10, 20, 30,
-        40, 50, 100. 100 is a full crossover.
-    sigmas : dict, optional
-        Dictionary mapping parameters to sigma values for Monte-Carlo
-        simulations, values should be in meters.
-    """
+#     Various splitting ratio couplers have been made and saved. This
+#     function reloads them. Note that each of their lengths are different
+#     and are also returned for the users info. These have all been
+#     designed with waveguide geometry 500nm x 220nm.
 
-    ocount = 4
+#     Ports are numbered as:
 
-    def __init__(
-        self, split: int, sigmas: Dict[str, float] = dict(), name: str = None, **kwargs
-    ) -> None:
-        super().__init__(premade_coupler(split)[0], sigmas, name=name, **kwargs)
+#     |       2---\      /---4       |
+#     |            ------            |
+#     |            ------            |
+#     |       1---/      \---3       |
+
+#     Parameters
+#     ----------
+#     split : int
+#         Percent of light coming out cross port. Valid numbers are 10, 20, 30,
+#         40, 50, 100. 100 is a full crossover.
+#     """
+#     model = premade_coupler(split)[0]
+#     sdict = _create_sdict_from_model(model, wl)
+#     return sdict
+
+#     # model = comp.racetrack_sb_rr(width, thickness, radius, gap, length, sw_angle)
+#     # sdict = _create_sdict_from_model(model, wl)
+#     # return sdict
