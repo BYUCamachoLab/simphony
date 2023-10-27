@@ -6,8 +6,6 @@
 to the average user."""
 
 import re
-import warnings
-from types import SimpleNamespace
 from typing import Union
 
 import jax.numpy as jnp
