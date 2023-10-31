@@ -22,7 +22,7 @@ from jax.typing import ArrayLike
 
 try:
     from SiPANN import comp, scee
-    from SiPANN.scee_opt import premade_coupler
+    from SiPANN.scee_opt import premade_coupler as sipann_premade_coupler
 except ImportError as exc:
     raise ImportError(
         "SiPANN must be installed to use the SiPANN wrappers. "
@@ -535,6 +535,11 @@ def racetrack(
     Examples
     --------
     >>> dev = Racetrack(500, 220, 5000, 200, 5000)
+
+    Notes
+    -----
+    You can produce a GDS file of the model you instantiate using SiPANN (see
+    more `on SiPANN's docs <https://sipann.readthedocs.io/en/latest/>`_).
     """
 
     if width < 400 or width > 600:
@@ -551,45 +556,30 @@ def racetrack(
     return sdict
 
 
-#     def write_gds(self, filename: Union[Path, str]) -> None:
-#         """Write the model to a GDS file.
+def premade_coupler(
+    wl: Union[float, ArrayLike] = 1.55,
+    split: int = 50,
+) -> sax.SDict:
+    r"""Loads premade couplers based on the given split value.
 
-#         Parameters
-#         ----------
-#         filename : str or Path
-#             Path to write the GDS file to.
-#         """
-#         self.model.gds(str(filename), units="nms")
+    Various splitting ratio couplers have been made and saved. This
+    function reloads them. Note that each of their lengths are different
+    and are also returned for the users info. These have all been
+    designed with waveguide geometry 500nm x 220nm.
 
+    Ports are numbered as:
 
-# def premade_coupler(
-#     wl: Union[float, ArrayLike] = 1.55,
-#     split: int = 50,
-# ) -> sax.SDict:
-#     r"""Loads premade couplers based on the given split value.
+    |       2---\      /---4       |
+    |            ------            |
+    |            ------            |
+    |       1---/      \---3       |
 
-#     Various splitting ratio couplers have been made and saved. This
-#     function reloads them. Note that each of their lengths are different
-#     and are also returned for the users info. These have all been
-#     designed with waveguide geometry 500nm x 220nm.
-
-#     Ports are numbered as:
-
-#     |       2---\      /---4       |
-#     |            ------            |
-#     |            ------            |
-#     |       1---/      \---3       |
-
-#     Parameters
-#     ----------
-#     split : int
-#         Percent of light coming out cross port. Valid numbers are 10, 20, 30,
-#         40, 50, 100. 100 is a full crossover.
-#     """
-#     model = premade_coupler(split)[0]
-#     sdict = _create_sdict_from_model(model, wl)
-#     return sdict
-
-#     # model = comp.racetrack_sb_rr(width, thickness, radius, gap, length, sw_angle)
-#     # sdict = _create_sdict_from_model(model, wl)
-#     # return sdict
+    Parameters
+    ----------
+    split : int
+        Percent of light coming out cross port. Valid numbers are 10, 20, 30,
+        40, 50, 100. 100 is a full crossover.
+    """
+    model = sipann_premade_coupler(split)[0]
+    sdict = _create_sdict_from_model(model, wl)
+    return sdict

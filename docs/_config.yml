@@ -63,6 +63,7 @@ sphinx:
     - 'sphinx.ext.autodoc'
     - 'sphinx.ext.autodoc.typehints'
     - 'sphinx.ext.autosummary'
+    - 'sphinx.ext.intersphinx'
     - 'sphinx_design'
     - 'numpydoc'
     - 'matplotlib.sphinxext.mathmpl'
@@ -85,6 +86,9 @@ sphinx:
       - null
     sphinx:
       - "https://www.sphinx-doc.org/en/master"
+      - null
+    sipann:
+      - "https://sipann.readthedocs.io/en/latest/"
       - null
   language: en
 
