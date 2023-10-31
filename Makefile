@@ -19,7 +19,7 @@ help:
 	@echo '     release: Release a new version'
 
 install:
-	pip install --upgrade pip setuptools wheel
+	pip install "pip<=23.1.2" "setuptools>=62.0.0" "wheel>=0.41.1"
 	pip install -e .[dev,doc,test]
 	pre-commit install
 
