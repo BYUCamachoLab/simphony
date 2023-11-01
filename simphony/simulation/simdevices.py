@@ -5,7 +5,7 @@ import warnings
 from typing import List, Union
 
 import matplotlib.pyplot as plt
-from jaxtyping import ArrayLike
+from jax.typing import ArrayLike
 
 
 class SimDevice:

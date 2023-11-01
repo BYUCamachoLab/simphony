@@ -1,17 +1,6 @@
-"""Quantum states for Quantum simulators."""
+"""Quantum states for quantum simulators."""
 
-try:
-    import jax
-    import jax.numpy as jnp
-
-    JAX_AVAILABLE = True
-except ImportError:
-    import numpy as jnp
-
-    from simphony.utils import jax
-
-    JAX_AVAILABLE = False
-
+import jax.numpy as jnp
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
 
