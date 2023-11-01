@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import List, Literal, Tuple, Union
+from typing import List, Literal, Union
 
 import jax.numpy as jnp
 import numpy as np
@@ -983,7 +983,7 @@ def _generate_parameter_sets_waveguide() -> pd.DataFrame:
     """Generate a dataframe of all valid parameter sets by parsing the
     filenames of the data files in the source directory."""
     return _generate_parameter_sets(
-        r"WaveGuideTETMStrip,w=(?P<width>\d+),h=(?P<height>\d+).txt"
+        r"WaveGuideTETMStrip,w=(?P<width>\d+),h=(?P<height>\d+).txt",
         "wg_integral_source",
         ext="txt",
         columns=["width", "height"],

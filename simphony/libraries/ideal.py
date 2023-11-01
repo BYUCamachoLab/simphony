@@ -1,6 +1,5 @@
 import jax.numpy as jnp
 import sax
-from jax import Array
 from jax.typing import ArrayLike
 
 

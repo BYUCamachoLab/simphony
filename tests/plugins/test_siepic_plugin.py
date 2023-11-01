@@ -2,7 +2,6 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 
-import pytest
 from simphony.plugins.siepic import load_spi_from_file
 
 # ==============================================================================

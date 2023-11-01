@@ -6,15 +6,8 @@
 to the average user."""
 
 import re
-import warnings
-from types import SimpleNamespace
-from typing import Union
 
 import jax.numpy as jnp
-import numpy as np
-from jax import Array
-from jax.typing import ArrayLike
-from sax.utils import get_ports
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import interp1d
 

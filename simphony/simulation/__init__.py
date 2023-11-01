@@ -13,5 +13,3 @@ from simphony.simulation.classical import (  # LayoutAwareSim,; MonteCarloSim,; 
 #     TwoModeSqueezed,
 #     compose_qstate,
 # )
-from simphony.simulation.simdevices import Detector, Laser, SimDevice
-from simphony.simulation.simulation import Simulation, SimulationResult

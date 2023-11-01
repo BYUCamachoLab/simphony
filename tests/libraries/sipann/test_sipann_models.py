@@ -1,5 +1,4 @@
 import pytest
-import numpy as np
 
 try:
     from simphony.libraries import sipann
