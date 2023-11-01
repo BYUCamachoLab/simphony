@@ -14,6 +14,7 @@ import jax.numpy as jnp
 import numpy as np
 from jax import Array
 from jax.typing import ArrayLike
+from sax.utils import get_ports
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import interp1d
 
@@ -376,3 +377,32 @@ def xpxp_to_xxpp(xpxp):
     if len(xpxp.shape) == 1:
         return xpxp[ind]
     return xpxp[:, ind][ind]
+
+
+def dict_to_matrix(dictionary):
+    """Converts a dictionary of s-parameters to a matrix of s-parameters.
+
+    Parameters
+    ----------
+    dict : dict
+        A dictionary of s-parameters.
+
+    Returns
+    -------
+    matrix : jnp.array
+        A matrix of s-parameters.
+    """
+    # declare a jnp matrix of zeros:
+    matrix = jnp.zeros(
+        (int(len(dictionary) / 2), int(len(dictionary) / 2)), dtype=complex
+    )
+    for k, v in dictionary.items():
+        print(k, v)
+        # convert the first element in the key to an integer index
+        i = int(re.search("\d+", k[0]).group())
+        # convert the second element in the key to an integer index
+        j = int(re.search("\d+", k[1]).group())
+        # set the value in the matrix at the i,j index to the value
+        matrix = matrix.at[i, j].set(v)
+    # print(matrix)
+    return matrix
