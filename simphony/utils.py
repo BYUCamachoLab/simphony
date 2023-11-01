@@ -5,9 +5,11 @@
 """This package contains handy functions useful across simphony submodules and
 to the average user."""
 
+import inspect
 import re
 
 import jax.numpy as jnp
+import sax
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import interp1d
 
@@ -399,3 +401,33 @@ def dict_to_matrix(dictionary):
         matrix = matrix.at[i, j].set(v)
     # print(matrix)
     return matrix
+
+
+def validate_model(model):
+    """Validates a model.
+
+    Parameters
+    ----------
+    model : Model
+        The model to validate.
+
+    Raises
+    ------
+    ValueError
+        If the model is invalid.
+    """
+    if not sax.utils.is_model(model):
+        if not callable(model):
+            raise SyntaxError(f"Model '{model.__name__}' is not callable.")
+        try:
+            sig = inspect.signature(model)
+        except ValueError:
+            raise SyntaxError(f"Model '{model.__name__}' has no function signature.")
+        for param in sig.parameters.values():
+            if param.default is inspect.Parameter.empty:
+                raise SyntaxError(
+                    f"SAX models cannot have any positional arguments (problem found in '{model.__name__}')."
+                )
+        # if _is_callable_annotation(sig.return_annotation):  # model factory
+        #     return False
+        return True
