@@ -32,14 +32,14 @@ def rect(r, phi) -> jnp.ndarray:
 
     Parameters
     ----------
-    r : np.ndarray
+    r : ArrayLike
         The real radii of the complex-valued numbers.
-    phi : np.ndarray
+    phi : ArrayLike
         The real phase of the complex-valued numbers.
 
     Returns
     -------
-    np.ndarray
+    ArrayLike
         An array of complex-valued numbers.
     """
     return r * jnp.exp(1j * phi)
@@ -50,7 +50,7 @@ def polar(x) -> jnp.ndarray:
 
     Parameters
     ----------
-    x : np.ndarray
+    x : ArrayLike
         Array of potentially complex-valued numbers.
 
     Returns
