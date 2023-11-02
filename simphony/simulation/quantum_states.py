@@ -1,14 +1,11 @@
 """Quantum states for Quantum simulators."""
 
 try:
-    import jax
     import jax.numpy as jnp
 
     JAX_AVAILABLE = True
 except ImportError:
     import numpy as jnp
-
-    from simphony.utils import jax
 
     JAX_AVAILABLE = False
 

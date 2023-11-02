@@ -4,7 +4,7 @@ version = "0.6.1"
 description = "Simphony: A simulator for photonic circuits"
 readme = "README.md"
 requires-python = ">=3.8"
-license = {file = "LICENSE"}
+license = {text = "MIT"}
 keywords = ["photonics", "simulation", "circuits", "science", "engineering", "physics", "interconnect"]
 
 # This should be your name or the name of the organization who originally
@@ -47,15 +47,15 @@ classifiers = [
 dependencies = [
   "scipy >= 1.5.4",
   "numpy >= 1.19.5",
+  "sax >= 0.10.3",
+  "jax >= 0.4.18",
   "pandas >= 2.0.0",
-  "scikit-rf >= 0.28.0",
   "lark ~= 1.1.5",
   "tabulate ~= 0.9.0",
-  "networkx >= 3.1",
 ]
 
 [project.optional-dependencies]
-jax = ["jax"]
+cpu = ["jax[cpu]"]
 gdsfactory = ["gdsfactory"]
 sipann = ["SiPANN"]
 dev = [

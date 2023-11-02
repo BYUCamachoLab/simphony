@@ -3,12 +3,13 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Callable, List, Union
 
-import jax
 import jax.numpy as jnp
-import saxtypes
+import sax
+from jax.typing import ArrayLike
+from sax.saxtypes import Model
 
-from .simdevices import Detector, Laser
-from .simulation import Simulation, SimulationResult
+from simphony.simulation.simdevices import Detector, Laser
+from simphony.simulation.simulation import Simulation, SimulationResult
 
 
 @dataclass
@@ -19,43 +20,43 @@ class ClassicalResult(SimulationResult):
     ----------
     wl : jnp.ndarray
         The wavelengths at which the simulation was run.
-    s_params : jnp.ndarray
+    sdict : sax.SDict
         The S-parameters of the circuit.
-    input_source : jnp.ndarray
-        The input source at each wavelength.
-    output : jnp.ndarray
-        The output at each wavelength.
     detectors : list[Detector]
         The detectors and their measurements from the simulation. They are
         indexed in the same order as both ``s_params`` and ``output``.
     """
 
-    wl: jnp.ndarray
-    s_params: jnp.ndarray
-    input_source: jnp.ndarray
-    output: jnp.ndarray
+    wl: ArrayLike
+    sdict: sax.SDict
     detectors: list[Detector]
 
 
 class ClassicalSim(Simulation):
     """Classical simulation."""
 
-    def __init__(self, ckt: saxtypes.Model, wl: jnp.ndarray, **kwargs) -> None:
+    def __init__(self, ckt: Model, **kwargs) -> None:
         """Initialize the classical simulation.
 
         Parameters
         ----------
-        ckt : Circuit
+        ckt : sax.saxtypes.Model
             The circuit to simulate.
-        wl : jnp.ndarray
+        wl : ArrayLike
             The array of wavelengths to simulate (in microns).
-        **kwargs : dict
-            Additional keyword arguments to pass to the sax circuit.
+        **params
+            Any other parameters to pass to the circuit.
+
+        Examples
+        --------
+        >>> sim = ClassicalSim(ckt=mzi, wl=wl, top={"length": 150.0}, bottom={"length": 50.0})
         """
         ckt = partial(ckt, **kwargs)
-        super().__init__(ckt, wl)
-        self.lasers: dict[Laser, list[str]] = {}
-        self.detectors: dict[Detector, list[str]] = {}
+        if "wl" not in kwargs:
+            raise ValueError("Must specify 'wl' (wavelengths to simulate).")
+        super().__init__(ckt, kwargs["wl"])
+        self.lasers: dict[str, Laser] = {}
+        self.detectors: dict[str, Detector] = {}
 
     def add_laser(
         self,
@@ -79,15 +80,25 @@ class ClassicalSim(Simulation):
             The phase of the laser (in radians), by default 0.0
         mod_function : Callable, optional
             The modulation function, by default None (not yet implemented).
+
+        Returns
+        -------
+        Laser
+            The created laser.
+
+        Examples
+        --------
+        >>> laser = sim.add_laser(ports=["in"], power=1.0)
         """
-        ports = list(ports)
+        ports = [ports] if not isinstance(ports, list) else ports
         laser = Laser(ports, power, phase, mod_function)
-        self.lasers[laser] = ports
+        for port in ports:
+            self.lasers[port] = laser
         return laser
 
     def add_detector(
         self, ports: Union[str, List[str]], responsivity: float = 1.0
-    ) -> Union[Detector, list[Detector]]:
+    ) -> List[Detector]:
         """Add an ideal photodetector.
 
         If multiple ports are specified, multiple detectors will be created
@@ -102,14 +113,18 @@ class ClassicalSim(Simulation):
 
         Returns
         -------
-        Detector or list of Detector
-            The created detector(s).
+        list of Detector
+            A list of the created detector(s) (potentially a list of length 1).
+
+        Examples
+        --------
+        >>> detector = sim.add_detector(ports=["out"], responsivity=0.8)
         """
-        ports = list(ports)
+        ports = [ports] if not isinstance(ports, list) else ports
         detectors = []
         for port in ports:
             detector = Detector(port, responsivity)
-            self.detectors[detector] = list(port)
+            self.detectors[port] = detector
             detectors.append(detector)
         return detectors
 
@@ -121,62 +136,36 @@ class ClassicalSim(Simulation):
         ClassicalResult
             The simulation results.
         """
+        S = self.ckt()
 
-        # Get the S-matrix for the circuit
-        s = self.ckt(wl=self.wl)
+        sdict = {}
+        for output_port in self.detectors:
+            responses = []
+            for input_port in self.lasers:
+                signal = jnp.sqrt(self.lasers[input_port].power) * jnp.exp(
+                    1j * self.lasers[input_port].phase
+                )
+                responses.append(S[output_port, input_port] * signal)
+            sdict[output_port] = jnp.sum(jnp.asarray(responses), axis=0)
 
-        # Create input vector from all lasers
-        src_v = jnp.zeros((len(self.wl), len(self.ckt._oports)), dtype=jnp.complex64)
-        for laser, ports in self.lasers.items():
-            idx = [self.ckt._oports.index(port) for port in ports]
-            if laser.mod_function is None:
-                if JAX_AVAILABLE:
-                    src_v = src_v.at[:, idx].set(
-                        jnp.sqrt(laser.power) * jnp.exp(1j * laser.phase)
-                    )
-                else:
-                    src_v[:, idx] = jnp.sqrt(laser.power) * jnp.exp(1j * laser.phase)
-            else:
-                raise NotImplementedError
-                # if JAX_AVAILABLE:
-                #     src_v = src_v.at[:,idx].set(laser.mod_function(self.wl) * jnp.sqrt(laser.power))
-                # else:
-                #     src_v[:, idx] = laser.mod_function(self.wl) * jnp.sqrt(laser.power)
+        # # Create input vector from all lasers
+        # src_v = jnp.zeros((len(self.wl), len(ports)), dtype=jnp.complex64)
+        # for laser, ports in self.lasers.items():
+        #     idx = [self.ckt._oports.index(port) for port in ports]
+        #     if laser.mod_function is None:
+        #         src_v = src_v.at[:, idx].set(jnp.sqrt(laser.power) * jnp.exp(1j * laser.phase))
+        #     else:
+        #         raise NotImplementedError
+        #         # src_v = src_v.at[:,idx].set(laser.mod_function(self.wl) * jnp.sqrt(laser.power))
 
-        # Calculate the output from all detectors
-        port_det_mapping: dict[OPort, Detector] = {
-            port: detector
-            for detector in self.detectors
-            for port in self.detectors[detector]
-        }
-        # Build parallel arrays of indices and ports
-        indices = []
-        portarr = []
-        for i, port in enumerate(self.ckt._oports):
-            if port in port_det_mapping:
-                indices.append(i)
-                portarr.append(port)
-
-        # Only calculate the output for ports with detectors
-        output = (s[:, indices, :] @ src_v[:, :, None])[:, :, 0]
-
-        # Return a list of detectors with their measurements, indexed in the
-        # same order as "output".
-        detectors = []
-        for i, port in enumerate(portarr):
-            detector = port_det_mapping[port]
-            detector.set_result(
-                wl=self.wl,
-                power=(jnp.square(jnp.abs(output[:, i])) * detector.responsivity),
-            )
-            detectors.append(detector)
+        for port, detector in self.detectors.items():
+            power = (jnp.abs(sdict[port]) ** 2) * detector.responsivity
+            detector.set_result(wl=self.wl, power=power)
 
         result = ClassicalResult(
             wl=self.wl,
-            s_params=s,
-            input_source=src_v,
-            output=output,
-            detectors=detectors,
+            sdict=sdict,
+            detectors=self.detectors,
         )
 
         return result

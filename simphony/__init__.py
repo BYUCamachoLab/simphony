@@ -53,11 +53,10 @@ __website_url__ = "https://camacholab.byu.edu/"
 
 try:
     import jax
-    import jax.numpy as jnp
 
     JAX_AVAILABLE = True
 except ImportError:
-    import numpy as jnp
+    pass
 
     def jit(func, *args, **kwargs):
         warnings.warn("Jax not available, cannot compile using 'jit'!")

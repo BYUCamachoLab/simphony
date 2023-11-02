@@ -16,9 +16,12 @@ from typing import List, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from jax.typing import ArrayLike
 from lark import Lark, Transformer, v_args
 
-sparams_grammar = r"""
+from simphony.utils import wl2freq
+
+_sparams_grammar = r"""
     ?start: _EOL* [header] datablock+ _EOL*
 
     header: option1 | option2
@@ -56,7 +59,7 @@ sparams_grammar = r"""
     """
 
 
-def destring(string: str) -> str:
+def _destring(string: str) -> str:
     """Removes all single and double quotes from a string.
 
     Parameters
@@ -72,7 +75,7 @@ def destring(string: str) -> str:
     return string.replace("'", "").replace('"', "")
 
 
-class SparamsTransformer(Transformer):
+class _SparamsTransformer(Transformer):
     @v_args(inline=True)
     def start(self, header, *datablocks):
         data = pd.concat(datablocks, ignore_index=True)
@@ -126,7 +129,7 @@ class SparamsTransformer(Transformer):
 
     @v_args(inline=True)
     def port(self, port) -> int:
-        port = destring(port)
+        port = _destring(port)
         if port.startswith("port"):
             return int(port.split(" ")[1])
         else:
@@ -145,14 +148,14 @@ class SparamsTransformer(Transformer):
 
     @v_args(inline=True)
     def sweepparams(self, params) -> List[str]:
-        params = destring(str(params))
+        params = _destring(str(params))
         return params.split(";")
 
     def MODE(self, args) -> str:
-        return destring(str(args))
+        return _destring(str(args))
 
     def VALUETYPE(self, args) -> str:
-        return destring(str(args))
+        return _destring(str(args))
 
     def INT(self, args) -> int:
         return int(args)
@@ -161,8 +164,8 @@ class SparamsTransformer(Transformer):
         return str(args)
 
 
-parser = Lark(
-    sparams_grammar, start="start", parser="lalr", transformer=SparamsTransformer()
+_parser = Lark(
+    _sparams_grammar, start="start", parser="lalr", transformer=_SparamsTransformer()
 )
 
 
@@ -190,6 +193,57 @@ def load_sparams(filename: Union[Path, str]) -> dict:
     You can learn more about the Lumerical S-parameter file format here:
     https://optics.ansys.com/hc/en-us/articles/360036618513-S-parameter-file-formats
     """
-    with open(filename) as f:
+    with open(filename, "r", encoding="utf-8") as f:
         text = f.read()
-    return parser.parse(text)
+    return _parser.parse(text)
+
+
+def save_sparams(
+    sparams: ArrayLike,
+    wavelength: ArrayLike,
+    filename: Union[str, Path],
+    overwrite: bool = True,
+) -> None:
+    """Exports scattering parameters to a ".sparam" file readable by
+    interconnect.
+
+    Parameters
+    -----------
+    sparams : ArrayLike
+        Numpy array of size *(N, d, d)* where *N* is the number of frequency points and *d* the number of ports.
+    wavelength : ArrayLike
+        Array of wavelengths (in um) of size *N*.
+    filename : str or Path
+        File path to save file.
+    overwrite : bool, optional
+        If True (default), overwrites any existing file.
+    """
+    # TODO: Test this function.
+    _, d, _ = sparams.shape
+    filename = Path(filename)
+    if filename.exists() and not overwrite:
+        raise FileExistsError(
+            f"{filename} already exists, set overwrite=True to overwrite."
+        )
+    elif filename.exists() and overwrite:
+        filename.unlink()
+
+    with open(filename, "a", encoding="utf-8") as file:
+        # make frequencies
+        freq = wl2freq(wavelength * 1e-6)
+
+        # iterate through sparams saving
+        for in_ in range(d):
+            for out in range(d):
+                # put things together
+                sp = sparams[:, in_, out]
+                temp = np.vstack((freq, np.abs(sp), np.unwrap(np.angle(sp)))).T
+
+                # Save header
+                header = (
+                    f'("port {out+1}", "TE", 1, "port {in_+1}", 1, "transmission")\n'
+                )
+                header += f"{temp.shape}"
+
+                # save data
+                np.savetxt(file, temp, header=header, comments="")

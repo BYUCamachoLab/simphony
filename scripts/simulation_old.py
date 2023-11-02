@@ -10,14 +10,11 @@ used within the context. Devices include theoretical sources and detectors.
 """
 
 from cmath import rect
-from copy import deepcopy
-from types import SimpleNamespace
-from typing import Callable, ClassVar, List, Optional, Tuple, Union
+from typing import ClassVar, List, Optional, Tuple, Union
 
 # JAX_AVAILABLE = False
 
 try:
-    import jax
     import jax.numpy as np
     import jax.random as jnprand
 
@@ -36,16 +33,12 @@ try:
     _has_gf = True
 except ImportError:
     _has_gf = False
-from scipy.constants import h
 from scipy.linalg import cholesky, lu
-from scipy.signal import butter, sosfiltfilt
 
-from simphony.context import CTX
-from simphony.models import Model
 
 # from simphony.layout import Circuit
 # from simphony.libraries import siepic
-from simphony.utils import add_polar, wl2freq
+from simphony.utils import add_polar
 
 # this variable keeps track of the current simulation context (if any)
 context = None

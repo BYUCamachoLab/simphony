@@ -3,19 +3,15 @@
 from dataclasses import dataclass
 
 try:
-    import jax
     import jax.numpy as jnp
 
     JAX_AVAILABLE = True
 except ImportError:
     import numpy as jnp
 
-    from simphony.utils import jax
-
     JAX_AVAILABLE = False
 
 import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
 
 from simphony.circuit import Circuit
 
