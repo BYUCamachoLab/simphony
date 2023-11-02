@@ -11,13 +11,11 @@ easier use.
 """
 
 from itertools import product
-from pathlib import Path
-from typing import Callable, Dict, TypeVar, Union
+from typing import Callable, Union
 
 # import jax.numpy as jnp
 import numpy as np
 import sax
-from jax import Array
 from jax.typing import ArrayLike
 
 try:

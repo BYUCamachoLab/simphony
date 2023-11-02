@@ -17,8 +17,7 @@ they form a circuit. There are three ways to connect components:
 3. ``comp1.interface(comp2)``
 """
 
-import os
-from typing import ClassVar, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import jax.numpy as np
 import numpy as testnp
@@ -26,16 +25,15 @@ import numpy as testnp
 # import numpy as np
 
 try:
-    from gdsfactory import Component, ComponentReference
+    from gdsfactory import ComponentReference
 
     _has_gf = True
 except ImportError:
     _has_gf = False
 
 from simphony.connect import create_block_diagonal, innerconnect_s
-from simphony.formatters import ModelFormatter, ModelJSONFormatter
 from simphony.layout import Circuit
-from simphony.pins import Pin, PinList
+from simphony.pins import Pin
 
 
 class Model:
@@ -211,7 +209,6 @@ class Model:
         This function should not accept any parameters, but may act on instance
         or class attributes.
         """
-        pass
 
     def regenerate_layout_aware_monte_carlo_parameters(self):
         """Reassigns dimension parameters to the nominal values for the
@@ -228,7 +225,6 @@ class Model:
         This function should not accept any parameters, but may act on instance
         or class attributes.
         """
-        pass
 
     def update_variations(self, **kwargs):
         """Update width and thickness variations for the component using
@@ -236,7 +232,6 @@ class Model:
 
         This is used for layout-aware Monte Carlo runs.
         """
-        pass
 
 
 class Subcircuit(Model):

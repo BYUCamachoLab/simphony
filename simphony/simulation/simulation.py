@@ -1,7 +1,6 @@
 """Simulaion module."""
 
 import jax.numpy as jnp
-from jax import Array
 from jax.typing import ArrayLike
 from sax.saxtypes import Model
 

@@ -5,10 +5,8 @@ from typing import Callable, List, Union
 
 import jax.numpy as jnp
 import sax
-from jax import Array
 from jax.typing import ArrayLike
 from sax.saxtypes import Model
-from sax.utils import get_ports
 
 from simphony.simulation.simdevices import Detector, Laser
 from simphony.simulation.simulation import Simulation, SimulationResult

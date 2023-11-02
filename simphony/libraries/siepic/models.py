@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import List, Literal, Tuple, Union
+from typing import List, Literal, Union
 
 import jax.numpy as jnp
 import numpy as np
@@ -959,7 +959,7 @@ def waveguide(
     loss = loss * 100  # convert loss from dB/cm to dB/m
 
     # Loss calculation (convert loss to dB/m)
-    alpha = loss / (20 * jnp.log10(jnp.exp(1)))
+    alpha = loss / (20 * jnp.log10(jnp.exp(1)))  # TODO: Is this the wrong equation?
     omega = 2 * jnp.pi * jnp.asarray(freqs)  # get angular freqs from freqs
     omega0 = (2 * jnp.pi * SPEED_OF_LIGHT) / lam0  # center freqs (angular)
 

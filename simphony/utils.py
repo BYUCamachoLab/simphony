@@ -5,13 +5,11 @@
 """This package contains handy functions useful across simphony submodules and
 to the average user."""
 
+import inspect
 import re
-from typing import Union
 
 import jax.numpy as jnp
-import numpy as np
-from jax import Array
-from jax.typing import ArrayLike
+import sax
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import interp1d
 
@@ -374,3 +372,62 @@ def xpxp_to_xxpp(xpxp):
     if len(xpxp.shape) == 1:
         return xpxp[ind]
     return xpxp[:, ind][ind]
+
+
+def dict_to_matrix(dictionary):
+    """Converts a dictionary of s-parameters to a matrix of s-parameters.
+
+    Parameters
+    ----------
+    dict : dict
+        A dictionary of s-parameters.
+
+    Returns
+    -------
+    matrix : jnp.array
+        A matrix of s-parameters.
+    """
+    # declare a jnp matrix of zeros:
+    matrix = jnp.zeros(
+        (int(len(dictionary) / 2), int(len(dictionary) / 2)), dtype=complex
+    )
+    for k, v in dictionary.items():
+        print(k, v)
+        # convert the first element in the key to an integer index
+        i = int(re.search("\d+", k[0]).group())
+        # convert the second element in the key to an integer index
+        j = int(re.search("\d+", k[1]).group())
+        # set the value in the matrix at the i,j index to the value
+        matrix = matrix.at[i, j].set(v)
+    # print(matrix)
+    return matrix
+
+
+def validate_model(model):
+    """Validates a model.
+
+    Parameters
+    ----------
+    model : Model
+        The model to validate.
+
+    Raises
+    ------
+    ValueError
+        If the model is invalid.
+    """
+    if not sax.utils.is_model(model):
+        if not callable(model):
+            raise SyntaxError(f"Model '{model.__name__}' is not callable.")
+        try:
+            sig = inspect.signature(model)
+        except ValueError:
+            raise SyntaxError(f"Model '{model.__name__}' has no function signature.")
+        for param in sig.parameters.values():
+            if param.default is inspect.Parameter.empty:
+                raise SyntaxError(
+                    f"SAX models cannot have any positional arguments (problem found in '{model.__name__}')."
+                )
+        # if _is_callable_annotation(sig.return_annotation):  # model factory
+        #     return False
+        return True
