@@ -8,6 +8,7 @@ to the average user."""
 import re
 
 import jax.numpy as jnp
+from sax.utils import get_ports
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import interp1d
 
@@ -389,13 +390,15 @@ def dict_to_matrix(dictionary):
     matrix = jnp.zeros(
         (int(len(dictionary) / 2), int(len(dictionary) / 2)), dtype=complex
     )
+    ports = get_ports(dictionary)
+    # create a dict to store the index associated with each port name
+    port_indices = {k: v for v, k in enumerate(ports)}
     for k, v in dictionary.items():
-        print(k, v)
-        # convert the first element in the key to an integer index
-        i = int(re.search("\d+", k[0]).group())
-        # convert the second element in the key to an integer index
-        j = int(re.search("\d+", k[1]).group())
+        # get index of first port
+        i = port_indices[k[0]]
+        # get index of the second port
+        j = port_indices[k[1]]
         # set the value in the matrix at the i,j index to the value
         matrix = matrix.at[i, j].set(v)
-    # print(matrix)
+    print(matrix)
     return matrix
