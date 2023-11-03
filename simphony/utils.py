@@ -386,19 +386,18 @@ def dict_to_matrix(dictionary):
     matrix : jnp.array
         A matrix of s-parameters.
     """
-    # declare a jnp matrix of zeros:
-    matrix = jnp.zeros(
-        (int(len(dictionary) / 2), int(len(dictionary) / 2)), dtype=complex
-    )
+
     ports = get_ports(dictionary)
-    # create a dict to store the index associated with each port name
-    port_indices = {k: v for v, k in enumerate(ports)}
+    # declare a jnp matrix of zeros:
+    arr = list(dictionary.values())[0]
+    arr = jnp.asarray(arr).reshape(-1)
+
+    matrix = jnp.zeros((len(arr), int(len(ports)), int(len(ports))), dtype=complex)
     for k, v in dictionary.items():
         # get index of first port
-        i = port_indices[k[0]]
+        i = ports.index(k[0])
         # get index of the second port
-        j = port_indices[k[1]]
+        j = ports.index(k[1])
         # set the value in the matrix at the i,j index to the value
-        matrix = matrix.at[i, j].set(v)
-    print(matrix)
+        matrix = matrix.at[:, i, j].set(v)
     return matrix
