@@ -2,15 +2,7 @@
 
 from dataclasses import dataclass
 
-try:
-    import jax.numpy as jnp
-
-    JAX_AVAILABLE = True
-except ImportError:
-    import numpy as jnp
-
-    JAX_AVAILABLE = False
-
+import jax.numpy as jnp
 import matplotlib.pyplot as plt
 
 from simphony.circuit import Circuit

@@ -5,6 +5,7 @@
 """This package contains handy functions useful across simphony submodules and
 to the average user."""
 
+import inspect
 import re
 
 import jax.numpy as jnp
@@ -31,14 +32,14 @@ def rect(r, phi) -> jnp.ndarray:
 
     Parameters
     ----------
-    r : np.ndarray
+    r : ArrayLike
         The real radii of the complex-valued numbers.
-    phi : np.ndarray
+    phi : ArrayLike
         The real phase of the complex-valued numbers.
 
     Returns
     -------
-    np.ndarray
+    ArrayLike
         An array of complex-valued numbers.
     """
     return r * jnp.exp(1j * phi)
@@ -49,7 +50,7 @@ def polar(x) -> jnp.ndarray:
 
     Parameters
     ----------
-    x : np.ndarray
+    x : ArrayLike
         Array of potentially complex-valued numbers.
 
     Returns
@@ -401,3 +402,33 @@ def dict_to_matrix(dictionary):
         # set the value in the matrix at the i,j index to the value
         matrix = matrix.at[:, i, j].set(v)
     return matrix
+
+
+def validate_model(model):
+    """Validates a model.
+
+    Parameters
+    ----------
+    model : Model
+        The model to validate.
+
+    Raises
+    ------
+    ValueError
+        If the model is invalid.
+    """
+    if not sax.utils.is_model(model):
+        if not callable(model):
+            raise SyntaxError(f"Model '{model.__name__}' is not callable.")
+        try:
+            sig = inspect.signature(model)
+        except ValueError:
+            raise SyntaxError(f"Model '{model.__name__}' has no function signature.")
+        for param in sig.parameters.values():
+            if param.default is inspect.Parameter.empty:
+                raise SyntaxError(
+                    f"SAX models cannot have any positional arguments (problem found in '{model.__name__}')."
+                )
+        # if _is_callable_annotation(sig.return_annotation):  # model factory
+        #     return False
+        return True
