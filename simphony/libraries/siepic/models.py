@@ -956,10 +956,9 @@ def waveguide(
     wl_m = jnp.asarray(wl).reshape(-1) * 1e-6  # convert microns to meters
     freqs = wl2freq(wl_m)  # convert wavelengths to freqs
     length_m = length * 1e-6  # convert microns to meters
-    loss = loss * 100  # convert loss from dB/cm to dB/m
 
-    # Loss calculation (convert loss to dB/m)
-    alpha = loss / (20 * jnp.log10(jnp.exp(1)))  # TODO: Is this the wrong equation?
+    loss = loss * 100  # convert loss from dB/cm to dB/m
+    alpha = loss / (20 * jnp.log10(jnp.exp(1)))  # convert loss to m^-1
     omega = 2 * jnp.pi * jnp.asarray(freqs)  # get angular freqs from freqs
     omega0 = (2 * jnp.pi * SPEED_OF_LIGHT) / lam0  # center freqs (angular)
 
