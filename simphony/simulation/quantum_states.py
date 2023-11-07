@@ -1,5 +1,7 @@
 """Quantum states for quantum simulators."""
 
+from typing import List, Union
+
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
@@ -10,6 +12,57 @@ from simphony.utils import xpxp_to_xxpp, xxpp_to_xpxp
 from .simdevices import SimDevice
 
 
+def plot_mode(means, cov, n=100, x_range=None, y_range=None, ax=None, **kwargs):
+    """Plots the Wigner function of the specified mode.
+
+    Parameters
+    ----------
+    mode : int
+        The mode to plot.
+    n : int
+        The number of points per axis to plot. Default is 100.
+    x_range : tuple
+        The range of the x axis to plot as a tuple, (eg. (-5,5)). Defualt
+        attempts to find the range automatically.
+    y_range : tuple
+        The range of the y axis to plot as a tuple, (eg. (-5,5)). Defualt
+        attempts to find the range automatically.
+    ax : matplotlib.axes.Axes
+        The axis to plot on, by default it creates a new figure.
+    **kwargs :
+        Keyword arguments to pass to matplotlib.pyplot.contourf.
+    """
+    if ax is None:
+        fig, ax = plt.subplots()
+    if x_range is None:
+        x_range = (
+            means[0] - 5 * jnp.sqrt(cov[0, 0]),
+            means[0] + 5 * jnp.sqrt(cov[0, 0]),
+        )
+    if y_range is None:
+        y_range = (
+            means[1] - 5 * jnp.sqrt(cov[1, 1]),
+            means[1] + 5 * jnp.sqrt(cov[1, 1]),
+        )
+    x_max = jnp.max(jnp.abs(jnp.array(x_range)))
+    y_max = jnp.max(jnp.abs(jnp.array(y_range)))
+    r_max = jnp.max(jnp.array((x_max, y_max)))
+    x_range = (-r_max, r_max)
+    y_range = (-r_max, r_max)
+
+    x = jnp.linspace(x_range[0], x_range[1], n)
+    y = jnp.linspace(y_range[0], y_range[1], n)
+    X, Y = jnp.meshgrid(x, y)
+    pos = jnp.dstack((X, Y))
+    dist = multivariate_normal(means, cov)
+    pdf = dist.pdf(pos)
+    ax.contourf(X, Y, pdf, **kwargs)
+    ax.set_aspect("equal")
+    ax.set_xlabel("X")
+    ax.set_ylabel("P")
+    return ax
+
+
 class QuantumState(SimDevice):
     """Represents a quantum state in a quantum model as a covariance matrix.
     All quantum states are represented in the xpxp convention. TODO: switch to
@@ -17,9 +70,6 @@ class QuantumState(SimDevice):
 
     Parameters
     ----------
-    ports :
-        The ports to which the quantum state is connected. Each mode
-        corresponds in order to each port provided.
     means :
         The means of the X and P quadratures of the quantum state. For example,
         a coherent state :math:`\alpha = 3+4i` has means defined as
@@ -29,15 +79,22 @@ class QuantumState(SimDevice):
         The covariance matrix of the quantum state. For example, all coherent
         states has a covariance matrix of :math:`\begin{bmatrix} 1/4 & 0 \\ 0 &
         1/4 \\end{bmatrix}`. The shape of the matrix must be 2 * N x 2 * N.
+    ports :
+        The ports to which the quantum state is connected. Each mode
+        corresponds in order to each port provided.
     convention :
         The convention of the means and covariance matrix. Default is 'xpxp'.
     """
 
     def __init__(
-        self, means: jnp.ndarray, cov: jnp.ndarray, ports=None, convention="xpxp"
+        self,
+        means: jnp.ndarray,
+        cov: jnp.ndarray,
+        ports: Union[str, List[str]] = None,
+        convention: str = "xpxp",
     ) -> None:
         super().__init__(ports)
-        self.N = ports if type(ports) == int else len(ports)
+        self.N = len(ports)
         if means.shape != (2 * self.N,):
             raise ShapeMismatchError("The shape of the means must be 2 * N.")
         if cov.shape != (2 * self.N, 2 * self.N):
@@ -47,7 +104,6 @@ class QuantumState(SimDevice):
             )
         self.means = means
         self.cov = cov
-        self.ports = ports
         self.convention = convention
 
     def to_xpxp(self) -> None:
@@ -90,6 +146,25 @@ class QuantumState(SimDevice):
             cov = self.cov[jnp.ix_(inds, inds)]
         return means, cov
 
+    def _add_vacuums(self, n_vacuums):
+        """Adds vacuum states to the quantum state.
+
+        Parameters
+        ----------
+        n_vacuums :
+            The number of vacuum states to add.
+        """
+        N = self.N + n_vacuums
+        means = jnp.concatenate((self.means, jnp.zeros(2 * n_vacuums)))
+        cov = 0.25 * jnp.eye(2 * N)
+        cov = cov.at[: 2 * self.N, : 2 * self.N].set(self.cov)
+        self.means = means
+        self.cov = cov
+        self.N = N
+
+    def __repr__(self) -> str:
+        return super().__repr__() + f"\nMeans: {self.means}\nCov: \n{self.cov}"
+
     def plot_mode(self, mode, n=100, x_range=None, y_range=None, ax=None, **kwargs):
         """Plots the Wigner function of the specified mode.
 
@@ -111,55 +186,8 @@ class QuantumState(SimDevice):
             Keyword arguments to pass to matplotlib.pyplot.contourf.
         """
         means, cov = self.modes(mode)
-        if ax is None:
-            fig, ax = plt.subplots()
-        if x_range is None:
-            x_range = (
-                means[0] - 5 * jnp.sqrt(cov[0, 0]),
-                means[0] + 5 * jnp.sqrt(cov[0, 0]),
-            )
-        if y_range is None:
-            y_range = (
-                means[1] - 5 * jnp.sqrt(cov[1, 1]),
-                means[1] + 5 * jnp.sqrt(cov[1, 1]),
-            )
-        x_max = jnp.max(jnp.abs(x_range))
-        y_max = jnp.max(jnp.abs(y_range))
-        r_max = jnp.max((x_max, y_max))
-        x_range = (-r_max, r_max)
-        y_range = (-r_max, r_max)
 
-        x = jnp.linspace(x_range[0], x_range[1], n)
-        y = jnp.linspace(y_range[0], y_range[1], n)
-        X, Y = jnp.meshgrid(x, y)
-        pos = jnp.dstack((X, Y))
-        dist = multivariate_normal(means, cov)
-        pdf = dist.pdf(pos)
-        ax.contourf(X, Y, pdf, **kwargs)
-        ax.set_aspect("equal")
-        ax.set_xlabel("X")
-        ax.set_ylabel("P")
-        ax.set_title(f"Mode {mode}")
-        return ax
-
-    def _add_vacuums(self, n_vacuums):
-        """Adds vacuum states to the quantum state.
-
-        Parameters
-        ----------
-        n_vacuums :
-            The number of vacuum states to add.
-        """
-        N = self.N + n_vacuums
-        means = jnp.concatenate((self.means, jnp.zeros(2 * n_vacuums)))
-        cov = 0.25 * jnp.eye(2 * N)
-        cov[: 2 * self.N, : 2 * self.N] = self.cov
-        self.means = means
-        self.cov = cov
-        self.N = N
-
-    def __repr__(self) -> str:
-        return super().__repr__() + f"\nMeans: {self.means}\nCov: \n{self.cov}"
+        return plot_mode(means, cov, n, x_range, y_range, ax, **kwargs)
 
 
 def compose_qstate(*args: QuantumState) -> QuantumState:
@@ -183,13 +211,14 @@ def compose_qstate(*args: QuantumState) -> QuantumState:
     # for ckt in ckts:
     #     if ckt is not ckts[0]:
     #         raise ValueError("All quantum states must be attached to the same circuit.")
+
     means = jnp.concatenate(mean_list)
     covs = jnp.zeros((2 * N, 2 * N), dtype=float)
     left = 0
     # TODO: Currently puts states into xpxp, but should change to xxpp
     for qstate in args:
         rowcol = qstate.N * 2 + left
-        covs[left:rowcol, left:rowcol] = qstate.cov
+        covs = covs.at[left:rowcol, left:rowcol].set(qstate.cov)
         left = rowcol
     return QuantumState(means, covs, port_list)
 
@@ -205,7 +234,7 @@ class CoherentState(QuantumState):
         The port to which the coherent state is connected.
     """
 
-    def __init__(self, port, alpha: complex) -> None:
+    def __init__(self, port: str, alpha: complex) -> None:
         self.alpha = alpha
         self.N = 1
         means = jnp.array([alpha.real, alpha.imag])
@@ -229,7 +258,7 @@ class SqueezedState(QuantumState):
         The complex displacement of the squeezed state. Default is 0.
     """
 
-    def __init__(self, port, r: float, phi: float, alpha: complex = 0) -> None:
+    def __init__(self, port: str, r: float, phi: float, alpha: complex = 0) -> None:
         self.r = r
         self.phi = phi
         self.N = 1
@@ -264,7 +293,9 @@ class TwoModeSqueezed(QuantumState):
         The port to which the second mode is connected.
     """
 
-    def __init__(self, r: float, n_a: float, n_b: float, port_a, port_b) -> None:
+    def __init__(
+        self, r: float, n_a: float, n_b: float, port_a: str, port_b: str
+    ) -> None:
         self.r = r
         self.n_a = n_a
         self.n_b = n_b

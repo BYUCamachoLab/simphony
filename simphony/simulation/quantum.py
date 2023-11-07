@@ -1,13 +1,15 @@
 """Module for quantum simulation."""
 
 from dataclasses import dataclass
+from functools import partial
 
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+from sax.saxtypes import Model
+from sax.utils import get_ports
 
-from simphony.circuit import Circuit
-
-from .quantum_states import QuantumState
+from ..utils import dict_to_matrix
+from .quantum_states import QuantumState, plot_mode
 from .simulation import Simulation, SimulationResult
 
 
@@ -28,7 +30,7 @@ class QuantumResult(SimulationResult):
 def plot_quantum_result(
     result: QuantumResult,
     modes: list = None,
-    freq_ind: int = 0,
+    wl_ind: int = 0,
     include_loss_modes=False,
 ):
     """Plot the means and covariance matrix of the quantum result.
@@ -39,8 +41,8 @@ def plot_quantum_result(
         The quantum simulation result.
     modes : list, optional
         The modes to plot. Defaults to all modes.
-    freq_ind : int, optional
-        The frequency index to plot. Defaults to 0.
+    wl_ind : int, optional
+        The wavelength index to plot. Defaults to 0.
     include_loss_modes : bool, optional
         Whether to include the loss modes in the plot. Defaults to False.
     """
@@ -55,33 +57,56 @@ def plot_quantum_result(
     if n_rows * n_cols < n_modes:
         n_rows += 1
         n_cols += 1
-    print(n_rows, n_cols, n_modes)
     fig, axs = plt.subplots(n_rows, n_cols, figsize=(10, 10))
     axs = axs.flatten()
     # convert quantum result into quantum state
-    means = result.means[freq_ind]
-    cov = result.cov[freq_ind]
-    qstate = QuantumState(means, cov, result.n_ports * 2, "xxpp")
+    means = result.means[wl_ind]
+    cov = result.cov[wl_ind]
     for i, mode in enumerate(modes):
-        # plot the means
+        mode = jnp.array([mode])
+        inds = jnp.concatenate((mode, (mode + 1)))
+        mu = means[inds]
+        c = cov[jnp.ix_(inds, inds)]
         ax = axs[i]
-        qstate.plot_mode(mode, x_range=(-6, 6), y_range=(-6, 6), ax=ax)
+        plot_mode(mu, c, x_range=(-6, 6), y_range=(-6, 6), ax=ax)
+        ax.set_title(f"Mode {mode}")
     return axs
 
 
 class QuantumSim(Simulation):
     """Quantum simulation."""
 
-    def __init__(self, ckt: Circuit, wl: jnp.ndarray, input: QuantumState) -> None:
-        super().__init__(ckt, wl)
+    def __init__(self, ckt: Model, **kwargs) -> None:
+        """Initialize the quantum simulation.
 
-        # ensure that all ports of the input are connected to unique ports on the circuit
-        if len(input.ports) != len(set(input.ports)):
-            raise ValueError("Input ports are not unique")
-        for port in input.ports:
-            if port not in self.ckt._oports:
-                raise ValueError("Input port not found in circuit")
-        self.input = input
+        Parameters
+        ----------
+        ckt : sax.saxtypes.Model
+            The circuit to simulate.
+        wl : ArrayLike
+            The array of wavelengths to simulate (in microns).
+        **params
+            Any other parameters to pass to the circuit.
+
+        Examples
+        --------
+        >>> sim = QuantumSim(ckt=mzi, wl=wl, top={"length": 150.0}, bottom={"length": 50.0})
+        """
+
+        ckt = partial(ckt, **kwargs)
+        if "wl" not in kwargs:
+            raise ValueError("Must specify 'wl' (wavelengths to simulate).")
+        super().__init__(ckt, kwargs["wl"])
+
+    def add_qstate(self, qstate: QuantumState) -> None:
+        """Add a quantum state to the simulation.
+
+        Parameters
+        ----------
+        qstate : QuantumState
+            The quantum state to add.
+        """
+        self.input = qstate
 
     @staticmethod
     def to_unitary(s_params):
@@ -104,27 +129,26 @@ class QuantumSim(Simulation):
         new_n_ports = n_ports * 2
         unitary = jnp.zeros((n_freqs, new_n_ports, new_n_ports), dtype=complex)
         for f in range(n_freqs):
-            unitary[f, :n_ports, :n_ports] = s_params[f]
-            unitary[f, n_ports:, n_ports:] = s_params[f]
-            # print(unitary[f, :n_ports, 0])
+            unitary = unitary.at[f, :n_ports, :n_ports].set(s_params[f])
+            unitary = unitary.at[f, n_ports:, n_ports:].set(s_params[f])
             for i in range(n_ports):
                 val = jnp.sqrt(
                     1 - unitary[f, :n_ports, i].dot(unitary[f, :n_ports, i].conj())
                 )
-                # print(val, i)
-                unitary[f, n_ports + i, i] = val
-                unitary[f, i, n_ports + i] = -val
+                unitary = unitary.at[f, n_ports + i, i].set(val)
+                unitary = unitary.at[f, i, n_ports + i].set(-val)
 
         return unitary
 
     def run(self) -> QuantumResult:
         """Run the simulation."""
-        n_ports = len(self.ckt._oports)
+        ports = get_ports(self.ckt())
+        n_ports = len(ports)
         # get the unitary s-parameters of the circuit
-        s_params = self.ckt.s_params(self.wl)
+        s_params = dict_to_matrix(self.ckt())
         unitary = self.to_unitary(s_params)
         # get an array of the indices of the input ports
-        input_indices = [self.ckt._oports.index(port) for port in self.input.ports]
+        input_indices = [ports.index(port) for port in self.input.ports]
         # create vacuum ports for each extra mode in the unitary matrix
         n_modes = unitary.shape[1]
         n_vacuum = n_modes - len(input_indices)
@@ -141,10 +165,10 @@ class QuantumSim(Simulation):
             transform = jnp.zeros((n_modes * 2, n_modes * 2))
             n = n_modes
 
-            transform[:n, :n] = s_wl.real
-            transform[:n, n:] = -s_wl.imag
-            transform[n:, :n] = s_wl.imag
-            transform[n:, n:] = s_wl.real
+            transform = transform.at[:n, :n].set(s_wl.real)
+            transform = transform.at[:n, n:].set(-s_wl.imag)
+            transform = transform.at[n:, :n].set(s_wl.imag)
+            transform = transform.at[n:, n:].set(s_wl.real)
 
             output_means = transform @ input_means.T
             output_cov = transform @ input_cov @ transform.T
