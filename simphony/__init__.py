@@ -26,13 +26,11 @@
 simphony
 ========
 
-A Simulator for Photonic circuits
+A simulator and model library for classical and quantum photonic circuits.
 """
 
 import platform
 import sys
-import warnings
-from types import SimpleNamespace
 
 # from .models_old import Model  # noqa: F401
 
@@ -49,18 +47,3 @@ __project_url__ = "https://github.com/BYUCamachoLab/simphony"
 __forum_url__ = "https://github.com/BYUCamachoLab/simphony/issues"
 __trouble_url__ = __project_url__ + "/wiki/Troubleshooting-Guide"
 __website_url__ = "https://camacholab.byu.edu/"
-
-
-try:
-    import jax
-
-    JAX_AVAILABLE = True
-except ImportError:
-    pass
-
-    def jit(func, *args, **kwargs):
-        warnings.warn("Jax not available, cannot compile using 'jit'!")
-        return func
-
-    jax = SimpleNamespace(jit=jit)
-    JAX_AVAILABLE = False

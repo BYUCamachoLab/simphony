@@ -1,11 +1,11 @@
 # Book settings
-title: ""
+title: simphony
 author: Sequoia Ploeg, et al.
 copyright: "2019-2023 Simphony Project Contributors"
 logo: simphony_logo.png
 
 exclude_patterns: [_build, Thumbs.db, .DS_Store, "**.ipynb_checkpoints"]
-only_build_toc_files: true
+only_build_toc_files: false
 
 # Force re-execution of notebooks on each build.
 # See https://jupyterbook.org/content/execute.html
@@ -61,35 +61,32 @@ html:
 sphinx:
   extra_extensions:
     - 'sphinx.ext.autodoc'
+    # - 'sphinx.ext.coverage'
+    # - 'sphinx.ext.napoleon'
     - 'sphinx.ext.autodoc.typehints'
     - 'sphinx.ext.autosummary'
-    - 'sphinx.ext.intersphinx'
+    # - 'sphinx.ext.intersphinx'
+    - 'sphinx.ext.viewcode'
     - 'sphinx_design'
     - 'numpydoc'
-    - 'matplotlib.sphinxext.mathmpl'
-    - 'matplotlib.sphinxext.plot_directive'
+    # - 'matplotlib.sphinxext.mathmpl'
+    # - 'matplotlib.sphinxext.plot_directive'
   config:
     autosummary_generate: true
     autodoc_typehints: 'signature'
-    autodoc_mock_imports: ["SiPANN", "parsimonious"]
+    autodoc_mock_imports: []
     autodoc_default_options: {"show-inheritance": True}
-    # autoclass_content: "class
+    # autodoc_member_order: 'bysource'
+    # autoclass_content: "class"
     autodoc_inherit_docstrings: true
     html_static_path: ['_static']
     # html_css_files: []
-    templates_path: ['_templates']
-    exclude_patterns: ['_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints']
-    mathjax_path: https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
-  intersphinx_mapping:
-    ebp:
-      - "https://executablebooks.org/en/latest/"
-      - null
-    sphinx:
-      - "https://www.sphinx-doc.org/en/master"
-      - null
-    sipann:
-      - "https://sipann.readthedocs.io/en/latest/"
-      - null
+    # templates_path: ['_templates']
+    # mathjax_path: https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  # intersphinx_mapping:
+  #   sipann:
+  #     - "https://sipann.readthedocs.io/en/latest/"
+  #     - null
   language: en
 
 # For speedup, decide which plot_formats to build based on build targets:

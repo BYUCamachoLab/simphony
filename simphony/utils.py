@@ -9,6 +9,9 @@ import inspect
 import re
 
 import jax.numpy as jnp
+import sax
+from jax import Array
+from jax.typing import ArrayLike
 from sax.utils import get_ports
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import interp1d
@@ -27,7 +30,7 @@ MATH_SUFFIXES = {
 }
 
 
-def rect(r, phi) -> jnp.ndarray:
+def rect(r: ArrayLike, phi: ArrayLike) -> Array:
     """Convert from polar to rectangular coordinates element-wise.
 
     Parameters
@@ -45,7 +48,7 @@ def rect(r, phi) -> jnp.ndarray:
     return r * jnp.exp(1j * phi)
 
 
-def polar(x) -> jnp.ndarray:
+def polar(x: ArrayLike) -> Array:
     """Convert from rectangular to polar coordinates element-wise.
 
     Parameters
@@ -116,7 +119,7 @@ def mul_polar(c1, c2):
     return (r1 * r2, phi1 + phi2)
 
 
-def mat_mul_polar(array1: jnp.array, array2: jnp.array) -> jnp.array:
+def mat_mul_polar(array1: ArrayLike, array2: ArrayLike) -> Array:
     """Multiplies two polar matrixes together.
 
     Parameters
@@ -160,7 +163,7 @@ def mat_mul_polar(array1: jnp.array, array2: jnp.array) -> jnp.array:
     return array1 * array2
 
 
-def mat_add_polar(array1: jnp.array, array2: jnp.array) -> jnp.array:
+def mat_add_polar(array1: ArrayLike, array2: ArrayLike) -> Array:
     """Adds two polar matrixes together.
 
     Parameters
@@ -201,7 +204,7 @@ def mat_add_polar(array1: jnp.array, array2: jnp.array) -> jnp.array:
     return array1 + array2
 
 
-def str2float(num):
+def str2float(num: str) -> float:
     """Converts a number represented as a string to a float. Can include
     suffixes (such as 'u' for micro, 'k' for kilo, etc.).
 
@@ -260,7 +263,7 @@ def str2float(num):
         raise ValueError(f"Suffix {str(e)} in '{matches[0]}' not recognized.")
 
 
-def freq2wl(freq):
+def freq2wl(freq: ArrayLike) -> Array:
     """Convenience function for converting from frequency to wavelength.
 
     Parameters
@@ -276,7 +279,7 @@ def freq2wl(freq):
     return SPEED_OF_LIGHT / freq
 
 
-def wl2freq(wl):
+def wl2freq(wl: ArrayLike) -> Array:
     """Convenience function for converting from wavelength to frequency.
 
     Parameters
@@ -292,7 +295,7 @@ def wl2freq(wl):
     return SPEED_OF_LIGHT / wl
 
 
-def wlum2freq(wl):
+def wlum2freq(wl: ArrayLike) -> Array:
     """Convenience function for converting from wavelength in microns to
     frequency.
 
@@ -309,21 +312,23 @@ def wlum2freq(wl):
     return wl2freq(wl * 1e-6)
 
 
-def interpolate(resampled, sampled, s_parameters):
+def interpolate(
+    resampled: ArrayLike, sampled: ArrayLike, s_parameters: ArrayLike
+) -> Array:
     """Returns the result of a cubic interpolation for a given frequency range.
 
     Parameters
     ----------
-    output_freq : jnp.ndarray
+    output_freq : ArrayLike
         The desired frequency range for a given input to be interpolated to.
-    input_freq : jnp.ndarray
+    input_freq : ArrayLike
         A frequency array, indexed matching the given s_parameters.
-    s_parameters : jnp.array
+    s_parameters : ArrayLike
         S-parameters for each frequency given in input_freq.
 
     Returns
     -------
-    result : jnp.array
+    result : Array
         The values of the interpolated function (fitted to the input
         s-parameters) evaluated at the ``output_freq`` frequencies.
     """
@@ -331,18 +336,18 @@ def interpolate(resampled, sampled, s_parameters):
     return func(resampled)
 
 
-def xxpp_to_xpxp(xxpp):
+def xxpp_to_xpxp(xxpp: ArrayLike) -> Array:
     """Converts a NxN matrix or N shaped vector in xxpp convention to xpxp
     convention.
 
     Parameters
     ----------
-    xxpp : jnp.array
+    xxpp : ArrayLike
         A NxN matrix or array of size N in xxpp format.
 
     Returns
     -------
-    xpxp : jnp.array
+    xpxp : Array
         A NxN matrix or array of size N in xpxp format.
     """
     n = jnp.shape(xxpp)[0]
@@ -352,18 +357,18 @@ def xxpp_to_xpxp(xxpp):
     return xxpp[ind][:, ind]
 
 
-def xpxp_to_xxpp(xpxp):
+def xpxp_to_xxpp(xpxp: ArrayLike) -> Array:
     """Converts a NxN matrix or N shaped vector in xpxp convention to xxpp
     convention.
 
     Parameters
     ----------
-    xpxp : jnp.array
+    xpxp : ArrayLike
         A NxN matrix or array of size N in xpxp format.
 
     Returns
     -------
-    xxpp : jnp.array
+    xxpp : Array
         A NxN matrix or array of size N in xxpp format.
     """
 
@@ -374,43 +379,44 @@ def xpxp_to_xxpp(xpxp):
     return xpxp[:, ind][ind]
 
 
-def dict_to_matrix(dictionary):
+def dict_to_matrix(sdict: sax.SDict) -> Array:
     """Converts a dictionary of s-parameters to a matrix of s-parameters.
 
     Parameters
     ----------
-    dict : dict
-        A dictionary of s-parameters.
+    sdict : dict
+        A SAX dictionary of s-parameters.
 
     Returns
     -------
-    matrix : jnp.array
-        A matrix of s-parameters.
+    smat : Array
+        A matrix of s-parameters indexed according to the order in
+        ``sax.utils.get_ports``.
     """
-
-    ports = get_ports(dictionary)
-    # declare a jnp matrix of zeros:
-    arr = list(dictionary.values())[0]
+    ports = get_ports(sdict)
+    arr = list(sdict.values())[0]
     arr = jnp.asarray(arr).reshape(-1)
+    smat = jnp.zeros((len(arr), len(ports), len(ports)), dtype=complex)
 
-    matrix = jnp.zeros((len(arr), int(len(ports)), int(len(ports))), dtype=complex)
-    for k, v in dictionary.items():
-        # get index of first port
-        i = ports.index(k[0])
-        # get index of the second port
-        j = ports.index(k[1])
-        # set the value in the matrix at the i,j index to the value
-        matrix = matrix.at[:, i, j].set(v)
-    return matrix
+    for k, v in sdict.items():
+        i, j = ports.index(k[0]), ports.index(k[1])
+        smat = smat.at[:, i, j].set(v)
+
+    return smat
 
 
-def validate_model(model):
+def validate_model(model: sax.saxtypes.Model) -> bool:
     """Validates a model.
 
     Parameters
     ----------
     model : Model
         The model to validate.
+
+    Returns
+    -------
+    bool
+        True, if the model is valid.
 
     Raises
     ------

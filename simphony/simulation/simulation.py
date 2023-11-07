@@ -6,7 +6,15 @@ from sax.saxtypes import Model
 
 
 class Simulation:
-    """Base class for simphony simulations."""
+    """Base class for simphony simulations.
+
+    Parameters
+    ----------
+    ckt : Model
+        A callable SAX model.
+    wl : ArrayLike
+        The wavelengths at which to simulate the circuit.
+    """
 
     def __init__(self, ckt: Model, wl: ArrayLike) -> None:
         self.ckt = ckt
@@ -18,4 +26,4 @@ class Simulation:
 
 
 class SimulationResult:
-    pass
+    """Base class for simphony simulation results."""

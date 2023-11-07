@@ -208,7 +208,7 @@ def save_sparams(
     interconnect.
 
     Parameters
-    -----------
+    ----------
     sparams : ArrayLike
         Numpy array of size *(N, d, d)* where *N* is the number of frequency points and *d* the number of ports.
     wavelength : ArrayLike

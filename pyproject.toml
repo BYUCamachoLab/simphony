@@ -69,11 +69,9 @@ dev = [
   "pytest",
 ]
 doc = [
-  "sphinx-book-theme ~= 0.3.3",
-  "jupyter-book ~= 0.13.2",
+  "jupyter-book ~= 0.15.1",
   "matplotlib",
   "numpydoc",
-  # "sphinx-tippy",
 ]
 test = [
   "pytest", 

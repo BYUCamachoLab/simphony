@@ -11,9 +11,19 @@ def coupler(
 
     Ports are arranged as follows:
 
-        o2 ---\        /--- o3
-               ========
-        o0 ---/        \--- o1
+        | o2 ---\        /--- o3
+        |        ========
+        | o0 ---/        \--- o1
+
+    Parameters
+    ----------
+    coupling : float
+        Power coupling coefficient (default 0.5).
+
+    Returns
+    -------
+    sdict : sax.SDict
+        A dictionary of scattering matrices.
     """
     kappa = coupling**0.5
     tau = (1 - coupling) ** 0.5
@@ -41,13 +51,20 @@ def waveguide(
 
     Port names are "o0" and "o1".
 
-    Args:
-        wl: Wavelength in microns.
-        wl0: Center wavelength in microns.
-        neff: Effective index.
-        ng: Group index.
-        length: Length in microns.
-        loss: Loss in dB/cm.
+    Parameters
+    ----------
+    wl : ArrayLike or float
+        Wavelength in microns (default 1.55).
+    wl0 : float
+        Center wavelength in microns (default 1.55).
+    neff : float
+        Effective index (default 2.34).
+    ng : float
+        Group index (default 3.4).
+    length : float
+        Length in microns (default 10.0).
+    loss : float
+        Loss in dB/cm (default 0.0).
 
     Returns:
         A dictionary of scattering matrices.

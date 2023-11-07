@@ -182,7 +182,7 @@ def half_ring(
     wl: float | ArrayLike = 1.55,
     width: float = 500.0,
     thickness: float = 220.0,
-    radius: float = 10000.0,
+    radius: float = 10.0,
     gap: float = 100.0,
     sw_angle: float = 90.0,
 ) -> sax.SDict:
@@ -204,7 +204,7 @@ def half_ring(
     thickness : float
         Thickness of waveguides in nanometers (valid from 180 to 240).
     radius : float
-        Distance from center of ring to middle of waveguide, in nanometers.
+        Distance from center of ring to middle of waveguide, in microns.
     gap : float
         Minimum distance from ring waveguide edge to straight waveguide edge,
         in nanometers (must be greater than 100).
@@ -225,7 +225,7 @@ def half_ring(
     if sw_angle < 80 or sw_angle > 90:
         raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    model = scee.HalfRing(width, thickness, radius, gap, sw_angle)
+    model = scee.HalfRing(width, thickness, radius * 1000, gap, sw_angle)
     sdict = _create_sdict_from_model(model, wl)
     return sdict
 

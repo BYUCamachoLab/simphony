@@ -4,12 +4,14 @@
 simphony
 ========
 
+.. currentmodule:: simphony
+
 .. autosummary::
-   :caption: API Reference
    :toctree: ./api/
    :recursive:
 
-   simphony.exceptions
-   simphony.plugins
-   simphony.simulation
-   simphony.utils
+   libraries
+   plugins
+   simulation
+   exceptions
+   utils

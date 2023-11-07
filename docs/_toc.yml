@@ -11,10 +11,15 @@ parts:
   - file: tutorials/filters
   # - file: tutorials/monte_carlo
   # - file: tutorials/layout_aware
+- caption: Libraries
+  chapters:
+  - file: libraries/ideal
+  - file: libraries/siepic
+  - file: libraries/sipann
 - caption: Reference
   chapters:
   - file: api_reference
-  - file: model_libraries
+  # - file: model_libraries
 - caption: Development
   chapters:
   - file: dev/contributing
