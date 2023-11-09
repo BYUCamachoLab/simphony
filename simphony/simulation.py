@@ -5,6 +5,13 @@ from jax.typing import ArrayLike
 from sax.saxtypes import Model
 
 
+class SimDevice:
+    """Base class for all source or measure devices."""
+
+    def __init__(self, ports: list) -> None:
+        self.ports = ports
+
+
 class Simulation:
     """Base class for simphony simulations.
 
