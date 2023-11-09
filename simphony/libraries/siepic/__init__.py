@@ -1,7 +1,9 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
-"""This package contains parameterized models of PIC components from the SiEPIC
+"""SiEPIC models compatible with SAX circuits.
+
+This package contains parameterized models of PIC components from the SiEPIC
 Electron Beam Lithography Process Development Kit (PDK) from the University of
 British Columbia (UBC), which is licensed under the terms of the MIT License.
 

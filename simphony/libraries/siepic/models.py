@@ -1,4 +1,11 @@
+# Copyright © Simphony Project Contributors
+# Licensed under the terms of the MIT License
+# (see simphony/__init__.py for details)
+"""SiEPIC models compatible with SAX."""
+
+import importlib.resources
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Literal, Union
 
@@ -11,9 +18,50 @@ from jax.typing import ArrayLike
 from scipy.constants import c as SPEED_OF_LIGHT
 from tabulate import tabulate
 
-from simphony.libraries.siepic.utils import _load_txt_cached, _resolve_source_filepath
+import simphony.libraries
 from simphony.plugins.lumerical import load_sparams
 from simphony.utils import freq2wl, wl2freq
+
+SOURCE_DATA_PATH = "siepic/source_data"
+
+
+def _resolve_source_filepath(filename: str) -> Path:
+    """Gets the absolute path to the source data files relative to ``source_data/``.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file to be found.
+
+    Returns
+    -------
+    filepath : str
+        The absolute path to the file.
+    """
+    filepath = Path(SOURCE_DATA_PATH) / filename
+    try:  # python >= 3.9
+        return importlib.resources.files(simphony.libraries) / filepath
+    except AttributeError:  # fall back to method deprecated in 3.11.
+        ctx = importlib.resources.path(simphony, "libraries")
+        with ctx as path:
+            return path / filepath
+
+
+@lru_cache()
+def _load_txt_cached(path: Union[Path, str]) -> np.ndarray:
+    """Loads a text file from the source_data directory and caches it.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the file to be loaded.
+
+    Returns
+    -------
+    content : str
+        The contents of the file.
+    """
+    return np.loadtxt(path)
 
 
 def _create_sdict_from_df(wl: Union[float, ArrayLike], df: pd.DataFrame) -> sax.SDict:
