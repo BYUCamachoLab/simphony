@@ -71,7 +71,7 @@ def gap_func_symmetric(
     at every horizontal point from left to right. The derivative of the gap
     function is also required.
 
-    Ports are numbered as:
+    Ports are numbered as::
 
         |       2---\      /---4       |
         |            ------            |
@@ -129,12 +129,12 @@ def gap_func_antisymmetric(
     at any horizontal point, and arc lengths from each port to the coupling
     point, describe the shape of the device.
 
-    Ports are numbered as:
+    Ports are numbered as::
 
-    |       2---\      /---4       |
-    |            ------            |
-    |            ------            |
-    |       1---/      \---3       |
+        |       2---\      /---4       |
+        |            ------            |
+        |            ------            |
+        |       1---/      \---3       |
 
     Parameters
     ----------
@@ -178,7 +178,7 @@ def gap_func_antisymmetric(
 
 
 def half_ring(
-    wl: float | ArrayLike = 1.55,
+    wl: Union[float, ArrayLike] = 1.55,
     width: float = 500.0,
     thickness: float = 220.0,
     radius: float = 10.0,
@@ -350,7 +350,7 @@ def double_half_ring(
 
     Described by a radius and a gap between the two rings.
 
-    Ports are numbered as:
+    Ports are numbered as::
 
         |         2 |     | 4          |
         |            \   /             |
@@ -406,7 +406,7 @@ def angled_half_ring(
     Described by a radius, gap, and angle (theta) that the
     "straight" waveguide is curved by.
 
-    Ports are numbered as:
+    Ports are numbered as::
 
         |      2  \        / 4       |
         |          \      /          |
@@ -564,12 +564,12 @@ def premade_coupler(
     and are also returned for the users info. These have all been
     designed with waveguide geometry 500nm x 220nm.
 
-    Ports are numbered as:
+    Ports are numbered as::
 
-    |       2---\      /---4       |
-    |            ------            |
-    |            ------            |
-    |       1---/      \---3       |
+        |       2---\      /---4       |
+        |            ------            |
+        |            ------            |
+        |       1---/      \---3       |
 
     Parameters
     ----------
