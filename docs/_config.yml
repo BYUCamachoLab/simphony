@@ -1,11 +1,13 @@
 # Book settings
+# Learn more at https://jupyterbook.org/customize/config.html
+
 title: simphony
 author: Sequoia Ploeg, et al.
 copyright: "2019-2023 Simphony Project Contributors"
 logo: simphony_logo.png
 
 exclude_patterns: [_build, Thumbs.db, .DS_Store, "**.ipynb_checkpoints"]
-only_build_toc_files: false
+# only_build_toc_files: false
 
 # Force re-execution of notebooks on each build.
 # See https://jupyterbook.org/content/execute.html
@@ -16,13 +18,13 @@ parse:
   myst_enable_extensions:
     - amsmath
     - colon_fence
-    # - deflist
+    - deflist
     - dollarmath
-    # - html_admonition
-    # - html_image
+    - html_admonition
+    - html_image
     - linkify
-    # - replacements
-    # - smartquotes
+    - replacements
+    - smartquotes
     - substitution
     - tasklist
   myst_url_schemes: [mailto, http, https]
@@ -62,9 +64,7 @@ sphinx:
   extra_extensions:
     - 'sphinx.ext.autodoc'
     # - 'sphinx.ext.coverage'
-    # - 'sphinx.ext.napoleon'
     - 'sphinx.ext.autodoc.typehints'
-    - 'sphinx.ext.autosummary'
     # - 'sphinx.ext.intersphinx'
     - 'sphinx.ext.viewcode'
     - 'sphinx_design'
@@ -72,12 +72,11 @@ sphinx:
     # - 'matplotlib.sphinxext.mathmpl'
     # - 'matplotlib.sphinxext.plot_directive'
   config:
-    autosummary_generate: true
     autodoc_typehints: 'signature'
-    autodoc_mock_imports: []
+    autodoc_mock_imports: ["SiPANN"]
     autodoc_default_options: {"show-inheritance": True}
-    # autodoc_member_order: 'bysource'
-    # autoclass_content: "class"
+    autodoc_member_order: 'bysource'
+    autoclass_content: "class"
     autodoc_inherit_docstrings: true
     html_static_path: ['_static']
     # html_css_files: []
