@@ -27,8 +27,8 @@ precommit:
 	pre-commit install
 	pre-commit run --all-files
 
+# rm -r docs/api || true
 doc:
-	rm -r docs/api || true
 	jb clean docs && jb build docs
 
 serve:
