@@ -13,13 +13,18 @@ parts:
   # - file: tutorials/layout_aware
 - caption: Libraries
   chapters:
-  - file: libraries/ideal
-  - file: libraries/siepic
-  - file: libraries/sipann
+  - file: api/ideal
+  - file: api/siepic
+  - file: api/sipann
 - caption: Reference
   chapters:
-  - file: api_reference
-  # - file: model_libraries
+  - file: api/index
+    sections:
+    - file: api/classical
+    - file: api/exceptions
+    - file: api/quantum
+    - file: api/simulation
+    - file: api/utils
 - caption: Development
   chapters:
   - file: dev/contributing
