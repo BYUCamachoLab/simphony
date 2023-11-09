@@ -16,11 +16,11 @@ def coupler(
 ) -> sax.SDict:
     """A simple ideal coupler model.
 
-    Ports are arranged as follows:
+    Ports are arranged as follows::
 
-        | o2 ---\        /--- o3
-        |        ========
-        | o0 ---/        \--- o1
+        o2 ---\        /--- o3
+               ========
+        o0 ---/        \--- o1
 
     Parameters
     ----------
