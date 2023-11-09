@@ -53,55 +53,55 @@ class TestGapFuncSymmetric:
 #         s = dc.s_params(std_wl_um)
 
 
-class TestHalfRing:
+class Testhalf_ring:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            sipann.HalfRing(width=350, thickness=160, radius=5000, gap=50)
+            sipann.half_ring(width=350, thickness=160, radius=5000, gap=50)
 
     def test_instantiable(self):
-        dev = sipann.HalfRing(width=500, thickness=220, radius=5000, gap=100)
+        dev = sipann.half_ring(width=500, thickness=220, radius=5000, gap=100)
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.HalfRing(width=500, thickness=220, radius=5000, gap=100)
+        dev = sipann.half_ring(width=500, thickness=220, radius=5000, gap=100)
         s = dev.s_params(std_wl_um)
 
 
-class TestHalfRacetrack:
+class TestHalfracetrack:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            sipann.HalfRacetrack(
+            sipann.Halfracetrack(
                 width=625, thickness=245, radius=5000, gap=100, length=1000
             )
 
     def test_instantiable(self):
-        dev = sipann.HalfRacetrack(
+        dev = sipann.Halfracetrack(
             width=500, thickness=220, radius=5000, gap=100, length=1000
         )
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.HalfRacetrack(
+        dev = sipann.Halfracetrack(
             width=500, thickness=220, radius=5000, gap=100, length=1000
         )
         s = dev.s_params(std_wl_um)
 
 
-class TestStraightCoupler:
+class Teststraight_coupler:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            sipann.StraightCoupler(width=400, thickness=160, gap=50, length=1000)
+            sipann.straight_coupler(width=400, thickness=160, gap=50, length=1000)
 
     def test_instantiable(self):
-        dev = sipann.StraightCoupler(width=500, thickness=220, gap=150, length=1000)
+        dev = sipann.straight_coupler(width=500, thickness=220, gap=150, length=1000)
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.StraightCoupler(width=500, thickness=220, gap=180, length=1000)
+        dev = sipann.straight_coupler(width=500, thickness=220, gap=180, length=1000)
         s = dev.s_params(std_wl_um)
 
 
-class TestStandardCoupler:
+class Teststandard_coupler:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            sipann.StandardCoupler(
+            sipann.standard_coupler(
                 width=399,
                 thickness=240.1,
                 gap=180,
@@ -111,7 +111,7 @@ class TestStandardCoupler:
             )
 
     def test_instantiable(self):
-        dev = sipann.StandardCoupler(
+        dev = sipann.standard_coupler(
             width=500,
             thickness=220,
             gap=180,
@@ -121,7 +121,7 @@ class TestStandardCoupler:
         )
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.StandardCoupler(
+        dev = sipann.standard_coupler(
             width=500,
             thickness=220,
             gap=180,
@@ -132,63 +132,63 @@ class TestStandardCoupler:
         s = dev.s_params(std_wl_um)
 
 
-class TestDoubleHalfRing:
+class Testdouble_half_ring:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            sipann.DoubleHalfRing(width=380, thickness=250, radius=5000, gap=100)
+            sipann.double_half_ring(width=380, thickness=250, radius=5000, gap=100)
 
     def test_instantiable(self):
-        dev = sipann.DoubleHalfRing(width=500, thickness=220, radius=5000, gap=100)
+        dev = sipann.double_half_ring(width=500, thickness=220, radius=5000, gap=100)
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.DoubleHalfRing(width=500, thickness=220, radius=5000, gap=100)
+        dev = sipann.double_half_ring(width=500, thickness=220, radius=5000, gap=100)
         s = dev.s_params(std_wl_um)
 
 
-class TestAngledHalfRing:
+class Testangled_half_ring:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            sipann.AngledHalfRing(
+            sipann.angled_half_ring(
                 width=375, thickness=175, radius=5000, gap=150, theta=0.5
             )
 
     def test_instantiable(self):
-        dev = sipann.AngledHalfRing(
+        dev = sipann.angled_half_ring(
             width=500, thickness=220, radius=5000, gap=150, theta=0.5
         )
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.AngledHalfRing(
+        dev = sipann.angled_half_ring(
             width=500, thickness=220, radius=5000, gap=150, theta=0.5
         )
         s = dev.s_params(std_wl_um)
 
 
-class TestWaveguide:
+class Testwaveguide:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            sipann.Waveguide(width=350, thickness=250, length=10000)
+            sipann.waveguide(width=350, thickness=250, length=10000)
 
     def test_instantiable(self):
-        dev = sipann.Waveguide(width=500, thickness=220, length=10000)
+        dev = sipann.waveguide(width=500, thickness=220, length=10000)
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.Waveguide(width=500, thickness=220, length=10000)
+        dev = sipann.waveguide(width=500, thickness=220, length=10000)
         s = dev.s_params(std_wl_um)
 
 
-class TestRacetrack:
+class Testracetrack:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            sipann.Racetrack(width=625, thickness=175, radius=5000, gap=80, length=5000)
+            sipann.racetrack(width=625, thickness=175, radius=5000, gap=80, length=5000)
 
     def test_instantiable(self):
-        dev = sipann.Racetrack(
+        dev = sipann.racetrack(
             width=500, thickness=220, radius=5000, gap=150, length=2000
         )
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.Racetrack(
+        dev = sipann.racetrack(
             width=500, thickness=220, radius=5000, gap=150, length=2000
         )
         s = dev.s_params(std_wl_um)
