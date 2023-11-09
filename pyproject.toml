@@ -70,8 +70,8 @@ dev = [
 ]
 doc = [
   "jupyter-book ~= 0.15.1",
-  "matplotlib",
-  "numpydoc",
+  "matplotlib >= 3.7.1",
+  "numpydoc == 1.6.0",
 ]
 test = [
   "pytest", 
