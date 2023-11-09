@@ -11,6 +11,8 @@ from jax.typing import ArrayLike
 def coupler(
     *,
     coupling: float = 0.5,
+    loss: float = 0.0,
+    phi: float = jnp.pi / 2,
 ) -> sax.SDict:
     """A simple ideal coupler model.
 
@@ -24,19 +26,24 @@ def coupler(
     ----------
     coupling : float
         Power coupling coefficient (default 0.5).
+    loss : float
+        Loss in dB (default 0.0). Positive values indicate loss.
+    phi : float
+        Phase shift of the reflected signal (default jnp.pi/2).
 
     Returns
     -------
     sdict : sax.SDict
         A dictionary of scattering matrices.
     """
-    kappa = coupling**0.5
-    tau = (1 - coupling) ** 0.5
+
+    kappa = coupling**0.5 * 10 ** (-loss / 20) * jnp.exp(1j * phi)
+    tau = (1 - coupling) ** 0.5 * 10 ** (-loss / 20)
     sdict = sax.reciprocal(
         {
             ("o2", "o3"): tau,
-            ("o2", "o1"): 1j * kappa,
-            ("o0", "o3"): 1j * kappa,
+            ("o2", "o1"): kappa,
+            ("o0", "o3"): jnp.conj(kappa),
             ("o0", "o1"): tau,
         }
     )
