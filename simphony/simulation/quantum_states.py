@@ -4,12 +4,12 @@ from typing import List, Union
 
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+from jax.typing import ArrayLike
 from scipy.stats import multivariate_normal
 
 from simphony.exceptions import ShapeMismatchError
+from simphony.simulation.simdevices import SimDevice
 from simphony.utils import xpxp_to_xxpp, xxpp_to_xpxp
-
-from .simdevices import SimDevice
 
 
 def plot_mode(means, cov, n=100, x_range=None, y_range=None, ax=None, **kwargs):
@@ -70,26 +70,26 @@ class QuantumState(SimDevice):
 
     Parameters
     ----------
-    means :
+    means : ArrayLike
         The means of the X and P quadratures of the quantum state. For example,
         a coherent state :math:`\alpha = 3+4i` has means defined as
         :math:`\begin{bmatrix} 3 & 4 \\end{bmatrix}'. The shape of the means
         must be 2 * N.
-    cov :
+    cov : ArrayLike
         The covariance matrix of the quantum state. For example, all coherent
         states has a covariance matrix of :math:`\begin{bmatrix} 1/4 & 0 \\ 0 &
         1/4 \\end{bmatrix}`. The shape of the matrix must be 2 * N x 2 * N.
-    ports :
+    ports : str or list of str
         The ports to which the quantum state is connected. Each mode
         corresponds in order to each port provided.
-    convention :
+    convention : str
         The convention of the means and covariance matrix. Default is 'xpxp'.
     """
 
     def __init__(
         self,
-        means: jnp.ndarray,
-        cov: jnp.ndarray,
+        means: ArrayLike,
+        cov: ArrayLike,
         ports: Union[str, List[str]] = None,
         convention: str = "xpxp",
     ) -> None:
@@ -120,12 +120,12 @@ class QuantumState(SimDevice):
             self.cov = xpxp_to_xxpp(self.cov)
             self.convention = "xxpp"
 
-    def modes(self, modes):
+    def modes(self, modes: Union[int, List[int]]):
         """Returns the mean and covariance matrix of the specified modes.
 
         Parameters
         ----------
-        modes :
+        modes : int or list
             The modes to return.
         """
         if not hasattr(modes, "__iter__"):
@@ -146,12 +146,12 @@ class QuantumState(SimDevice):
             cov = self.cov[jnp.ix_(inds, inds)]
         return means, cov
 
-    def _add_vacuums(self, n_vacuums):
+    def _add_vacuums(self, n_vacuums: int):
         """Adds vacuum states to the quantum state.
 
         Parameters
         ----------
-        n_vacuums :
+        n_vacuums : int
             The number of vacuum states to add.
         """
         N = self.N + n_vacuums
@@ -182,7 +182,7 @@ class QuantumState(SimDevice):
             attempts to find the range automatically.
         ax : matplotlib.axes.Axes
             The axis to plot on, by default it creates a new figure.
-        **kwargs :
+        **kwargs
             Keyword arguments to pass to matplotlib.pyplot.contourf.
         """
         means, cov = self.modes(mode)
@@ -228,9 +228,9 @@ class CoherentState(QuantumState):
 
     Parameters
     ----------
-    alpha :
+    alpha : str
         The complex amplitude of the coherent state.
-    port :
+    port : complex
         The port to which the coherent state is connected.
     """
 
@@ -248,13 +248,13 @@ class SqueezedState(QuantumState):
 
     Parameters
     ----------
-    r :
+    r : str
         The squeezing parameter of the squeezed state.
-    phi :
+    phi : float
         The squeezing phase of the squeezed state.
-    port :
+    port : float
         The port to which the squeezed state is connected.
-    alpha:
+    alpha: complex, optional
         The complex displacement of the squeezed state. Default is 0.
     """
 
@@ -281,15 +281,15 @@ class TwoModeSqueezed(QuantumState):
 
     Parameters
     ----------
-    r :
+    r : float
         The two-mode squeezing parameter of the two mode squeezed state.
-    n_a :
+    n_a : float
         The initial thermal occupation of the first mode.
-    n_b :
+    n_b : float
         The initial thermal occupation of the second mode.
-    port_a :
+    port_a : str
         The port to which the first mode is connected.
-    port_b :
+    port_b : str
         The port to which the second mode is connected.
     """
 

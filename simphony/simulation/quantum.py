@@ -8,9 +8,9 @@ import matplotlib.pyplot as plt
 from sax.saxtypes import Model
 from sax.utils import get_ports
 
-from ..utils import dict_to_matrix
-from .quantum_states import QuantumState, plot_mode
-from .simulation import Simulation, SimulationResult
+from simphony.simulation.quantum_states import QuantumState, plot_mode
+from simphony.simulation.simulation import Simulation, SimulationResult
+from simphony.utils import dict_to_matrix
 
 
 @dataclass
