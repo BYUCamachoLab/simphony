@@ -125,24 +125,33 @@ def mat_mul_polar(array1: ArrayLike, array2: ArrayLike) -> Array:
     Parameters
     ----------
     array1 : ndarray
+        The first array to multiply.
     array2 : ndarray
+        The second array to multiply.
 
-    the arrays can be one of the following possiblities:
-    #f x n x n x m1 x m2 x 2
-    #f x n x n x m1 x m2 x 1
-    #f x n x n x m1 x 2
-    #f x n x n x m1 x 1
-    #f x n x n x m2 x 2
-    #f x n x n x m2 x 1
-    f x n x n x 2
-    f x n x n
-    f is the frequency dimension
-    n is the number of ports
-    m1 is the number of TE modes
-    m2 is the number of TM modes
-    The last number of dimensions is 2 if polar and 1 if rectangular.
-    Complex rectangular data is of the form a + bj
-    Complex polar data is of the form [r, theta]
+    Notes
+    -----
+    The arrays can be one of the following possiblities:
+
+        * #f x n x n x m1 x m2 x 2
+        * #f x n x n x m1 x m2 x 1
+        * #f x n x n x m1 x 2
+        * #f x n x n x m1 x 1
+        * #f x n x n x m2 x 2
+        * #f x n x n x m2 x 1
+        * f x n x n x 2
+        * f x n x n
+
+    where
+
+        * f is the frequency dimension
+        * n is the number of ports
+        * m1 is the number of TE modes
+        * m2 is the number of TM modes
+
+    The last number of dimensions is 2 if polar and 1 if rectangular. Complex
+    rectangular data is of the form ``a + bj``. Complex polar data is of the
+    form ``[r, theta]``.
     """
     # array1 and 2 should be identical in dimensions
     if jnp.shape(array1) != jnp.shape(array2):
@@ -169,23 +178,35 @@ def mat_add_polar(array1: ArrayLike, array2: ArrayLike) -> Array:
     Parameters
     ----------
     array1 : ndarray
+        The first array to add.
     array2 : ndarray
+        The second array to add.
 
-    the arrays can be one of the following possiblities:
-    f x n x n x m1 x m2 x 2
-    f x n x n x m1 x m2 x 1
-    f x n x n x m1 x 2
-    f x n x n x m1 x 1
-    f x n x n x m2 x 2
-    f x n x n x m2 x 1
-    f is the frequency dimension
-    n is the number of ports
-    m1 is the number of TE modes
-    m2 is the number of TM modes
-    The last number of dimensions is 2 if polar and 1 if rectangular.
-    Complex rectangular data is of the form a + bj
-    Complex polar data is of the form [r, theta]
+    Notes
+    -----
+    The arrays can be one of the following possiblities:
+
+        * #f x n x n x m1 x m2 x 2
+        * #f x n x n x m1 x m2 x 1
+        * #f x n x n x m1 x 2
+        * #f x n x n x m1 x 1
+        * #f x n x n x m2 x 2
+        * #f x n x n x m2 x 1
+        * f x n x n x 2
+        * f x n x n
+
+    where
+
+        * f is the frequency dimension
+        * n is the number of ports
+        * m1 is the number of TE modes
+        * m2 is the number of TM modes
+
+    The last number of dimensions is 2 if polar and 1 if rectangular. Complex
+    rectangular data is of the form ``a + bj``. Complex polar data is of the
+    form ``[r, theta]``.
     """
+
     # array1 and 2 should be identical in dimensions
     if jnp.shape(array1) != jnp.shape(array2):
         raise RuntimeError("Arrays must be the same shape to matrix multiply them")

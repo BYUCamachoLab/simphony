@@ -1,3 +1,8 @@
+# Copyright © Simphony Project Contributors
+# Licensed under the terms of the MIT License
+# (see simphony/__init__.py for details)
+"""Ideal circuit models."""
+
 import jax.numpy as jnp
 import sax
 from jax.typing import ArrayLike

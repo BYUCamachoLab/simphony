@@ -1,4 +1,4 @@
-"""Simulaion module."""
+"""Simulation module."""
 
 import jax.numpy as jnp
 from jax.typing import ArrayLike

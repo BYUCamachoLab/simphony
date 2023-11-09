@@ -1,19 +1,18 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
-"""This package contains wrappers for models defined in the SiPANN (Silicon
-Photonics with Artificial Neural Networks) project, another project by
-CamachoLab at BYU. It leverages machine learning to simulate photonic devices,
-giving greater speed and similar accuracy to a full FDTD simulation.
+"""SiPANN models compatible with SAX circuits.
 
-The wrappers defined here integrate SiPANN models into Simphony for
-easier use.
+This package contains wrappers for models defined in the SiPANN (Silicon
+Photonics with Artificial Neural Networks) project, another project by
+CamachoLab at BYU. It leverages machine learning to simulate photonic
+devices, giving greater speed and similar accuracy to a full FDTD
+simulation.
 """
 
 from itertools import product
 from typing import Callable, Union
 
-# import jax.numpy as jnp
 import numpy as np
 import sax
 from jax.typing import ArrayLike
