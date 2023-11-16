@@ -14,13 +14,15 @@ from functools import lru_cache
 from pathlib import Path
 from typing import List, Tuple, Union
 
+import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 import sax
+from jax import Array
 from jax.typing import ArrayLike
 from lark import Lark, Transformer, v_args
 
-from simphony.utils import freq2wl, wl2freq
+from simphony.utils import wl2freq
 
 _sparams_grammar = r"""
     ?start: _EOL* [header] datablock+ _EOL*
@@ -129,14 +131,8 @@ class _SparamsTransformer(Transformer):
         return np.array([float(arg) for arg in args])
 
     @v_args(inline=True)
-    def port(self, port) -> int:
-        port = _destring(port)
-        if port.startswith("port"):
-            return int(port.split(" ")[1])
-        else:
-            raise ValueError(
-                f"Port name '{port}' is not supported, contact the developers."
-            )
+    def port(self, port) -> str:
+        return _destring(port)
 
     @v_args(inline=True)
     def modeid(self, mid) -> int:
@@ -184,6 +180,11 @@ def load_sparams(filename: Union[Path, str]) -> dict:
     header, data : tuple of dict, pd.DataFrame
         Tuple, where the first item is the header information dictionary and
         the second item is a DataFrame with the s-parameters.
+
+    See Also
+    --------
+    df_to_sdict : Create an s-dictionary from a dataframe of s-parameters.
+    save_sparams : Exports scattering parameters to a ".sparam" file readable by interconnect.
 
     Notes
     -----
@@ -250,33 +251,59 @@ def save_sparams(
                 np.savetxt(file, temp, header=header, comments="")
 
 
-def df_to_sdict(df: pd.DataFrame) -> sax.SDict:
+def df_to_sdict(df: pd.DataFrame) -> Tuple[Array, sax.SDict]:
     """Create an s-dictionary from a dataframe of s-parameters.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        A dataframe of s-parameters. Must have columns 'port_in', 'port_out',
+        A dataframe of s-parameters. Usually the output of ``load_sparams``.
+        Expected columns are 'port_in', 'port_out', 'mode_in', 'mode_out',
         'freq' (in Hz), 'mag', and 'phase'.
+
+    Returns
+    -------
+    f : numpy.ndarray
+        Array of frequencies (in Hz).
+    sdict : sax.SDict
+        Dictionary of scattering parameters.
+
+    See Also
+    --------
+    load_sparams : Load s-parameters from a Lumerical .sparam file.
     """
-    # wl_m = jnp.array(wl).reshape(-1) * 1e-6  # meters
     df = df.copy()
-    df["wl"] = freq2wl(df["freq"])
-    df = df.sort_values("wl")
+    df = df.sort_values("freq")
+
+    if df["mode_out"].unique().size == 1 or df["mode_in"].unique().size == 1:
+        multimode = False
+        grouper = ["port_out", "port_in"]
+    else:
+        multimode = True
+        grouper = ["port_out", "port_in", "mode_out", "mode_in"]
 
     f = None
     sdict = {}
-    for (p_out, p_in), sdf in df.groupby(["port_out", "port_in"]):
+    for keys, sdf in df.groupby(grouper):
+        if multimode:
+            p_out, p_in, m_out, m_in = keys
+        else:
+            p_out, p_in = keys
+
+        # Ensure frequencies are matched across arrays
         freq = sdf["freq"].values
         if f is None:
             f = freq
         else:
-            if not np.allclose(f, freq):
+            if not jnp.allclose(f, freq):
                 raise ValueError("Frequency mismatch between arrays in datafile.")
 
-        wl_act = sdf["wl"].values
-        snn = sdf["mag"].values * np.exp(1j * sdf["phase"].values)
-        sdict[(f"o{p_out-1}", f"o{p_in-1}")] = snn
+        snn = sdf["mag"].values * jnp.exp(1j * sdf["phase"].values)
 
-    wl_m = wl_act * 1e6
-    return sdict, wl_act
+        if multimode:
+            sdict[(f"{p_out}@{m_out-1}", f"{p_in}@{m_in-1}")] = snn
+        else:
+            sdict[(p_out, p_in)] = snn
+
+    f = jnp.array(f).reshape(-1)
+    return f, sdict
