@@ -16,10 +16,11 @@ from typing import List, Tuple, Union
 
 import numpy as np
 import pandas as pd
+import sax
 from jax.typing import ArrayLike
 from lark import Lark, Transformer, v_args
 
-from simphony.utils import wl2freq
+from simphony.utils import freq2wl, wl2freq
 
 _sparams_grammar = r"""
     ?start: _EOL* [header] datablock+ _EOL*
@@ -247,3 +248,35 @@ def save_sparams(
 
                 # save data
                 np.savetxt(file, temp, header=header, comments="")
+
+
+def df_to_sdict(df: pd.DataFrame) -> sax.SDict:
+    """Create an s-dictionary from a dataframe of s-parameters.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        A dataframe of s-parameters. Must have columns 'port_in', 'port_out',
+        'freq' (in Hz), 'mag', and 'phase'.
+    """
+    # wl_m = jnp.array(wl).reshape(-1) * 1e-6  # meters
+    df = df.copy()
+    df["wl"] = freq2wl(df["freq"])
+    df = df.sort_values("wl")
+
+    f = None
+    sdict = {}
+    for (p_out, p_in), sdf in df.groupby(["port_out", "port_in"]):
+        freq = sdf["freq"].values
+        if f is None:
+            f = freq
+        else:
+            if not np.allclose(f, freq):
+                raise ValueError("Frequency mismatch between arrays in datafile.")
+
+        wl_act = sdf["wl"].values
+        snn = sdf["mag"].values * np.exp(1j * sdf["phase"].values)
+        sdict[(f"o{p_out-1}", f"o{p_in-1}")] = snn
+
+    wl_m = wl_act * 1e6
+    return sdict, wl_act
