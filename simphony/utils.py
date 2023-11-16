@@ -1,13 +1,13 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
-
 """This package contains handy functions useful across simphony submodules and
 to the average user."""
 
 import inspect
 import re
 
+import deprecation
 import jax.numpy as jnp
 import sax
 from jax import Array
@@ -15,6 +15,8 @@ from jax.typing import ArrayLike
 from sax.utils import get_ports
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import interp1d
+
+from simphony import __version__
 
 MATH_SUFFIXES = {
     "f": "e-15",
@@ -333,10 +335,20 @@ def wlum2freq(wl: ArrayLike) -> Array:
     return wl2freq(wl * 1e-6)
 
 
+@deprecation.deprecated(
+    deprecated_in="0.7.0",
+    removed_in="0.8.0",
+    current_version=__version__,
+    details="Use the resample function instead",
+)
 def interpolate(
     resampled: ArrayLike, sampled: ArrayLike, s_parameters: ArrayLike
 ) -> Array:
     """Returns the result of a cubic interpolation for a given frequency range.
+
+    .. deprecated:: 0.7.0
+          `interpolate` will be removed in simphony 0.8.0, it is replaced by
+          `resample`.
 
     Parameters
     ----------
@@ -401,18 +413,20 @@ def xpxp_to_xxpp(xpxp: ArrayLike) -> Array:
 
 
 def dict_to_matrix(sdict: sax.SDict) -> Array:
-    """Converts a dictionary of s-parameters to a matrix of s-parameters.
+    r"""Converts a dictionary of s-parameters to a matrix of s-parameters.
+
+    Column and row ordering is determined by ``sax.utils.get_ports``.
 
     Parameters
     ----------
-    sdict : dict
-        A SAX dictionary of s-parameters.
+    sdict : sax.SDict
+        A dictionary of s-parameters.
 
     Returns
     -------
     smat : Array
         A matrix of s-parameters indexed according to the order in
-        ``sax.utils.get_ports``.
+        ``sax.utils.get_ports``, shape :math:`(f \times n \times n)`.
     """
     ports = get_ports(sdict)
     arr = list(sdict.values())[0]
@@ -459,3 +473,44 @@ def validate_model(model: sax.saxtypes.Model) -> bool:
         # if _is_callable_annotation(sig.return_annotation):  # model factory
         #     return False
         return True
+
+
+def resample(x: ArrayLike, xp: ArrayLike, sdict: sax.SDict) -> sax.SDict:
+    """Resample an s-dictionary to a new frequency grid.
+
+    Parameters
+    ----------
+    x : ArrayLike
+        The x-coordinates at which to evaluate the interpolated values (desired
+        frequency or wavelength grid).
+    xp : ArrayLike
+        The x-coordinates of the data points, must be increasing (existing
+        frequency or wavelength grid).
+    sdict : sax.SDict
+        Dictionary of scattering parameters sampled at ``xp``.
+
+    Returns
+    -------
+    sax.SDict
+        Dictionary of scattering parameters resampled at ``x``.
+
+    Examples
+    --------
+    S-param files define frequencies, while most simulations are done in
+    wavelength. You can resample the s-parameters to a new frequency grid
+    using this function:
+
+    .. code-block:: python
+
+        p = Path("dc_gap=200nm_Lc=0um.sparam")
+        _, df = load_sparams(p)
+        f, sdict = df_to_sdict(df)
+
+        wl = np.linspace(1.5, 1.6, 1000)
+        s_new = resample(wlum2freq(wl), f, sdict)
+        plt.plot(wl, np.abs(s_new["o1", "o3"]) ** 2)
+    """
+    new_sdict = {}
+    for k, v in sdict.items():
+        new_sdict[k] = jnp.interp(x, xp, v)
+    return new_sdict
