@@ -19,8 +19,8 @@ from scipy.constants import c as SPEED_OF_LIGHT
 from tabulate import tabulate
 
 import simphony.libraries
-from simphony.plugins.lumerical import load_sparams
-from simphony.utils import freq2wl, wl2freq
+from simphony.plugins.lumerical import df_to_sdict, load_sparams
+from simphony.utils import freq2wl, resample, wl2freq
 
 SOURCE_DATA_PATH = "siepic/source_data"
 
@@ -76,25 +76,9 @@ def _create_sdict_from_df(wl: Union[float, ArrayLike], df: pd.DataFrame) -> sax.
         'freq' (in Hz), 'mag', and 'phase'.
     """
     wl_m = jnp.array(wl).reshape(-1) * 1e-6  # meters
-    df = df.copy()
-    df["wl"] = freq2wl(df["freq"])
-    df = df.sort_values("wl")
-
-    f = None
-    sdict = {}
-    for (p_out, p_in), sdf in df.groupby(["port_out", "port_in"]):
-        freq = sdf["freq"].values
-        if f is None:
-            f = freq
-        else:
-            if not np.allclose(f, freq):
-                raise ValueError("Frequency mismatch between arrays in datafile.")
-
-        wl_act = sdf["wl"].values
-        snn = sdf["mag"].values * np.exp(1j * sdf["phase"].values)
-        sdict[(f"o{p_out-1}", f"o{p_in-1}")] = jnp.interp(wl_m, wl_act, snn)
-
-    return sdict
+    f, s = df_to_sdict(df)
+    new_s = resample(wl2freq(wl_m), f, s)
+    return new_s
 
 
 def _generate_parameter_sets(
