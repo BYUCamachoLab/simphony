@@ -29,10 +29,11 @@ precommit:
 
 # rm -r docs/api || true
 doc:
+	rm -r docs/api || true
 	jb clean docs && jb build docs
 
 serve:
-	cd docs/_build/html && python3 -m http.server
+	cd docs/_build/html && python3 -m http.server 0
 
 format:
 	black simphony
