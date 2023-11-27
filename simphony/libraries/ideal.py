@@ -19,7 +19,8 @@ def coupler(
     Ports are arranged as follows::
 
         o2 ---\        /--- o3
-               ========
+               --------
+               --------
         o0 ---/        \--- o1
 
     Parameters

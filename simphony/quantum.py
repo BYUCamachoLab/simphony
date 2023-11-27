@@ -68,9 +68,10 @@ def plot_mode(means, cov, n=100, x_range=None, y_range=None, ax=None, **kwargs):
 
 
 class QuantumState(SimDevice):
-    """Represents a quantum state in a quantum model as a covariance matrix.
-    All quantum states are represented in the xpxp convention. TODO: switch to
-    xxpp convention.
+    r"""Represents a quantum state in a quantum model as a covariance matrix.
+
+    All quantum states are represented in the xpxp convention.
+    TODO: switch to xxpp convention.
 
     Parameters
     ----------
@@ -196,7 +197,13 @@ class QuantumState(SimDevice):
 
 def compose_qstate(*args: QuantumState) -> QuantumState:
     """Combines the quantum states of the input ports into a single quantum
-    state."""
+    state.
+
+    Parameters
+    ----------
+    args : QuantumState
+        The quantum states to combine.
+    """
     N = 0
     mean_list = []
     cov_list = []
@@ -232,10 +239,10 @@ class CoherentState(QuantumState):
 
     Parameters
     ----------
-    alpha : str
-        The complex amplitude of the coherent state.
     port : complex
         The port to which the coherent state is connected.
+    alpha : str
+        The complex amplitude of the coherent state.
     """
 
     def __init__(self, port: str, alpha: complex) -> None:
@@ -252,12 +259,12 @@ class SqueezedState(QuantumState):
 
     Parameters
     ----------
+    port : float
+        The port to which the squeezed state is connected.
     r : str
         The squeezing parameter of the squeezed state.
     phi : float
         The squeezing phase of the squeezed state.
-    port : float
-        The port to which the squeezed state is connected.
     alpha: complex, optional
         The complex displacement of the squeezed state. Default is 0.
     """
@@ -280,7 +287,9 @@ class SqueezedState(QuantumState):
 
 class TwoModeSqueezed(QuantumState):
     """Represents a two mode squeezed state in a quantum model as a covariance
-    matrix. This state is described by three parameters: a two-mode squeezing
+    matrix.
+
+    This state is described by three parameters: a two-mode squeezing
     parameter r, and the two initial thermal occupations n_a and n_b.
 
     Parameters
@@ -379,25 +388,23 @@ def plot_quantum_result(
 
 
 class QuantumSim(Simulation):
-    """Quantum simulation."""
+    """Quantum simulation.
+
+    Parameters
+    ----------
+    ckt : sax.saxtypes.Model
+        The circuit to simulate.
+    wl : ArrayLike
+        The array of wavelengths to simulate (in microns).
+    **params
+        Any other parameters to pass to the circuit.
+
+    Examples
+    --------
+    >>> sim = QuantumSim(ckt=mzi, wl=wl, top={"length": 150.0}, bottom={"length": 50.0})
+    """
 
     def __init__(self, ckt: Model, **kwargs) -> None:
-        """Initialize the quantum simulation.
-
-        Parameters
-        ----------
-        ckt : sax.saxtypes.Model
-            The circuit to simulate.
-        wl : ArrayLike
-            The array of wavelengths to simulate (in microns).
-        **params
-            Any other parameters to pass to the circuit.
-
-        Examples
-        --------
-        >>> sim = QuantumSim(ckt=mzi, wl=wl, top={"length": 150.0}, bottom={"length": 50.0})
-        """
-
         ckt = partial(ckt, **kwargs)
         if "wl" not in kwargs:
             raise ValueError("Must specify 'wl' (wavelengths to simulate).")
@@ -416,17 +423,19 @@ class QuantumSim(Simulation):
     @staticmethod
     def to_unitary(s_params):
         """This method converts s-parameters into a unitary transform by adding
-        vacuum ports. The original ports maintain their index while new vacuum
-        ports will always be the last n_ports.
+        vacuum ports.
+
+        The original ports maintain their index while new vacuum ports will
+        always be the last n_ports.
 
         Parameters
         ----------
-        s_params : jnp.ndarray
+        s_params : ArrayLike
             s-parameters in the shape of (n_freq, n_ports, n_ports).
 
         Returns
         -------
-        unitary : jnp.ndarray
+        unitary : Array
             The unitary s-parameters of the shape (n_freq, 2*n_ports,
             2*n_ports).
         """

@@ -66,11 +66,28 @@ class Detector(SimDevice):
         self.responsivity = responsivity
 
     def set_result(self, wl: ArrayLike, power: ArrayLike) -> None:
+        """Set the result of the detector.
+
+        Parameters
+        ----------
+        wl : ArrayLike
+            The wavelengths at which the detector was simulated.
+        power : ArrayLike
+            The power at each wavelength.
+        """
         self.wl = wl
         self.power = power
 
     def plot(self, ax=None, **kwargs):
-        """Plot the detector response."""
+        """Plot the detector response.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            The axes on which to plot, by default None (create new axes).
+        **kwargs
+            Any other keyword arguments to pass to matplotlib.
+        """
         if ax is None:
             fig, ax = plt.subplots()
         ax.plot(self.wl, self.power, **kwargs)
