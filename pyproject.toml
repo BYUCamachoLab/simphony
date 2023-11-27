@@ -70,7 +70,7 @@ dev = [
   "pytest",
 ]
 doc = [
-  "jupyter-book ~= 0.15.1",
+  "jupyter-book ~= 0.13.2",
   "matplotlib >= 3.7.1",
   "numpydoc == 1.6.0",
 ]
