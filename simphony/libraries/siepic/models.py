@@ -217,7 +217,7 @@ def directional_coupler(
 
     Notes
     -----
-    Sorted matrix of valid parameter sets for directional couplers:
+    Sorted matrix of valid parameter combinations for directional couplers:
 
     =====  =================
     gap    coupling_length
@@ -294,7 +294,7 @@ def half_ring(
 
     Notes
     -----
-    Sorted matrix of valid parameter sets for half rings:
+    Sorted matrix of valid parameter combinations for half rings:
 
     =====  =================  =======  ===========  ========  =====
     pol      coupling_length    width    thickness    radius    gap
@@ -415,7 +415,7 @@ def taper(
 
     Notes
     -----
-    Sorted matrix of valid parameter sets for adiabatic tapers:
+    Sorted matrix of valid parameter combinations for adiabatic tapers:
 
     ====  ====  ========
     w1    w2    length
@@ -800,7 +800,7 @@ def waveguide(
     -----
     The `sigma_` values in the parameters are used for monte carlo simulations.
 
-    Sorted matrix of valid parameter sets for adiabatic tapers:
+    Sorted matrix of valid parameter combinations for waveguides:
 
     ========  =======
     height    width
