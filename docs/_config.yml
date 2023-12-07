@@ -66,7 +66,7 @@ sphinx:
     # - 'sphinx.ext.coverage'
     - 'sphinx.ext.autodoc.typehints'
     - 'sphinx.ext.autosummary'
-    # - 'sphinx.ext.intersphinx'
+    - 'sphinx.ext.intersphinx'
     # - 'sphinx.ext.napoleon'
     - 'sphinx.ext.viewcode'
     - 'sphinx_design'
@@ -87,10 +87,13 @@ sphinx:
     # html_css_files: []
     templates_path: ['_templates']
     # mathjax_path: https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
-  # intersphinx_mapping:
-  #   sipann:
-  #     - "https://sipann.readthedocs.io/en/latest/"
-  #     - null
+  intersphinx_mapping:
+    sipann:
+      - "https://sipann.readthedocs.io/en/latest/"
+      - null
+    sax:
+      - "https://flaport.github.io/sax/index.html"
+      - "objects.inv"
   language: en
 
 # For speedup, decide which plot_formats to build based on build targets:
