@@ -9,6 +9,7 @@ parts:
   - file: tutorials/intro
   - file: tutorials/mzi
   - file: tutorials/filters
+  - file: tutorials/quantum
   # - file: tutorials/monte_carlo
   # - file: tutorials/layout_aware
 - caption: Libraries
