@@ -71,7 +71,6 @@ class QuantumState(SimDevice):
     r"""Represents a quantum state in a quantum model as a covariance matrix.
 
     All quantum states are represented in the xpxp convention.
-    TODO: switch to xxpp convention.
 
     Parameters
     ----------
@@ -168,11 +167,11 @@ class QuantumState(SimDevice):
         self.N = N
 
     def __repr__(self) -> str:
-        return super().__repr__() + f"\nMeans: {self.means}\nCov: \n{self.cov}"
+        return super().__repr__() + f"\nConvention: {self.convention}\nMeans: {self.means}\nCov: \n{self.cov}"
 
     def plot_mode(self, mode, n=100, x_range=None, y_range=None, ax=None, **kwargs):
         """Plots the Wigner function of the specified mode.
-
+\n
         Parameters
         ----------
         mode : int
