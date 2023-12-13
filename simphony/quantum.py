@@ -167,11 +167,14 @@ class QuantumState(SimDevice):
         self.N = N
 
     def __repr__(self) -> str:
-        return super().__repr__() + f"\nConvention: {self.convention}\nMeans: {self.means}\nCov: \n{self.cov}"
+        return (
+            super().__repr__()
+            + f"\nConvention: {self.convention}\nMeans: {self.means}\nCov: \n{self.cov}"
+        )
 
     def plot_mode(self, mode, n=100, x_range=None, y_range=None, ax=None, **kwargs):
         """Plots the Wigner function of the specified mode.
-\n
+
         Parameters
         ----------
         mode : int
@@ -207,30 +210,22 @@ def compose_qstate(*args: QuantumState) -> QuantumState:
     mean_list = []
     cov_list = []
     port_list = []
-    ckts = []
     for qstate in args:
-        # if not isinstance(qstate, QuantumState):
-        #     raise TypeError("Input must be a QuantumState.")
+        qstate.to_xpxp()
         N += qstate.N
         mean_list.append(qstate.means)
         cov_list.append(qstate.cov)
         port_list += qstate.ports
-    # TODO: Do we need to check if we have the same circuit?
-    #     ckts.append(qstate.ckt)
-    # # check if all ckts are the same
-    # for ckt in ckts:
-    #     if ckt is not ckts[0]:
-    #         raise ValueError("All quantum states must be attached to the same circuit.")
 
     means = jnp.concatenate(mean_list)
     covs = jnp.zeros((2 * N, 2 * N), dtype=float)
     left = 0
-    # TODO: Currently puts states into xpxp, but should change to xxpp
+
     for qstate in args:
         rowcol = qstate.N * 2 + left
         covs = covs.at[left:rowcol, left:rowcol].set(qstate.cov)
         left = rowcol
-    return QuantumState(means, covs, port_list)
+    return QuantumState(means, covs, port_list, convention="xpxp")
 
 
 class CoherentState(QuantumState):
@@ -284,7 +279,7 @@ class SqueezedState(QuantumState):
         super().__init__(means, cov, ports)
 
 
-class TwoModeSqueezed(QuantumState):
+class TwoModeSqueezedState(QuantumState):
     """Represents a two mode squeezed state in a quantum model as a covariance
     matrix.
 
@@ -323,6 +318,26 @@ class TwoModeSqueezed(QuantumState):
             / 2
         )
         ports = [port_a, port_b]
+        super().__init__(means, cov, ports)
+
+
+class ThermalState(QuantumState):
+    """Represents a thermal state in a quantum model as a covariance matrix.
+
+    Parameters
+    ----------
+    port : str
+        The port to which the thermal state is connected.
+    nbar : float
+        The thermal occupation or average photon number of the thermal state.
+    """
+
+    def __init__(self, port: str, nbar: float) -> None:
+        self.nbar = nbar
+        self.N = 1
+        means = jnp.array([0, 0])
+        cov = (2 * nbar + 1) / 4 * jnp.eye(2)
+        ports = [port]
         super().__init__(means, cov, ports)
 
 
