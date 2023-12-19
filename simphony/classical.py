@@ -111,6 +111,9 @@ class ClassicalResult(SimulationResult):
         indexed in the same order as both ``s_params`` and ``output``.
     """
 
+    # TODO: Add a function to convert the sdict to a matrix and easily get
+    # port ordering.
+
     wl: ArrayLike
     sdict: sax.SDict
     detectors: list[Detector]
