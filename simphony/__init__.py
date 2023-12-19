@@ -34,9 +34,9 @@ import sys
 
 # from .models_old import Model  # noqa: F401
 
-if sys.version_info < (3, 8, 0):
+if sys.version_info < (3, 9, 0):
     raise Exception(
-        "Simphony requires Python 3.8+ (version "
+        "Simphony requires Python 3.9+ (version "
         + platform.python_version()
         + " detected)."
     )
