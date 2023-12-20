@@ -17,12 +17,19 @@ from simphony.utils import dict_to_matrix, xpxp_to_xxpp, xxpp_to_xpxp
 
 
 def plot_mode(means, cov, n=100, x_range=None, y_range=None, ax=None, **kwargs):
-    """Plots the Wigner function of the specified mode.
+    """Plots the Wigner function of a single mode state.
 
     Parameters
     ----------
-    mode : int
-        The mode to plot.
+    means : ArrayLike
+        The means of the X and P quadratures of the quantum state. For example,
+        a coherent state :math:`\alpha = 3+4i` has means defined as
+        :math:`\begin{bmatrix} 3 & 4 \\end{bmatrix}'. The shape of the means
+        must be a length of 2.
+    cov : ArrayLike
+        The covariance matrix of the quantum state. For example, all coherent
+        states has a covariance matrix of :math:`\begin{bmatrix} 1/4 & 0 \\ 0 &
+        1/4 \\end{bmatrix}`. The shape of the matrix must be 2 x 2.
     n : int
         The number of points per axis to plot. Default is 100.
     x_range : tuple
@@ -98,14 +105,17 @@ class QuantumState(SimDevice):
         convention: str = "xpxp",
     ) -> None:
         super().__init__(ports)
-        self.N = len(ports)
-        if means.shape != (2 * self.N,):
-            raise ShapeMismatchError("The shape of the means must be 2 * N.")
-        if cov.shape != (2 * self.N, 2 * self.N):
-            raise ShapeMismatchError(
-                "The shape of the covariance matrix must \
-                 be 2 * N x 2 * N."
-            )
+        if ports is None:
+            self.N = int(len(means) / 2)
+        else:
+            self.N = len(ports)
+            if means.shape != (2 * self.N,):
+                raise ShapeMismatchError("The shape of the means must be 2 * N.")
+            if cov.shape != (2 * self.N, 2 * self.N):
+                raise ShapeMismatchError(
+                    "The shape of the covariance matrix must \
+                    be 2 * N x 2 * N."
+                )
         self.means = means
         self.cov = cov
         self.convention = convention
@@ -354,6 +364,18 @@ class QuantumResult(SimulationResult):
     wl: jnp.ndarray
     n_ports: int
 
+    def state(self, wl_ind: int = 0) -> QuantumState:
+        """Returns the quantum state at a specific wavelength.
+
+        Parameters
+        ----------
+        wl_ind : int, optional
+            The wavelength index. Defaults to 0.
+        """
+        means = self.means[wl_ind]
+        cov = self.cov[wl_ind]
+        return QuantumState(means, cov, convention="xxpp")
+
 
 def plot_quantum_result(
     result: QuantumResult,
@@ -399,6 +421,8 @@ def plot_quantum_result(
         plot_mode(mu, c, x_range=(-6, 6), y_range=(-6, 6), ax=ax)
         ax.set_title(f"Mode {mode}")
     return axs
+
+
 
 
 class QuantumSim(Simulation):
