@@ -38,6 +38,7 @@ class Laser(SimDevice):
         super().__init__(list(ports))
         self.power = power
         self.phase = phase
+        # TODO: Implement mod_function
         self.mod_function = mod_function
 
 
@@ -138,6 +139,7 @@ class ClassicalSim(Simulation):
         --------
         >>> sim = ClassicalSim(ckt=mzi, wl=wl, top={"length": 150.0}, bottom={"length": 50.0})
         """
+        # TODO: Add shot noise option to classical simulation
         ckt = partial(ckt, **kwargs)
         if "wl" not in kwargs:
             raise ValueError("Must specify 'wl' (wavelengths to simulate).")
@@ -281,13 +283,6 @@ class ClassicalSim(Simulation):
 
 # class TimeDomainSim(Simulation):
 #     """Time-domain simulation."""
-
-#     def __init__(self, ckt: Circuit, wl: jnp.ndarray) -> None:
-#         super().__init__(ckt, wl)
-
-
-# class QuantumSim(Simulation):
-#     """Quantum simulation."""
 
 #     def __init__(self, ckt: Circuit, wl: jnp.ndarray) -> None:
 #         super().__init__(ckt, wl)

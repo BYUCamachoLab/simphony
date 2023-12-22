@@ -8,6 +8,7 @@ from sax.saxtypes import Model
 class SimDevice:
     """Base class for all source or measure devices."""
 
+    # TODO: Add bandwidth option to classical
     def __init__(self, ports: list) -> None:
         self.ports = ports
 
