@@ -68,6 +68,7 @@ dev = [
   "coverage",
   "build",
   "pytest",
+  "tox",
 ]
 doc = [
   "jupyter-book ~= 0.13.2",
