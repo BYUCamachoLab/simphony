@@ -11,11 +11,11 @@ class TestBidirectional_coupler:
             siepic.bidirectional_coupler(pol="te", thickness=200)
 
     def test_instantiable(self):
-        bdc = siepic.bidirectional_coupler(thickness=220, width=500)
+        siepic.bidirectional_coupler(thickness=220, width=500)
 
     def test_s_params(self, std_wl_um):
         bdc = siepic.bidirectional_coupler()
-        s = bdc(std_wl_um)
+        bdc(std_wl_um)
 
 
 class Testdirectional_coupler:
@@ -28,7 +28,7 @@ class Testdirectional_coupler:
 
     def test_s_params(self, std_wl_um):
         dc = siepic.directional_coupler(gap=200, coupling_length=45)
-        s = dc(std_wl_um)
+        dc(std_wl_um)
 
 
 class Testgrating_coupler:
@@ -39,11 +39,11 @@ class Testgrating_coupler:
             siepic.grating_coupler(pol="te", thickness=200)
 
     def test_instantiable(self):
-        gc = siepic.grating_coupler(pol="te", thickness=220, dwidth=0)
+        siepic.grating_coupler(pol="te", thickness=220, dwidth=0)
 
     def test_s_params(self, std_wl_um):
         gc = siepic.grating_coupler(pol="te")
-        s = gc(std_wl_um)
+        gc(std_wl_um)
 
 
 class Testhalf_ring:
@@ -62,7 +62,7 @@ class Testhalf_ring:
         ring = siepic.half_ring(
             pol="te", gap=50, radius=5, width=500, thickness=220, coupling_length=0
         )
-        s = ring(std_wl_um)
+        ring(std_wl_um)
 
 
 class Testtaper:
@@ -77,7 +77,7 @@ class Testtaper:
 
     def test_s_params(self, std_wl_um):
         taper = siepic.taper(w1=0.5, w2=1.0, length=10.0)
-        s = taper(std_wl_um)
+        taper(std_wl_um)
 
 
 class Testterminator:
@@ -86,14 +86,14 @@ class Testterminator:
             siepic.terminator(pol="tem")
 
     def test_instantiable(self):
-        term = siepic.terminator(pol="te")
-        term = siepic.terminator(pol="tm")
+        siepic.terminator(pol="te")
+        siepic.terminator(pol="tm")
 
     def test_s_params(self, std_wl_um):
         term = siepic.terminator(pol="te")
-        s = term(std_wl_um)
+        term(std_wl_um)
         term = siepic.terminator(pol="tm")
-        s = term(std_wl_um)
+        term(std_wl_um)
 
 
 class Testwaveguide:
@@ -108,7 +108,7 @@ class Testwaveguide:
 
     def test_s_params(self, std_wl_um):
         wg = siepic.waveguide(pol="te", length=100, width=500, height=220, loss=2)
-        s = wg(std_wl_um)
+        wg(std_wl_um)
 
 
 class Testy_branch:
@@ -117,8 +117,8 @@ class Testy_branch:
             siepic.y_branch(pol="tem")
 
     def test_instantiable(self):
-        yb = siepic.y_branch(pol="te", thickness=220, width=500)
+        siepic.y_branch(pol="te", thickness=220, width=500)
 
     def test_s_params(self, std_wl_um):
         yb = siepic.y_branch(pol="te")
-        s = yb(std_wl_um)
+        yb(std_wl_um)

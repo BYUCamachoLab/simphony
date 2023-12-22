@@ -112,7 +112,7 @@ class SpiceVisitor(NodeVisitor):
         }
 
         def sort_items(container, typ, payload):
-            if type(typ) == Directives:
+            if type(typ) is Directives:
                 if typ == Directives.SUBCKT:
                     container["subcircuits"].append(payload)
                 elif typ == Directives.ONA:
@@ -124,7 +124,7 @@ class SpiceVisitor(NodeVisitor):
                     # for a in payload['analyses']:
                     #     container['analyses'].append(a)
                     container["analyses"] += payload["analyses"]
-            elif type(typ) == SpiceObjects:
+            elif type(typ) is SpiceObjects:
                 if typ == SpiceObjects.CIRCUIT:
                     container["circuits"].append(payload)
 
@@ -171,9 +171,9 @@ class SpiceVisitor(NodeVisitor):
                     # Text file uses 1-based indexing, so express as
                     # option['order'] - 1
                     try:
-                        l = ona["params"][option["name"]]
+                        temp = ona["params"][option["name"]]
                         ona["params"][option["name"]] = _dlist_insert(
-                            l, option["order"] - 1, option["value"]
+                            temp, option["order"] - 1, option["value"]
                         )
                     except KeyError:
                         ona["params"][option["name"]] = _dlist_insert(
@@ -303,7 +303,7 @@ class SpiceVisitor(NodeVisitor):
     def visit_key(self, node, visited_children):
         # key         = list / word
         name = visited_children[0]
-        if type(name) == dict:
+        if type(name) is dict:
             return {"name": name["name"], "order": name["order"]}
         else:
             return {"name": name}

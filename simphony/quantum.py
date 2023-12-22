@@ -423,8 +423,6 @@ def plot_quantum_result(
     return axs
 
 
-
-
 class QuantumSim(Simulation):
     """Quantum simulation.
 

@@ -56,7 +56,7 @@ print(f"Simphony version: {SIMPHONY_VERSION}")
 
 RELEASE_TEXT = execute(["python3", "get_changelog_entry.py", SIMPHONY_VERSION]).strip()
 bar = max([len(line) for line in RELEASE_TEXT.splitlines()])
-print(f"Release text:")
+print("Release text:")
 print(f"{'-'*bar}")
 print(f"{RELEASE_TEXT}")
 print(f"{'-'*bar}")

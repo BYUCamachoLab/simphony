@@ -19,7 +19,7 @@ class TestGapFuncSymmetric:
             )
 
     def test_instantiable(self):
-        dev = sipann.GapFuncSymmetric(
+        sipann.GapFuncSymmetric(
             width=500,
             thickness=220,
             gap=(lambda x: x * 3),
@@ -37,7 +37,7 @@ class TestGapFuncSymmetric:
             zmin=0.0,
             zmax=1.0,
         )
-        s = dev.s_params(std_wl_um)
+        dev.s_params(std_wl_um)
 
 
 # class TestGapFuncAntiSymmetric:
@@ -59,11 +59,11 @@ class Testhalf_ring:
             sipann.half_ring(width=350, thickness=160, radius=5000, gap=50)
 
     def test_instantiable(self):
-        dev = sipann.half_ring(width=500, thickness=220, radius=5000, gap=100)
+        sipann.half_ring(width=500, thickness=220, radius=5000, gap=100)
 
     def test_s_params(self, std_wl_um):
         dev = sipann.half_ring(width=500, thickness=220, radius=5000, gap=100)
-        s = dev.s_params(std_wl_um)
+        dev.s_params(std_wl_um)
 
 
 class TestHalfracetrack:
@@ -74,7 +74,7 @@ class TestHalfracetrack:
             )
 
     def test_instantiable(self):
-        dev = sipann.Halfracetrack(
+        sipann.Halfracetrack(
             width=500, thickness=220, radius=5000, gap=100, length=1000
         )
 
@@ -82,7 +82,7 @@ class TestHalfracetrack:
         dev = sipann.Halfracetrack(
             width=500, thickness=220, radius=5000, gap=100, length=1000
         )
-        s = dev.s_params(std_wl_um)
+        dev.s_params(std_wl_um)
 
 
 class Teststraight_coupler:
@@ -91,11 +91,11 @@ class Teststraight_coupler:
             sipann.straight_coupler(width=400, thickness=160, gap=50, length=1000)
 
     def test_instantiable(self):
-        dev = sipann.straight_coupler(width=500, thickness=220, gap=150, length=1000)
+        sipann.straight_coupler(width=500, thickness=220, gap=150, length=1000)
 
     def test_s_params(self, std_wl_um):
         dev = sipann.straight_coupler(width=500, thickness=220, gap=180, length=1000)
-        s = dev.s_params(std_wl_um)
+        dev.s_params(std_wl_um)
 
 
 class Teststandard_coupler:
@@ -111,7 +111,7 @@ class Teststandard_coupler:
             )
 
     def test_instantiable(self):
-        dev = sipann.standard_coupler(
+        sipann.standard_coupler(
             width=500,
             thickness=220,
             gap=180,
@@ -129,7 +129,7 @@ class Teststandard_coupler:
             horizontal=2000,
             vertical=2000,
         )
-        s = dev.s_params(std_wl_um)
+        dev.s_params(std_wl_um)
 
 
 class Testdouble_half_ring:
@@ -138,11 +138,11 @@ class Testdouble_half_ring:
             sipann.double_half_ring(width=380, thickness=250, radius=5000, gap=100)
 
     def test_instantiable(self):
-        dev = sipann.double_half_ring(width=500, thickness=220, radius=5000, gap=100)
+        sipann.double_half_ring(width=500, thickness=220, radius=5000, gap=100)
 
     def test_s_params(self, std_wl_um):
         dev = sipann.double_half_ring(width=500, thickness=220, radius=5000, gap=100)
-        s = dev.s_params(std_wl_um)
+        dev.s_params(std_wl_um)
 
 
 class Testangled_half_ring:
@@ -153,7 +153,7 @@ class Testangled_half_ring:
             )
 
     def test_instantiable(self):
-        dev = sipann.angled_half_ring(
+        sipann.angled_half_ring(
             width=500, thickness=220, radius=5000, gap=150, theta=0.5
         )
 
@@ -161,7 +161,7 @@ class Testangled_half_ring:
         dev = sipann.angled_half_ring(
             width=500, thickness=220, radius=5000, gap=150, theta=0.5
         )
-        s = dev.s_params(std_wl_um)
+        dev.s_params(std_wl_um)
 
 
 class Testwaveguide:
@@ -170,11 +170,11 @@ class Testwaveguide:
             sipann.waveguide(width=350, thickness=250, length=10000)
 
     def test_instantiable(self):
-        dev = sipann.waveguide(width=500, thickness=220, length=10000)
+        sipann.waveguide(width=500, thickness=220, length=10000)
 
     def test_s_params(self, std_wl_um):
         dev = sipann.waveguide(width=500, thickness=220, length=10000)
-        s = dev.s_params(std_wl_um)
+        dev.s_params(std_wl_um)
 
 
 class Testracetrack:
@@ -183,15 +183,13 @@ class Testracetrack:
             sipann.racetrack(width=625, thickness=175, radius=5000, gap=80, length=5000)
 
     def test_instantiable(self):
-        dev = sipann.racetrack(
-            width=500, thickness=220, radius=5000, gap=150, length=2000
-        )
+        sipann.racetrack(width=500, thickness=220, radius=5000, gap=150, length=2000)
 
     def test_s_params(self, std_wl_um):
         dev = sipann.racetrack(
             width=500, thickness=220, radius=5000, gap=150, length=2000
         )
-        s = dev.s_params(std_wl_um)
+        dev.s_params(std_wl_um)
 
 
 # class TestPremadeCoupler:
