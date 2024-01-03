@@ -242,9 +242,7 @@ def save_sparams(
                 temp = np.vstack((freq, np.abs(sp), np.unwrap(np.angle(sp)))).T
 
                 # Save header
-                header = (
-                    f'("port {out+1}", "TE", 1, "port {in_+1}", 1, "transmission")\n'
-                )
+                header = f'("port {out + 1}", "TE", 1, "port {in_ + 1}", 1, "transmission")\n'
                 header += f"{temp.shape}"
 
                 # save data
@@ -301,7 +299,7 @@ def df_to_sdict(df: pd.DataFrame) -> Tuple[Array, sax.SDict]:
         snn = sdf["mag"].values * jnp.exp(1j * sdf["phase"].values)
 
         if multimode:
-            sdict[(f"{p_out}@{m_out-1}", f"{p_in}@{m_in-1}")] = snn
+            sdict[(f"{p_out}@{m_out - 1}", f"{p_in}@{m_in - 1}")] = snn
         else:
             sdict[(p_out, p_in)] = snn
 
