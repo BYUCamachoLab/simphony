@@ -1,0 +1,3 @@
+include LICENSE.txt CHANGELOG.txt 
+graft simphony/ 
+global-exclude *.py[cod]

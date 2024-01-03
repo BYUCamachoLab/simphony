@@ -20,20 +20,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip wheel
-          pip install -r requirements.txt
+          pip install -r .[dev]
       - name: Build
         run: |
-          python setup.py sdist bdist_wheel
+          python -m build
       - name: Get version number
         id: get_version
         run: echo "VERSION=$(python3 -c "import simphony; print(simphony.__version__)")" >> $GITHUB_ENV
       - name: Load Release text
         run: |
-          BODY=$(cat ./docs/changelog/${{ env.VERSION }}-changelog.md)
-          BODY="${BODY//'%'/'%25'}"
-          BODY="${BODY//$'\n'/'%0A'}"
-          BODY="${BODY//$'\r'/'%0D'}"
-          echo "BODY=$BODY" >> $GITHUB_ENV
+          echo "BODY=$(python scripts/get_changelog_entry.py ${{ env.VERSION }})" >> $GITHUB_ENV
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.1.0
         with:

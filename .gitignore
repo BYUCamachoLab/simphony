@@ -64,7 +64,9 @@ instance/
 .scrapy
 
 # Sphinx documentation
-# docs/_build/
+docs/build/
+docs/_build/
+docs/api/
 
 # PyBuilder
 target/
@@ -89,6 +91,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+nojax/
+py38/
 
 # Spyder project settings
 .spyderproject

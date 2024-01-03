@@ -1,0 +1,107 @@
+# Book settings
+# Learn more at https://jupyterbook.org/customize/config.html
+
+title: simphony
+author: Sequoia Ploeg, et al.
+copyright: 2019-2023 Simphony Project Contributors
+logo: simphony_logo.png
+
+exclude_patterns: [_build, Thumbs.db, .DS_Store, "**.ipynb_checkpoints"]
+# only_build_toc_files: false
+
+# Force re-execution of notebooks on each build.
+# See https://jupyterbook.org/content/execute.html
+execute:
+  execute_notebooks: off #force
+
+parse:
+  myst_enable_extensions:
+    - amsmath
+    - colon_fence
+    - deflist
+    - dollarmath
+    - html_admonition
+    - html_image
+    - linkify
+    - replacements
+    - smartquotes
+    - substitution
+    - tasklist
+  myst_url_schemes: [mailto, http, https]
+  myst_dmath_double_inline: true
+
+# Define the name of the latex output file for PDF builds
+latex:
+  latex_documents:
+    targetname: book.tex
+
+# Add a bibtex file so that we can create citations
+bibtex_bibfiles:
+  - references.bib
+
+# Information about where the book exists on the web
+repository:
+  url: https://github.com/BYUCamachoLab/simphony  # Online location of your book
+  path_to_book: docs  # Optional path to your book, relative to the repository root
+  branch: master  # Which branch of the repository should be used when creating links (optional)
+
+# Add GitHub buttons to your book
+# See https://jupyterbook.org/customize/config.html#add-a-link-to-your-repository
+html:
+  # favicon: ""
+  use_edit_page_button: true
+  use_issues_button: true
+  use_repository_button: true
+  # use_multitoc_numbering: true
+  # extra_footer: ""
+  # google_analytics_id: ""
+  home_page_in_navbar: false
+  # baseurl: ""
+  announcement: "⚠️ Version 0.7.0 is incompatible with previous versions of simphony. ⚠️"
+  # footer_items: []
+
+sphinx:
+  extra_extensions:
+    - 'sphinx.ext.autodoc'
+    # - 'sphinx.ext.coverage'
+    - 'sphinx.ext.autodoc.typehints'
+    - 'sphinx.ext.autosummary'
+    - 'sphinx.ext.intersphinx'
+    - 'sphinx.ext.napoleon'
+    - 'sphinx.ext.viewcode'
+    - 'sphinx_design'
+    # - 'numpydoc'
+    # - 'matplotlib.sphinxext.mathmpl'
+    # - 'matplotlib.sphinxext.plot_directive'
+  config:
+    # numpydoc_class_members_toctree: False
+    add_module_names: False
+    autodoc_typehints: 'signature'
+    autodoc_mock_imports: ["SiPANN"]
+    autodoc_default_options: {"show-inheritance": true}
+    autosummary_generate: True
+    autodoc_member_order: 'bysource'
+    autoclass_content: "class"
+    autodoc_inherit_docstrings: true
+    html_static_path: ['_static']
+    # html_css_files: []
+    templates_path: ['_templates']
+    # mathjax_path: https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  intersphinx_mapping:
+    sipann:
+      - "https://sipann.readthedocs.io/en/latest/"
+      - null
+    sax:
+      - "https://flaport.github.io/sax/index.html"
+      - "objects.inv"
+  language: en
+
+# For speedup, decide which plot_formats to build based on build targets:
+#     html only -> png
+#     latex only -> pdf
+#     all other cases, including html + latex -> png, pdf
+# For simplicity, we assume that the build targets appear in the command line.
+# We're falling back on using all formats in case that assumption fails.
+# formats = {'html': ('png', 100), 'latex': ('pdf', 100)}
+# plot_formats = [formats[target] for target in ['html', 'latex']
+#                 if target in sys.argv] or list(formats.values())

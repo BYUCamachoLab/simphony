@@ -22,22 +22,21 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
 """
 simphony
 ========
 
-A Simulator for Photonic circuits
+A simulator and model library for classical and quantum photonic circuits.
 """
 
 import platform
 import sys
 
-from .models import Model  # noqa: F401
+# from .models_old import Model  # noqa: F401
 
-if sys.version_info < (3, 0, 0):
+if sys.version_info < (3, 9, 0):
     raise Exception(
-        "Simphony requires Python 3 (version "
+        "Simphony requires Python 3.9+ (version "
         + platform.python_version()
         + " detected)."
     )
