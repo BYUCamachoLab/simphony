@@ -1,12 +1,22 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
+name: build and test
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version }}
+      - uses: actions/checkout@v4
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
@@ -19,16 +29,8 @@ jobs:
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --ignore=E501,E741,W503,W605 --max-complexity=12 --statistics
       - name: Run Tox
-        run: tox -e 'py${{ matrix.python-version }}'
+        run: tox -e py
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ['3.9', '3.10', '3.11', '3.12']
-name: build and test
-on:
-  pull_request:
-    branches:
-      - master
-  push:
-    branches:
-      - master
