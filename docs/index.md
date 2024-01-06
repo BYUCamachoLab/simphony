@@ -26,6 +26,11 @@ SiPANN provides additional models for use in your circuits. View the links for
 installation instructions and find out more. 
 :::
 
+If you are using a machine with a GPU, you should follow the instructions for
+[JAX installation](https://jax.readthedocs.io/en/latest/installation.html) in 
+order to get the dependencies required to use the GPU version of JAX, instead 
+of just the CPU version, which is installed by default.
+
 **To get started using Simphony**, check out the
 [Introduction](tutorials/intro). Tutorials and API references are accessible
 through the sidebar navigation.
