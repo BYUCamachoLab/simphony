@@ -3,7 +3,7 @@
 
 title: simphony
 author: Sequoia Ploeg, et al.
-copyright: 2019-2023 Simphony Project Contributors
+copyright: 2019-2024 Simphony Project Contributors
 logo: simphony_logo.png
 
 exclude_patterns: [_build, Thumbs.db, .DS_Store, "**.ipynb_checkpoints"]
