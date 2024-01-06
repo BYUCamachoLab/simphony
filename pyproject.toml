@@ -1,6 +1,6 @@
 [project]
 name = "simphony"
-version = "0.7.0rc0"
+version = "0.7.0"
 description = "Simphony: A simulator for photonic circuits"
 readme = "README.md"
 requires-python = ">=3.9"
