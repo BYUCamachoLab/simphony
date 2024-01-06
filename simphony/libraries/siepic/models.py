@@ -619,10 +619,10 @@ def taper(
     wl_samp = freq2wl(f)  # meters
     wl_des = jnp.asarray(wl).reshape(-1) * 1e-6  # meters
 
-    s11 = jnp.interp(wl_des, wl_samp, arr[:, 1] * np.exp(1j * arr[:, 2]))
-    s12 = jnp.interp(wl_des, wl_samp, arr[:, 3] * np.exp(1j * arr[:, 4]))
-    s21 = jnp.interp(wl_des, wl_samp, arr[:, 5] * np.exp(1j * arr[:, 6]))
-    s22 = jnp.interp(wl_des, wl_samp, arr[:, 7] * np.exp(1j * arr[:, 8]))
+    s11 = jnp.interp(wl_des, wl_samp, arr[:, 1] * jnp.exp(1j * arr[:, 2]))
+    s12 = jnp.interp(wl_des, wl_samp, arr[:, 3] * jnp.exp(1j * arr[:, 4]))
+    s21 = jnp.interp(wl_des, wl_samp, arr[:, 5] * jnp.exp(1j * arr[:, 6]))
+    s22 = jnp.interp(wl_des, wl_samp, arr[:, 7] * jnp.exp(1j * arr[:, 8]))
 
     sdict = {
         ("o0", "o0"): s11,
@@ -742,10 +742,10 @@ def grating_coupler(
     wl_samp = freq2wl(f)  # meters
     wl_des = jnp.asarray(wl).reshape(-1) * 1e-6  # meters
 
-    s11 = jnp.interp(wl_des, wl_samp, arr[:, 1] * np.exp(1j * arr[:, 2]))
-    s12 = jnp.interp(wl_des, wl_samp, arr[:, 3] * np.exp(1j * arr[:, 4]))
-    s21 = jnp.interp(wl_des, wl_samp, arr[:, 5] * np.exp(1j * arr[:, 6]))
-    s22 = jnp.interp(wl_des, wl_samp, arr[:, 7] * np.exp(1j * arr[:, 8]))
+    s11 = jnp.interp(wl_des, wl_samp, arr[:, 1] * jnp.exp(1j * arr[:, 2]))
+    s12 = jnp.interp(wl_des, wl_samp, arr[:, 3] * jnp.exp(1j * arr[:, 4]))
+    s21 = jnp.interp(wl_des, wl_samp, arr[:, 5] * jnp.exp(1j * arr[:, 6]))
+    s22 = jnp.interp(wl_des, wl_samp, arr[:, 7] * jnp.exp(1j * arr[:, 8]))
 
     sdict = {
         ("o0", "o0"): s11,
