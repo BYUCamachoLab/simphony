@@ -5,6 +5,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.0](https://github.com/BYUCamachoLab/simphony/tree/v0.7.0) - <small>2024-01-06</small>
+
+This is a refactor of simphony that uses [SAX](https://github.com/flaport/sax) 
+as the s-parameter solver backend.
+
+### Added
+
+- Quantum simulations tools for simphony. The main advantage here is the use of
+  classical s-parameter models for quantum simulations.
+
+### Changed
+
+- The s-parameter solver backend is now SAX.
+- Simphony inherits the ability to run simulations on GPU's using 
+  [JAX](https://jax.readthedocs.io/en/latest/). This means that simphony code
+  now uses ``jax.numpy`` in place of ``numpy``.
+- SiPANN wrappers are now built into simphony, instead of into SiPANN. In order
+  to use them, you must still install SiPANN.
+
+### Removed
+
+- The majority of the package has been reimplemented or reorganized or made to
+  depend on other packages. This means that the majority of the code has been
+  removed, and this version of simphony is not compatible with previous 
+  releases.
+
+---
+
 ## [0.6.1](https://github.com/BYUCamachoLab/simphony/tree/v0.6.1) - <small>2022-02-18</small>
 
 This patch makes the CMRR take beam splitting into account.
