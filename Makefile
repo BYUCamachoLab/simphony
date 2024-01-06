@@ -83,4 +83,4 @@ rc:
 
 release:
 	pre-commit run --all-files
-	python3 scripts/release.py
+	cd scripts && python3 release.py
