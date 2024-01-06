@@ -2,6 +2,9 @@
 # Copyright © Simphony Project Contributors
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
+#
+# This file is deprecated and will not run with the latest version of simphony.
+# It is retained for legacy purposes only.
 
 import os
 
