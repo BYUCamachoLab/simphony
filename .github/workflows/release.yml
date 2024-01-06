@@ -29,7 +29,11 @@ jobs:
         run: echo "VERSION=$(python3 -c "import simphony; print(simphony.__version__)")" >> $GITHUB_ENV
       - name: Load Release text
         run: |
-          echo "BODY=$(python scripts/get_changelog_entry.py ${{ env.VERSION }})" >> $GITHUB_ENV
+          {
+            echo 'BODY<<EOF'
+            python scripts/get_changelog_entry.py ${{ env.VERSION }}
+            echo EOF
+          } >> "$GITHUB_ENV"
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.1.0
         with:
