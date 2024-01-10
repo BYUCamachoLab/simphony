@@ -14,7 +14,7 @@ class TestBidirectional_coupler:
         siepic.bidirectional_coupler(thickness=220, width=500)
 
     def test_s_params(self, std_wl_um):
-        s = siepic.bidirectional_coupler(wl=std_wl_um)
+        siepic.bidirectional_coupler(wl=std_wl_um)
 
 
 class Testdirectional_coupler:
@@ -26,7 +26,7 @@ class Testdirectional_coupler:
         siepic.directional_coupler(gap=200, coupling_length=45)
 
     def test_s_params(self, std_wl_um):
-        s = siepic.directional_coupler(wl=std_wl_um, gap=200, coupling_length=45)
+        siepic.directional_coupler(wl=std_wl_um, gap=200, coupling_length=45)
 
 
 class Testgrating_coupler:
@@ -40,7 +40,7 @@ class Testgrating_coupler:
         siepic.grating_coupler(pol="te", thickness=220, dwidth=0)
 
     def test_s_params(self, std_wl_um):
-        s = siepic.grating_coupler(wl=std_wl_um, pol="te")
+        siepic.grating_coupler(wl=std_wl_um, pol="te")
 
 
 class Testhalf_ring:
@@ -56,7 +56,7 @@ class Testhalf_ring:
         )
 
     def test_s_params(self, std_wl_um):
-        s = siepic.half_ring(
+        siepic.half_ring(
             wl=std_wl_um,
             pol="te",
             gap=50,
@@ -78,7 +78,7 @@ class Testtaper:
         siepic.taper(w1=0.5, w2=1.0, length=10.0)
 
     def test_s_params(self, std_wl_um):
-        s = siepic.taper(wl=std_wl_um, w1=0.5, w2=1.0, length=10.0)
+        siepic.taper(wl=std_wl_um, w1=0.5, w2=1.0, length=10.0)
 
 
 class Testterminator:
@@ -91,8 +91,8 @@ class Testterminator:
         siepic.terminator(pol="tm")
 
     def test_s_params(self, std_wl_um):
-        s = siepic.terminator(wl=std_wl_um, pol="te")
-        s = siepic.terminator(wl=std_wl_um, pol="tm")
+        siepic.terminator(wl=std_wl_um, pol="te")
+        siepic.terminator(wl=std_wl_um, pol="tm")
 
 
 class Testwaveguide:
@@ -106,7 +106,7 @@ class Testwaveguide:
         siepic.waveguide(pol="te", length=100, width=500, height=220, loss=2)
 
     def test_s_params(self, std_wl_um):
-        s = siepic.waveguide(
+        siepic.waveguide(
             wl=std_wl_um, pol="te", length=100, width=500, height=220, loss=2
         )
 
@@ -120,4 +120,4 @@ class Testy_branch:
         siepic.y_branch(pol="te", thickness=220, width=500)
 
     def test_s_params(self, std_wl_um):
-        s = siepic.y_branch(wl=std_wl_um, pol="te")
+        siepic.y_branch(wl=std_wl_um, pol="te")
