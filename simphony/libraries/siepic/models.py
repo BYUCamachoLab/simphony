@@ -144,6 +144,14 @@ def _generate_parameter_table_rst(df) -> str:
     return tabulate(df.values, df.columns, tablefmt="rst")
 
 
+def _stringify_float(val: float, max_precision: int = 1) -> str:
+    """Convert a float to a string, with a maximum precision."""
+    if val == int(val):
+        return str(int(val))
+    else:
+        return f"{val:.{max_precision}f}"
+
+
 def bidirectional_coupler(
     wl: Union[float, ArrayLike] = 1.55,
     thickness: float = 220,
@@ -223,15 +231,25 @@ def directional_coupler(
     gap    coupling_length
     =====  =================
     200                  0
+    200                2.5
     200                  5
+    200                7.5
     200                 10
+    200               12.5
     200                 15
+    200               17.5
     200                 20
+    200               22.5
     200                 25
+    200               27.5
     200                 30
+    200               32.5
     200                 35
+    200               37.5
     200                 40
+    200               42.5
     200                 45
+    200               47.5
     =====  =================
     """
     # df = self._generate_parameter_sets()
@@ -240,7 +258,7 @@ def directional_coupler(
     #         "Invalid parameter set, see the documentation for valid parameter sets"
     #     )
 
-    _datafile = f"ebeam_dc_te1550/dc_gap={int(gap)}nm_Lc={coupling_length}um.sparam"
+    _datafile = f"ebeam_dc_te1550/dc_gap={int(gap)}nm_Lc={_stringify_float(coupling_length)}um.sparam"
 
     file = _resolve_source_filepath(_datafile)
     header, data = load_sparams(file)
@@ -727,7 +745,7 @@ def grating_coupler(
     pol = pol.upper()
 
     if thickness not in [210.0, 220.0, 230.0]:
-        raise ValueError("'thickness' must be one of 210.0, 220.0, or 230")
+        raise ValueError("'thickness' must be one of 210.0, 220.0, or 230.0")
     thickness = str(int(thickness))
 
     if dwidth not in [-20.0, 0.0, 20.0]:
