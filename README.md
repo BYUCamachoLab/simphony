@@ -1,7 +1,7 @@
 # Simphony: A Simulator for Photonic Circuits
 
 <div style="text-align: center">
-<img alt="Development version" src="https://img.shields.io/badge/master-v0.7.1rc0-informational">
+<img alt="Development version" src="https://img.shields.io/badge/master-v0.7.1-informational">
 <a href="https://pypi.python.org/pypi/simphony"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/simphony.svg"></a>
 <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/simphony">
 <a href="https://github.com/BYUCamachoLab/simphony/actions?query=workflow%3A%22build+%28pip%29%22"><img alt="Build Status" src="https://github.com/BYUCamachoLab/simphony/workflows/build%20(pip)/badge.svg"></a>
@@ -10,7 +10,7 @@
 <a href="https://pypi.python.org/pypi/simphony/"><img alt="License" src="https://img.shields.io/pypi/l/simphony.svg"></a>
 <a href="https://github.com/BYUCamachoLab/simphony/commits/master"><img alt="Latest Commit" src="https://img.shields.io/github/last-commit/BYUCamachoLab/simphony.svg"></a>
 
-<img src="https://github.com/BYUCamachoLab/simphony/blob/v0.7.1rc0beta/docs/simphony_logo.png?raw=true" style="max-width: 500px" alt="Simphony logo">
+<img src="https://github.com/BYUCamachoLab/simphony/blob/v0.7.1beta/docs/simphony_logo.png?raw=true" style="max-width: 500px" alt="Simphony logo">
 </div>
 
 Simphony, a simulator for photonic circuits, is a fundamental package for designing and simulating photonic integrated circuits with Python.
@@ -146,6 +146,7 @@ previous recent entries. Make sure you have a clean working tree (git). Then,
 run:
 
 ```
+bumpversion release
 make release
 ```
 
