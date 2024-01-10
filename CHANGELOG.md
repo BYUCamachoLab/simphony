@@ -5,6 +5,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.1](https://github.com/BYUCamachoLab/simphony/tree/v0.7.0) - <small>2024-01-09</small>
+
+Minor bug fixes.
+
+### Fixed
+- Bug in some of the tests after the models were rewritten.
+- Bug in string formatting for parameterized filenames in SiEPIC libraries.
+  
+---
+
 ## [0.7.0](https://github.com/BYUCamachoLab/simphony/tree/v0.7.0) - <small>2024-01-06</small>
 
 This is a refactor of simphony that uses [SAX](https://github.com/flaport/sax) 
