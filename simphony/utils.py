@@ -14,7 +14,7 @@ from jax import Array
 from jax.typing import ArrayLike
 from sax.utils import get_ports
 from scipy.constants import c as SPEED_OF_LIGHT
-from scipy.interpolate import interp1d
+from scipy.interpolate import CubicSpline, interp1d
 
 from simphony import __version__
 
@@ -512,5 +512,6 @@ def resample(x: ArrayLike, xp: ArrayLike, sdict: sax.SDict) -> sax.SDict:
     """
     new_sdict = {}
     for k, v in sdict.items():
-        new_sdict[k] = jnp.interp(x, xp, v)
+        cs = CubicSpline(xp, v)
+        new_sdict[k] = cs(x)
     return new_sdict
