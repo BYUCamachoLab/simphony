@@ -86,7 +86,10 @@ def waveguide(
     dneff_dwl = (ng - neff) / wl0
     _neff = neff - dwl * dneff_dwl
     phase = 2 * jnp.pi * _neff * length / wl
-    amplitude = jnp.asarray(10 ** (-loss * length / 20), dtype=complex)
+    # amplitude = jnp.asarray(10 ** (-loss * length / 20), dtype=complex)
+    loss_mag = loss / (10 * jnp.log10(jnp.exp(1)))
+    alpha = loss_mag * 1e-4
+    amplitude = jnp.asarray(jnp.exp(-alpha * length / 2), dtype=complex)
     transmission = amplitude * jnp.exp(1j * phase)
     sdict = sax.reciprocal(
         {
