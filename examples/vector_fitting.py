@@ -26,20 +26,6 @@ omega0 = 2 * np.pi / T
 omega = np.arange(11) * omega0
 Z = Z.reshape(len(Z), 1, 1)
 
-# plt.figure(93)
-plt.plot(omega / (2 * np.pi), np.abs(np.squeeze(Z)), 'bo')
-plt.xlabel('Frequency [Hz]')
-plt.ylabel('Magnitude [dyn·s·cm⁻⁵]')
-plt.show()
-# plt.hold(True)
-
-# plt.figure(94)
-plt.plot(omega / (2 * np.pi), 180 / np.pi * np.angle(np.squeeze(Z)), 'bo')
-plt.xlabel('Frequency [Hz]')
-plt.ylabel('Phase [deg]')
-plt.show()
-# plt.hold(True)
-
 def ComputeModelResponse(omega, R0, Rr, Rc, pr, pc):
     """
     Compute the frequency response of a Vector Fitting model
@@ -79,25 +65,35 @@ def ComputeModelResponse(omega, R0, Rr, Rc, pr, pc):
     return H
 
 # Fitting
-Order = 9
+Order = 10
 # Because of the noise and poor sampling in the original samples, we need
 # to essentially exclude the first convergence test (never satisfied)
 options = VF_Options()
 options.poles_estimation_threshold = 100
 
-model = FastVF(omega, Z, Order, options)
+for Order in range(1, 10):
+    model = FastVF(omega, Z, Order, options)
 
-# Compute model response over a finer grid
-omega_model = np.linspace(min(omega), max(omega), 100)
+    # Compute model response over a finer grid
+    omega_model = np.linspace(min(omega), max(omega), 100)
 
-Z_model = ComputeModelResponse(omega_model, model.R0, model.Rr, model.Rc, model.poles_real, model.poles_complex)
+    Z_model = ComputeModelResponse(omega_model, model.R0, model.Rr, model.Rc, model.poles_real, model.poles_complex)
 
-# Plot the frequency response of the model
-plt.plot(omega_model / (2 * np.pi), np.abs(np.squeeze(Z_model)), 'r-.', linewidth=1.5)
-plt.legend(['Samples', f'Model (order={Order})'])
-plt.show()
+    # Plot the frequency response of the model
+    plt.plot(omega_model / (2 * np.pi), np.abs(np.squeeze(Z_model)), 'r-.', linewidth=1.5)
+    plt.plot(omega / (2 * np.pi), np.abs(np.squeeze(Z)), 'bo')
+    plt.legend([f'Model (order={Order})', 'Samples' ])
+    plt.xlabel('Frequency [Hz]')
+    plt.ylabel('Magnitude [dyn·s·cm⁻⁵]')
+    plt.savefig(f'freq_response{Order}.png')
+    plt.clf()
 
-plt.plot(omega_model / (2 * np.pi), 180 / np.pi * np.angle(np.squeeze(Z_model)), 'r-.', linewidth=1.5)
-plt.legend(['Samples', f'Model (order={Order})'], loc='lower right')
+    # Plot the phase of the model / samples
+    plt.plot(omega_model / (2 * np.pi), 180 / np.pi * np.angle(np.squeeze(Z_model)), 'r-.', linewidth=1.5)
+    plt.plot(omega / (2 * np.pi), 180 / np.pi * np.angle(np.squeeze(Z)), 'bo')
+    plt.legend([f'Model (order={Order})', 'Samples'], loc='lower right')
+    plt.xlabel('Frequency [Hz]')
+    plt.ylabel('Phase [deg]')
+    plt.savefig(f'phase_response{Order}.png')
+    plt.clf()
 
-plt.show()

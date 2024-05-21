@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.sparse import diags
 import pandas as pd
+import time
 
 def samples_flow_rate(omega):
     # section 3.3 example
@@ -29,7 +30,7 @@ class VF_Options:
                  max_iterations = 5, 
                  enforce_stability = True, 
                  alpha = 0.01,
-                 debug = True):
+                 debug = False):
         self.poles_estimation_threshold = poles_estimation_threshold
         self.model_error_threshold = model_error_threshold
         self.max_iterations = max_iterations
@@ -60,6 +61,8 @@ def compute_phi_matrices(omega,poles_real,poles_complex):
 
 
 def FastVF(omega, H, order, options):
+    tic = time.time()
+
     if options == None:
         options = VF_Options()
 
@@ -78,11 +81,13 @@ def FastVF(omega, H, order, options):
 
     poles_real = np.array((num_real_poles))
     if num_real_poles == 1:
-        poles_real = [-alpha*max(omega)]
+        poles_real = np.array([-alpha*max(omega)])
+    else:
+        poles_real = np.array([])
     
     poles_complex = np.array((num_complex_pairs), dtype=complex)
     if num_complex_pairs == 1:
-        poles_complex = (-alpha+1j)*np.max(omega) / 2
+        poles_complex = np.array([(-alpha+1j)*np.max(omega) / 2])
     elif np.min(omega) == 0:
         poles_complex = (-alpha+1j)*max(omega)*np.arange(1, num_complex_pairs + 1, dtype=complex)/num_complex_pairs
         #poles_complex = poles_complex.reshape((len(poles_complex), 1))
@@ -146,17 +151,18 @@ def FastVF(omega, H, order, options):
             plt.xlabel('Real')
             plt.ylabel('Imaginary')
             plt.title(f"Poles estimate, iteration {i}")
+            plt.plot()
 
         # Extract Real Poles
         eps = np.finfo(float).eps
-        ind_rp = np.nonzero(np.abs(np.imag(new_poles)) < 100 * eps * np.abs(new_poles))[0] # I increased the constant 10 to 100 for now
+        ind_rp = np.nonzero(np.abs(np.imag(new_poles)) < 1000 * eps * np.abs(new_poles))[0] # I increased the constant 10 to 100 for now
 
         poles_real = np.real(new_poles[ind_rp])
         num_real_poles = len(ind_rp)
         
         # Extract complex conjugate pairs of poles
         # Find only the poles with positive imaginary part
-        ind_cp = np.nonzero(np.imag(new_poles)>=100*eps*abs(new_poles))[0]
+        ind_cp = np.nonzero(np.imag(new_poles)>=1000*eps*abs(new_poles))[0]
         poles_complex = new_poles[ind_cp]
         num_complex_pairs = len(ind_cp)
 
@@ -235,16 +241,18 @@ def FastVF(omega, H, order, options):
             if err <= options.model_error_threshold:
                 print('Convergence test (model-samples error): \tpassed (%e)\n',err)
                 print('Model identification successful\n')
-                # print('Modeling time: %f s\n',toc)
+                toc = time.time()
+                print(f'Modeling time: {toc - tic}s\n')
                 return model
             else:
-                print('Convergence test (model-samples error): \tfailed (%e)\n',err);
+                print('Convergence test (model-samples error): \tfailed (%e)\n',err)
         
         iter += 1
 
     print('Warning: could not reach the desired modeling error within the allowed number of iterations\n')
+    toc = time.time()
+    print(f'Modeling time: {toc - tic}s\n')
     return model
-    # print('Modeling time: %f s\n',toc);
 
 if __name__ == "__main__":
     omega = np.linspace(0.0, 10, 10)
