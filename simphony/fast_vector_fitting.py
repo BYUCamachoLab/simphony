@@ -3,8 +3,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.sparse import diags
+from scipy.linalg import block_diag
 import pandas as pd
-import time
+
+from simphony.libraries import siepic
+from simphony.utils import dict_to_matrix
+from scipy.signal import StateSpace, bilinear_zpk
+
+from numpy.linalg import svd
 
 def samples_flow_rate(omega):
     # section 3.3 example
@@ -30,7 +36,8 @@ class VF_Options:
                  max_iterations = 5, 
                  enforce_stability = True, 
                  alpha = 0.01,
-                 debug = False):
+                 debug = True,
+                 mode = "CVF"):
         self.poles_estimation_threshold = poles_estimation_threshold
         self.model_error_threshold = model_error_threshold
         self.max_iterations = max_iterations
@@ -59,10 +66,184 @@ def compute_phi_matrices(omega,poles_real,poles_complex):
 
     return phi_real, phi_complex
 
+def ComputeModelResponse(omega, R0, Rr, Rc, pr, pc):
+    """
+    Compute the frequency response of a Vector Fitting model
+
+    Parameters:
+    - omega: frequency samples, column vector. This is angular frequency (omega = 2*pi*f)
+    - R0: constant coefficient
+    - Rr: residues of real poles, 3D array. First dimension corresponds to system outputs. 
+          Second dimension to system inputs. Third dimension corresponds to the various poles.
+    - Rc: residues of complex conjugate pole pairs (only one per pair)
+    - pr: real poles, column vector
+    - pc: complex poles, column vector. Only one per pair of conjugate poles
+
+    Returns:
+    - H: model response samples, 3D array. First dimension corresponds to system outputs.
+         Second dimension to system inputs. Third dimension corresponds to frequency.
+    """
+    qbar = R0.shape[0]     # number of outputs
+    mbar = R0.shape[1]     # number of inputs
+    kbar = len(omega)      # number of frequency points
+
+    nr = len(pr)           # number of real poles
+    nc = len(pc)           # number of complex conjugate pairs
+
+    # Preallocate space for H
+    H = np.zeros((qbar, mbar, kbar), dtype=complex)
+
+    # Compute the model response
+    for ik in range(kbar):
+        H[:, :, ik] = R0
+        for ir in range(nr):
+            H[:, :, ik] += Rr[:, :, ir] / (1j * omega[ik] - pr[ir])
+        for ic in range(nc):
+            H[:, :, ik] += Rc[:, :, ic] / (1j * omega[ik] - pc[ic])
+            H[:, :, ik] += np.conj(Rc[:, :, ic]) / (1j * omega[ik] - np.conj(pc[ic]))
+
+    return H
+
+def compute_time_response(times, R0, Rr, Rc, pr, pc):
+    nr = len(pr)
+    nc = len(pc)
+    q_bar = R0.shape[0]
+    m_bar = R0.shape[1]
+
+    h = np.zeros((len(times), q_bar, m_bar), dtype=complex)
+
+    for t_index in range(len(times)):
+        t = times[t_index]
+
+        h[t_index, :, :] = R0
+        # real poles
+        for n in range(nr):
+            h[t_index, :, :] += Rr[:, :, n] * np.exp(pr[n] * t)
+
+        # complex poles
+        for n in range(nc):
+            h[t_index, :, :] += 2 * np.real(Rc[:, :, n]) * np.exp(np.real(pc[n]) * t) * np.cos(np.imag(pc[n]) * t) - 2 * np.imag(Rc[:, :, n]) * np.exp(np.real(pc[n]) * t) * np.sin(np.imag(pc[n] * t))
+            
+
+    return h
+
+def complex_valued_ABCD(model):
+    nr = model.Rr.shape[2]
+    nc = model.Rc.shape[2]
+
+    n_bar = nr + 2 * nc
+    q_bar = model.R0.shape[0]
+    m_bar = model.R0.shape[1]
+
+    R_n = []
+    p_n = []
+
+    A_n = []
+    B_n = []
+    C_n = []
+
+    for n in range(nr):
+        # IMPLEMENT ME
+        pass
+
+    for n in range(nc):
+        pass
+
+    for n in range(nc):
+        R_n.append(model.Rc[:, :, n])
+        R_n.append(np.conj(model.Rc[:, :, n]))
+        p_n.append(model.poles_complex[n])
+        p_n.append(np.conj(model.poles_complex[n]))
+
+
+
+    for n in range(n_bar):
+        U, S, Vh = svd(R_n[n])
+        rank =  S.shape[0]
+        #A_n.append(np.block([[np.real(p_n[n]) * np.eye(rank), np.imag(p_n[n]*np.eye(rank))], [-np.imag(p_n[n]*np.eye(rank)), np.real(p_n[n]) * np.eye(rank)]]))
+        A_n.append(p_n[n]*np.eye(rank))
+        B_n.append(Vh.T)
+        C_n.append((U@S).reshape(q_bar, rank))
+
+    # A = block_diag(*A_n)
+    poles_s = np.concatenate([model.poles_real, model.poles_complex, np.conj(model.poles_complex)])
+    z, poles_z, k = bilinear_zpk([], poles_s, 0, 100)
+    A = np.diag(poles_s)
+    B = (np.block(B_n))
+    B = B.T
+
+    C = np.block(C_n)
+    df = pd.DataFrame(A)
+    df.to_csv("A_matrix.csv")
+
+    D = model.R0
+    return A, B, C, D
+
+def real_valued_ABCD(model):
+    nr = model.Rr.shape[2]
+    nc = model.Rc.shape[2]
+
+    n_bar = nr + 2 * nc
+    q_bar = model.R0.shape[0]
+    m_bar = model.R0.shape[1]
+
+    A_n = []
+    B_n = []
+    C_n = []
+
+    for n in range(len(model.poles_real)):
+        U, S, Vh = svd(model.Rr[:, :, n])
+        rank =  S.shape[0]
+        #A_n.append(np.block([[np.real(p_n[n]) * np.eye(rank), np.imag(p_n[n]*np.eye(rank))], [-np.imag(p_n[n]*np.eye(rank)), np.real(p_n[n]) * np.eye(rank)]]))
+        A_n.append(model.poles_real[n]*np.eye(rank))
+        B_n.append(Vh.T)
+        C_n.append((U@S).reshape(q_bar, rank))
+    
+    for n in range(len(model.poles_complex)):
+            #R = R_n[n]
+            U, S, Vh = svd(model.Rc[:, :, n])
+            rank =  S.shape[0]
+            A_n.append(np.block([[np.real(model.poles_complex[n]) * np.eye(rank), np.imag(model.poles_complex[n])*np.eye(rank)], [-np.imag(model.poles_complex[n])*np.eye(rank), np.real(model.poles_complex[n]) * np.eye(rank)]]))
+            B_n.append(2*np.real(Vh))
+            B_n.append(2*np.imag(Vh))
+            C_n.append(np.real((U@S).reshape(q_bar, rank)))
+            C_n.append(np.imag((U@S).reshape(q_bar, rank)))
+    
+
+
+    A = block_diag(*A_n)
+    A = block_diag(*A_n)
+    #A = np.diag(poles_z)
+    B = (np.block(B_n))
+    B = B.T
+    C = np.block(C_n)
+    D = model.R0
+
+    df = pd.DataFrame(A)
+    df.to_csv("A_matrix.csv")
+    df = pd.DataFrame(B)
+    df.to_csv("B_matrix.csv")
+    df = pd.DataFrame(C)
+    df.to_csv("C_matrix.csv")
+    df = pd.DataFrame(D)
+    df.to_csv("D_matrix.csv")
+    return A, B, C, D
+
+
+def state_space_ABCD(model, real_valued):
+    if (real_valued):
+        return real_valued_ABCD(model)
+    else:
+        return complex_valued_ABCD(model)
+
+
+def state_space(model, dt):
+    A, B, C, D = state_space_ABCD(model, True)
+    sys = StateSpace(A, B, C, np.real(D))
+    return sys
 
 def FastVF(omega, H, order, options):
-    tic = time.time()
-
+    # H = np.squeeze(np.asarray(H))
     if options == None:
         options = VF_Options()
 
@@ -81,13 +262,11 @@ def FastVF(omega, H, order, options):
 
     poles_real = np.array((num_real_poles))
     if num_real_poles == 1:
-        poles_real = np.array([-alpha*max(omega)])
-    else:
-        poles_real = np.array([])
+        poles_real = [-alpha*max(omega)]
     
     poles_complex = np.array((num_complex_pairs), dtype=complex)
     if num_complex_pairs == 1:
-        poles_complex = np.array([(-alpha+1j)*np.max(omega) / 2])
+        poles_complex = (-alpha+1j)*np.max(omega) / 2
     elif np.min(omega) == 0:
         poles_complex = (-alpha+1j)*max(omega)*np.arange(1, num_complex_pairs + 1, dtype=complex)/num_complex_pairs
         #poles_complex = poles_complex.reshape((len(poles_complex), 1))
@@ -126,7 +305,8 @@ def FastVF(omega, H, order, options):
                 b[irow:irow+nbar, 0] = Q[:kbar,nbar+1:].T @ np.real(V_H) + Q[kbar:,nbar+1:].T @ np.imag(V_H)
         
         # cw = Alsq\blsq;
-        cw = np.linalg.solve(A, b)
+        #cw = np.linalg.solve(A, b)
+        cw = np.linalg.lstsq(A, b)[0]
         w = 1 + phi_real@cw[:num_real_poles] + phi_complex@cw[num_real_poles:] # DOUBLE CHECKED TO THIS POINT
         # Compute the new poles estimate
         A = np.zeros((nbar,nbar))
@@ -146,30 +326,90 @@ def FastVF(omega, H, order, options):
 
         new_poles, _ = np.linalg.eig(A-bw@cw.conj().T)
 
-        if options.debug:
-            plt.scatter(np.real(new_poles), np.imag(new_poles))
-            plt.xlabel('Real')
-            plt.ylabel('Imaginary')
-            plt.title(f"Poles estimate, iteration {i}")
-            plt.plot()
 
         # Extract Real Poles
         eps = np.finfo(float).eps
-        ind_rp = np.nonzero(np.abs(np.imag(new_poles)) < 1000 * eps * np.abs(new_poles))[0] # I increased the constant 10 to 100 for now
+        ind_rp = np.nonzero(np.abs(np.imag(new_poles)) < 10 * eps * np.abs(new_poles))[0] # I increased the constant 10 to 100 for now
 
         poles_real = np.real(new_poles[ind_rp])
-        num_real_poles = len(ind_rp)
+        # num_real_poles = len(ind_rp)
         
         # Extract complex conjugate pairs of poles
         # Find only the poles with positive imaginary part
-        ind_cp = np.nonzero(np.imag(new_poles)>=1000*eps*abs(new_poles))[0]
+        ind_cp = np.nonzero(np.imag(new_poles)>=10*eps*abs(new_poles))[0]
+        # ind_cp = np.nonzero(np.imag(new_poles)>=100*eps*abs(new_poles))[0]
         poles_complex = new_poles[ind_cp]
         num_complex_pairs = len(ind_cp)
+
+        num_real_poles = len(poles_real)
+
+
+        while len(poles_real) + 2*len(poles_complex) < order:
+            mask = np.argmin(np.abs(np.imag(new_poles)))
+            poles_real = np.append(poles_real, new_poles[mask])
+
+        num_real_poles = len(poles_real)
+
+        while 2 * len(poles_complex) > order:
+            most_real_index = np.argmin(np.abs(np.imag(poles_complex)))
+            poles_real = np.append(poles_real, poles_complex[most_real_index])
+            poles_complex = np.delete(poles_complex, most_real_index)
+        
+        num_complex_pairs = len(poles_complex)
+        
+        while len(poles_real) + 2*len(poles_complex) > order:
+            if len(poles_real) == 1:
+                poles_real = np.array([])
+                break
+            magnitudes = np.abs(poles_real)
+
+            # Step 2: Calculate the differences in magnitude between neighboring elements
+            # Calculate the differences between magnitudes of consecutive elements
+            diffs = np.abs(np.diff(magnitudes))
+
+            # Step 3: Find the index of the element with the smallest difference in magnitude with its neighbor
+            # Since we calculate differences between consecutive elements, the index of the smallest difference
+            # will be between the i-th and (i+1)-th elements.
+            # We take the first element of the pair to remove.
+            index_of_min_diff = np.argmin(diffs)
+
+            # Since we want to remove the element with the smallest difference, we choose the one with the
+            # smaller magnitude if we're between a pair. We choose the min of the index of min difference and the next element.
+            if index_of_min_diff == len(magnitudes) - 1:
+                index_to_remove = index_of_min_diff  # If it's the last element, we can only remove this one
+            else:
+                if magnitudes[index_of_min_diff] <= magnitudes[index_of_min_diff + 1]:
+                    index_to_remove = index_of_min_diff
+                else:
+                    index_to_remove = index_of_min_diff + 1
+
+            # Step 4: Delete the element at the found index
+            poles_real = np.delete(poles_real, index_to_remove)
+
+        
+        num_real_poles = len(poles_real)
+        #poles_real = np.real(poles_real)
 
         # Stability/causality enforcement
         if options.enforce_stability:
             poles_real = -np.abs(poles_real)
             poles_complex = -np.abs(np.real(poles_complex)) + 1j*np.imag(poles_complex)
+
+            # mask_real = np.abs(poles_real) > 1
+            # mask_complex = np.abs(poles_complex) > 1
+            # poles_real[mask_real] = 1 / poles_real[mask_real]
+            # poles_complex[mask_complex] = 1 / poles_complex[mask_complex]
+
+            # poles_real[mask_real] = poles_real[mask_real] / np.abs(poles_real[mask_real])
+            # poles_complex[mask_complex] = poles_complex[mask_complex] / np.abs(poles_complex[mask_complex])
+
+        if options.debug:
+            plt.scatter(np.real(poles_complex), np.imag(poles_complex))
+            plt.scatter(np.real(poles_real), np.imag(poles_real))
+            plt.xlabel('Real')
+            plt.ylabel('Imaginary')
+            plt.title(f"Poles estimate, iteration {i}")
+        
         
         # First convergence test
     
@@ -241,28 +481,42 @@ def FastVF(omega, H, order, options):
             if err <= options.model_error_threshold:
                 print('Convergence test (model-samples error): \tpassed (%e)\n',err)
                 print('Model identification successful\n')
-                toc = time.time()
-                print(f'Modeling time: {toc - tic}s\n')
+                # print('Modeling time: %f s\n',toc)
                 return model
             else:
-                print('Convergence test (model-samples error): \tfailed (%e)\n',err)
+                print('Convergence test (model-samples error): \tfailed (%e)\n',err);
         
         iter += 1
 
     print('Warning: could not reach the desired modeling error within the allowed number of iterations\n')
-    toc = time.time()
-    print(f'Modeling time: {toc - tic}s\n')
     return model
 
-if __name__ == "__main__":
-    omega = np.linspace(0.0, 10, 10)
-    num_inputs = 1
-    num_outputs = 2
-    H = np.zeros((len(omega), num_outputs, num_inputs))
-    H[:, 0, 0] = samples_flow_rate(omega)
-    plt.plot(omega, H[:, 0, 0])
+#### OLD ##### 
+#     for n in range(nr):
+#         # IMPLEMENT ME
+#         pass
 
-    vf_options = VF_Options()
-    order = 11
-    FastVF(omega, H, order, vf_options)
+#     for n in range(nc):
+#         pass
 
+#     for n in range(nc):
+#         pass
+#     #     R_n.append(model.Rc[:, :, n])
+#     #     R_n.append(np.conj(model.Rc[:, :, n]))
+#     #     p_n.append(model.poles_complex[n])
+#     #     p_n.append(np.conj(model.poles_complex[n]))
+
+
+
+#     # for n in range(n_bar):
+#     #     #R = R_n[n]
+#     #     U, S, Vh = svd(R_n[n])
+#     #     rank =  S.shape[0]
+#     #     A_n.append(np.block([[np.real(p_n[n]) * np.eye(rank), np.imag(p_n[n]*np.eye(rank))], [-np.imag(p_n[n]*np.eye(rank)), np.real(p_n[n]) * np.eye(rank)]]))
+
+#     A = block_diag(*A_n)
+#     df = pd.DataFrame(A)
+#     df.to_csv("A_matrix.csv")
+
+#     D = model.R0
+#     return A, B, C, D
