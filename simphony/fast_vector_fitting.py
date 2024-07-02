@@ -1,5 +1,4 @@
 # P. Triverio, "Vector Fitting", in P. Benner, S. Grivet-Talocia, A. Quarteroni, G. Rozza, W. H. A. Schilders, L. M. Silveira (Eds.), "Model Order Reduction. Volume 1: System- and Data-Driven Methods and Algorithms", De Gruyter, 2021.
-
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.sparse import diags
@@ -30,7 +29,7 @@ class Pole_Residue_Model:
     def __init__(self):
         pass
 
-class VF_Options:
+class FVF_Options:
     def __init__(self, poles_estimation_threshold = 1e-1, 
                  model_error_threshold = 1e-3, 
                  max_iterations = 5, 
@@ -219,14 +218,14 @@ def real_valued_ABCD(model):
     C = np.block(C_n)
     D = model.R0
 
-    df = pd.DataFrame(A)
-    df.to_csv("A_matrix.csv")
-    df = pd.DataFrame(B)
-    df.to_csv("B_matrix.csv")
-    df = pd.DataFrame(C)
-    df.to_csv("C_matrix.csv")
-    df = pd.DataFrame(D)
-    df.to_csv("D_matrix.csv")
+    # df = pd.DataFrame(A)
+    # df.to_csv("A_matrix.csv")
+    # df = pd.DataFrame(B)
+    # df.to_csv("B_matrix.csv")
+    # df = pd.DataFrame(C)
+    # df.to_csv("C_matrix.csv")
+    # df = pd.DataFrame(D)
+    # df.to_csv("D_matrix.csv")
     return A, B, C, D
 
 
@@ -245,7 +244,7 @@ def state_space(model, dt):
 def FastVF(omega, H, order, options):
     # H = np.squeeze(np.asarray(H))
     if options == None:
-        options = VF_Options()
+        options = FVF_Options()
 
     kbar = len(omega)
     qbar = np.shape(H)[1]
