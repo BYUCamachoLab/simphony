@@ -66,17 +66,14 @@ build:
 major:
 	bumpversion major
 	VERSION=$(shell python3 -c "import simphony; print(simphony.__version__)") && \
-	python3 scripts/create_changelog_entry.py $$VERSION
 
 minor:
 	bumpversion minor
 	VERSION=$(shell python3 -c "import simphony; print(simphony.__version__)") && \
-	python3 scripts/create_changelog_entry.py $$VERSION
 
 patch:
 	bumpversion patch
 	VERSION=$(shell python3 -c "import simphony; print(simphony.__version__)") && \
-	python3 scripts/create_changelog_entry.py $$VERSION
 
 rc:
 	bumpversion build

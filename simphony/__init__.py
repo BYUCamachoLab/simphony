@@ -41,7 +41,7 @@ if sys.version_info < (3, 9, 0):
         + " detected)."
     )
 
-__version__ = "0.7.1"
+__version__ = "0.7.2rc0"
 __license__ = "MIT"
 __project_url__ = "https://github.com/BYUCamachoLab/simphony"
 __forum_url__ = "https://github.com/BYUCamachoLab/simphony/issues"
