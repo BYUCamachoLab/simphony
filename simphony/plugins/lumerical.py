@@ -21,6 +21,7 @@ import sax
 from jax import Array
 from jax.typing import ArrayLike
 from lark import Lark, Transformer, v_args
+from sax.utils import clean_string
 
 from simphony.utils import wl2freq
 
@@ -132,7 +133,7 @@ class _SparamsTransformer(Transformer):
 
     @v_args(inline=True)
     def port(self, port) -> str:
-        return _destring(port)
+        return clean_string(_destring(port))
 
     @v_args(inline=True)
     def modeid(self, mid) -> int:
@@ -272,7 +273,6 @@ def df_to_sdict(df: pd.DataFrame) -> Tuple[Array, sax.SDict]:
     """
     df = df.copy()
     df = df.sort_values("freq")
-
     if df["mode_out"].unique().size == 1 or df["mode_in"].unique().size == 1:
         multimode = False
         grouper = ["port_out", "port_in"]
@@ -287,6 +287,8 @@ def df_to_sdict(df: pd.DataFrame) -> Tuple[Array, sax.SDict]:
             p_out, p_in, m_out, m_in = keys
         else:
             p_out, p_in = keys
+        p_out = p_out.replace(" ", "_")
+        p_in = p_in.replace(" ", "_")
 
         # Ensure frequencies are matched across arrays
         freq = sdf["freq"].values
