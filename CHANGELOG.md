@@ -9,8 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Minor bug fixes.
 
+### Added
+- Note added to documentation informing users that port names must be valid 
+  identifiers.
+
 ### Fixed
 - Bug in loss of waveguide in ideal library was fixed.
+
+### Changed
+- Port names in sax are now required to be valid Python identifiers. 
+  In practice, this means that spaces previously present in port names are now 
+  replaced with underscores.
   
 ---
 
