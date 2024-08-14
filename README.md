@@ -1,7 +1,7 @@
 # Simphony: A Simulator for Photonic Circuits
 
 <div style="text-align: center">
-<img alt="Development version" src="https://img.shields.io/badge/master-v0.7.2rc0-informational">
+<img alt="Development version" src="https://img.shields.io/badge/master-v0.7.2-informational">
 <a href="https://pypi.python.org/pypi/simphony"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/simphony.svg"></a>
 <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/simphony">
 <a href="https://github.com/BYUCamachoLab/simphony/actions"><img alt="Build Status" src="https://github.com/BYUCamachoLab/SiPANN/actions/workflows/build-and-test.yml/badge.svg"></a>
