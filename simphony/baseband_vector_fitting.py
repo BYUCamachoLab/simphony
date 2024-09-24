@@ -8,6 +8,18 @@ from numpy.linalg import svd
 from scipy.signal import  StateSpace, dlsim, lsim
 from simphony.utils import dict_to_matrix
 from collections.abc import Iterable
+from scipy.signal import convolve, find_peaks, peak_widths
+from scipy.optimize import curve_fit
+from functools import partial
+import warnings
+
+def cross_covariance(X, Y):
+    (X - X.mean()) * (Y - Y.mean()).conj().T
+
+def covariance_X_plus_Y(cov_X, cov_Y):
+    pass
+
+
 
 class State_Space_Model:
     def __init__(self):
@@ -29,9 +41,10 @@ class State_Space_Model:
         xout = (np.dot(system.A, xout) +
                             np.dot(system.B, u))
         yout = (np.dot(system.C, xout) +
-                        np.dot(system.D, u))
+                        1.0*np.dot(system.D, u))
 
         return yout, xout
+
     
     def realify(self, M):
         top_row = np.hstack([M.real, -M.imag])
@@ -40,7 +53,7 @@ class State_Space_Model:
         return M_real
 
 
-    def qstep(self, input_states, t=None, x0_means=None, x0_cov=None):
+    def qstep(self, input_states, s=None, t=None, x0_means=None, x0_cov=None):
         # Condition needed to ensure output remains compatible
         system = self.discrete
         # is_ss_input = isinstance(system, StateSpace)
@@ -62,21 +75,51 @@ class State_Space_Model:
             xout_means = np.asarray(x0_means)
 
         if x0_cov is None:
-            xout_cov = np.zeros((A.shape[1],))
+            xout_cov = np.zeros((A.shape[0],A.shape[1]))
+            I = np.eye(D.shape[0])
+            xout_cov = np.linalg.pinv(C)@(0.25*I - D@cov@D.T)@np.linalg.pinv(C.T)
         else:
             xout_cov = np.asarray(x0_cov)
+
+
 
         # Simulate the system
         xout_means = A@xout_means + B@means
         yout_means = C@xout_means + D@means
 
+        # cov = 4 * cov
+        xout_cov = A@xout_cov@(A.T) + B@cov@(B.T)
+        yout_cov = C@xout_cov@(C.T) + D@cov@(D.T)
+       
+
+
+        # # mean_X = A@xout_means
+        # cov_X = A@xout_cov@A.T
         
+        # mean_Y = B@means
+        # # cov_Y = C@cov@C.T
+        # cov_Y = C.T@cov@C
 
-        # Calculate the covariances
-        # xout_cov = A@xout_cov@A.T + B@cov@B.T
-        # yout_cov = C@xout_cov@C.T + D@cov@D.T
+        # # mean_XplusY = mean_X + mean_Y
+        # cov_XplusY = cov_X + cov_Y
 
-        return yout_means,  yout_cov, xout_means, xout_cov
+        # mean_G = C@mean_XplusY
+        # cov_G = C@cov_XplusY@C.T
+
+        # mean_H = D@means
+        # cov_H = D@cov@D.T
+
+        # # xout_means = mean_G + mean_H 
+        # yout_cov = cov_G + cov_H # both this line and a few lines up assume that X, Y / G, H are independent
+
+        # # Calculate the covariances
+        # xout_cov = A@xout_cov + B@cov
+        # zout_cov = C@xout_cov + D@cov
+
+        # xz0 = A@xz0 + B@((zout_cov).T)
+        # yout_cov = (C@xz0 + D@(zout_cov.T)).T
+
+        return yout_means, yout_cov, xout_means, xout_cov
 
 class CVF_Options:
     def __init__(self, 
@@ -94,7 +137,7 @@ class CVF_Options:
                  baseband = True,
                  pole_spacing = 'log',
                  dt=1e-14,
-                 order=20,
+                 order=50,
                  center_wvl=1.55):
         self.quantum = quantum
         self.poles_estimation_threshold = poles_estimation_threshold
@@ -123,7 +166,7 @@ class CVF_Model:
         # self.order = order
         self.wvl_microns = wvl_microns
         if self.options.baseband == True:
-            self.center_freq = c / (options.center_wvl * 1e-6)
+            self.center_freq = c / (self.options.center_wvl * 1e-6)
         else:
             self.center_freq = 0
         self.freqs = np.flip(c / (wvl_microns * 1e-6))
@@ -153,7 +196,8 @@ class CVF_Model:
         # self.time_response = None
         self.num_outliers = 1000
 
-        if isinstance(options.order, Iterable):
+
+        if isinstance(self.options.order, Iterable):
             for n in options.order:
                 print(f"Testing order {n}")
                 poles, residues, D, error = self.fit_pole_residue_model(order=n)
@@ -180,13 +224,16 @@ class CVF_Model:
                     # print(f"Num Outliers: {len(outliers)}")
                     pass
         else:
-            self.poles, self.residues,self.D,self.error = self.fit_pole_residue_model(order=options.order)
-            self.order = options.order
+            self.poles, self.residues,self.D,self.error = self.fit_pole_residue_model(order=self.options.order)
+            self.order = self.options.order
             # self.outliers = outliers
 
 
         self.state_space = State_Space_Model()
         self.state_space.continuous, self.state_space.discrete = self.compute_state_space_model()
+    
+    def compute_h(self, t):
+        return self.D + np.sum(self.residues*np.exp(self.poles[:, np.newaxis, np.newaxis] * t))
     
     @staticmethod
     def to_unitary(s_params):
@@ -339,9 +386,9 @@ class CVF_Model:
 
             Q,R = np.linalg.qr(M,mode='reduced') 
             # solutions = np.linalg.pinv(R)@Q.conj().T@V
-            solutions = np.linalg.pinv(R)@Q.conj().T@V
 
             # solutions, _, _, _ = np.linalg.lstsq(M, V, rcond=None)
+            solutions = np.linalg.pinv(R)@Q.conj().T@V
             A = np.diag(poles)
             weight_coefficients = solutions[self.num_outputs*self.num_inputs*(order+1):]
             weights_row = weight_coefficients.reshape((len(weight_coefficients), 1))
@@ -448,10 +495,10 @@ class BVF_Options:
     def __init__(self, 
                  poles_estimation_threshold = 1e-1, 
                  model_error_threshold = 1e-3, 
-                 max_iterations = 5, 
+                 max_iterations = 10, 
                  enforce_stability = True, 
                  alpha = 0.01,
-                 beta = 1.5,
+                 beta = 40.0,
                  gamma = 0.95,
                  debug = True,
                  mode = "BVF",
@@ -466,8 +513,8 @@ class BVF_Options:
         self.gamma = gamma
         self.real_valued = real_valued
 
-class Baseband_Model_SingleIO:
-    def __init__(self, wvl_microns, center_wvl, S, order, options=None):
+class BasebandModelSingleIO:
+    def __init__(self, wvl_microns, center_wvl, s_params, order, options=None):
         if options == None:
             self.options = BVF_Options()
         else:
@@ -483,7 +530,7 @@ class Baseband_Model_SingleIO:
         self.digital_freq = 2 * np.pi * self.freqs / self.sampling_freq
         # self.digital_freq = 2 * np.pi * np.linspace(np.min(self.freqs), np.max(self.freqs), self.order) / self.sampling_freq
         self.z = np.exp(1j*self.digital_freq)
-        self.S = S
+        self.S = s_params
         self.error = float('inf')
         self.A = None
         self.B = None
@@ -732,4 +779,670 @@ class Baseband_Model_SingleIO:
         #ax.set_title("A line plot on a polar axis", va='bottom')
         ax.legend()
         plt.show()
+
+class BasebandModel:
+    def __init__(self, wvl_microns, center_wvl, s_params, order, options=None):
+        if options == None:
+            self.options = BVF_Options()
+        else:
+            self.options = options
+
+        c = 299792458
+        self.order = order
+        self.num_ports = s_params.shape[1]
+        self.wvl_microns = wvl_microns
+        self.center_freq = c / (center_wvl * 1e-6)
+
+        self.freqs = c / (wvl_microns * 1e-6) - self.center_freq
+        # self.sampling_freq = -self.options.beta * (np.max(self.freqs) - np.min(self.freqs))
+        self.sampling_freq = self.options.beta * (self.freqs[-1] - self.freqs[0])
+
+        # self.freqs = np.flip(c / (wvl_microns * 1e-6)) - self.center_freq
+        # self.sampling_freq = self.options.beta * (np.max(self.freqs) - np.min(self.freqs))
+
+        self.poles = np.array([])
+        self.residues = np.zeros((order, self.num_ports, self.num_ports), dtype=complex)
+
+        self.digital_freq = 2 * np.pi * self.freqs / (self.sampling_freq)
+        # self.digital_freq = 2 * np.pi * np.linspace(np.min(self.freqs), np.max(self.freqs), self.order) / self.sampling_freq
+        self.z = np.exp(1j*self.digital_freq)
+        # self.S = np.flip(s_params)
+        self.S = s_params
+        self.error = float('inf')
+        self.A = None
+        self.B = None
+        self.C = None
+        self.D = np.zeros((self.num_ports, self.num_ports), dtype=complex)
+        self.time_response = None
+
+        self.fit_model()
+
+    def initial_poles(self):
+        digital_freq = 2 * np.pi * np.linspace(np.min(self.freqs), np.max(self.freqs), self.order)/self.sampling_freq
+        # digital_freq = 2 * np.pi * np.linspace(np.max(self.freqs), np.min(self.freqs), self.order)/self.sampling_freq
+        return self.options.gamma * np.exp(1j*digital_freq)
+    
+    def compute_phi_matrices(self):
+        phi1 = 1/(self.z[0]-self.poles)
+        for z in self.z[1:]:
+            phi1 = np.vstack((phi1, 1 / (z-self.poles)))
+        
+        unity_column = np.ones((len(self.z), 1))
+        phi0 = np.hstack((unity_column, phi1))
+
+        return phi0, phi1
+    
+    def compute_lstsq_matrices(self, phi0, phi1):
+        D = []
+        V = []
+        for i in range(self.num_ports):
+            for j in range(self.num_ports):
+                D.append(np.diag(self.S[:, i, j]))
+                V.append(self.S[:, i, j])
+
+        phi_column = []
+        for _D in D:
+            phi_column.append(-_D@phi1)
+
+        blocks = [phi0] * (self.num_ports*self.num_ports)
+        M = block_diag(*blocks)
+
+        phi_column = np.vstack(phi_column)
+        M = np.hstack([M, phi_column])
+
+        return M, np.hstack(V)
+
+    def fit_model(self):
+        self.poles = self.initial_poles()
+
+        iter = 1
+        while iter < self.options.max_iterations:
+            phi0, phi1 = self.compute_phi_matrices()
+            M, V = self.compute_lstsq_matrices(phi0, phi1)
+            Q,R = np.linalg.qr(M,mode='reduced') 
+            solutions = np.linalg.pinv(R)@Q.conj().T@V
+            # inital_residues = solutions[:self.order+1]
+            # self.weight_coefficients = solutions[self.order+1:]
+
+            # Calculate New Poles
+            A = np.diag(self.poles)
+            weight_coefficients = solutions[(self.num_ports**2)*(self.order+1):]
+            weights_row = weight_coefficients.reshape((len(weight_coefficients), 1))
+            unity_column = np.ones((self.order, 1))
+            self.poles, _ = np.linalg.eig(A-unity_column@weights_row.T)
+            mask = np.abs(self.poles) > 1
+            self.poles[mask] = 1 / (self.poles[mask])
+
+            if True:
+                # self.residues, _, _, _ = np.linalg.lstsq(phi0, V, rcond=None)
+                for i in range(self.num_ports):
+                    for j in range(self.num_ports):
+                        phi0, _ = self.compute_phi_matrices()
+                        Q,R = np.linalg.qr(phi0,mode='reduced') 
+                        # solutions = np.linalg.pinv(R)@Q.conj().T@self.S[:, i, j]
+                        solutions = np.linalg.pinv(R)@Q.conj().T@self.S[:, i, j]
+                        # solutions, _, _, _ = np.linalg.lstsq(phi0, self.S[:, i, j], rcond=None)
+                        self.D[i, j] = solutions[0]
+                        self.residues[:, i, j] = solutions[1:]
+
+            #weighting_term = 1 + self.weight_coefficients@phi1
+            # self.weights = self.calculate_weights(phi1)
+            #print(np.max(np.abs(weighting_term-1)))
+
+            # if np.max(np.abs(self.weights-1)) < self.options.poles_estimation_threshold:
+            #     self.residues, _, _, _ = np.linalg.lstsq(phi0, V, rcond=None)
+            # unity_column = np.ones((self.order, 1))
+            # A = np.diag(self.poles)
+            # #bw = unity_column
+            # weights_row = self.weight_coefficients.reshape((len(self.weight_coefficients), 1)).T
+            # self.poles, _ = np.linalg.eig(A-unity_column@weights_row)
+            iter += 1
+
+        # print(f"Failed to reach poles estimation threshold after {iter} iterations")
+        # phi0, phi1 = self.compute_phi_matrices()
+        # self.residues, _, _, _ = np.linalg.lstsq(phi0, V, rcond=None)
+        # self.error = self.compute_error()
+        # self.plot_model()
+    
+    def calculate_weights(self, phi1):
+        return phi1@self.weight_coefficients
+    
+    def compute_response(self, a, b, wvl=None):
+        if wvl is None:
+            wvl = self.wvl_microns
+
+        c = 299792458
+        # freq = np.flip(c / (wvl * 1e-6)) - self.center_freq
+        freq = c / (wvl * 1e-6) - self.center_freq
+        digital_freq = 2 * np.pi * freq / self.sampling_freq
+        z = np.exp(1j*digital_freq)
+        # response = np.full_like(z, self.residues[0], dtype=complex)
+        response = np.stack([self.D]*(z.shape[0]))
+        for r, p in zip(self.residues[:, b, a], self.poles[:]):
+            response[:, b, a] += r / (z - p)        
+
+        # if freq is not None:
+        #     digital_freq = 2 * np.pi * freq / self.sampling_freq
+        #     z = np.exp(1j*digital_freq)
+        #     response = np.full_like(z, self.residues[0], dtype=complex)
+        #     for r, p in zip(self.residues[1:], self.poles):
+        #         response += + r / (z - p)        
+        # elif wvl is not None:
+        #     freq = np.flip(c / (wvl * 1e-6)) - self.center_freq
+        #     digital_freq = 2 * np.pi * freq / self.sampling_freq
+        #     z = np.exp(1j*digital_freq)
+        #     response = np.full_like(z, self.residues[0], dtype=complex)
+        #     for r, p in zip(self.residues[1:], self.poles):
+        #         response += + r / (z - p)        
+        # else:
+        #     freq = np.flip(c / (self.wvl_microns * 1e-6)) - self.center_freq
+        #     digital_freq = 2 * np.pi * freq / self.sampling_freq
+        #     z = np.exp(1j*digital_freq)
+        #     response = np.full_like(z, self.residues[0], dtype=complex)
+        #     for r, p in zip(self.residues[1:], self.poles):
+        #         response += + r / (z - p)        
+
+        # response1 = np.zeros((len(z)), dtype=complex)
+        # for i in range(len(z)):
+        #     response1[i] = self.residues[0] 
+        #     for n in range(self.order):
+        #         response1 += self.residues[n+1] / (z[i] - self.poles[n])
+
+        
+        return response[:, b, a]
+
+    def plot(self, modes=None):
+        if modes is None or modes == "all":
+            n = self.num_ports
+            fig, ax = plt.subplots(n, n, figsize=(10, 10))
+            for i in range(n):
+                for j in range(n):
+                    ax[i, j].plot(np.abs(self.compute_response(i, j))**2)
+                    ax[i, j].plot(np.abs(self.S[:, i, j])**2, "r--")
+
+            plt.show()
+        else:
+            n = len(modes)
+            # fig, ax = plt.subplots(n, 1, figsize=(10, 10))
+            for mode in modes:
+                plt.plot(np.abs(self.compute_response(mode[0], mode[1]))**2)
+                plt.plot(np.abs(self.S[:, mode[0], mode[1]])**2, "r--")
+                plt.show()
+        
+    
+    def compute_error(self):
+        return np.max(np.abs(self.S - self.compute_response()))
+
+    def complex_ABCD_matrices(self):
+        A = np.diag(self.poles)
+        U, S, Vh = svd(np.array([[self.residues[1]]]))
+        B = Vh
+        for n in range(2, self.order + 1):
+            # print(n)
+            U, S, Vh = svd([[self.residues[n]]])
+            B = np.append(B, Vh)
+
+        # B = B.reshape((1, B.shape[0]))
+        B = B.reshape((B.shape[0], 1))
+
+        C = self.residues[1:]
+        D = np.array([self.residues[0]])
+
+        return A, B, C, D
+
+    def real_ABCD_matrices(self):
+        A, B, C, D = self.complex_ABCD_matrices()
+
+        A_hat = np.block([
+            [np.real(A), -np.imag(A)], 
+            [np.imag(A),  np.real(A)]
+        ])
+        
+        B_hat = np.block([
+            [np.real(B), np.zeros(B.shape)],
+            [np.zeros(B.shape), np.real(B)]
+        ])
+
+        C_hat = np.block([
+            [np.real(C), -np.imag(C)], 
+            [np.imag(C),  np.real(C)]
+        ])
+
+        D_hat = np.block([
+            [np.real(D), -np.imag(D)], 
+            [np.imag(D),  np.real(D)]
+        ])
+
+        return A_hat, B_hat, C_hat, D_hat
+    
+    def compute_state_space_model(self):
+        if self.options.real_valued == True:
+            self.A, self.B, self.C, self.D = self.real_ABCD_matrices()
+        elif self.options.real_valued == False:
+            self.A, self.B, self.C, self.D = self.complex_ABCD_matrices()
+    
+    def compute_steady_state(self):
+        pass
+
+    def compute_time_response(self, sig=None, t=None):
+        c = 299792458
+        if self.A is None:
+            self.compute_state_space_model()
+
+        sys = StateSpace(self.A, self.B, self.C, self.D, dt = 1/self.sampling_freq)
+
+
+        if t is None:
+            N = int(1000)
+            T = 2e-11
+            t = np.linspace(0, T, N)
+
+        if sig is None:
+            sig = np.exp(1j*2*np.pi*t*0)
+            #sig = np.full(t, 1.0)
+        
+        sig = sig.reshape(-1, 1)
+        impulse = np.hstack([np.real(sig), np.imag(sig)])
+
+        t_out, yout, _ = dlsim(sys, impulse, t)
+        yout = yout[:, 0] + 1j*yout[:, 1]
+        self.time_response = (t_out, yout)
+
+        return t_out, yout
+        
+
+    def plot_time_response(self):
+        if self.time_response is None:
+            self.compute_time_response
+
+        t_out, yout = self.time_response
+
+        plt.title("Time Response")
+        plt.xlabel("Time")
+        plt.ylabel("E-field Amplitude")
+        # plt.plot(t_out, np.abs(yout[:, 0] + 1j*yout[:, 1])**2)
+        plt.plot(t_out, np.abs(yout)**2)
+        plt.axvline(x=0.59e-12, color='r', linestyle='--', linewidth=1, alpha=0.75)
+
+
+
+    def plot_model(self):
+        c = 299792458
+        # wvl = np.linspace(1.5, 1.6, 100)
+        # # wvl = np.flip(c / np.linspace(-self.sampling_freq / 2, self.sampling_freq / 2, 150))
+
+        # freq = np.flip(c / (wvl * 1e-6)) - self.center_freq
+        # response = self.compute_response(wvl=wvl)
+        # plt.title("Magnitude")
+        # plt.scatter(freq, np.abs(self.S)**2, label="Samples")
+        # plt.plot(freq, np.abs(response)**2, label="Model")
+        # plt.legend()
+        # plt.show()
+        num_measurements = len(self.freqs)
+        freq = np.linspace(-self.sampling_freq / 2, self.sampling_freq / 2, int(self.options.beta * num_measurements))
+
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+        ax1.set_title("Magnitude")
+        line_model, = ax1.plot(freq, np.abs(self.compute_response(freq=freq))**2, label=f"Model: order={self.order}, beta={self.options.beta}")
+        line_samples, = ax1.plot(self.freqs, np.abs(self.S)**2, "r--", label="Samples")
+        ax1.set_xlabel("Baseband Frequency")
+        ax1.set_ylabel("Transmission")
+        #ax1.legend()
+
+        ax2.set_title("Phase")
+        ax2.plot(freq, np.angle(self.compute_response(freq=freq)), label="Model")
+        ax2.plot(self.freqs, np.angle(self.S), "r--", label="Samples")
+        ax2.set_xlabel("Baseband Frequency")
+        ax2.set_ylabel("Phase (radians)")
+        #ax2.legend()
+
+        fig.legend([line_model, line_samples], [line_model.get_label(), line_samples.get_label()], loc="upper center")
+        plt.tight_layout()
+
+
+        # plt.title("Magnitude")
+        # plt.plot(freq, np.abs(self.compute_response(freq=freq))**2)
+        # plt.plot(self.freqs, np.abs(self.S)**2, "r--")
+        plt.show()
+        pass
+    
+    def plot_poles(self):
+        fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+        initial_poles = self.initial_poles()
+        ax.set_rticks([0.2, 0.4, 0.6, 0.8, 1.0])
+        ax.set_thetagrids([0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330])
+        ax.set_rlim(0.0, 1.0)
+        ax.set_rlabel_position(0)
+        ax.grid(True)
+        #ax.grid(True)
+
+        # Plot Initial Poles
+        ax.scatter(np.angle(initial_poles), np.abs(initial_poles), label="Initial Poles")
+
+        # Plot Current Poles
+        ax.scatter(np.angle(self.poles), np.abs(self.poles), label="Optimal Poles")
+
+        #ax.set_title("A line plot on a polar axis", va='bottom')
+        ax.legend()
+        plt.show()
+    
+    def generate_sys_discrete(self):
+        _A = []
+        _B = []
+        _C = []
+        for p in self.poles:
+            A_n = np.diag(np.full(self.num_ports, p))
+            _A.append(A_n)
+        
+        for n in range(self.order):
+            U, S, Vh = svd(self.residues[n, :, :])
+            _B.append(Vh)
+            _C.append(U@np.diag(S))
+
+        A = block_diag(*_A)
+        B = np.vstack(_B)
+        C = np.hstack(_C)
+
+        D = self.D
+
+        return StateSpace(A, B, C, D, dt = 1/self.sampling_freq)
+class Damp():
+    def __init__(self, sig, std, pulse_index, dt):
+        peaks = self.find_gaussian_peaks(np.abs(sig)**2, std, pulse_index, dt)
+        t = np.linspace(0.0, dt * len(sig), len(sig))
+
+        self.amps = np.array([])
+        self.delays = np.array([])
+        self.angles = np.array([])
+        for peak in peaks:
+            self.amps = np.append(self.amps, (np.abs(sig[peak])))
+            self.angles = np.append(self.angles, np.angle(sig[peak]))
+            delay = (peak - pulse_index) * dt
+            self.delays = np.append(self.delays, delay)
+        
+        self.delay_indices = np.round(self.delays/dt).astype(int)
+        self.num_pulses = self.delay_indices.shape[0]
+        
+    
+    def find_gaussian_peaks(self, sig, std, window_size, dt, r_squared_threshold=0.95):
+        peaks, _ = find_peaks(sig)
+        # peaks, _ = find_peaks(sig, height=0.0005)
+        # peaks, _ = find_peaks(sig, height=0.0005)
+
+        gaussian_peaks = []
+
+        for peak in peaks:
+            start = max(0, peak - window_size)
+            end = min(len(sig), peak + window_size)
+            x_data = np.arange(start, end)
+            y_data = sig[start:end]
+            
+            gaussian_func = self.gaussian
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    popt, _ = curve_fit(gaussian_func, x_data, y_data, p0=[max(y_data), peak, window_size/2])
+                    amplitude, mu, sigma = popt
+                
+                y_fit = gaussian_func(x_data, *popt)
+                r_squared = self.calculate_r_squared(y_data, y_fit)
+                
+                if r_squared >= r_squared_threshold:
+                    gaussian_peaks.append(peak)
+                
+            except RuntimeError:
+                continue
+        
+        return gaussian_peaks
+    
+    def compute_response(self, t, sig):
+        K = t.shape[0]
+        response = np.zeros(2 * K, dtype=complex)
+        width = 90
+
+        for y, i in zip(sig, range(len(sig))):
+            if y > 0:
+                pass
+            # response_k = np.zeros(4 * t.shape[0], dtype=complex)
+            for j in range(self.num_pulses):
+                # print(y)
+                index = i + self.delay_indices[j]
+                # plt.plot(response)
+                response[self.delay_indices[j] + i * width:self.delay_indices[j]+(i+1)*width] += np.abs(y)*np.exp(1j*np.angle(y))*self.amps[j]*np.exp(1j*self.angles[j])
+                # response_k[self.delay_indices[j] + i * width:self.delay_indices[j]+(i+1)*width] += self.amps[j]*np.exp(1j*self.angles[j])
+
+            # plt.plot(response_k)
+        
+
+        return response[0:K]
+
+    def compute_impulse_responses(self, t, sig):
+        K = t.shape[0]
+        response = np.zeros(2 * K, dtype=complex)
+        width = 1
+        # responses = []
+        responses = np.zeros((t.shape[0], sig.shape[0]), dtype=complex)
+        for offset in range(t.shape[0]):
+            delay_indices = self.delay_indices + offset
+            delay_indices = delay_indices[delay_indices < len(t)]
+            for p_ind in range(len(delay_indices)):
+                d_ind = delay_indices[p_ind]
+                y = sig[offset]
+                # response[d_ind + width*offset:d_ind+width + width*offset] = np.abs(y) * np.exp(1j*np.angle(y))*self.amps[p_ind]*np.exp(1j*self.angles[p_ind])
+                responses[offset, d_ind] = np.abs(y) * np.exp(1j*np.angle(y))*self.amps[p_ind]*np.exp(1j*self.angles[p_ind])
+                # response[d_ind + width*offset:d_ind+width + width*offset] = self.amps[p_ind]*np.exp(1j*self.angles[p_ind])
+        
+        return responses
+            
+            
+
+
+    @staticmethod
+    def calculate_r_squared(y_data, y_fit):
+        ss_res = np.sum((y_data - y_fit) ** 2)
+        ss_tot = np.sum((y_data - np.mean(y_data)) ** 2)
+        r_squared = 1 - (ss_res / ss_tot)
+        return r_squared
+    
+    @staticmethod
+    def gaussian(x, a, mu, sigma):
+        return a * np.exp(-(x - mu)**2 / (sigma**2))
+
+
+
+    
+
+class DampModel():
+    """Damp Model
+
+    Parameters
+    ----------
+    ckt : sax.saxtypes.Model
+        The circuit to simulate.
+    wl : ArrayLike
+        The array of wavelengths to simulate (in microns).
+    **params
+        Any other parameters to pass to the circuit.
+
+    Examples
+    --------
+    >>> sim = QuantumSim(ckt=mzi, wl=wl, top={"length": 150.0}, bottom={"length": 50.0})
+    """
+
+    def __init__(self, baseband_model: BasebandModel, T: float):
+        self.system = baseband_model.generate_sys_discrete()
+        self.dt = np.abs(self.system.dt)
+        self.num_modes = self.system.B.shape[1]
+        self.T = T
+        self.K = round(self.T / self.dt)
+        self.t = np.linspace(0.0, (self.K-1)*self.dt, self.K)
+        self.damps = np.full((self.num_modes, self.num_modes), None) 
+    
+    def calculate_damps(self):
+        std = 90*self.dt
+        pulse = self.gaussian_pulse(self.t, 180*self.dt, std)
+        pulse_index, _ = find_peaks(pulse)
+        pulse_index = pulse_index[0]
+
+        for i in range(self.num_modes):
+            input_sig = np.zeros((self.K, self.num_modes), dtype=complex)
+            input_sig[:, i] = pulse
+            _, yout, _ = self.dlsim_complex(self.system, input_sig)
+            for j in range(self.num_modes):
+                self.damps[i, j] = Damp(yout[:, j], std, pulse_index, self.dt)
+    
+
+    def compute_response(self, input_sig):
+        new_sig = np.zeros((self.K, self.num_modes), dtype=complex)
+        new_sig[0:input_sig.shape[0]] = input_sig
+
+        response = np.zeros((self.K, self.num_modes, self.num_modes), dtype=complex) 
+        for i in range(self.num_modes):
+            for j in range(self.num_modes):
+                response[:, i, j] = self.damps[i, j].compute_response(self.t, new_sig[:, i])
+
+        return self.t, response
+    
+    def compute_impulse_responses(self, input_sig, a, b):
+        new_sig = np.zeros((self.K, self.num_modes), dtype=complex)
+        new_sig[0:input_sig.shape[0]] = input_sig
+
+        return self.t, self.damps[a, b].compute_impulse_responses(self.t, input_sig[:, b])
+
+    # def compute_response(self, t, input_sig):
+    #     # t_orig = np.linspace(0.0, self.T, input_sig.shape[0])
+    #     new_sig = np.zeros((self.K, self.num_modes), dtype=complex)
+    #     for n in range(self.num_modes):
+    #         new_sig[:, n] = np.interp(self.t, t, input_sig[:, n])
+
+
+    #     response = np.full((self.num_modes, self.num_modes), None) 
+    #     for i in range(self.num_modes):
+    #         for j in range(self.num_modes):
+    #             response[i, j] = self.damps[i, j].compute_response(self.t, new_sig[:, i])
+
+    #     return response
+
+
+    @staticmethod
+    def gaussian_pulse(t, t0, std, a=1.0 ):
+        return a * jnp.exp(-(t - t0)**2 / std**2) 
+
+    @staticmethod
+    def dlsim_complex(system, u, t=None, x0=None):
+        out_samples = len(u)
+        stoptime = (out_samples - 1) * system.dt
+
+        xout = np.zeros((out_samples, system.A.shape[0]), dtype=complex)
+        yout = np.zeros((out_samples, system.C.shape[0]), dtype=complex)
+        tout = np.linspace(0.0, stoptime, num=out_samples)
+
+        xout[0, :] = np.zeros((system.A.shape[1],), dtype=complex)
+
+        u_dt = u
+
+        # Simulate the system
+        for i in range(0, out_samples - 1):
+            xout[i+1, :] = (np.dot(system.A, xout[i, :]) +
+                            np.dot(system.B, u_dt[i, :]))
+            yout[i, :] = (np.dot(system.C, xout[i, :]) +
+                        np.dot(system.D, u_dt[i, :]))
+
+        # Last point
+        yout[out_samples-1, :] = (np.dot(system.C, xout[out_samples-1, :]) +
+                                np.dot(system.D, u_dt[out_samples-1, :]))
+
+        return tout, yout, xout
+
+    
+
+
+    
+# class Damp():
+#     def __init__(self, system, t, pulse_amp, n, num_modes):
+#         input_signal = np.zeros((t.shape[0], num_modes), dtype=complex)
+#         input_signal[:, n] = self.gaussian_pulse(t, 50*system.dt, 20*system.dt)
+#         _, yout, _ = self.dlsim_complex(system, input_signal)
+#         self.delays = []
+#         self.amps = []
+#         self.theta = []
+    
+#     @staticmethod
+#     def gaussian_pulse(t, t0, std, a=1.0 ):
+#         return a * jnp.exp(-(t - t0)**2 / std**2) 
+
+#     @staticmethod
+#     def dlsim_complex(system, u, t=None, x0=None):
+#         out_samples = len(u)
+#         stoptime = (out_samples - 1) * system.dt
+
+#         xout = np.zeros((out_samples, system.A.shape[0]), dtype=complex)
+#         yout = np.zeros((out_samples, system.C.shape[0]), dtype=complex)
+#         tout = np.linspace(0.0, stoptime, num=out_samples)
+
+#         xout[0, :] = np.zeros((system.A.shape[1],), dtype=complex)
+
+#         u_dt = u
+
+#         # Simulate the system
+#         for i in range(0, out_samples - 1):
+#             xout[i+1, :] = (np.dot(system.A, xout[i, :]) +
+#                             np.dot(system.B, u_dt[i, :]))
+#             yout[i, :] = (np.dot(system.C, xout[i, :]) +
+#                         np.dot(system.D, u_dt[i, :]))
+
+#         # Last point
+#         yout[out_samples-1, :] = (np.dot(system.C, xout[out_samples-1, :]) +
+#                                 np.dot(system.D, u_dt[out_samples-1, :]))
+
+#         return tout, yout, xout
+
+# class DampModel():
+#     """Damp Model
+
+#     Parameters
+#     ----------
+#     ckt : sax.saxtypes.Model
+#         The circuit to simulate.
+#     wl : ArrayLike
+#         The array of wavelengths to simulate (in microns).
+#     **params
+#         Any other parameters to pass to the circuit.
+
+#     Examples
+#     --------
+#     >>> sim = QuantumSim(ckt=mzi, wl=wl, top={"length": 150.0}, bottom={"length": 50.0})
+#     """
+
+#     def __init__(self, baseband_model: BasebandModel, T: float):
+#         self.system = baseband_model.generate_sys_discrete()
+#         self.dt = self.system.dt
+#         self.num_modes = self.system.B.shape[1]
+#         self.T = T
+#         self.K = round(self.T / self.dt)
+#         self.t = np.linspace(0.0, self.K*self.dt, self.K)
+#         self.damps = []
+    
+#     def calculate_damps(self, sig, discretized=True, dy=0.0001):
+#         t_orig = np.linspace(0.0, self.T, sig.shape[0])
+#         new_sig = np.zeros((self.K, self.num_modes), dtype=complex)
+#         for n in range(self.num_modes):
+#             new_sig[:, n] = np.interp(self.t, t_orig, sig[:, n])
+#         if discretized:
+#             real_part = np.round(new_sig.real/dy)*dy
+#             imag_part = np.round(new_sig.imag/dy)*dy
+#             new_sig = real_part + 1j*imag_part
+        
+#         for n in range(self.num_modes):
+#             _damps = {}
+#             for y in new_sig[:, n]:
+#                 print(y)
+#                 if y not in _damps:
+#                     _damps[y] = Damp(self.system, self.t, y, n, self.num_modes) # needs replacing
+#             self.damps.append(_damps)
+        
+#         plt.plot(new_sig)
+#         pass
+
+    
 
