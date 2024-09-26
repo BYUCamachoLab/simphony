@@ -44,7 +44,7 @@ def coupler(
         {
             ("o2", "o3"): tau,
             ("o2", "o1"): kappa,
-            ("o0", "o3"): jnp.conj(kappa),
+            ("o0", "o3"): kappa,
             ("o0", "o1"): tau,
         }
     )
