@@ -54,6 +54,7 @@ def _create_sdict_from_model(model, wl: Union[float, ArrayLike]) -> sax.SDict:
 
 
 def gap_func_symmetric(
+    *,
     wl: Union[float, ArrayLike] = 1.55,
     width: float = 500.0,
     thickness: float = 220.0,
@@ -110,6 +111,7 @@ def gap_func_symmetric(
 
 
 def gap_func_antisymmetric(
+    *,
     wl: Union[float, ArrayLike] = 1.55,
     width: float = 500.0,
     thickness: float = 220.0,
@@ -178,6 +180,7 @@ def gap_func_antisymmetric(
 
 
 def half_ring(
+    *,
     wl: Union[float, ArrayLike] = 1.55,
     width: float = 500.0,
     thickness: float = 220.0,
@@ -230,6 +233,7 @@ def half_ring(
 
 
 def straight_coupler(
+    *,
     wl: Union[float, ArrayLike] = 1.55,
     width: float = 500.0,
     thickness: float = 220.0,
@@ -280,6 +284,7 @@ def straight_coupler(
 
 
 def standard_coupler(
+    *,
     wl: Union[float, ArrayLike] = 1.55,
     width: float = 500.0,
     thickness: float = 220.0,
@@ -339,6 +344,7 @@ def standard_coupler(
 
 
 def double_half_ring(
+    *,
     wl: Union[float, ArrayLike] = 1.55,
     width: float = 500.0,
     thickness: float = 220.0,
@@ -393,6 +399,7 @@ def double_half_ring(
 
 
 def angled_half_ring(
+    *,
     wl: Union[float, ArrayLike] = 1.55,
     width: float = 500.0,
     thickness: float = 220.0,
@@ -457,6 +464,7 @@ def angled_half_ring(
 
 
 def waveguide(
+    *,
     wl: Union[float, ArrayLike] = 1.55,
     width: float = 500.0,
     thickness: float = 220.0,
@@ -496,6 +504,7 @@ def waveguide(
 
 
 def racetrack(
+    *,
     wl: Union[float, ArrayLike] = 1.55,
     width: float = 500.0,
     thickness: float = 220.0,
@@ -554,6 +563,7 @@ def racetrack(
 
 
 def premade_coupler(
+    *,
     wl: Union[float, ArrayLike] = 1.55,
     split: int = 50,
 ) -> sax.SDict:
