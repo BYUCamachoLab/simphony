@@ -15,8 +15,10 @@ from jax.typing import ArrayLike
 from sax.utils import get_ports
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import CubicSpline, interp1d
+from scipy.stats import multivariate_normal
 
 from simphony import __version__
+from simphony.exceptions import ShapeMismatchError
 
 MATH_SUFFIXES = {
     "f": "e-15",
@@ -515,3 +517,65 @@ def resample(x: ArrayLike, xp: ArrayLike, sdict: sax.SDict) -> sax.SDict:
         cs = CubicSpline(xp, v)
         new_sdict[k] = cs(x)
     return new_sdict
+
+
+class complex_multivariate_normal:
+    """A multivariate normal distribution with complex means and real
+    covariance. Output is normalized by a factor of
+    e^(-0.5*(imag(mean)*cov-1*imag(mean)))
+
+    Parameters
+    ----------
+    mean: ArrayLike
+        The mean of the distribution
+    cov: ArrayLike
+        The covariance matrix of the distribution.
+    """
+
+    # TODO: Add support for complex covariance matrices
+
+    def __init__(self, mean: ArrayLike, cov: ArrayLike) -> None:
+        self.mean = jnp.array(mean).astype(complex)
+        self.cov = jnp.real(jnp.array(cov))
+
+        if len(self.mean.shape) != 1 or len(self.cov.shape) != 2:
+            raise ShapeMismatchError(
+                "The means should be 1d and the covariance matrix should be 2d"
+            )
+        if (
+            self.mean.shape[0] != self.cov.shape[0]
+            or self.cov.shape[0] != self.cov.shape[1]
+        ):
+            raise ShapeMismatchError(
+                "The means and covariance matrices should have the same size"
+            )
+
+        self.precision = jnp.linalg.inv(self.cov)
+        self.det = jnp.linalg.det(2 * jnp.pi * self.cov)
+        self.normal = multivariate_normal(jnp.real(self.mean), self.cov)
+
+    def pdf(self, x) -> ArrayLike:
+        x = jnp.array(x.real)
+        results = jnp.array(self.normal.pdf(x)).astype(complex)
+        distances = x - self.mean.real
+
+        if jnp.all(self.mean.imag == 0):
+            return results
+
+        # x contains more than 1 value to evaluate
+        if len(x.shape) > 1:
+            results_ix = (
+                jnp.indices(x.shape[:-1], dtype=int).reshape(len(x.shape[:-1]), -1).T
+            )
+            covector = self.mean.imag @ self.precision
+
+            operands = distances @ covector
+            phases = jnp.exp(1j * operands)
+
+            results = results * phases
+
+            return results
+        else:
+            operand = distances @ self.precision @ self.mean.imag
+            phase = jnp.exp(1j * operand)
+            return results * phase

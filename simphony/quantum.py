@@ -2,18 +2,24 @@
 
 from dataclasses import dataclass
 from functools import partial
+from math import comb
 from typing import List, Union
 
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 from jax.typing import ArrayLike
+from mpl_toolkits.mplot3d import Axes3D
 from sax.saxtypes import Model
 from sax.utils import get_ports
-from scipy.stats import multivariate_normal
 
 from simphony.exceptions import ShapeMismatchError
 from simphony.simulation import SimDevice, Simulation, SimulationResult
-from simphony.utils import dict_to_matrix, xpxp_to_xxpp, xxpp_to_xpxp
+from simphony.utils import (
+    complex_multivariate_normal,
+    dict_to_matrix,
+    xpxp_to_xxpp,
+    xxpp_to_xpxp,
+)
 
 
 def plot_mode(
@@ -70,13 +76,27 @@ def plot_mode(
     y = jnp.linspace(y_range[0], y_range[1], n)
     X, Y = jnp.meshgrid(x, y)
     pos = jnp.dstack((X, Y))
-    dist = [multivariate_normal(means[i], cov[i]) for i in range(0, len(means))]
+    dist = [complex_multivariate_normal(means[i], cov[i]) for i in range(0, len(means))]
 
     pdf = jnp.zeros((n, n))
     for i in range(0, len(means)):
         pdf += weights[i] * dist[i].pdf(pos)
 
-    ax.contourf(X, Y, pdf, **kwargs)
+    pdf_min = jnp.min(pdf)
+    pdf_max = jnp.max(pdf)
+    pdf_range = jnp.max(jnp.abs(jnp.array([pdf_min, pdf_max])))
+
+    if isinstance(ax, Axes3D):
+        ax.plot_surface(X, Y, jnp.real(pdf), **kwargs)
+    else:
+        ax.contourf(
+            X,
+            Y,
+            jnp.real(pdf),
+            levels=jnp.linspace(-pdf_range, pdf_range, 12),
+            **kwargs,
+        )
+
     ax.set_aspect("equal")
     ax.set_xlabel("X")
     ax.set_ylabel("P")
@@ -121,8 +141,8 @@ class QuantumState(SimDevice):
     ) -> None:
         super().__init__(ports)
 
-        means = jnp.array(means)
-        cov = jnp.array(cov)
+        means = jnp.array(means).astype(jnp.complex64)
+        cov = jnp.array(cov).astype(jnp.complex64)
 
         if len(means.shape) == 1:
             means = means[jnp.newaxis, :]
@@ -160,12 +180,25 @@ class QuantumState(SimDevice):
         self.cov = cov
         self.convention = convention
 
+        self.interference_means = None
+        self.interference_cov = None
+        self.interference_weights = []
+        self.compute_interference()
+
     def to_xpxp(self) -> None:
         """Converts the means and covariance matrix to the xpxp convention."""
         if self.convention == "xxpp":
             for i in range(self.states):
                 self.means = self.means.at[i].set(xxpp_to_xpxp(self.means[i]))
                 self.cov = self.cov.at[i].set(xxpp_to_xpxp(self.cov[i]))
+            for i in range(0, comb(self.states, 2)):
+                if self.interference_means != None:
+                    self.interference_means = self.interference_means.at[i].set(
+                        xxpp_to_xpxp(self.interference_means[i])
+                    )
+                    self.interference_cov = self.interference_cov.at[i].set(
+                        xxpp_to_xpxp(self.interference_cov[i])
+                    )
             self.convention = "xpxp"
 
     def to_xxpp(self) -> None:
@@ -174,15 +207,61 @@ class QuantumState(SimDevice):
             for i in range(self.states):
                 self.means = self.means.at[i].set(xpxp_to_xxpp(self.means[i]))
                 self.cov = self.cov.at[i].set(xpxp_to_xxpp(self.cov[i]))
+            for i in range(0, comb(self.states, 2)):
+                if self.interference_means != None:
+                    self.interference_means = self.interference_means.at[i].set(
+                        xpxp_to_xxpp(self.interference_means[i])
+                    )
+                    self.interference_cov = self.interference_cov.at[i].set(
+                        xpxp_to_xxpp(self.interference_cov[i])
+                    )
             self.convention = "xxpp"
 
-    def modes(self, modes: Union[int, List[int]]):
+    def compute_interference(self):
+        """Computer interference terms of the gaussian states that compose this
+        QuantumState."""
+        interference_means = []
+        interference_cov = []
+        interference_weights = []
+
+        self.to_xxpp()
+
+        state_list = range(0, self.states)
+        for a in state_list:
+            for b in state_list[a + 1 :]:
+                real_mean = (self.means[a] + self.means[b]) / 2
+                imag_mean = (self.means[a] - self.means[b]) / 2
+
+                temp = imag_mean[self.N :]
+
+                imag_mean = imag_mean.at[self.N :].set(-imag_mean[: self.N])
+                imag_mean = imag_mean.at[: self.N].set(temp)
+
+                # TODO: Add correct calculation for covariance matrix of interference term
+                real_cov = 0.25 * jnp.eye(2 * self.N)
+                imag_cov = jnp.zeros((2 * self.N, 2 * self.N))
+
+                interference_means.append(real_mean + 1j * imag_mean)
+                interference_cov.append(real_cov + 1j * imag_cov)
+                interference_weights.append(self.weights[a] * self.weights[b])
+
+                interference_means.append(real_mean - 1j * imag_mean)
+                interference_cov.append(real_cov - 1j * imag_cov)
+                interference_weights.append(self.weights[a] * self.weights[b])
+
+        self.interference_means = jnp.array(interference_means)
+        self.interference_cov = jnp.array(interference_cov)
+        self.interference_weights = jnp.array(interference_weights)
+
+    def modes(self, modes: Union[int, List[int]], include_interference=False):
         """Returns the mean and covariance matrix of the specified modes.
 
         Parameters
         ----------
         modes : int or list
             The modes to return.
+        include_interference : Boolean
+            Whether or not to return interference terms
         """
         if not hasattr(modes, "__iter__"):
             modes = [modes]
@@ -196,15 +275,57 @@ class QuantumState(SimDevice):
         if self.convention == "xpxp":
             means = jnp.array([xpxp_to_xxpp(m) for m in self.means])
             cov = jnp.array([xpxp_to_xxpp(c) for c in self.cov])
+
+            if include_interference and comb(self.states, 2) > 0:
+                means = jnp.concatenate(
+                    (
+                        means,
+                        jnp.array([xpxp_to_xxpp(m) for m in self.interference_means]),
+                    )
+                )
+                cov = jnp.concatenate(
+                    (cov, jnp.array([xpxp_to_xxpp(c) for c in self.interference_cov]))
+                )
+
             means = means[:, inds]
-            cov = cov[jnp.ix_(jnp.array(range(self.states)), inds, inds)]
+            cov = cov[
+                jnp.ix_(
+                    jnp.array(
+                        range(
+                            self.states
+                            + (comb(self.states, 2) if include_interference else 0)
+                        )
+                    ),
+                    inds,
+                    inds,
+                )
+            ]
             means = jnp.array([xxpp_to_xpxp(m) for m in means])
             cov = jnp.array([xxpp_to_xpxp(c) for c in cov])
         else:
-            means = self.means[:, inds]
-            cov = self.cov[jnp.ix_(jnp.array(range(self.states)), inds, inds)]
+            means = jnp.array([m[inds] for m in self.means])
+            cov = jnp.array([c[jnp.ix_(inds, inds)] for c in self.cov])
+            if include_interference and comb(self.states, 2) > 0:
+                means = jnp.concatenate(
+                    (means, jnp.array([m[inds] for m in self.interference_means]))
+                )
+                cov = jnp.concatenate(
+                    (
+                        cov,
+                        jnp.array(
+                            [c[jnp.ix_(inds, inds)] for c in self.interference_cov]
+                        ),
+                    )
+                )
 
-        return self.weights, means, cov
+        if include_interference and comb(self.states, 2) > 0:
+            weights = jnp.concatenate(
+                (jnp.square(self.weights), self.interference_weights)
+            )
+        else:
+            weights = self.weights
+
+        return weights, means, cov
 
     def _add_vacuums(self, n_vacuums: int):
         """Adds vacuum states to the quantum state.
@@ -224,6 +345,8 @@ class QuantumState(SimDevice):
         self.means = means
         self.cov = cov
         self.N = N
+
+        self.compute_interference()
 
     def __repr__(self) -> str:
         return (
@@ -251,7 +374,7 @@ class QuantumState(SimDevice):
         **kwargs
             Keyword arguments to pass to matplotlib.pyplot.contourf.
         """
-        weights, means, cov = self.modes(mode)
+        weights, means, cov = self.modes(mode, include_interference=True)
 
         return plot_mode(means, cov, weights, n, x_range, y_range, ax, **kwargs)
 
@@ -316,7 +439,7 @@ def compose_qstate(*args: QuantumState) -> QuantumState:
             jnp.concatenate([qstate.means[state[i]] for i, qstate in enumerate(args)])
         )
 
-        cov = jnp.zeros((2 * N, 2 * N), dtype=float)
+        cov = jnp.zeros((2 * N, 2 * N), dtype=complex)
         weight = 1.0
 
         left = 0
@@ -330,7 +453,7 @@ def compose_qstate(*args: QuantumState) -> QuantumState:
         weight_list.append(weight)
 
     return QuantumState(
-        jnp.array(mean_list),
+        jnp.array(mean_list, dtype=complex),
         jnp.array(cov_list),
         jnp.array(weight_list),
         port_list,
@@ -393,7 +516,7 @@ class CoherentState(QuantumState):
         means = jnp.array([alpha.real, alpha.imag])
         cov = jnp.array([[1 / 4, 0], [0, 1 / 4]])
         ports = [port]
-        super().__init__(means, cov, ports)
+        super().__init__(means=means, cov=cov, ports=ports)
 
 
 class SqueezedState(QuantumState):
@@ -424,7 +547,7 @@ class SqueezedState(QuantumState):
             @ rot_mat.T
         )
         ports = [port]
-        super().__init__(means, cov, ports)
+        super().__init__(means=means, cov=cov, ports=ports)
 
 
 class TwoModeSqueezedState(QuantumState):
@@ -466,7 +589,7 @@ class TwoModeSqueezedState(QuantumState):
             / 2
         )
         ports = [port_a, port_b]
-        super().__init__(means, cov, ports)
+        super().__init__(means=means, cov=cov, ports=ports)
 
 
 class ThermalState(QuantumState):
@@ -486,7 +609,28 @@ class ThermalState(QuantumState):
         means = jnp.array([0, 0])
         cov = (2 * nbar + 1) / 4 * jnp.eye(2)
         ports = [port]
-        super().__init__(means, cov, ports)
+        super().__init__(means=means, cov=cov, ports=ports)
+
+
+class CatState(QuantumState):
+    """Represents a cat state in a quantum model as 4 means and covariance
+    matrices.
+
+    Parameters
+    ----------
+    port : str
+        The port to which the cat state is connected.
+    alpha : complex
+        Alpha for the coherent states that compose the cat state.
+    """
+
+    def __init__(self, port: str, alpha: complex) -> None:
+        self.N = 1
+        means = jnp.array([[alpha.real, alpha.imag], [-alpha.real, -alpha.imag]])
+        cov = jnp.array([[[0.25, 0], [0, 0.25]]] * 2)
+        weights = jnp.array([0.7071, 0.7071])
+        ports = [port]
+        super().__init__(means=means, cov=cov, weights=weights, ports=ports)
 
 
 @dataclass
