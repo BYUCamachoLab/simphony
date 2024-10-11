@@ -191,7 +191,7 @@ class QuantumState(SimDevice):
             for i in range(self.states):
                 self.means = self.means.at[i].set(xxpp_to_xpxp(self.means[i]))
                 self.cov = self.cov.at[i].set(xxpp_to_xpxp(self.cov[i]))
-            for i in range(0, comb(self.states, 2)):
+            for i in range(0, 2 * comb(self.states, 2)):
                 if self.interference_means != None:
                     self.interference_means = self.interference_means.at[i].set(
                         xxpp_to_xpxp(self.interference_means[i])
@@ -207,7 +207,7 @@ class QuantumState(SimDevice):
             for i in range(self.states):
                 self.means = self.means.at[i].set(xpxp_to_xxpp(self.means[i]))
                 self.cov = self.cov.at[i].set(xpxp_to_xxpp(self.cov[i]))
-            for i in range(0, comb(self.states, 2)):
+            for i in range(0, 2 * comb(self.states, 2)):
                 if self.interference_means != None:
                     self.interference_means = self.interference_means.at[i].set(
                         xpxp_to_xxpp(self.interference_means[i])
@@ -224,7 +224,10 @@ class QuantumState(SimDevice):
         interference_cov = []
         interference_weights = []
 
-        self.to_xxpp()
+        revert = False
+        if self.convention == "xpxp":
+            self.to_xxpp()
+            revert = True
 
         state_list = range(0, self.states)
         for a in state_list:
@@ -253,6 +256,9 @@ class QuantumState(SimDevice):
         self.interference_cov = jnp.array(interference_cov)
         self.interference_weights = jnp.array(interference_weights)
 
+        if revert:
+            self.to_xpxp()
+
     def modes(self, modes: Union[int, List[int]], include_interference=False):
         """Returns the mean and covariance matrix of the specified modes.
 
@@ -273,38 +279,36 @@ class QuantumState(SimDevice):
             raise ValueError("Modes must be less than the number of modes.")
         inds = jnp.concatenate((modes, (modes + self.N)))
         if self.convention == "xpxp":
-            means = jnp.array([xpxp_to_xxpp(m) for m in self.means])
-            cov = jnp.array([xpxp_to_xxpp(c) for c in self.cov])
+            means = jnp.array([xpxp_to_xxpp(m)[inds] for m in self.means])
+            cov = jnp.array([xpxp_to_xxpp(c)[jnp.ix_(inds, inds)] for c in self.cov])
 
             if include_interference and comb(self.states, 2) > 0:
                 means = jnp.concatenate(
                     (
                         means,
-                        jnp.array([xpxp_to_xxpp(m) for m in self.interference_means]),
+                        jnp.array(
+                            [xpxp_to_xxpp(m)[inds] for m in self.interference_means]
+                        ),
                     )
                 )
                 cov = jnp.concatenate(
-                    (cov, jnp.array([xpxp_to_xxpp(c) for c in self.interference_cov]))
+                    (
+                        cov,
+                        jnp.array(
+                            [
+                                xpxp_to_xxpp(c)[jnp.ix_(inds, inds)]
+                                for c in self.interference_cov
+                            ]
+                        ),
+                    )
                 )
 
-            means = means[:, inds]
-            cov = cov[
-                jnp.ix_(
-                    jnp.array(
-                        range(
-                            self.states
-                            + (comb(self.states, 2) if include_interference else 0)
-                        )
-                    ),
-                    inds,
-                    inds,
-                )
-            ]
             means = jnp.array([xxpp_to_xpxp(m) for m in means])
             cov = jnp.array([xxpp_to_xpxp(c) for c in cov])
         else:
             means = jnp.array([m[inds] for m in self.means])
             cov = jnp.array([c[jnp.ix_(inds, inds)] for c in self.cov])
+
             if include_interference and comb(self.states, 2) > 0:
                 means = jnp.concatenate(
                     (means, jnp.array([m[inds] for m in self.interference_means]))
@@ -335,6 +339,11 @@ class QuantumState(SimDevice):
         n_vacuums : int
             The number of vacuum states to add.
         """
+        revert = False
+        if self.convention == "xxpp":
+            revert = True
+            self.to_xpxp()
+
         N = self.N + n_vacuums
         means = jnp.concatenate(
             (self.means, jnp.zeros((self.states, 2 * n_vacuums))), axis=1
@@ -345,6 +354,9 @@ class QuantumState(SimDevice):
         self.means = means
         self.cov = cov
         self.N = N
+
+        if revert:
+            self.to_xxpp()
 
         self.compute_interference()
 
@@ -399,6 +411,7 @@ class QuantumState(SimDevice):
         if n_rows * n_cols < n_modes:
             n_cols += 1
 
+        # TODO: Add support for states with just 1 mode
         fig, axs = plt.subplots(n_rows, n_cols, figsize=(10, 10))
         axs = axs.flatten()
 
@@ -450,6 +463,8 @@ def compose_qstate(*args: QuantumState) -> QuantumState:
             weight *= qstate.weights[state[i]]
 
         cov_list.append(cov)
+
+        # TODO: Update weights appropriately
         weight_list.append(weight)
 
     return QuantumState(
@@ -468,10 +483,15 @@ def apply_unitary(
         modes = [modes]
     if not all(mode < qstate.N for mode in modes):
         raise ValueError("Modes must be less than the number of modes.")
+
     modes = jnp.array(modes)
     inds = jnp.concatenate((modes, (modes + qstate.N)))
 
-    qstate.to_xxpp()
+    revert = False
+    if qstate.convention == "xpxp":
+        qstate.to_xxpp()
+        revert = True
+
     weights, input_means, input_cov = qstate.modes(modes)
 
     n = unitary.shape[0]
@@ -495,7 +515,10 @@ def apply_unitary(
     # output_cov[abs(output_cov) < 1e-10] = 0
 
     result = QuantumState(output_means, output_cov, weights=weights, convention="xxpp")
-    result.to_xpxp()
+
+    if revert:
+        result.to_xpxp()
+
     return result
 
 
@@ -756,11 +779,16 @@ class QuantumSim(Simulation):
         s_params = dict_to_matrix(self.ckt())
         unitary = self.to_unitary(s_params)
         # get an array of the indices of the input ports
+
+        # TODO: Check to make sure two states aren't on the same port (this causes simphony to crash)
+
         input_indices = [ports.index(port) for port in self.input.ports]
+
         # create vacuum ports for each extra mode in the unitary matrix
         n_modes = unitary.shape[1]
         n_vacuum = n_modes - len(input_indices)
         self.input._add_vacuums(n_vacuum)
+
         input_indices += [i for i in range(n_modes) if i not in input_indices]
 
         output_states = []
