@@ -120,10 +120,10 @@ class QuantumState(SimDevice):
         states have a covariance matrix of :math:`\begin{bmatrix} 1/4 & 0 \\ 0 &
         1/4 \\end{bmatrix}`. The shape of the matrix must be 2 * N x 2 * N.
     weights : ArrayLike
-        In the case of working with density matrices, the weights for each term.
+        When working with sums of gaussian states, the weights for each term.
         Used when means is a 2d array, where each term is a vector of means for
-        a different state in the density matrix. cov should also be upgraded to
-        a 3d array.
+        a different state corresponding to each value in weights.  cov should also
+        be upgraded to a 3d array.
     ports : str or list of str
         The ports to which the quantum state is connected. Each mode
         corresponds in order to each port provided.
@@ -411,6 +411,8 @@ class QuantumState(SimDevice):
         if n_rows * n_cols < n_modes:
             n_cols += 1
 
+        # TODO: Better computation of x_range / y_range (currently the function parameters are unused)
+
         # TODO: Add support for states with just 1 mode
         fig, axs = plt.subplots(n_rows, n_cols, figsize=(10, 10))
         axs = axs.flatten()
@@ -421,6 +423,72 @@ class QuantumState(SimDevice):
             self.plot_mode(mode, x_range=(-6, 6), y_range=(-6, 6), ax=ax)
             ax.set_title(f"Mode {mode}")
         return axs
+
+    def homodyne_measurement(self, mode, theta=0, n=100, x_range=None, y_range=None):
+        """Performs a homodyne measurement along a certain direction given by
+        theta. Does NOT modify the QuantumState object.
+
+        Parameters
+        ----------
+        mode : integer
+            The mode on which to perform homodyne detection.
+        theta : integer
+            The direction in phase space to perform homodyne detection. 0 is X, pi/2 is P
+        n : integer
+            The number of points on which to evaluate the wigner function before projection.
+        x_range : List
+            The range of the detection along the axis determined by theta
+        y_range : List
+            The range in the direction perpindicular to theta before projection.
+        """
+
+        if mode >= self.N:
+            raise ShapeMismatchError("The mode must be less than the number of modes")
+
+        weights, means, cov = self.modes(mode, include_interference=True)
+
+        c, s = jnp.cos(-theta), jnp.sin(-theta)
+        R = jnp.array([[c, -s], [s, c]])
+
+        means = (R @ means.T).T
+        cov = R @ cov @ R.T
+
+        if x_range == None:
+            x_max = 0
+            # Only includes non-interference states
+            for i in range(self.states):
+                max = jnp.abs(means[i][0]) + 6 * jnp.abs(cov[i][0][0])
+                if max > x_max:
+                    x_max = max
+
+            x_range = (-x_max, x_max)
+
+        if y_range == None:
+            y_max = 0
+            # Only includes non-interference states
+            for i in range(self.states):
+                max = jnp.abs(means[i][1]) + 6 * jnp.abs(cov[i][1][1])
+                if max > y_max:
+                    y_max = max
+            y_range = (-y_max, y_max)
+
+        x = jnp.linspace(x_range[0], x_range[1], n)
+        y = jnp.linspace(y_range[0], y_range[1], n)
+        X, Y = jnp.meshgrid(x, y)
+        pos = jnp.dstack((X, Y))
+        dist = [
+            complex_multivariate_normal(means[i], cov[i]) for i in range(0, len(means))
+        ]
+
+        wigner = jnp.zeros((n, n), dtype=complex)
+        for i in range(0, len(means)):
+            wigner += weights[i] * dist[i].pdf(pos)
+
+        homodyne = jnp.zeros(n)
+        for height_pdf in wigner:
+            homodyne += height_pdf.real
+
+        return x, homodyne
 
 
 def compose_qstate(*args: QuantumState) -> QuantumState:
@@ -654,6 +722,9 @@ class CatState(QuantumState):
         weights = jnp.array([0.7071, 0.7071])
         ports = [port]
         super().__init__(means=means, cov=cov, weights=weights, ports=ports)
+
+
+# TODO Add NumberState, GKPState
 
 
 @dataclass
