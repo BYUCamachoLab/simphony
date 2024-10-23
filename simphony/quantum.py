@@ -225,23 +225,54 @@ class QuantumState(SimDevice):
         interference_weights = []
 
         revert = False
-        if self.convention == "xpxp":
-            self.to_xxpp()
+        if self.convention == "xxpp":
+            self.to_xpxp()
             revert = True
 
         state_list = range(0, self.states)
         for a in state_list:
             for b in state_list[a + 1 :]:
+                exps = []
+                rot = jnp.zeros((2 * self.N, 2 * self.N))
+                form = jnp.zeros((2 * self.N, 2 * self.N))
+                for i in range(self.N):
+                    cov = self.cov[a][i : i + 2][i : i + 2]
+                    if jnp.allclose(cov, self.cov[b][i : i + 2][i : i + 2]):
+                        eigenvalues, eigenvectors = jnp.linalg.eig(cov)
+                        theta = jnp.arccos(eigenvectors[0][0].real)
+                        r = -jnp.log(4 * eigenvalues[0]) / 2
+
+                        exps.append(jnp.exp(-2 * r))
+                        exps.append(jnp.exp(2 * r))
+
+                        c = jnp.cos(-theta)
+                        s = jnp.sin(-theta)
+                        rot = (
+                            rot.at[i : i + 2, i : i + 2]
+                            .set(jnp.array([[c, s], [-s, c]]))
+                            .real
+                        )
+                        form = (
+                            form.at[i : i + 2, i : i + 2]
+                            .set(
+                                jnp.array([[0, jnp.exp(-2 * r)], [-jnp.exp(2 * r), 0]])
+                            )
+                            .real
+                        )
+                    else:
+                        raise ShapeMismatchError(
+                            "Interference not implemented for different squeezing magnitude / angle"
+                        )
+
+                exps = jnp.array(exps).real
                 real_mean = (self.means[a] + self.means[b]) / 2
-                imag_mean = (self.means[a] - self.means[b]) / 2
 
-                temp = imag_mean[self.N :]
-
-                imag_mean = imag_mean.at[self.N :].set(-imag_mean[: self.N])
-                imag_mean = imag_mean.at[: self.N].set(temp)
+                transform = rot.T @ form @ rot
+                imag_mean = transform @ (self.means[a] - self.means[b]) / 2
 
                 # TODO: Add correct calculation for covariance matrix of interference term
-                real_cov = 0.25 * jnp.eye(2 * self.N)
+                real_cov = 0.25 * jnp.diag(exps)
+                real_cov = rot.T @ real_cov @ rot
                 imag_cov = jnp.zeros((2 * self.N, 2 * self.N))
 
                 interference_means.append(real_mean + 1j * imag_mean)
@@ -257,7 +288,7 @@ class QuantumState(SimDevice):
         self.interference_weights = jnp.array(interference_weights)
 
         if revert:
-            self.to_xpxp()
+            self.to_xxpp()
 
     def modes(self, modes: Union[int, List[int]], include_interference=False):
         """Returns the mean and covariance matrix of the specified modes.

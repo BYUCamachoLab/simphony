@@ -555,7 +555,7 @@ class complex_multivariate_normal:
         self.normal = multivariate_normal(jnp.real(self.mean), self.cov)
 
     def pdf(self, x) -> ArrayLike:
-        x = jnp.array(x.real)
+        x = jnp.array(x).real
         results = jnp.array(self.normal.pdf(x)).astype(complex)
         distances = x - self.mean.real
 
@@ -563,19 +563,11 @@ class complex_multivariate_normal:
             return results
 
         # x contains more than 1 value to evaluate
-        if len(x.shape) > 1:
-            results_ix = (
-                jnp.indices(x.shape[:-1], dtype=int).reshape(len(x.shape[:-1]), -1).T
-            )
-            covector = self.mean.imag @ self.precision
 
-            operands = distances @ covector
-            phases = jnp.exp(1j * operands)
+        covector = self.mean.imag @ self.precision
+        operands = distances @ covector
+        phases = jnp.exp(1j * operands)
 
-            results = results * phases
+        results = results * phases
 
-            return results
-        else:
-            operand = distances @ self.precision @ self.mean.imag
-            phase = jnp.exp(1j * operand)
-            return results * phase
+        return results
