@@ -9,7 +9,7 @@ from simphony.libraries import ideal
 from simphony.utils import dict_to_matrix
 from scipy.signal import  StateSpace, lsim, find_peaks, gausspulse
 
-from simphony.fast_vector_fitting import FastVF, FVF_Options, ComputeModelResponse, real_valued_ABCD
+from simphony.time_domain.fast_vector_fitting import FastVF, FVF_Options, ComputeModelResponse, real_valued_ABCD
 
 netlist = {
     "instances": {

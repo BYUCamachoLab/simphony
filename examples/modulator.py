@@ -66,13 +66,59 @@ t = np.linspace(0, T, N)
 sig = np.exp(1j*2*np.pi*t*0).reshape(-1, 1)
 sig = np.hstack([sig, np.zeros_like(sig)])
 
+sig = np.exp(1j*2*np.pi*t*0)
+
+delta = 0.01
+A = 1
+f = 1/(T)
+width = 1.6
+smoothed_square = (A/np.pi)*np.arctan(np.sin(((1 / width)*2*np.pi)*t*f - np.pi/2 + 1.2)/delta) + 0.5
+sig1 = 0 * sig
+sig2 = 1 * sig * smoothed_square
+sig3 = 0 * sig
+
+sig = np.hstack([sig1, sig2, sig1, sig1, sig1])
+
+from scipy.signal import impulse, StateSpace
+
+sys = ring_resonator.state_space.continuous
+A = sys.A
+B = np.array([sys.B[:, 1]])
+B = B.reshape(-1, 1)
+C = np.array([sys.C[1, :]])
+D = np.array([sys.D[1, 1]])
+sys2 = StateSpace(A, B, C, D)
+t, y = impulse(sys2, N= 10000)
+plt.plot(t, np.abs(y)**2)
+plt.axvline(stepping_time, color="r")
+plt.axvline(2 * stepping_time, color="r")
+plt.axvline(3 * stepping_time, color="r")
+plt.axvline(4 * stepping_time, color="r")
+plt.axvline(5 * stepping_time, color="r")
+plt.show()
+
+# h = ring_resonator.state_space.discrete.to_tf()
+
+t = np.linspace(0, T, N)
+sig1 = np.exp(1j*2*np.pi*t*0).reshape(-1, 1)
+sig1 = np.hstack([np.zeros_like(sig1), np.zeros_like(sig1)])
+
+sig2 = (np.exp(1j*2*np.pi*t*0) * smoothed_square).reshape(-1, 1)
+sig2 = np.hstack([sig2, np.zeros_like(sig2)])
+
+sig = np.vstack([sig1, sig2])
+
+
+
 xout = None
 y = np.array([])
 for u in sig:
     yout, xout = ring_resonator.state_space.step(u, x0=xout)
     y = np.append(y, yout[-1])
 
-plt.plot(np.abs(y)**2)
+t= np.linspace()
+plt.plot(t, np.abs(y)**2)
+plt.plot(t, sig[0])
 plt.show()
 
 ring_resonator.compute_steady_state()

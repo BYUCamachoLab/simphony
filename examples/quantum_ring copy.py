@@ -4,27 +4,48 @@ import sax
 import random
 import time
 
+from simphony.utils import dict_to_matrix
 from jax import config
 config.update("jax_enable_x64", True)
 
 from simphony.libraries import ideal, siepic
 
-from simphony.baseband_vector_fitting import BasebandModelSingleIO, BVF_Options, CVF_Options, CVF_Model
+from simphony.baseband_vector_fitting import Baseband_Model_SingleIO, BVF_Options, CVF_Options, CVF_Model
 from scipy.signal import  StateSpace, dlsim, lsim
 from simphony.quantum import QuantumState, CoherentState, SqueezedState, compose_qstate
+
+# netlist = {
+#     "instances": {
+#         "wg": "waveguide",
+#         "hr": "half_ring",
+#     },
+#     "connections": {
+#         "hr,port 1": "wg,o0",
+#         "hr,port 3": "wg,o1",
+#     },
+#     "ports": {
+#         "o0": "hr,port 4",
+#         "o1": "hr,port 2",
+#     }
+# }
+
+# circuit, info = sax.circuit(
+#     netlist=netlist,
+#     models={
+#         "waveguide": ideal.waveguide,
+#         "half_ring": siepic.bidirectional_coupler,
+#     }
+# )
 
 netlist = {
     "instances": {
         "wg": "waveguide",
-        "hr": "half_ring",
     },
     "connections": {
-        "hr,o2": "wg,o0",
-        "hr,o3": "wg,o1",
     },
     "ports": {
-        "o0": "hr,o0",
-        "o1": "hr,o1",
+        "o0": "wg,o0",
+        "o1": "wg,o1",
     }
 }
 
@@ -32,13 +53,12 @@ circuit, info = sax.circuit(
     netlist=netlist,
     models={
         "waveguide": ideal.waveguide,
-        "half_ring": ideal.coupler,
     }
 )
 
 num_measurements = 100
-# model_order = np.arange(10, 20, 1)
-model_order = 29
+# model_order = np.arange(50, 60, 1)
+model_order = 100
 wvl = np.linspace(1.5, 1.6, num_measurements)
 
 center_wvl = 1.5493
@@ -46,15 +66,22 @@ center_wvl = 1.5493
 neff = 2.34
 ng = 3.4
 c = 299792458
-ring_length = 75.0
+ring_length = 20.0
 stepping_time = ring_length * 1e-6 / (c / ng)
 
 S = circuit(wl=wvl, wg={"length": ring_length, "loss": 100})
+
+s_params = dict_to_matrix(S)
+plt.plot(np.abs(s_params[:, 1, 0])**2)
+plt.show()
+
+
 kwargs = (wvl, {"length": ring_length, "loss": 100})
 options = CVF_Options(quantum=True,pole_spacing='log',alpha=0.01, beta=1.0, baseband=True, enforce_stability=True, poles_estimation_threshold=100, max_iterations=10, model_error_threshold = 1e-10, dt=1e-15, order=model_order, center_wvl=center_wvl)
 
 # qte = QuantumTimeElement(circuit, options, wl=wvl, wg={"length": ring_length, "loss": 100})
 ring_resonator = CVF_Model(wvl, S, options)
+ring_resonator.plot_frequency_domain_model()
 
 # in_state = CoherentState("o0", 1.0 + 0.0j)
 in_state = SqueezedState("o0", r=1.0, phi=0, alpha=5.0 + 5.0j)

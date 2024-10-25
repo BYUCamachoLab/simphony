@@ -15,7 +15,7 @@ from simphony.exceptions import ShapeMismatchError
 from simphony.simulation import SimDevice, Simulation, SimulationResult
 from simphony.utils import dict_to_matrix, xpxp_to_xxpp, xxpp_to_xpxp
 
-from simphony.baseband_vector_fitting import CVF_Options, CVF_Model
+from simphony.time_domain.baseband_vector_fitting import BasebandModel
 
 
 def plot_mode(means, cov, n=100, x_range=None, y_range=None, ax=None, **kwargs):
@@ -548,103 +548,51 @@ class QuantumSim(Simulation):
         )
     
 class QuantumTimeElement(Simulation):
-    def __init__(self, ckt: Model, vf_options,  **kwargs) -> None:
+    def __init__(self, ckt: Model, **kwargs) -> None:
         ckt = partial(ckt, **kwargs)
         if "wl" not in kwargs:
             raise ValueError("Must specify 'wl' (wavelengths to simulate).")
+
         wl = kwargs["wl"]
         super().__init__(ckt, wl)
 
         s_params = dict_to_matrix(self.ckt())
-        unitary = self.to_unitary(s_params)
-        cvf_model = CVF_Model(wl, unitary, vf_options)
+        # unitary = self.to_unitary(s_params)
+        wl0 = 1.55
+        cvf_model = BasebandModel(wl, wl0, s_params)
         pass
 
-    @staticmethod
-    def to_unitary(s_params):
-        """This method converts s-parameters into a unitary transform by adding
-        vacuum ports.
+    # @staticmethod
+    # def to_unitary(s_params):
+    #     """This method converts s-parameters into a unitary transform by adding
+    #     vacuum ports.
 
-        The original ports maintain their index while new vacuum ports will
-        always be the last n_ports.
+    #     The original ports maintain their index while new vacuum ports will
+    #     always be the last n_ports.
 
-        Parameters
-        ----------
-        s_params : ArrayLike
-            s-parameters in the shape of (n_freq, n_ports, n_ports).
+    #     Parameters
+    #     ----------
+    #     s_params : ArrayLike
+    #         s-parameters in the shape of (n_freq, n_ports, n_ports).
 
-        Returns
-        -------
-        unitary : Array
-            The unitary s-parameters of the shape (n_freq, 2*n_ports,
-            2*n_ports).
-        """
-        n_freqs, n_ports, _ = s_params.shape
-        new_n_ports = n_ports * 2
-        unitary = jnp.zeros((n_freqs, new_n_ports, new_n_ports), dtype=complex)
-        for f in range(n_freqs):
-            unitary = unitary.at[f, :n_ports, :n_ports].set(s_params[f])
-            unitary = unitary.at[f, n_ports:, n_ports:].set(s_params[f])
-            for i in range(n_ports):
-                val = jnp.sqrt(
-                    1 - unitary[f, :n_ports, i].dot(unitary[f, :n_ports, i].conj())
-                )
-                unitary = unitary.at[f, n_ports + i, i].set(val)
-                unitary = unitary.at[f, i, n_ports + i].set(-val)
+    #     Returns
+    #     -------
+    #     unitary : Array
+    #         The unitary s-parameters of the shape (n_freq, 2*n_ports,
+    #         2*n_ports).
+    #     """
+    #     n_freqs, n_ports, _ = s_params.shape
+    #     new_n_ports = n_ports * 2
+    #     unitary = jnp.zeros((n_freqs, new_n_ports, new_n_ports), dtype=complex)
+    #     for f in range(n_freqs):
+    #         unitary = unitary.at[f, :n_ports, :n_ports].set(s_params[f])
+    #         unitary = unitary.at[f, n_ports:, n_ports:].set(s_params[f])
+    #         for i in range(n_ports):
+    #             val = jnp.sqrt(
+    #                 1 - unitary[f, :n_ports, i].dot(unitary[f, :n_ports, i].conj())
+    #             )
+    #             unitary = unitary.at[f, n_ports + i, i].set(val)
+    #             unitary = unitary.at[f, i, n_ports + i].set(-val)
 
-        return unitary
+    #     return unitary
     
-    def run(self, wvl0=1.55,) -> QuantumResult:
-        """Run the simulation."""
-        ports = get_ports(self.ckt())
-        n_ports = len(ports)
-        # get the unitary s-parameters of the circuit
-        s_params = dict_to_matrix(self.ckt())
-        unitary = self.to_unitary(s_params)
-
-        # get an array of the indices of the input ports
-        input_indices = [ports.index(port) for port in self.input.ports]
-        # create vacuum ports for each extra mode in the unitary matrix
-        n_modes = unitary.shape[1]
-        n_vacuum = n_modes - len(input_indices)
-        self.input._add_vacuums(n_vacuum)
-        input_indices += [i for i in range(n_modes) if i not in input_indices]
-        self.input.to_xxpp()
-        input_means, input_cov = self.input.modes(input_indices)
-
-        transforms = []
-        means = []
-        covs = []
-        for wl_ind in range(len(self.wl)):
-            s_wl = unitary[wl_ind]
-            transform = jnp.zeros((n_modes * 2, n_modes * 2))
-            n = n_modes
-
-            transform = transform.at[:n, :n].set(s_wl.real)
-            transform = transform.at[:n, n:].set(-s_wl.imag)
-            transform = transform.at[n:, :n].set(s_wl.imag)
-            transform = transform.at[n:, n:].set(s_wl.real)
-
-            output_means = transform @ input_means.T
-            output_cov = transform @ input_cov @ transform.T
-
-            # TODO: Possibly implement tolerance for small numbers
-            # convert small numbers to zero
-            # output_means[abs(output_means) < 1e-10] = 0
-            # output_cov[abs(output_cov) < 1e-10] = 0
-
-            transforms.append(transform)
-            means.append(output_means)
-            covs.append(output_cov)
-
-        return QuantumResult(
-            s_params=s_params,
-            input_means=input_means,
-            input_cov=input_cov,
-            transforms=jnp.stack(transforms),
-            means=jnp.stack(means),
-            cov=jnp.stack(covs),
-            n_ports=n_ports,
-            wl=self.wl,
-        )
-

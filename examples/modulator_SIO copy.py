@@ -9,7 +9,7 @@ config.update("jax_enable_x64", True)
 from simphony.libraries import ideal, siepic
 from simphony.utils import dict_to_matrix
 
-from simphony.baseband_vector_fitting import Baseband_Model_SingleIO, BVF_Options
+from simphony.baseband_vector_fitting import BasebandModelSingleIO, BVF_Options
 from scipy.signal import  StateSpace, dlsim, lsim
 
 def eye_diagram(t, signal, eye_period):
@@ -62,7 +62,7 @@ def modulated_response(sig_real_valued, T, phi, wvl0, ring_length, ng, period, r
     counter = 0
     neff=2.34
     wg = dict_to_matrix(ideal.waveguide(wl=wvl, length=ring_length, loss=100, neff=neff, ng=ng, wl0=center_wvl))
-    model_wg = Baseband_Model_SingleIO(wvl, center_wvl, wg[:, 0, 1], model_order, options)
+    model_wg = BasebandModelSingleIO(wvl, center_wvl, wg[:, 0, 1], model_order, options)
     model_wg.fit_model()
     model_wg.compute_state_space_model()
 
@@ -171,10 +171,10 @@ coupler = np.asarray(coupler)
 model_order = 55
 options = BVF_Options(max_iterations=5, beta=7.0, gamma=0.95) # 3 iterations
 
-model_coupler10 = Baseband_Model_SingleIO(wvl, center_wvl, coupler[:, 3, 1], model_order, options)
-model_coupler12 = Baseband_Model_SingleIO(wvl, center_wvl, coupler[:, 3, 0], model_order, options)
-model_coupler30 = Baseband_Model_SingleIO(wvl, center_wvl, coupler[:, 2, 1], model_order, options)
-model_coupler32 = Baseband_Model_SingleIO(wvl, center_wvl, coupler[:, 2, 0], model_order, options)
+model_coupler10 = BasebandModelSingleIO(wvl, center_wvl, coupler[:, 3, 1], model_order, options)
+model_coupler12 = BasebandModelSingleIO(wvl, center_wvl, coupler[:, 3, 0], model_order, options)
+model_coupler30 = BasebandModelSingleIO(wvl, center_wvl, coupler[:, 2, 1], model_order, options)
+model_coupler32 = BasebandModelSingleIO(wvl, center_wvl, coupler[:, 2, 0], model_order, options)
 
 model_coupler10.fit_model()
 model_coupler12.fit_model()

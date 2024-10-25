@@ -9,7 +9,8 @@ import pandas as pd
 from simphony.quantum import QuantumTimeElement
 from simphony.libraries import siepic, ideal
 from simphony.utils import smooth_rectangular_pulse, dict_to_matrix, gaussian_pulse
-from simphony.baseband_vector_fitting import BasebandModel, DampModel
+from simphony.time_domain.baseband_vector_fitting import BasebandModel
+from simphony.time_domain.damp import DampModel
 
 from scipy.signal import lsim
 
@@ -70,6 +71,7 @@ s_params = np.copy(np.asarray(dict_to_matrix(ckt)))
 T = 30e-12
 # t = np.linspace(0.0, T, 1000)
 baseband_model  = BasebandModel(wvl_microns, center_wvl, s_params, 50)
+# baseband_model.plot_model()
 damp_model = DampModel(baseband_model, T)
 K=damp_model.K
 
