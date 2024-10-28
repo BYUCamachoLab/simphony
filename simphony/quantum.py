@@ -143,7 +143,7 @@ class QuantumState(SimDevice):
 
         means = jnp.array(means).astype(jnp.complex64)
         cov = jnp.array(cov).astype(jnp.complex64)
-
+        
         if len(means.shape) == 1:
             means = means[jnp.newaxis, :]
         if len(cov.shape) == 2:
@@ -160,6 +160,7 @@ class QuantumState(SimDevice):
         else:
             self.weights = weights
 
+        #TODO: Should it have support if ports is a single string and not a list of strings?
         if ports is None:
             self.N = int(means.shape[-1] / 2)
         else:
@@ -236,9 +237,11 @@ class QuantumState(SimDevice):
                 rot = jnp.zeros((2 * self.N, 2 * self.N))
                 form = jnp.zeros((2 * self.N, 2 * self.N))
                 for i in range(self.N):
-                    cov = self.cov[a][i : i + 2][i : i + 2]
-                    if jnp.allclose(cov, self.cov[b][i : i + 2][i : i + 2]):
-                        eigenvalues, eigenvectors = jnp.linalg.eig(cov)
+                    cov = self.cov[a]
+                    pos = 2*i
+                    cov = cov[pos : pos + 2, pos : pos + 2]
+                    if jnp.allclose(cov, self.cov[b][pos : pos + 2, pos : pos + 2]):
+                        eigenvalues, eigenvectors = jnp.linalg.eig(cov.real)
                         theta = jnp.arccos(eigenvectors[0][0].real)
                         r = -jnp.log(4 * eigenvalues[0]) / 2
 
@@ -248,16 +251,15 @@ class QuantumState(SimDevice):
                         c = jnp.cos(-theta)
                         s = jnp.sin(-theta)
                         rot = (
-                            rot.at[i : i + 2, i : i + 2]
+                            rot.at[pos : pos + 2, pos : pos + 2]
                             .set(jnp.array([[c, s], [-s, c]]))
                             .real
                         )
                         form = (
-                            form.at[i : i + 2, i : i + 2]
+                            form.at[pos : pos + 2, pos : pos + 2]
                             .set(
-                                jnp.array([[0, jnp.exp(-2 * r)], [-jnp.exp(2 * r), 0]])
+                                jnp.array([[0, jnp.exp(-2 * r)], [-jnp.exp(2 * r), 0]]).real
                             )
-                            .real
                         )
                     else:
                         raise ShapeMismatchError(
@@ -270,7 +272,6 @@ class QuantumState(SimDevice):
                 transform = rot.T @ form @ rot
                 imag_mean = transform @ (self.means[a] - self.means[b]) / 2
 
-                # TODO: Add correct calculation for covariance matrix of interference term
                 real_cov = 0.25 * jnp.diag(exps)
                 real_cov = rot.T @ real_cov @ rot
                 imag_cov = jnp.zeros((2 * self.N, 2 * self.N))
@@ -309,6 +310,9 @@ class QuantumState(SimDevice):
         if not all(mode < self.N for mode in modes):
             raise ValueError("Modes must be less than the number of modes.")
         inds = jnp.concatenate((modes, (modes + self.N)))
+
+        # TODO switch convention instead of including 2 different calculations
+
         if self.convention == "xpxp":
             means = jnp.array([xpxp_to_xxpp(m)[inds] for m in self.means])
             cov = jnp.array([xpxp_to_xxpp(c)[jnp.ix_(inds, inds)] for c in self.cov])
@@ -379,7 +383,7 @@ class QuantumState(SimDevice):
         means = jnp.concatenate(
             (self.means, jnp.zeros((self.states, 2 * n_vacuums))), axis=1
         )
-        cov = jnp.array([0.25 * jnp.eye(2 * N)] * self.states)
+        cov = jnp.array([0.25 * jnp.eye(2 * N)] * self.states, dtype=jnp.complex64)
         for i in range(self.states):
             cov = cov.at[i, : 2 * self.N, : 2 * self.N].set(self.cov[i])
         self.means = means
@@ -431,28 +435,38 @@ class QuantumState(SimDevice):
         modes : list, optional
             The modes to plot. Defaults to all modes.
         """
-        # create a grid of plots, a single plot for each mode
+
+        # calculate the number of modes to plot
         if modes is None:
             n_modes = self.N
             modes = jnp.linspace(0, int(self.N) - 1, int(self.N), dtype=int)
         n_modes = len(modes)
+
+        # create a grid of plots, a single plot for each mode
         # make subplots into a square grid
         n_rows = int(n_modes**0.5)
         n_cols = int(n_modes**0.5)
-        if n_rows * n_cols < n_modes:
-            n_cols += 1
+        while n_rows * n_cols < n_modes:
+            if n_rows < n_cols:
+                n_rows += 1
+            else:
+                n_cols += 1
+
+        fig, axs = plt.subplots(n_rows, n_cols, figsize=(10, 10))
 
         # TODO: Better computation of x_range / y_range (currently the function parameters are unused)
 
-        # TODO: Add support for states with just 1 mode
-        fig, axs = plt.subplots(n_rows, n_cols, figsize=(10, 10))
-        axs = axs.flatten()
+        # graph all the modes
+        if not hasattr(axs, "__iter__"):
+            self.plot_mode(0, x_range=(-6, 6), y_range=(-6, 6), ax=axs)
+            axs.set_title(f"Mode 0")
+        else:
+            axs = axs.flatten()
+            for i, mode in enumerate(modes):
+                ax = axs[i]
+                self.plot_mode(mode, x_range=(-6, 6), y_range=(-6, 6), ax=ax)
+                ax.set_title(f"Mode {mode}")
 
-        # convert quantum result into quantum state
-        for i, mode in enumerate(modes):
-            ax = axs[i]
-            self.plot_mode(mode, x_range=(-6, 6), y_range=(-6, 6), ax=ax)
-            ax.set_title(f"Mode {mode}")
         return axs
 
     def homodyne_measurement(self, mode, theta=0, n=100, x_range=None, y_range=None):
@@ -531,6 +545,7 @@ def compose_qstate(*args: QuantumState) -> QuantumState:
     args : QuantumState
         The quantum states to combine.
     """
+
     N = 0
     states = []
     mean_list = []
@@ -552,18 +567,17 @@ def compose_qstate(*args: QuantumState) -> QuantumState:
         )
 
         cov = jnp.zeros((2 * N, 2 * N), dtype=complex)
-        weight = 1.0
-
         left = 0
         for i, qstate in enumerate(args):
             rowcol = qstate.N * 2 + left
             cov = cov.at[left:rowcol, left:rowcol].set(qstate.cov[state[i]])
             left = rowcol
-            weight *= qstate.weights[state[i]]
 
         cov_list.append(cov)
 
-        # TODO: Update weights appropriately
+        weight = 1.0
+        for i, qstate in enumerate(args):
+            weight *= qstate.weights[state[i]]
         weight_list.append(weight)
 
     return QuantumState(
@@ -882,7 +896,8 @@ class QuantumSim(Simulation):
         unitary = self.to_unitary(s_params)
         # get an array of the indices of the input ports
 
-        # TODO: Check to make sure two states aren't on the same port (this causes simphony to crash)
+        # TODO: Check to see if two states are added to the same port. This causes simphony to crash right now
+        #raise ShapeMismatchError("Cannot attach two quantum states to the same port")
 
         input_indices = [ports.index(port) for port in self.input.ports]
 
@@ -892,13 +907,10 @@ class QuantumSim(Simulation):
         self.input._add_vacuums(n_vacuum)
 
         input_indices += [i for i in range(n_modes) if i not in input_indices]
-
         output_states = []
         for wl_ind in range(len(self.wl)):
             s_wl = unitary[wl_ind]
-
             output_state = apply_unitary(s_wl, self.input, input_indices)
-
             output_states.append(output_state)
 
         return QuantumResult(
