@@ -113,3 +113,6 @@ py38/
 
 # Mac users
 .DS_Store
+
+# User-specific files
+/user
