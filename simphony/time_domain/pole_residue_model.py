@@ -1,7 +1,6 @@
 class PoleResidueModel():
     def __init__(self) -> None:
         pass
-    
 
 class CVFModel(PoleResidueModel):
     def __init__(self) -> None:
