@@ -80,7 +80,7 @@ def plot_mode(
 
     pdf = jnp.zeros((n, n))
     for i in range(0, len(means)):
-        pdf += weights[i] * dist[i].pdf(pos)
+        pdf += weights[i] * dist[i].pdf(pos,compute_phase=True)
 
     pdf_min = jnp.min(pdf)
     pdf_max = jnp.max(pdf)
@@ -138,11 +138,12 @@ class QuantumState(SimDevice):
         weights: ArrayLike = None,
         ports: Union[str, List[str]] = None,
         convention: str = "xpxp",
+        set_interference = True
     ) -> None:
         super().__init__(ports)
 
-        means = jnp.array(means).astype(jnp.complex64)
-        cov = jnp.array(cov).astype(jnp.complex64)
+        means = jnp.array(means, dtype=jnp.complex64)
+        cov = jnp.array(cov, dtype=jnp.complex64)
         
         if len(means.shape) == 1:
             means = means[jnp.newaxis, :]
@@ -158,7 +159,7 @@ class QuantumState(SimDevice):
                 "The number of weights must be the number of means"
             )
         else:
-            self.weights = weights
+            self.weights = jnp.array(weights)
 
         #TODO: Should it have support if ports is a single string and not a list of strings?
         if ports is None:
@@ -184,7 +185,9 @@ class QuantumState(SimDevice):
         self.interference_means = None
         self.interference_cov = None
         self.interference_weights = []
-        self.compute_interference()
+
+        if set_interference:
+            self._compute_interference()
 
     def to_xpxp(self) -> None:
         """Converts the means and covariance matrix to the xpxp convention."""
@@ -218,7 +221,7 @@ class QuantumState(SimDevice):
                     )
             self.convention = "xxpp"
 
-    def compute_interference(self):
+    def _compute_interference(self):
         """Computer interference terms of the gaussian states that compose this
         QuantumState."""
         interference_means = []
@@ -242,17 +245,14 @@ class QuantumState(SimDevice):
                     cov = cov[pos : pos + 2, pos : pos + 2]
                     if jnp.allclose(cov, self.cov[b][pos : pos + 2, pos : pos + 2]):
                         eigenvalues, eigenvectors = jnp.linalg.eig(cov.real)
-                        theta = jnp.arccos(eigenvectors[0][0].real)
                         r = -jnp.log(4 * eigenvalues[0]) / 2
 
                         exps.append(jnp.exp(-2 * r))
                         exps.append(jnp.exp(2 * r))
 
-                        c = jnp.cos(-theta)
-                        s = jnp.sin(-theta)
                         rot = (
                             rot.at[pos : pos + 2, pos : pos + 2]
-                            .set(jnp.array([[c, s], [-s, c]]))
+                            .set(eigenvectors.T.real)
                             .real
                         )
                         form = (
@@ -383,17 +383,30 @@ class QuantumState(SimDevice):
         means = jnp.concatenate(
             (self.means, jnp.zeros((self.states, 2 * n_vacuums))), axis=1
         )
+
         cov = jnp.array([0.25 * jnp.eye(2 * N)] * self.states, dtype=jnp.complex64)
         for i in range(self.states):
             cov = cov.at[i, : 2 * self.N, : 2 * self.N].set(self.cov[i])
+
         self.means = means
         self.cov = cov
-        self.N = N
+
+        if (comb(self.states, 2) > 0):
+            print(n_vacuums)
+            print(self.interference_means.shape)
+            print((2 * comb(self.states,2), 2 * n_vacuums))
+            interference_means = jnp.concatenate((self.interference_means, jnp.zeros((2 * comb(self.states,2), 2 * n_vacuums))), axis=1)
+
+            interference_cov = jnp.array([0.25 * jnp.eye(2 * N)] * 2 * comb(self.states,2), dtype=jnp.complex64)
+            for i in range(2 * comb(self.states, 2)):
+                interference_cov = interference_cov.at[i, : 2 * self.N, : 2 * self.N].set(self.interference_cov[i])
+        
+            self.interference_means = interference_means
+            self.interference_cov = interference_cov
+            self.N = N
 
         if revert:
             self.to_xxpp()
-
-        self.compute_interference()
 
     def __repr__(self) -> str:
         return (
@@ -458,13 +471,15 @@ class QuantumState(SimDevice):
 
         # graph all the modes
         if not hasattr(axs, "__iter__"):
-            self.plot_mode(0, x_range=(-6, 6), y_range=(-6, 6), ax=axs)
+            #self.plot_mode(0, x_range=(-6, 6), y_range=(-6, 6), ax=axs)
+            self.plot_mode(0, ax=axs)
             axs.set_title(f"Mode 0")
         else:
             axs = axs.flatten()
             for i, mode in enumerate(modes):
                 ax = axs[i]
-                self.plot_mode(mode, x_range=(-6, 6), y_range=(-6, 6), ax=ax)
+                #self.plot_mode(mode, x_range=(-6, 6), y_range=(-6, 6), ax=ax)
+                self.plot_mode(mode, ax=ax)
                 ax.set_title(f"Mode {mode}")
 
         return axs
@@ -519,6 +534,7 @@ class QuantumState(SimDevice):
 
         x = jnp.linspace(x_range[0], x_range[1], n)
         y = jnp.linspace(y_range[0], y_range[1], n)
+        dy = y[1]-y[0]
         X, Y = jnp.meshgrid(x, y)
         pos = jnp.dstack((X, Y))
         dist = [
@@ -527,11 +543,11 @@ class QuantumState(SimDevice):
 
         wigner = jnp.zeros((n, n), dtype=complex)
         for i in range(0, len(means)):
-            wigner += weights[i] * dist[i].pdf(pos)
+            wigner += weights[i] * dist[i].pdf(pos, compute_phase=True)
 
         homodyne = jnp.zeros(n)
         for height_pdf in wigner:
-            homodyne += height_pdf.real
+            homodyne += height_pdf.real * dy
 
         return x, homodyne
 
@@ -605,7 +621,7 @@ def apply_unitary(
         qstate.to_xxpp()
         revert = True
 
-    weights, input_means, input_cov = qstate.modes(modes)
+    weights, input_means, input_cov = qstate.modes(modes, include_interference=True)
 
     n = unitary.shape[0]
     transform = jnp.zeros((n * 2, n * 2))
@@ -618,7 +634,7 @@ def apply_unitary(
     output_means = []
     output_cov = []
 
-    for i in range(qstate.states):
+    for i, state in enumerate(input_means):
         output_means.append(transform @ input_means[i].T)
         output_cov.append(transform @ input_cov[i] @ transform.T)
 
@@ -627,10 +643,14 @@ def apply_unitary(
     # output_means[abs(output_means) < 1e-10] = 0
     # output_cov[abs(output_cov) < 1e-10] = 0
 
-    result = QuantumState(output_means, output_cov, weights=weights, convention="xxpp")
+    result = QuantumState(output_means[:qstate.states], output_cov[:qstate.states], weights=jnp.sqrt(weights[:qstate.states]), convention="xxpp", set_interference=False)
+
+    result.interference_means = jnp.array(output_means[qstate.states:])
+    result.interference_cov = jnp.array(output_cov[qstate.states:])
+    result.interference_weights = jnp.array(weights[qstate.states:])
 
     if revert:
-        result.to_xpxp()
+        qstate.to_xpxp()
 
     return result
 
