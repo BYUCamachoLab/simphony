@@ -392,9 +392,6 @@ class QuantumState(SimDevice):
         self.cov = cov
 
         if (comb(self.states, 2) > 0):
-            print(n_vacuums)
-            print(self.interference_means.shape)
-            print((2 * comb(self.states,2), 2 * n_vacuums))
             interference_means = jnp.concatenate((self.interference_means, jnp.zeros((2 * comb(self.states,2), 2 * n_vacuums))), axis=1)
 
             interference_cov = jnp.array([0.25 * jnp.eye(2 * N)] * 2 * comb(self.states,2), dtype=jnp.complex64)
@@ -403,7 +400,7 @@ class QuantumState(SimDevice):
         
             self.interference_means = interference_means
             self.interference_cov = interference_cov
-            self.N = N
+        self.N = N
 
         if revert:
             self.to_xxpp()
