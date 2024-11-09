@@ -8,7 +8,7 @@ config.update("jax_enable_x64", True)
 
 from simphony.libraries import ideal, siepic
 
-from simphony.baseband_vector_fitting import Baseband_Model_SingleIO, BVF_Options, CVF_Options, CVF_Model
+from simphony.time_domain.baseband_vector_fitting import CVF_Options, CVF_Model
 from scipy.signal import  StateSpace, dlsim, lsim
 
 netlist = {
@@ -35,7 +35,7 @@ circuit, info = sax.circuit(
 )
 
 num_measurements = 100
-model_order = np.arange(20, 30, 1)
+model_order = 50
 # model_order = 31
 wvl = np.linspace(1.5, 1.6, num_measurements)
 
