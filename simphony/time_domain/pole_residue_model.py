@@ -128,15 +128,15 @@ class PoleResidueModel():
             self.A, self.B, self.C, self.D = self.complex_ABCD_matrices()
 
 
-    def compute_phi_matrices(x,poles):
-            phi1 = 1 / (x[0]-poles)
-            for omega in x[1:]:
-                phi1 = np.vstack((phi1, 1 / (x-poles)))
+    # def compute_phi_matrices(self, x, poles):
+    #         phi1 = 1 / (x[0]-poles)
+    #         for omega in x[1:]:
+    #             phi1 = np.vstack((phi1, 1 / (omega-poles)))
             
-            unity_column = np.ones((len(x), 1))
-            phi0 = np.hstack((unity_column, phi1))
+    #         unity_column = np.ones((len(x), 1))
+    #         phi0 = np.hstack((unity_column, phi1))
 
-            return phi0, phi1
+    #         return phi0, phi1
 
 
     def compute_error(self):
@@ -145,18 +145,16 @@ class PoleResidueModel():
 class CVF_Options:
      def __init__(self,
                 poles_estimation_threshold = 1,
-                model_error_threshold = 1e-6, 
+                model_error_threshold = 1e-10, 
                  max_iterations = 5, 
                  enforce_stability = True, 
                  alpha = 0.01,
                  beta = 2.5,
                  debug = True,
-                 
                  real_valued = True,
                  baseband = True,
                  pole_spacing = 'log',
                  dt=1e-15,
-                 order=50,
                  center_wvl=1.55) :
         self.poles_estimation_threshold = poles_estimation_threshold
         self.model_error_threshold = model_error_threshold
@@ -169,12 +167,11 @@ class CVF_Options:
         self.beta=beta
         self.pole_spacing = pole_spacing
         self.dt = dt
-        self.order = order
         self.center_wvl = center_wvl
 
 
 class CVFModel(PoleResidueModel):
-    def __init__(self, wvl_microns, circuit, options = None):
+    def __init__(self, wvl_microns, circuit, order, options = None):
         if options == None:
             self.options = CVF_Options()
         else:
@@ -182,6 +179,7 @@ class CVFModel(PoleResidueModel):
 
         c = 299792458
         # self.order = order
+        self.order = order
         self.wvl_microns = wvl_microns
         if self.options.baseband == True:
             self.center_freq = c / (self.options.center_wvl * 1e-6)
@@ -207,8 +205,8 @@ class CVFModel(PoleResidueModel):
 
        
         
-        if isinstance(self.options.order, Iterable):
-            for n in options.order:
+        if isinstance(self.order, Iterable):
+            for n in self.order:
                 print(f"Testing order {n}")
                 poles, residues, D, error = self.fit_pole_residue_model(order=n)
 
@@ -224,8 +222,8 @@ class CVFModel(PoleResidueModel):
                     
                     pass
         else:
-            self.poles, self.residues,self.D,self.error = self.fit_pole_residue_model(order=self.options.order)
-            self.order = self.options.order
+            self.poles, self.residues,self.D,self.error = self.fit_pole_residue_model(order=self.order)
+            self.order = self.order
         
 
     def initial_poles(self, order=None):
@@ -252,7 +250,7 @@ class CVFModel(PoleResidueModel):
                     poles = np.append(poles, (-self.options.alpha + 1j) *2*np.pi*f)
                 else:
                     poles = np.append(poles, (self.options.alpha + 1j) *2*np.pi*f)
-
+        return poles
 
     def compute_model_response(self,poles=None, residues=None, D=None, freqs=None):
         if freqs is None:
@@ -275,7 +273,7 @@ class CVFModel(PoleResidueModel):
     
     def fit_pole_residue_model(self, order):
         poles = self.initial_poles(order)
-
+        
         iter = 1
         while iter <= self.options.max_iterations:
             phi0, phi1 = self.compute_phi_matrices(poles)
@@ -354,6 +352,15 @@ class CVFModel(PoleResidueModel):
         plt.tight_layout()
         plt.show()
 
+    def compute_phi_matrices(self, poles):
+        phi1 = 1 / (2*np.pi*1j*self.freqs_shifted[0]-poles)
+        for omega in self.freqs_shifted[1:]:
+            phi1 = np.vstack((phi1, 1 / (2*np.pi*1j*omega-poles)))
+        
+        unity_column = np.ones((len(self.freqs_shifted), 1))
+        phi0 = np.hstack((unity_column, phi1))
+
+        return phi0, phi1
 
         
 
