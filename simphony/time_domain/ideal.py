@@ -7,7 +7,7 @@ import simphony.libraries.ideal as fd
 from simphony.utils import dict_to_matrix, mul_polar
 from queue import Queue
 
-class coupler(TimeSystem):
+class TimeCoupler(TimeSystem):
     def __init__(
         self, 
         coupling: float = 0.5, 
@@ -29,7 +29,7 @@ class coupler(TimeSystem):
                                          )
         return output
 
-class waveguide(TimeSystem):
+class TimeWaveguide(TimeSystem):
     def __init__(
         self,
         # wl: ArrayLike | float = 1.55,

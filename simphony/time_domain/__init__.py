@@ -1,2 +1,2 @@
 """Time Domain Simphony"""
-from time_circuit import TimeCircuit
+#from time_circuit import TimeCircuit
