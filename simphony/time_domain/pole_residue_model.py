@@ -5,36 +5,20 @@ from scipy.signal import  StateSpace, dlsim, lsim
 from simphony.utils import dict_to_matrix
 from collections.abc import Iterable
 import matplotlib.pyplot as plt
+from abc import ABC, abstractmethod
+from simphony.time_domain.time_system import TimeSystem
 
-
-
-class PoleResidueModel():
+class PoleResidueModel(ABC):
     def __init__(self) -> None:
         pass
 
+    @abstractmethod
+    def plot_poles(self)->None:
+        pass
 
-    def plot_poles(self):
-        fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
-        initial_poles = self.initial_poles()
-        ax.set_rticks([0.2, 0.4, 0.6, 0.8, 1.0])
-        ax.set_thetagrids([0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330])
-        ax.set_rlim(0.0, 1.0)
-        ax.set_rlabel_position(0)
-        ax.grid(True)
-        
-
-        # Plot Initial Poles
-        ax.scatter(np.angle(initial_poles), np.abs(initial_poles), label="Initial Poles")
-
-        # Plot Current Poles
-        ax.scatter(np.angle(self.poles), np.abs(self.poles), label="Optimal Poles")
-
-        #ax.set_title("A line plot on a polar axis", va='bottom')
-        ax.legend()
-        plt.show()
-
-    
-    def generate_sys_discrete(self):
+    @abstractmethod
+    def to_time_system(self)->TimeSystem:
+        #switch to time system
         _A = []
         _B = []
         _C = []
@@ -77,7 +61,7 @@ class PoleResidueModel():
             return M, np.hstack(V)
 
 
-    def complex_ABCD_matrices(self):
+    def ABCD_matrices(self):
             A = np.diag(self.poles)
             U, S, Vh = svd(np.array([[self.residues[1]]]))
             B = Vh
@@ -94,69 +78,36 @@ class PoleResidueModel():
 
             return A, B, C, D
 
-
-    def real_ABCD_matrices(self):
-        A, B, C, D = self.complex_ABCD_matrices()
-
-        A_hat = np.block([
-            [np.real(A), -np.imag(A)], 
-            [np.imag(A),  np.real(A)]
-        ])
-        
-        B_hat = np.block([
-            [np.real(B), np.zeros(B.shape)],
-            [np.zeros(B.shape), np.real(B)]
-        ])
-
-        C_hat = np.block([
-            [np.real(C), -np.imag(C)], 
-            [np.imag(C),  np.real(C)]
-        ])
-
-        D_hat = np.block([
-            [np.real(D), -np.imag(D)], 
-            [np.imag(D),  np.real(D)]
-        ])
-
-        return A_hat, B_hat, C_hat, D_hat
-
-
     def compute_state_space_model(self):
-        if self.options.real_valued == True:
-            self.A, self.B, self.C, self.D = self.real_ABCD_matrices()
-        elif self.options.real_valued == False:
-            self.A, self.B, self.C, self.D = self.complex_ABCD_matrices()
+        self.A, self.B, self.C, self.D = self.ABCD_matrices()
 
 
-    def compute_phi_matrices(x,poles):
-            phi1 = 1 / (x[0]-poles)
-            for omega in x[1:]:
-                phi1 = np.vstack((phi1, 1 / (x-poles)))
+    # def compute_phi_matrices(self, x, poles):
+    #         phi1 = 1 / (x[0]-poles)
+    #         for omega in x[1:]:
+    #             phi1 = np.vstack((phi1, 1 / (omega-poles)))
             
-            unity_column = np.ones((len(x), 1))
-            phi0 = np.hstack((unity_column, phi1))
+    #         unity_column = np.ones((len(x), 1))
+    #         phi0 = np.hstack((unity_column, phi1))
 
-            return phi0, phi1
+    #         return phi0, phi1
 
 
     def compute_error(self):
             return np.max(np.abs(self.S - self.compute_response()))
 
-class CVF_Options:
+class CVFBaseband_Options:
      def __init__(self,
                 poles_estimation_threshold = 1,
-                model_error_threshold = 1e-6, 
+                model_error_threshold = 1e-10, 
                  max_iterations = 5, 
                  enforce_stability = True, 
                  alpha = 0.01,
                  beta = 2.5,
                  debug = True,
-                 
                  real_valued = True,
-                 baseband = True,
                  pole_spacing = 'log',
                  dt=1e-15,
-                 order=50,
                  center_wvl=1.55) :
         self.poles_estimation_threshold = poles_estimation_threshold
         self.model_error_threshold = model_error_threshold
@@ -165,16 +116,21 @@ class CVF_Options:
         self.debug = debug
         self.alpha = alpha
         self.real_valued = real_valued
-        self.baseband = baseband
         self.beta=beta
         self.pole_spacing = pole_spacing
         self.dt = dt
-        self.order = order
         self.center_wvl = center_wvl
 
 
 class CVFModel(PoleResidueModel):
-    def __init__(self, wvl_microns, circuit, options = None):
+    def __init__(self) -> None: 
+        pass
+
+
+
+
+class CVFModelBaseband(PoleResidueModel):
+    def __init__(self, wvl_microns, circuit, order, options = None):
         if options == None:
             self.options = CVF_Options()
         else:
@@ -182,6 +138,7 @@ class CVFModel(PoleResidueModel):
 
         c = 299792458
         # self.order = order
+        self.order = order
         self.wvl_microns = wvl_microns
         if self.options.baseband == True:
             self.center_freq = c / (self.options.center_wvl * 1e-6)
@@ -207,8 +164,8 @@ class CVFModel(PoleResidueModel):
 
        
         
-        if isinstance(self.options.order, Iterable):
-            for n in options.order:
+        if isinstance(self.order, Iterable):
+            for n in self.order:
                 print(f"Testing order {n}")
                 poles, residues, D, error = self.fit_pole_residue_model(order=n)
 
@@ -224,8 +181,8 @@ class CVFModel(PoleResidueModel):
                     
                     pass
         else:
-            self.poles, self.residues,self.D,self.error = self.fit_pole_residue_model(order=self.options.order)
-            self.order = self.options.order
+            self.poles, self.residues,self.D,self.error = self.fit_pole_residue_model(order=self.order)
+            self.order = self.order
         
 
     def initial_poles(self, order=None):
@@ -252,7 +209,7 @@ class CVFModel(PoleResidueModel):
                     poles = np.append(poles, (-self.options.alpha + 1j) *2*np.pi*f)
                 else:
                     poles = np.append(poles, (self.options.alpha + 1j) *2*np.pi*f)
-
+        return poles
 
     def compute_model_response(self,poles=None, residues=None, D=None, freqs=None):
         if freqs is None:
@@ -275,7 +232,7 @@ class CVFModel(PoleResidueModel):
     
     def fit_pole_residue_model(self, order):
         poles = self.initial_poles(order)
-
+        
         iter = 1
         while iter <= self.options.max_iterations:
             phi0, phi1 = self.compute_phi_matrices(poles)
@@ -354,13 +311,20 @@ class CVFModel(PoleResidueModel):
         plt.tight_layout()
         plt.show()
 
+    def compute_phi_matrices(self, poles):
+        phi1 = 1 / (2*np.pi*1j*self.freqs_shifted[0]-poles)
+        for omega in self.freqs_shifted[1:]:
+            phi1 = np.vstack((phi1, 1 / (2*np.pi*1j*omega-poles)))
+        
+        unity_column = np.ones((len(self.freqs_shifted), 1))
+        phi0 = np.hstack((unity_column, phi1))
+
+        return phi0, phi1
 
         
 
 
-class CVFModelBaseband(PoleResidueModel):
-    def __init__(self) -> None: 
-        pass
+
 
 
 class IIRModelBaseband(PoleResidueModel):
