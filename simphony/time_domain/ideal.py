@@ -19,15 +19,21 @@ class TimeCoupler(TimeSystem):
         self.num_ports = 4
         pass
 
-    def response(self, input: ArrayLike) -> ArrayLike:
-        output = jnp.zeros((self.num_ports, input.shape[1]), dtype=complex)
+    def response(self, inputs: dict) -> dict:
+        N = inputs['o0'].shape
+        response = {
+            'o0': jnp.zeros((N), dtype=complex),
+            'o1': jnp.zeros((N), dtype=complex),
+            'o2': jnp.zeros((N), dtype=complex),
+            'o3': jnp.zeros((N), dtype=complex),
+        }
+        
         for i in range(self.num_ports):
-            output = output.at[i, :].set(input[0, :] * self.s_params[0, i, 0]
-                                         + input[1, :] * self.s_params[0, i, 1]
-                                         + input[2, :] * self.s_params[0, i, 2]
-                                         + input[3, :] * self.s_params[0, i, 3]
-                                         )
-        return output
+            response[f'o{i}'] = ( inputs['o0'] * self.s_params[0, i, 0]
+                               + inputs['o1'] * self.s_params[0, i, 1]
+                               + inputs['o2'] * self.s_params[0, i, 2]
+                               + inputs['o3'] * self.s_params[0, i, 3])
+        return response
 
 class TimeWaveguide(TimeSystem):
     def __init__(
@@ -63,16 +69,23 @@ class TimeWaveguide(TimeSystem):
             self.forward_wave.put(0+0j)
             self.backward_wave.put(0+0j)
 
-    def response(self, input: ArrayLike) -> ArrayLike:
-        output = jnp.zeros((self.num_ports, input.shape[1]), dtype=complex)
+    def response(self, inputs: dict) -> dict:
+        N = inputs['o0'].shape[0]
+        o0_response = jnp.zeros((N), dtype=complex)
+        o1_response = jnp.zeros((N), dtype=complex)
 
-        for i in range(input.shape[1]):
-            a = complex(input[0, i])
-            b = complex(input[1, i])
-            output = output.at[0, i].set(self.transmission * self.forward_wave.get())
-            output = output.at[1, i].set(self.transmission * self.backward_wave.get())
+        for i in range(N):
+            a = complex(inputs['o0'][i])
+            b = complex(inputs['o1'][i])
+            o0_response = o0_response.at[i].set(self.transmission * self.backward_wave.get())
+            o1_response = o1_response.at[i].set(self.transmission * self.forward_wave.get())
 
             self.forward_wave.put(a)
             self.backward_wave.put(b)
         
-        return output
+        response = {
+            "o0": o0_response,
+            "o1": o1_response,
+        }
+        
+        return response
