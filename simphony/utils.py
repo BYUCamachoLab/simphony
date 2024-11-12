@@ -556,12 +556,8 @@ class complex_multivariate_normal:
         self.det = jnp.linalg.det(2 * jnp.pi * self.cov)
         self.normal = multivariate_normal(jnp.real(self.mean), self.cov)
         self.rot = eigenvectors.T.real
-        tst = self.rot.T @ self.mean.imag #self.rot or self.rot.T?
-        tst2 = tst * 4 * eigenvalues #eigenvalues or jnp.flip(eigenvalues)?
-        self.phase = jnp.dot(self.mean.real, tst2)
-        self.phase = 0
 
-    def pdf(self, x, compute_phase=False) -> ArrayLike:
+    def pdf(self, x) -> ArrayLike:
         x = jnp.array(x).real
         results = jnp.array(self.normal.pdf(x)).astype(complex)
 
@@ -569,9 +565,6 @@ class complex_multivariate_normal:
 
         if jnp.all(self.mean.imag == 0):
             return results
-
-        if compute_phase:
-            results *= jnp.exp(1j * self.phase)
 
         covector = self.mean.imag @ self.precision
         operands = distances @ covector
