@@ -21,7 +21,7 @@ class CVF_Baseband_to_time_system(TimeSystem):
     def response(self, input: ArrayLike) -> ArrayLike:
         
         N = int(len(input))
-        T = 2e-11
+        T = 4e-11
         t = np.linspace(0,T,N)
 
         sys = StateSpace(self.A,self.B,self.C,self.D)
@@ -33,18 +33,15 @@ class CVF_Baseband_to_time_system(TimeSystem):
 
 class IIRModelBaseband_to_time_system(TimeSystem):
     def __init__(self, pole_model: PoleResidueModel) -> None:
-        self.A,self.B,self.C,self.D = pole_model.compute_state_space_model()
-        self.sampling_freq = pole_model.sampling_freq
+        self.sys = pole_model.generate_sys_discrete()
         super().__init__()
 
     def response(self, input: ArrayLike) -> ArrayLike:
         N = int(len(input))
-        T = 2e-11
+        T = 4e-11
         t = np.linspace(0,T,N)
 
-        sys = StateSpace(self.A,self.B,self.C,self.D,dt = 1/self.sampling_freq)
-
-        t_out,y_out,_ = dlsim(sys, input, t)
+        t_out,y_out,_ = dlsim(self.sys, input, t)
         
 
         return t_out, y_out

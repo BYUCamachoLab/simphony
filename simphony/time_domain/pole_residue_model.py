@@ -478,21 +478,7 @@ class IIRModelBaseband(PoleResidueModel):
     def compute_error(self):
         return np.max(np.abs(self.S - self.compute_response()))
 
-    def compute_state_space_model(self):
-        A = np.diag(self.poles)
-        U, S, Vh = svd(np.array([[self.residues[1]]]))
-        B = Vh
-        for n in range(2, self.order):
-            U, S, Vh = svd([[self.residues[n]]])
-            B = np.append(B, Vh)
-
-        B = B.reshape((B.shape[0], 1))
-
-
-        C = self.residues[1:]
-        D = np.array([self.residues[0]])
-
-        return A, B, C, D
+    
 
     
     # def compute_state_space_model(self):
@@ -522,10 +508,8 @@ class IIRModelBaseband(PoleResidueModel):
 
     def compute_time_response(self, sig=None, t=None):
         c = 299792458
-        if self.A is None:
-            self.compute_state_space_model()
 
-        sys = StateSpace(self.A, self.B, self.C, self.D, dt = 1/self.sampling_freq)
+        sys = self.generate_sys_discrete()
 
 
         if t is None:
@@ -564,6 +548,27 @@ class IIRModelBaseband(PoleResidueModel):
         M = np.hstack([M, phi_column])
 
         return M, np.hstack(V)
+    
+    def generate_sys_discrete(self):
+        _A = []
+        _B = []
+        _C = []
+        for p in self.poles:
+            A_n = np.diag(np.full(self.num_ports, p))
+            _A.append(A_n)
+        
+        for n in range(self.order):
+            U, S, Vh = svd(self.residues[n, :, :])
+            _B.append(Vh)
+            _C.append(U@np.diag(S))
+
+        A = block_diag(*_A)
+        B = np.vstack(_B)
+        C = np.hstack(_C)
+
+        D = self.D
+
+        return StateSpace(A, B, C, D, dt = np.abs(1/self.sampling_freq))
     
     def plot_time_response(self):
         if self.time_response is None:
