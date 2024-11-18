@@ -33,7 +33,7 @@ circuit, info = sax.circuit(
         "waveguide": ideal.waveguide,
         "half_ring": ideal.coupler,
     }
-)x  
+)  
 
 num_measurements = 100
 wvl = np.linspace(1.5, 1.6, num_measurements)
