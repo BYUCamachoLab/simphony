@@ -17,6 +17,7 @@ class TimeCoupler(TimeSystem):
         super().__init__()
         self.s_params = dict_to_matrix(fd.coupler(coupling=coupling, loss=loss, phi=phi))
         self.num_ports = 4
+        self.ports = ['o0', 'o1', 'o2', 'o3']
         pass
 
     def response(self, inputs: dict) -> dict:
@@ -49,6 +50,7 @@ class TimeWaveguide(TimeSystem):
         super().__init__()
 
         self.num_ports = 2
+        self.ports = ['o0', 'o1']
         c = 299792458
         group_velocity = c / ng
         omega = c / (1.55e-6)
