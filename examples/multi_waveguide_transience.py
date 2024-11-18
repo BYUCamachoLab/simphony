@@ -8,7 +8,7 @@ config.update("jax_enable_x64", True)
 from simphony.libraries import ideal
 from simphony.utils import dict_to_matrix
 
-from simphony.time_domain.baseband_vector_fitting import BasebandModelSingleIO, BVF_Options
+from simphony.time_domain.baseband_vector_fitting import BasebandModel, BVF_Options
 from scipy.signal import  StateSpace, dlsim, lsim
 
 from simphony.quantum import QuantumState, CoherentState, SqueezedState, compose_qstate
@@ -47,7 +47,7 @@ model_order = 50
 beta = 10.0
 # beta = 3.0
 options = BVF_Options(max_iterations=5, beta=beta, gamma=0.95) # 3 iterations
-model = BasebandModelSingleIO(wvl, center_wvl, S[:, 0, 1], model_order, options)
+model = BasebandModel(wvl, center_wvl, S, model_order, options)
 
 model.fit_model()
 model.compute_state_space_model()
