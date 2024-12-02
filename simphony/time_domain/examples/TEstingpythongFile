@@ -8,9 +8,9 @@ config.update("jax_enable_x64", True)
 
 from simphony.libraries import ideal
 from simphony.utils import dict_to_matrix
-
-from simphony.time_domain.pole_residue_model import CVFModelBaseband,IIRModelBaseband
-from simphony.time_domain.utils import pole_residue_to_time_system, smooth_rectangular_pulse
+from simphony.time_domain.utils import gaussian_pulse
+from simphony.time_domain.pole_residue_model import IIRModelBaseband
+from simphony.time_domain.utils import pole_residue_to_time_system
 netlist = {
     "instances": {
         "wg": "waveguide",
@@ -40,34 +40,42 @@ wvl = np.linspace(1.5, 1.6, num_measurements)
 s = circuit(wl=wvl, wg={"length": 77.0, "loss": 100})
 S = np.asarray(dict_to_matrix(s))
 model = IIRModelBaseband(wvl,center_wvl,S,50)
-# model.plot()
-# model.plot_time_response()
-# model.plot_poles()
+
 N = int(1000)
-T = 2e-11
-t = np.linspace(0, T, N)
-sig = np.exp(1j*2*np.pi*t*0)
-sig = sig.reshape(-1, 1)
+T = 4e-11
+t = jnp.linspace(0, T, N)
+t0 = T/2-5e-12
+t1 = T/2 + 5e-12
+std = 1e-12
 
-impulse = np.hstack([np.real(sig), np.imag(sig)])
-# impulse[N//2:] = 0
-# impulse = smooth_rectangular_pulse(t, 0, T)
-# impulse = impulse.reshape(-1,1)
-# impulse = np.hstack([np.real(impulse), np.imag(impulse)])
 
-tsys = pole_residue_to_time_system(model,t)
+impulse_pass = {
+    'o0': gaussian_pulse(t, t0 - 0.5*t0, std),
+    'o1': jnp.zeros_like(t)
+                }
 
-output = tsys.response(impulse)
 
-t_out, y_out = output
+tsys = pole_residue_to_time_system(model)
 
-plt.title("Time Response")
-plt.xlabel("Time")
-plt.ylabel("E-field Amplitude")
+outputs = tsys.response(impulse_pass)
 
-plt.plot(t_out, np.abs(y_out)**2,'red')
-print(f"Max value of y_out: {np.max(np.abs(y_out))}")
-print(f"Min value of y_out: {np.min(np.abs(y_out))}")
+# Create subplots
+fig, axs = plt.subplots(2, 2, figsize=(10, 10))  # 2 rows, 2 columns
 
-plt.plot(t, impulse,'green')
+# Plot input signals
+for i in range(2):
+    axs[i, 0].plot(t, jnp.abs(impulse_pass[f'o{i}'])**2)
+    axs[i, 0].set_title(f'Input Signal {i+1}')
+    axs[i, 0].set_xlabel('Time (s)')
+    axs[i, 0].set_ylabel('Intensity')
+
+# Plot output signals
+for i in range(2):
+    axs[i, 1].plot(t, jnp.abs(outputs[f'o{i}'])**2)
+    axs[i, 1].set_title(f'Output Signal {i+1}')
+    axs[i, 1].set_xlabel('Time (s)')
+    axs[i, 1].set_ylabel('Intensity')
+
+# Adjust layout
+plt.tight_layout()
 plt.show()
