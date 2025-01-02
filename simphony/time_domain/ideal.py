@@ -91,3 +91,34 @@ class TimeWaveguide(TimeSystem):
         }
         
         return response
+    
+    
+class TimePhase_Modulator(TimeSystem):
+    def __init__(
+            self,
+            mod_signal: ArrayLike|float = 0.0,
+            k_p: float = 1.0,
+     ) -> None:
+        super().__init__()
+
+        self.num_ports = 2
+        self.ports = ['o0','o1']
+        phase_shift = k_p * mod_signal
+        self.s_mod = jnp.exp(1j * phase_shift)
+
+    def response(self, inputs:dict) -> dict:
+        N = inputs['o0'].shape[0]
+        o0_response = jnp.zeros((N),dtype = complex)
+        o1_response = jnp.zeros((N), dtype=complex)
+
+        for i in range(N):
+            o1_response = o1_response.at[i].set(inputs['o0'][i] * self.s_mod[i])
+
+        response = {
+            "o0": o0_response,
+            "o1": o1_response,
+        }    
+
+        
+        return response
+

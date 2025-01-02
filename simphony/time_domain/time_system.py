@@ -65,7 +65,7 @@ class IIRModelBaseband_to_time_system(TimeSystem):
         
         
 
-        _,y_out,_ = my_dlsim(self.sys, input)
+        t,y_out,_ = my_dlsim(self.sys, input)
         for i in range(self.num_ports):
              responses[f'o{i}'] = y_out[:,i]
 
