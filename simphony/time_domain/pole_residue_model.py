@@ -567,7 +567,7 @@ class IIRModelBaseband(PoleResidueModel):
         C = np.hstack(_C)
 
         D = self.D
-
+        
         return StateSpace(A, B, C, D, dt = np.abs(1/self.sampling_freq))
     
     def plot_time_response(self):
