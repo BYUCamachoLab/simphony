@@ -97,3 +97,32 @@ def waveguide(
         }
     )
     return sdict
+
+
+def phase_modulator(
+    *,
+    mod_signal: ArrayLike|float = 0.0,
+    k_p: float = 1.0,
+)-> sax.SDict:
+    
+    """
+    Parameters:
+    - freq: Frequency array (input carrier frequencies).
+    - mod_signal: Modulating signal array (same length as freq).
+    - kp: Phase modulation constant (controls sensitivity).
+
+    Returns:
+    - s_dict: Scattering matrix dictionary for the phase modulator.
+    """
+    # Calculate the phase shift
+    phase_shift = k_p * mod_signal  # Instantaneous phase shift
+
+    # Scattering parameter from input to output (phase modulation applied)
+    s_input_output = jnp.exp(1j * phase_shift)
+
+    # Define the s_dict structure
+    s_dict = {
+        ("o0", "o1"): s_input_output,  # Transmission from input to output
+    }
+
+    return s_dict
