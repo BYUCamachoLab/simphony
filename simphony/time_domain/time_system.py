@@ -13,6 +13,11 @@ class TimeSystem(ABC):
     def response(self, input_signal) -> ArrayLike:
         """Compute the system response."""
         pass
+    
+    @abstractmethod
+    def clear(self):
+        pass
+
 
 
 
@@ -58,17 +63,16 @@ class IIRModelBaseband_to_time_system(TimeSystem):
         for i in range(1, self.num_ports):
             responses[f'o{i}'] = jnp.zeros((N), dtype=complex)
         
-
-        
         input = jnp.hstack([value.reshape(-1, 1) 
                             for value in inputs.values()])
         
-        
-
         t,y_out,_ = my_dlsim(self.sys, input)
         for i in range(self.num_ports):
              responses[f'o{i}'] = y_out[:,i]
 
         return responses
+    
+    def clear(self):
+         pass
     
     

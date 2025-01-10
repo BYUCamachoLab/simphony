@@ -12,10 +12,10 @@ class TimeCircuit:
         # self.ports = netlist['ports']
         # self.model_types = models
     
-    def instantiate(self, dt, **kwargs):
+    def instantiate(self, dt, clear_on_reset=True, **kwargs):
         self.dt = dt
         instantiated_models = {}
-
+        self.clear = clear_on_reset
         for model_name, model in kwargs.items():
             if model_name in self.models:
                 instantiated_models[model_name] = model
@@ -48,6 +48,10 @@ class TimeCircuit:
     
 
     def run_sim(self, t: ArrayLike, inputs: dict)->dict:
+        if self.clear:
+            for instance_name, time_system in self.instances.items():
+                time_system.clear()
+        
         self.inputs = inputs
         self.outputs = {port: jnp.array([]) for port in self.ports}
         self.instance_outputs = {}

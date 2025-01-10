@@ -35,6 +35,10 @@ class TimeCoupler(TimeSystem):
                                + inputs['o2'] * self.s_params[0, i, 2]
                                + inputs['o3'] * self.s_params[0, i, 3])
         return response
+    
+    def clear(self) -> None:
+        pass
+
 
 class TimeWaveguide(TimeSystem):
     def __init__(
@@ -56,8 +60,8 @@ class TimeWaveguide(TimeSystem):
         omega = c / (1.55e-6)
 
         delay = (length * 1e-6) / (group_velocity)
-        num_delay_indices = round(delay / dt)
-
+        self.num_delay_indices = round(delay / dt)
+        
         phase_shift = jnp.mod(omega*delay, 2*jnp.pi)
         loss_mag = loss / (10 * jnp.log10(jnp.exp(1)))
         alpha = loss_mag * 1e-4
@@ -67,7 +71,7 @@ class TimeWaveguide(TimeSystem):
         self.forward_wave = Queue()
         self.backward_wave = Queue()
 
-        for i in range(num_delay_indices):
+        for i in range(self.num_delay_indices):
             self.forward_wave.put(0+0j)
             self.backward_wave.put(0+0j)
 
@@ -92,6 +96,16 @@ class TimeWaveguide(TimeSystem):
         
         return response
     
+    def clear(self) -> None:   
+        while not self.forward_wave.empty():
+            self.forward_wave.get()
+        while not self.backward_wave.empty():
+            self.backward_wave.get()
+        for i in range(self.num_delay_indices):
+            self.forward_wave.put(0+0j)
+            self.backward_wave.put(0+0j)
+
+
     
 class TimePhase_Modulator(TimeSystem):
     def __init__(
@@ -105,15 +119,16 @@ class TimePhase_Modulator(TimeSystem):
         self.ports = ['o0','o1']
         phase_shift = k_p * mod_signal
         self.s_mod = jnp.exp(1j * phase_shift)
+        self.countstep = 0
 
     def response(self, inputs:dict) -> dict:
         N = inputs['o0'].shape[0]
         o0_response = jnp.zeros((N),dtype = complex)
         o1_response = jnp.zeros((N), dtype=complex)
-
+         
         for i in range(N):
-            o1_response = o1_response.at[i].set(inputs['o0'][i] * self.s_mod[i])
-
+            o1_response = o1_response.at[i].set(inputs['o0'][i] * self.s_mod[self.countstep])
+        self.countstep += 1
         response = {
             "o0": o0_response,
             "o1": o1_response,
@@ -121,4 +136,7 @@ class TimePhase_Modulator(TimeSystem):
 
         
         return response
+    
+    def clear(self) -> None:
+        self.countstep = 0
 
