@@ -1,3 +1,5 @@
+from sax import SDict
+
 import pytest
 
 try:
@@ -9,7 +11,7 @@ except ImportError:
 class TestGapFuncSymmetric:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            sipann.GapFuncSymmetric(
+            sipann.gap_func_symmetric(
                 width=350,
                 thickness=160,
                 gap=(lambda x: x * 3),
@@ -19,7 +21,7 @@ class TestGapFuncSymmetric:
             )
 
     def test_instantiable(self):
-        sipann.GapFuncSymmetric(
+        dev: SDict = sipann.gap_func_symmetric(
             width=500,
             thickness=220,
             gap=(lambda x: x * 3),
@@ -27,9 +29,10 @@ class TestGapFuncSymmetric:
             zmin=0.0,
             zmax=1.0,
         )
+        # TODO: Test the actual values returned in the SDict.
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.GapFuncSymmetric(
+        dev: SDict = sipann.gap_func_symmetric(
             width=500,
             thickness=220,
             gap=(lambda x: x * 3),
@@ -37,20 +40,23 @@ class TestGapFuncSymmetric:
             zmin=0.0,
             zmax=1.0,
         )
-        dev.s_params(std_wl_um)
+        # TODO: Test the actual values returned in the SDict.
 
 
-# class TestGapFuncAntiSymmetric:
-#     def test_invalid_parameters(self):
-#         with pytest.raises(ValueError):
-#             sipann.GapFuncAntiSymmetric(gap=300)
+class TestGapFuncAntiSymmetric:
+    def test_invalid_parameters(self):
+        with pytest.raises(ValueError):
+            sipann.gap_func_antisymmetric(gap=lambda _: 50)
 
-#     def test_instantiable(self):
-#         siepic.DirectionalCoupler(gap=200, coupling_length=45)
+    # TODO: The below tests don't run. Why? Where is siepic?
+    #       Why do we have any siepic tests in here anyway? They should be in test_siepic_models.py
+    
+    # def test_instantiable(self):
+    #     siepic.DirectionalCoupler(gap=200, coupling_length=45)
 
-#     def test_s_params(self, std_wl_um):
-#         dc = siepic.DirectionalCoupler(gap=200, coupling_length=45)
-#         s = dc.s_params(std_wl_um)
+    # def test_s_params(self, std_wl_um):
+    #     dc = siepic.DirectionalCoupler(gap=200, coupling_length=45)
+    #     s = dc.s_params(std_wl_um)
 
 
 class Testhalf_ring:
@@ -62,27 +68,8 @@ class Testhalf_ring:
         sipann.half_ring(width=500, thickness=220, radius=5000, gap=100)
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.half_ring(width=500, thickness=220, radius=5000, gap=100)
-        dev.s_params(std_wl_um)
-
-
-class TestHalfracetrack:
-    def test_invalid_parameters(self):
-        with pytest.raises(ValueError):
-            sipann.Halfracetrack(
-                width=625, thickness=245, radius=5000, gap=100, length=1000
-            )
-
-    def test_instantiable(self):
-        sipann.Halfracetrack(
-            width=500, thickness=220, radius=5000, gap=100, length=1000
-        )
-
-    def test_s_params(self, std_wl_um):
-        dev = sipann.Halfracetrack(
-            width=500, thickness=220, radius=5000, gap=100, length=1000
-        )
-        dev.s_params(std_wl_um)
+        dev: SDict = sipann.half_ring(width=500, thickness=220, radius=5000, gap=100)
+        # TODO: Test the actual values returned in the SDict.
 
 
 class Teststraight_coupler:
@@ -94,8 +81,8 @@ class Teststraight_coupler:
         sipann.straight_coupler(width=500, thickness=220, gap=150, length=1000)
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.straight_coupler(width=500, thickness=220, gap=180, length=1000)
-        dev.s_params(std_wl_um)
+        dev: SDict = sipann.straight_coupler(width=500, thickness=220, gap=180, length=1000)
+        # TODO: Test the actual values returned in the SDict.
 
 
 class Teststandard_coupler:
@@ -121,7 +108,7 @@ class Teststandard_coupler:
         )
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.standard_coupler(
+        dev: SDict = sipann.standard_coupler(
             width=500,
             thickness=220,
             gap=180,
@@ -129,7 +116,7 @@ class Teststandard_coupler:
             horizontal=2000,
             vertical=2000,
         )
-        dev.s_params(std_wl_um)
+        # TODO: Test the actual values returned in the SDict.
 
 
 class Testdouble_half_ring:
@@ -141,8 +128,8 @@ class Testdouble_half_ring:
         sipann.double_half_ring(width=500, thickness=220, radius=5000, gap=100)
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.double_half_ring(width=500, thickness=220, radius=5000, gap=100)
-        dev.s_params(std_wl_um)
+        dev: SDict = sipann.double_half_ring(width=500, thickness=220, radius=5000, gap=100)
+        # TODO: Test the actual values returned in the SDict.
 
 
 class Testangled_half_ring:
@@ -158,10 +145,10 @@ class Testangled_half_ring:
         )
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.angled_half_ring(
+        dev: SDict = sipann.angled_half_ring(
             width=500, thickness=220, radius=5000, gap=150, theta=0.5
         )
-        dev.s_params(std_wl_um)
+        # TODO: Test the actual values returned in the SDict.
 
 
 class Testwaveguide:
@@ -173,8 +160,8 @@ class Testwaveguide:
         sipann.waveguide(width=500, thickness=220, length=10000)
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.waveguide(width=500, thickness=220, length=10000)
-        dev.s_params(std_wl_um)
+        dev: SDict = sipann.waveguide(width=500, thickness=220, length=10000)
+        # TODO: Test the actual values returned in the SDict.
 
 
 class Testracetrack:
@@ -186,20 +173,7 @@ class Testracetrack:
         sipann.racetrack(width=500, thickness=220, radius=5000, gap=150, length=2000)
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.racetrack(
+        dev: SDict = sipann.racetrack(
             width=500, thickness=220, radius=5000, gap=150, length=2000
         )
-        dev.s_params(std_wl_um)
-
-
-# class TestPremadeCoupler:
-#     def test_invalid_parameters(self):
-#         with pytest.raises(ValueError):
-#             sipann.PremadeCoupler(pol="tem")
-
-#     def test_instantiable(self):
-#         yb = siepic.YBranch(pol="te", thickness=220, width=500)
-
-#     def test_s_params(self, std_wl_um):
-#         yb = siepic.YBranch(pol="te")
-#         s = yb.s_params(std_wl_um)
+        # TODO: Test the actual values returned in the SDict.

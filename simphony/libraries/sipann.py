@@ -113,7 +113,7 @@ def gap_func_antisymmetric(
     wl: Union[float, ArrayLike] = 1.55,
     width: float = 500.0,
     thickness: float = 220.0,
-    gap: Callable[[float], float] = 100.0,
+    gap: Callable[[float], float] = lambda _: 100.0,
     zmin: float = 0.0,
     zmax: float = 100.0,
     arc1: float = 10e3,
@@ -165,7 +165,7 @@ def gap_func_antisymmetric(
         raise ValueError("Width must be between 400 and 600 nm")
     if thickness < 180 or thickness > 240:
         raise ValueError("Thickness must be between 180 and 240 nm")
-    if gap < 100:
+    if gap(0.0) < 100:
         raise ValueError("Gap must be greater than 100 nm")
     if sw_angle < 80 or sw_angle > 90:
         raise ValueError("Sidewall angle must be between 80 and 90 degrees")
@@ -398,6 +398,7 @@ def angled_half_ring(
     thickness: float = 220.0,
     radius: float = 10e3,
     gap: float = 100.0,
+    theta: float = 0.0,
     sw_angle: float = 90.0,
 ) -> sax.SDict:
     r"""A halfring resonator, except what was the straight waveguide is now
@@ -436,12 +437,6 @@ def angled_half_ring(
     -----
     Writing to GDS is not supported for this component.
     """
-    width: float = (500.0,)
-    thickness: float = (220.0,)
-    radius: float = (10e3,)
-    gap: float = (100.0,)
-    theta: float = (0.0,)
-    sw_angle: float = (90,)
     if width < 400 or width > 600:
         raise ValueError("Width must be between 400 and 600 nm")
     if thickness < 180 or thickness > 240:
