@@ -57,20 +57,16 @@ class IIRModelBaseband_to_time_system(TimeSystem):
 
     def response(self, inputs: dict) -> ArrayLike:
         N = inputs['o0'].shape
-        responses = {
-            'o0': jnp.zeros((N), dtype=complex)
-            }
-        for i in range(1, self.num_ports):
-            responses[f'o{i}'] = jnp.zeros((N), dtype=complex)
+        responses = {}
         
         input = jnp.hstack([value.reshape(-1, 1) 
                             for value in inputs.values()])
         
-        t,y_out,_ = my_dlsim(self.sys, input)
+        t,y_out,x_out = my_dlsim(self.sys, input)
         for i in range(self.num_ports):
              responses[f'o{i}'] = y_out[:,i]
 
-        return responses
+        return responses,t,x_out
     
     def clear(self):
          pass

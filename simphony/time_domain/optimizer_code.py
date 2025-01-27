@@ -7,9 +7,8 @@ config.update("jax_enable_x64", True)
 
 from simphony.libraries import ideal
 from simphony.utils import dict_to_matrix
-from simphony.time_domain.utils import gaussian_pulse
 from simphony.time_domain.pole_residue_model import IIRModelBaseband
-from simphony.time_domain.utils import pole_residue_to_time_system
+from simphony.time_domain.utils import pole_residue_to_time_system, gaussian_pulse, smooth_rectangular_pulse
 from simphony.libraries import siepic
 
 def remove_active_edges_and_track_them(connections, active_components):
@@ -71,9 +70,9 @@ def remove_ports_to_active(ports, active_components):
     return filtered, removed
 
 
-def build_component_graph(connections, directed=False):
+def build_component_graph(connections, ports, directed=False):
     """
-    Build a graph (adjacency list) where each node is just the component name (ignoring ports).
+    Build a graph (adjacency list) where each node is just the component name.
     For example:
       If "cr1,port_2" -> "wg1,o0" is a connection, we add an edge cr1 -> wg1.
     
@@ -97,6 +96,12 @@ def build_component_graph(connections, directed=False):
         if not directed:
             # Also add compB -> compA
             add_edge(compB, compA)
+
+    for k, v in ports.items():
+        comp, port = v.split(',')
+        A_is_active = (comp in active_components)
+        if comp not in graph and not A_is_active:
+            graph[comp] = []
     
     return graph
 
@@ -225,10 +230,10 @@ def create_passive_sub_netlists(
     filtered_conns, removed_edges, removed_connecions = remove_active_edges_and_track_them(connections, active_components)
     
     # 2) Remove top-level ports referencing active comps
-    filtered_ports, _ = remove_ports_to_active(ports, active_components)
+    filtered_ports, removed_ports = remove_ports_to_active(ports, active_components)
     
     # 3) Build a graph at component level (ignore port detail)
-    graph = build_component_graph(filtered_conns, directed=directed)
+    graph = build_component_graph(filtered_conns, ports, directed=directed)
     
     # 4) Find SCCs
     sccs = tarjan_scc(graph)  # e.g. [ ['cr1','wg1','cr2'], ['cr3','wg3','cr4'], ... ]
@@ -249,7 +254,7 @@ def create_passive_sub_netlists(
         if sub_nl["instances"]:
             sub_netlists.append(sub_nl)
     
-    return sub_netlists, removed_connecions
+    return sub_netlists, removed_connecions, removed_ports
 
 
 # -----------------------------------------------------------------
@@ -258,34 +263,70 @@ if __name__ == "__main__":
     # Example netlist
     instances = {
         "wg": "waveguide",
-        "hr": "half_ring",
+        "y": "y_branch",
         "pm": "phase_modulator",
         "pm2": "phase_modulator",
+        "y2": "y_branch",
         "wg2": "waveguide",
-        "hr2": "half_ring",
+        "y3": "y_branch",
+        "y4": "y_branch",
+        "y5": "y_branch",
+        "y6": "y_branch",
+        "wg3": "waveguide",
+        "wg4": "waveguide",
+        "wg5": "waveguide",
+        "wg6": "waveguide",
+        "bdc": "bidirectional",
+        "bdc2": "bidirectional",
+        "bdc3": "bidirectional",
     }
 
     connections = {
-        "hr,o2": "wg,o0",
-        "hr,o3": "wg,o1",
-        "pm,o0": "hr,o1",
-        "pm,o1": "hr2,o0",
-        "hr2,o2": "wg2,o0",
-        "hr2,o3": "wg2,o1",
-        "hr2,o1": "pm2,o0",
-    }
-    ports = {
-        "o0": "hr,o0",
-        "o1": "pm2,o1",
+        # "pm,o0":"bdc,port_4"
+        "y5,port_1":"y,port_1",
+        "y,port_2": "wg,o0",
+        "y,port_3":"wg2,o0",
+        "y2,port_2":"wg2,o1",
+        "y2,port_3":"wg,o1",
 
+        # "y2,port_1":"y6,port_1",
+        # "y6,port_2":"pm,o0",
+        # "y6,port_3":"y5,port_3",
+        # "y5,port_2":"pm,o1",
+        # "y3,port_1":"y5,port_1",
+
+        "y2,port_1":"pm,o0",
+        "y3,port_1":"pm,o1",
+
+        "y3,port_2": "wg3,o0",
+        "y3,port_3":"wg4,o0",
+        "y4,port_2":"wg4,o1",
+        "y4,port_3":"wg3,o1",
+
+        "y4,port_1":"pm2,o0",
+        
+        # "y4,port_1":"y5,port_1",
+
+        # "y5,port_2": "wg5,o0",
+        # "y5,port_3":"wg6,o0",
+        # "y6,port_2":"wg6,o1",
+        # "y6,port_3":"wg5,o1",
     }
+
+    ports = {
+        "o0": "y5,port_2",
+        "o1": "pm2,o1",
+        "o2": "y5,port_3",
+        # "o2": "bdc3,port_3",
+        # "o3": "bdc3,port_4",
+    }
+
     active_components = {
-        "pm",
-        "pm2",
+        "pm","pm2"
     }
     
     # Build sub-netlists for the passive side
-    sub_netlists, removed_connections = create_passive_sub_netlists(
+    sub_netlists, removed_connections, removed_ports = create_passive_sub_netlists(
         instances,
         connections,
         ports,
@@ -309,8 +350,9 @@ if __name__ == "__main__":
         circuittemp, info = sax.circuit(
             netlist=netlist,
             models={
-                "waveguide": ideal.waveguide,
-                "half_ring": ideal.coupler,
+                "waveguide": siepic.waveguide,
+                "y_branch": siepic.y_branch,
+                "bidirectional": siepic.bidirectional_coupler,
             }
         )
         sub_circuit_list[i] = circuittemp
@@ -322,102 +364,142 @@ if __name__ == "__main__":
     center_wvl = 1.548  # Center wavelength (µm)
     modelList = []
     N = int(1000)  # Number of time steps
-    T = 4e-11      # Total time duration (40 ps)
+    T = 20e-11      # Total time duration (40 ps)
     t = jnp.linspace(0, T, N)  # Time array
     t0 = T/2 - 5e-12  # Pulse start time
     std = 1e-12
     wvl = np.linspace(1.5, 1.6, num_measurements)
 
     for i, circuit in sub_circuit_list.items():
-        s = circuit(wl = wvl,wg={"length": 50.0, "loss": 100}, wg2={"length": 50.0, "loss": 100})
+        s = circuit(wl = wvl, wg={"length": 10.0, "loss": 100}, wg2={"length": 10.0, "loss": 100},
+                    wg3={"length": 10, "loss": 100}, wg4={"length": 10.0, "loss": 100},
+                    wg5={"length": 10, "loss": 100}, wg6={"length": 10.0, "loss": 100},
+                    )
         S = np.asarray(dict_to_matrix(s))
         modelList.append(IIRModelBaseband(wvl, center_wvl, S, model_order))
 
     num_outputs = 2
+    # impulse_pass = {
+    #     f'o{i}': gaussian_pulse(t, t0 - 0.5 * t0, std) if i == 0 else jnp.zeros_like(t)
+    #     for i in range(num_outputs)
+    # }
     impulse_pass = {
-        f'o{i}': gaussian_pulse(t, t0 - 0.5 * t0, std) if i == 0 else jnp.zeros_like(t)
+        f'o{i}': smooth_rectangular_pulse(t,0.5e-11,2.5e-11) if i == 0 else jnp.zeros_like(t)
         for i in range(num_outputs)
     }
 
-    # step_list = {
-    #     "step_models":{},
-    #     "step_connections":{},
-    #     "step_ports":{}
+    step_list = {
+        "step_models":{},
+        "step_connections":{},
+        "step_ports":{}
+    }
 
-    # }
+    def add_to_netlist(netlist, model_name=None, model_type=None, connection=None, port=None):
+        """
+        Adds new elements to the netlist.
+        
+        Args:
+            netlist (dict): The existing netlist to update.
+            instance_name (str): Name of the new instance to add.
+            instance_type (str): Type of the new instance to add (e.g., "ideal_waveguide").
+            connection (tuple): Connection to add, e.g., ("instance1,port1", "instance2,port2").
+            port (tuple): Port to add, e.g., ("port_name", "instance_name,port").
+        
+        Returns:
+            dict: Updated netlist.
+        """
+        # Add a new instance, if provided
+        if model_name and model_type:
+            netlist["step_models"][model_name] = model_type
+        
+        # Add a new connection, if provided
+        if connection and len(connection) == 2:
+            netlist["step_connections"][connection[0]] = connection[1]
+        
+        # Add a new port, if provided
+        if port and len(port) == 2:
+            netlist["step_ports"][port[0]] = port[1]
+        
+        return netlist
+
+
+
+
+    for k, v in removed_connections:
+        value = v.split(',')[0]
+        value2 = k.split(',')[0]
+        if value in active_components:
+            step_list["step_models"][value] = instances.get(value)
+        if value2 in active_components:
+            step_list["step_models"][value2] = instances.get(value2)
+    for i, ports in port_list.items():
+                step_list["step_models"][i] = modelList[i]
+
+    port_translation_list = []
+    for i, ports in port_list.items():
+        connectnumber = 0
+        for j,v in ports.items():
+            if "active_boundary_" in j:
+                for k, h in removed_connections:
+                    if k == v:
+                        step_list = add_to_netlist(step_list, connection=(f"{i},o{connectnumber}", h))
+                        connectnumber += 1
+                    elif h == v:
+                        step_list = add_to_netlist(step_list, connection=(f"{i},o{connectnumber}", k))
+                        connectnumber += 1
+            else:
+                step_list = add_to_netlist(step_list, port=(j,f"{i},o{connectnumber}"))
+                connectnumber += 1
+                port_translation_list.append((j,v))
+
+        
+    for k,v in removed_ports.items():
+        step_list = add_to_netlist(step_list, port=(k,v))
     
-
-    # for k, v in removed_connections:
-    #     for i, ports in port_list.items():
-    #         # Check if the connection involves any of the ports
-    #         if v in ports.values():
-    #             # Add to step_models and step_connections
-    #             step_list["step_models"][i] = modelList[i]
-    #             value = v.split(',')[1]
-    #             step_list["step_connections"][i] = {k: f'{i},{value}' }
-                
-    #             # Remove the ports involved in this connection
-    #             ports_to_remove = [port for port, value in ports.items() if value in [k, v]]
-    #             for port in ports_to_remove:
-    #                 ports.pop(port)
-                    
-    #             continue
-
-    #         elif k in ports.values():
-    #             step_list["step_models"][i] = modelList[i]
-    #             value = k.split(',')[1]
-    #             step_list["step_connections"][i] = {v: f'{i},{value}' }
-                
-    #             # Remove the ports involved in this connection
-    #             ports_to_remove = [port for port, value in ports.items() if value in [k, v]]
-    #             for port in ports_to_remove:
-    #                 ports.pop(port)
-                    
-    #         # Add remaining ports to step_ports
-    #         step_list["step_ports"][i] = ports
-
-    #     # Handle models associated with the connection
-    #     value = v.split(',')[0]
-    #     value2 = k.split(',')[0]
-    #     if value in active_components:
-    #         step_list["step_models"][value] = instances.get(value)
-    #     if value2 in active_components:
-    #         step_list["step_models"][value2] = instances.get(value2)
-
-    # for i, ports in port_list.items():
-    #     for j in ports:
-    #         if "active_boundary_" in j:
-    #             value = j.value
-
-
-    # for i in t:
-
-    #     pass
-
-    
-
     for i, model in enumerate(modelList):
-        tsys = pole_residue_to_time_system(model)
-        outputs = tsys.response(impulse_pass)
-        ports = len(outputs)
-        fig, axs = plt.subplots(ports, 2, figsize=(10, 10))
-        for i in range(ports):
-            axs[i, 0].plot(t, jnp.abs(impulse_pass[f'o{i}'])**2)
-            axs[i, 0].set_title(f'Input Signal {i+1}')
-            axs[i, 0].set_xlabel('Time (s)')
-            axs[i, 0].set_ylabel('Intensity')
+        step_list = add_to_netlist(step_list, model_name=i, model_type=model)
+    
+
+    
+
+    print(f"--- Netlist ---")
+    print("Models:", step_list["step_models"])
+    print("connections:", step_list["step_connections"])
+    print("ports:", step_list["step_ports"])
+    print(port_translation_list)
+    print()
+
+    for i in t:
+        
+
+        pass
+
+    
+
+    # for i, model in enumerate(modelList):
+    #     tsys = pole_residue_to_time_system(model)
+    #     outputs,tr,x_out = tsys.response(impulse_pass)
+    #     ports = len(outputs)
+    #     fig, axs = plt.subplots(ports, 2, figsize=(10, 10))
+    #     for i in range(ports):
+    #         axs[i, 0].plot(t, jnp.abs(impulse_pass[f'o{i}'])**2)
+    #         axs[i, 0].set_title(f'Input Signal {i+1}')
+    #         axs[i, 0].set_xlabel('Time (s)')
+    #         axs[i, 0].set_ylabel('Intensity')
 
 
-        # Plot output signals
-        for i in range(ports):
-            axs[i, 1].plot(t, jnp.abs(outputs[f'o{i}'])**2)
-            axs[i, 1].set_title(f'Output Signal {i+1}')
-            axs[i, 1].set_xlabel('Time (s)')
-            axs[i, 1].set_ylabel('Intensity')
+    #     # Plot output signals
+    #     for i in range(ports):
+    #         axs[i, 1].plot(t, jnp.abs(outputs[f'o{i}'])**2)
+    #         axs[i, 1].set_title(f'Output Signal {i+1}')
+    #         axs[i, 1].set_xlabel('Time (s)')
+    #         axs[i, 1].set_ylabel('Intensity')
 
 
-        # Adjust layout
-        plt.tight_layout()
-        plt.show()
+    #     # Adjust layout
+    #     plt.tight_layout()
+    #     plt.show()
+    #     plt.plot(t,jnp.abs(x_out)**2)
+    #     plt.show()
     
 
