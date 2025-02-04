@@ -17,7 +17,7 @@ class TestCoupler:
     #     s = c.s_params(std_wl_um)
 
 
-class Testwaveguide:
+class TestWaveguide:
     def test_instantiable(self):
         waveguide(length=100)
         waveguide(length=100, loss=0.1)

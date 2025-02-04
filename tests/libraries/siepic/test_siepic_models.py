@@ -3,12 +3,12 @@ import pytest
 from simphony.libraries import siepic
 
 
-class TestBidirectional_coupler:
+class TestBidirectionalCoupler:
     def test_invalid_parameters(self):
         with pytest.raises(TypeError):
-            siepic.bidirectional_coupler(pol="tem")
+            siepic.bidirectional_coupler(pol="tem") # type: ignore
         with pytest.raises(TypeError):
-            siepic.bidirectional_coupler(pol="te", thickness=200)
+            siepic.bidirectional_coupler(pol="te", thickness=200) # type: ignore
 
     def test_instantiable(self):
         siepic.bidirectional_coupler(thickness=220, width=500)
@@ -17,7 +17,7 @@ class TestBidirectional_coupler:
         siepic.bidirectional_coupler(wl=std_wl_um)
 
 
-class Testdirectional_coupler:
+class TestDirectionalCoupler:
     def test_invalid_parameters(self):
         with pytest.raises(FileNotFoundError):
             siepic.directional_coupler(gap=300)
@@ -29,10 +29,10 @@ class Testdirectional_coupler:
         siepic.directional_coupler(wl=std_wl_um, gap=200, coupling_length=45)
 
 
-class Testgrating_coupler:
+class TestGratingCoupler:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            siepic.grating_coupler(pol="tem")
+            siepic.grating_coupler(pol="tem") # type: ignore
         with pytest.raises(ValueError):
             siepic.grating_coupler(pol="te", thickness=200)
 
@@ -43,10 +43,10 @@ class Testgrating_coupler:
         siepic.grating_coupler(wl=std_wl_um, pol="te")
 
 
-class Testhalf_ring:
+class TestHalfRing:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            siepic.half_ring(pol="tem")
+            siepic.half_ring(pol="tem") # type: ignore
         with pytest.raises(FileNotFoundError):
             siepic.half_ring(pol="te", gap=30, radius=10)
 
@@ -67,7 +67,7 @@ class Testhalf_ring:
         )
 
 
-class Testtaper:
+class TestTaper:
     def test_invalid_parameters(self):
         with pytest.raises(FileNotFoundError):
             siepic.taper(w1=0.3)
@@ -81,10 +81,10 @@ class Testtaper:
         siepic.taper(wl=std_wl_um, w1=0.5, w2=1.0, length=10.0)
 
 
-class Testterminator:
+class TestTerminator:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            siepic.terminator(pol="tem")
+            siepic.terminator(pol="tem") # type: ignore
 
     def test_instantiable(self):
         siepic.terminator(pol="te")
@@ -95,10 +95,10 @@ class Testterminator:
         siepic.terminator(wl=std_wl_um, pol="tm")
 
 
-class Testwaveguide:
+class TestWaveguide:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            siepic.waveguide(pol="tem")
+            siepic.waveguide(pol="tem") # type: ignore
         with pytest.raises(FileNotFoundError):
             siepic.waveguide(height=200)
 
@@ -111,10 +111,10 @@ class Testwaveguide:
         )
 
 
-class Testy_branch:
+class TestYBranch:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            siepic.y_branch(pol="tem")
+            siepic.y_branch(pol="tem") # type: ignore
 
     def test_instantiable(self):
         siepic.y_branch(pol="te", thickness=220, width=500)
