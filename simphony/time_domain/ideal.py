@@ -125,7 +125,7 @@ class TimePhase_Modulator(TimeSystem):
         N = inputs['o0'].shape[0]
         o0_response = jnp.zeros((N),dtype = complex)
         o1_response = jnp.zeros((N), dtype=complex)
-         
+        
         for i in range(N):
             o1_response = o1_response.at[i].set(inputs['o0'][i] * self.s_mod[self.countstep])
         self.countstep += 1

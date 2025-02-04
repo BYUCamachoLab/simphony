@@ -30,6 +30,8 @@ def my_dlsim(system, u, t=None, x0=None):
         tout = np.linspace(0.0, stoptime, num=out_samples)
 
         xout[0, :] = np.zeros((system.A.shape[1],), dtype=complex)
+        if x0 is not None:
+            xout[0, :] = x0
 
         u_dt = u
 
@@ -46,25 +48,56 @@ def my_dlsim(system, u, t=None, x0=None):
 
         return tout, yout, xout
 
+def my_dlsimworks(system, u, t=None, x0=None):
+        out_samples = len(u)
+        stoptime = (out_samples) * system.dt
+
+        xout = np.zeros((out_samples, system.A.shape[0]), dtype=complex)
+        yout = np.zeros((out_samples, system.C.shape[0]), dtype=complex)
+        tout = np.linspace(0.0, stoptime, num=out_samples)
+
+        xout[0, :] = np.zeros((system.A.shape[1],), dtype=complex)
+
+        if x0 is not None:
+            xout[0, :] = x0
+
+        u_dt = u
+
+        # Simulate the system
+        for i in range(0, out_samples):
+            xout[i, :] = (np.dot(system.A, xout[i, :]) +
+                            np.dot(system.B, u_dt[i, :]))
+            yout[i, :] = (np.dot(system.C, xout[i, :]) +
+                        np.dot(system.D, u_dt[i, :]))
+
+        # Last point
+        yout[out_samples-1, :] = (np.dot(system.C, xout[out_samples-1, :]) +
+                                np.dot(system.D, u_dt[out_samples-1, :]))
+
+        return tout, yout, xout
+
 
 
 class IIRModelBaseband_to_time_system(TimeSystem):
-    def __init__(self, pole_model: PoleResidueModel) -> None:
+    def __init__(self, pole_model: PoleResidueModel, ports) -> None:
+        super().__init__()
         self.sys = pole_model.generate_sys_discrete()
         self.num_ports = self.sys.B.shape[1] 
+        self.ports = [f'o{i}' for i in range(self.num_ports)]
+        self.ports = ports
         
-        super().__init__()
 
-    def response(self, inputs: dict) -> ArrayLike:
+    def response(self, inputs: dict, state_vector = None) -> ArrayLike:
         N = inputs['o0'].shape
         responses = {}
         
         input = jnp.hstack([value.reshape(-1, 1) 
                             for value in inputs.values()])
-        
-        t,y_out,x_out = my_dlsim(self.sys, input)
-        for i in range(self.num_ports):
-             responses[f'o{i}'] = y_out[:,i]
+        t,y_out,x_out = my_dlsimworks(self.sys, input, x0 = state_vector)
+        j = 0
+        for i in self.ports:
+             responses[i] = y_out[:,j]
+             j += 1
 
         return responses,t,x_out
     
