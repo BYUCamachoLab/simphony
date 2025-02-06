@@ -79,12 +79,14 @@ def my_dlsimworks(system, u, t=None, x0=None):
 
 
 class IIRModelBaseband_to_time_system(TimeSystem):
-    def __init__(self, pole_model: PoleResidueModel, ports) -> None:
+    def __init__(self, pole_model: PoleResidueModel, ports= None ) -> None:
         super().__init__()
         self.sys = pole_model.generate_sys_discrete()
         self.num_ports = self.sys.B.shape[1] 
-        self.ports = [f'o{i}' for i in range(self.num_ports)]
-        self.ports = ports
+        if ports is None:
+            self.ports = [f'o{i}' for i in range(self.num_ports)]
+        else:
+            self.ports = ports
         
 
     def response(self, inputs: dict, state_vector = None) -> ArrayLike:

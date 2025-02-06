@@ -382,6 +382,13 @@ if __name__ == "__main__":
 
     connections = {
         #MZI
+        "y,port_3":"wg,o0",
+        "y,port_2":"wg2,o0",
+        "y2,port_3":"wg,o1",
+        #"y2,port_2":"wg2,o1",
+        "wg2,o1":"pm,o0",
+        "pm,o1":"y2,port_2"
+
         # "pm,o0":"bdc,port_4"
         # "y5,port_1":"y,port_1",
         # "y,port_2": "wg,o0",
@@ -413,11 +420,11 @@ if __name__ == "__main__":
         # "y6,port_3":"wg5,o1",
 
         #Ring Resonator
-        # "bdc,port_1":"wg,o1",
-        "bdc, port_3": "wg,o0",
-        "bdc,port_1": "pm,o1",
-        "pm,o0":"wg,o0",
-        "bdc,port_3":"wg,o1",
+        #"bdc,port_1":"wg,o1",
+        # "bdc, port_3": "wg,o0",
+        # "bdc,port_1": "pm,o1",
+        # "pm,o0":"wg,o1",
+        
         
 
         # Coupler
@@ -431,6 +438,8 @@ if __name__ == "__main__":
 
     ports = {
         #MZI
+        "o0": "y,port_1",
+        "o1": "y2,port_1",
         # "o0": "y5,port_2",
         # "o1": "pm2,o1",
         # "o2": "y5,port_3",
@@ -449,8 +458,8 @@ if __name__ == "__main__":
         # "o1":"wg2,o1"
 
         #Ring Resonator
-        "o0":"bdc,port_2",
-        "o1":"bdc,port_4"
+        #"o0":"bdc,port_2",
+        #"o1":"bdc,port_4"
 
 
     }
@@ -472,7 +481,7 @@ if __name__ == "__main__":
         t0 = 1e-11  # Pulse start time
         std = 1e-12
         wvl = np.linspace(1.5, 1.6, num_measurements)
-        f_mod = 0.0
+        f_mod = 3.14/2
         m = f_mod * jnp.ones(len(t),dtype = complex)
         timePhaseInstantiated = TimePhase_Modulator(mod_signal=m)
         model_List= {
@@ -511,12 +520,9 @@ if __name__ == "__main__":
 
 
         
-
+        list = {'wl':wvl,'wg':{"length": 100.0, "loss": 100}, 'wg2':{"length": 100.0, "loss": 100}}
         for i, circuit in sub_circuit_list.items():
-            s = circuit(wl = wvl, wg={"length": 50, "loss": 100}, wg2={"length": 10.0, "loss": 100},
-                        wg3={"length": 10, "loss": 100}, wg4={"length": 10.0, "loss": 100},
-                        wg5={"length": 10, "loss": 100}, wg6={"length": 10.0, "loss": 100},
-                        )
+            s = circuit(**list)
             
             S = np.asarray(dict_to_matrix(s))
             temp_port_list = []
@@ -527,16 +533,19 @@ if __name__ == "__main__":
             temp_model = IIRModelBaseband_to_time_system(IIRModelBaseband(wvl,center_wvl, S, model_order), temp_port_list)
             modelList.append(temp_model)
 
-        num_outputs = 4
-        # inputs = {
-        #     f'o{i}': gaussian_pulse(t, t0 - 0.5 * t0, std) if i == 0 else jnp.zeros_like(t)
-        #     for i in range(num_outputs)
-        # }
+        num_outputs = 2
         inputs = {
-            f'o{i}': smooth_rectangular_pulse(t,0.5e-11,2.5e-11) if i == 0 else jnp.zeros_like(t)
+            f'o{i}': gaussian_pulse(t, t0 - 0.5 * t0, std) if i == 0 else jnp.zeros_like(t)
             for i in range(num_outputs)
         }
-
+        # inputs = {
+        #     f'o{i}': smooth_rectangular_pulse(t,0.5e-11,2.5e-11) if i == 0 else jnp.zeros_like(t)
+        #     for i in range(num_outputs)
+        # }
+        # inputs = {
+        #     f'o{i}': jnp.ones(len(t),dtype=complex) if i == 0 else jnp.zeros_like(t)
+        #     for i in range(num_outputs)
+        # }
         step_list = {
             "step_models":{},
             "step_connections":{},
@@ -710,7 +719,7 @@ if __name__ == "__main__":
             
         plt.tight_layout()
         plt.show()
-
+        
 
 
 
@@ -742,9 +751,15 @@ if __name__ == "__main__":
         #     plt.show()
         #     plt.plot(t,jnp.abs(x_out)**2)
         #     plt.show()
-        
-
+    # start = -2 * jnp.pi
+    # end = 2 * jnp.pi
+    # num_points = 10  # Adjust the number of points as needed
+    # my_list = [start + (end - start) * i / (num_points - 1) for i in range(num_points)]
+    # steady_state_list = []
+    # for i in my_list:
     general_function(instances, connections, ports, active_components)
+        # steady_state_list.append(steady_state)
+    
     # general_function(instances, connections2, ports2, active_components)
         
 
