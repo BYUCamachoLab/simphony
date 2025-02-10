@@ -6,7 +6,6 @@ import jax.numpy as jnp
 from jax import config
 config.update("jax_enable_x64", True)
 from simphony.time_domain.TimeDomainSim import TimeDomainSim
-from simphony.libraries import ideal
 from simphony.utils import dict_to_matrix
 from simphony.time_domain.pole_residue_model import IIRModelBaseband
 from simphony.time_domain.utils import pole_residue_to_time_system, gaussian_pulse, smooth_rectangular_pulse
@@ -27,7 +26,7 @@ m = f_mod * jnp.ones(len(t),dtype = complex)
 x = jnp.linspace(0, 3.14, len(t))
 
 # Define Gaussian parameters
-mu = 3.14 / 2   # center the Gaussian in the middle of the interval
+mu = 3.14   # center the Gaussian in the middle of the interval
 sigma = 0.3     # adjust sigma for desired width
 
 # Compute the Gaussian function
@@ -102,6 +101,7 @@ inputs = {
 time_sim.run_sim(t, inputs)
 time_sim.plot_sim()
 
-
+plt.plot(t, gaussian)
+plt.show()
 
 
