@@ -477,7 +477,7 @@ class IIRModelBaseband(PoleResidueModel):
     
     def compute_error(self):
         return np.max(np.abs(self.S - self.compute_response()))
-
+    
     
 
     

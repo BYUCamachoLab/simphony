@@ -5,7 +5,7 @@ import sax
 import jax.numpy as jnp
 from jax import config
 
-from simphony.time_domain.time_system import IIRModelBaseband_to_time_system
+from simphony.time_domain.time_system import TimeSystemIIR
 config.update("jax_enable_x64", True)
 
 from simphony.libraries import ideal
@@ -15,8 +15,7 @@ from simphony.time_domain.pole_residue_model import IIRModelBaseband
 
 from simphony.libraries import siepic
 
-
-class TimeDomainSim:
+class TimeSim:
     def __init__(self, netlist:dict, models:dict, active_components:set = None):
         self.netlist = netlist
         self.model_List = models
@@ -25,8 +24,6 @@ class TimeDomainSim:
         self.ports = netlist["ports"]
         self.instances = netlist["instances"]
         self.active_components = active_components
-            
-        
             
     def build_model(self, 
                     wvl = np.linspace(1.5, 1.6, 200),
@@ -71,7 +68,7 @@ class TimeDomainSim:
                 # Continue with existing processing
                 S = np.asarray(dict_to_matrix(s))
 
-                temp_model = IIRModelBaseband_to_time_system(IIRModelBaseband(wvl,center_wvl, S, model_order), temp_port_list)
+                temp_model = TimeSystemIIR(IIRModelBaseband(wvl,center_wvl, S, model_order), temp_port_list)
                 self.modelList.append(temp_model)
                 
             self.step_list = {
@@ -99,20 +96,11 @@ class TimeDomainSim:
                     if any(v in value1 or v in value2 for (value1,value2) in self.removed_connections):
                         for k, h in self.removed_connections:
                             if k == v:
-                                # port_part = v.split(',')[1]
-                                # match = re.search(r'\d+$', port_part)
-                                # step_list = add_to_netlist(step_list, connection=(f"{i},o{int(match.group())}", h))
-
                                 self.step_list = self.add_to_netlist( connection=(f"{i},{j}", h))
                             elif h == v:
-                                
-                                # port_part = v.split(',')[1]
-                                # match = re.search(r'\d+$', port_part)
                                 self.step_list = self.add_to_netlist( connection=(f"{i},{j}", k))
                                 
                     else:
-                        # port_part = v.split(',')[1]
-                        # match = re.search(r'\d+$', port_part)
                         self.step_list = self.add_to_netlist( port=(j,f"{i},{j}"))
                         
                         port_translation_list.append((j,v))
@@ -136,12 +124,12 @@ class TimeDomainSim:
             s = circuit(**circuit_params)
             self.S = np.asarray(dict_to_matrix(s))
             model = IIRModelBaseband(wvl,center_wvl,self.S, model_order)
-            self.time_system = IIRModelBaseband_to_time_system(model)
+            self.time_system = TimeSystemIIR(model)
 
     def plot_sim(self):
         ports = len(self.outputs)
         
-        fig, axs = plt.subplots(ports, 2, figsize=(10, 10))
+        fig, axs = plt.subplots(ports, 2, figsize=(5, 5))
         for i in range(ports):
             axs[i, 0].plot(self.t, jnp.abs(self.inputs[f'o{i}'])**2)
             axs[i, 0].set_title(f'Input Signal {i+1}')
@@ -176,7 +164,7 @@ class TimeDomainSim:
                 i = 0
                 if self.active_components is not None:
                     for _ in t:
-                        self.step(i, Statevector_save_list)
+                        self.step(i)
                         i +=1
                         pass
                 else:
@@ -184,7 +172,7 @@ class TimeDomainSim:
                 return self.outputs
                 
     
-    def step(self, i, Statevector_save_list):
+    def step(self, i):
         
         for instance_name,time_system in self.step_list["step_models"].items():
             instance_inputs = {}
@@ -212,8 +200,7 @@ class TimeDomainSim:
             if instance_name in self.active_components:
                 outputs = time_system.response(instance_inputs)
             else:
-                outputs,__,state_vector = time_system.response(instance_inputs,state_vector = Statevector_save_list[instance_name])
-                Statevector_save_list[instance_name] = state_vector
+                outputs,__ = time_system.response(instance_inputs)
             for port_name in outputs:
                 self.instance_outputs[instance_name][port_name] = outputs[port_name]
                 
@@ -222,10 +209,6 @@ class TimeDomainSim:
             v = instance.split(',')[0]
             k = instance.split(',')[1]
             self.outputs[circuit_port] = jnp.concatenate([self.outputs[circuit_port], self.instance_outputs[v][k]])
-
-    
-
-    
 
     def add_to_netlist(self, model_name=None, model_type=None, connection=None, port=None):
             """

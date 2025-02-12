@@ -5,15 +5,16 @@ from numpy.typing import ArrayLike
 import jax.numpy as jnp
 from jax import config
 config.update("jax_enable_x64", True)
-from simphony.time_domain.TimeDomainSim import TimeDomainSim
+from simphony.time_domain.TimeSim import TimeSim
 from simphony.utils import dict_to_matrix
 from simphony.time_domain.pole_residue_model import IIRModelBaseband
 from simphony.time_domain.utils import pole_residue_to_time_system, gaussian_pulse, smooth_rectangular_pulse
 from simphony.libraries import siepic
 import re
 from simphony.time_domain.ideal import TimePhase_Modulator
-from simphony.time_domain.time_system import IIRModelBaseband_to_time_system
+from simphony.time_domain.time_system import TimeSystemIIR
 
+import time
 
 T = 4e-11
 dt = 1e-14      # Total time duration (40 ps)
@@ -26,7 +27,7 @@ m = f_mod * jnp.ones(len(t),dtype = complex)
 x = jnp.linspace(0, 3.14, len(t))
 
 # Define Gaussian parameters
-mu = 3.14   # center the Gaussian in the middle of the interval
+mu = 1.14  # center the Gaussian in the middle of the interval
 sigma = 0.3     # adjust sigma for desired width
 
 # Compute the Gaussian function
@@ -36,7 +37,7 @@ gaussian = jnp.exp(-0.5 * ((x - mu) / sigma) ** 2)
 gaussian = gaussian / jnp.trapezoid(gaussian, x)
 
 timePhaseInstantiated = TimePhase_Modulator(mod_signal=gaussian)
-time_sim = TimeDomainSim(
+time_sim = TimeSim(
     netlist={
         "instances": {
             "wg": "waveguide",
@@ -88,7 +89,12 @@ model_order = 50
 center_wvl = 1.548
 wvl = np.linspace(1.5, 1.6, num_measurements)
 list = {'wl':wvl,'wg':{"length": 10.0, "loss": 100}, 'wg2':{"length": 10.0, "loss": 100}}
+
+tic = time.time()
 time_sim.build_model(model_parameters= list)
+toc = time.time()
+build_time = toc - tic
+
 num_outputs = 2
 # inputs = {
 #     f'o{i}': gaussian_pulse(t, t0 - 0.5 * t0, std) if i == 0 else jnp.zeros_like(t)
@@ -98,7 +104,17 @@ inputs = {
             f'o{i}': smooth_rectangular_pulse(t,0.5e-11,2.5e-11) if i == 0 else jnp.zeros_like(t)
             for i in range(num_outputs)
         }
+
+# plt.figure(figsize=(5, 5))
+
+tic = time.time()
 time_sim.run_sim(t, inputs)
+toc = time.time()
+run_time = toc - tic
+
+print(f"Build time: {build_time}")
+print(f"Run time: {run_time}")
+
 time_sim.plot_sim()
 
 plt.plot(t, gaussian)

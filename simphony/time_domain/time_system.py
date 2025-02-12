@@ -78,7 +78,7 @@ def my_dlsimworks(system, u, t=None, x0=None):
 
 
 
-class IIRModelBaseband_to_time_system(TimeSystem):
+class TimeSystemIIR(TimeSystem):
     def __init__(self, pole_model: PoleResidueModel, ports= None ) -> None:
         super().__init__()
         self.sys = pole_model.generate_sys_discrete()
@@ -88,20 +88,27 @@ class IIRModelBaseband_to_time_system(TimeSystem):
         else:
             self.ports = ports
         
+        self.state_vector = None
+        
 
-    def response(self, inputs: dict, state_vector = None) -> ArrayLike:
+    def response(self, inputs: dict) -> ArrayLike:
+        # if state_vector is not None:
+        #      self.state_vector = state_vector
+
         N = inputs['o0'].shape
         responses = {}
         
         input = jnp.hstack([value.reshape(-1, 1) 
                             for value in inputs.values()])
-        t,y_out,x_out = my_dlsimworks(self.sys, input, x0 = state_vector)
+        t,y_out,x_out = my_dlsimworks(self.sys, input, x0 = self.state_vector)
+        self.state_vector = x_out
+
         j = 0
         for i in self.ports:
              responses[i] = y_out[:,j]
              j += 1
 
-        return responses,t,x_out
+        return responses,t
     
     def clear(self):
          pass
