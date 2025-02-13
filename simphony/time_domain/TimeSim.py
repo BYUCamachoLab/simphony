@@ -14,8 +14,14 @@ from simphony.utils import dict_to_matrix
 from simphony.time_domain.pole_residue_model import IIRModelBaseband
 
 from simphony.libraries import siepic
+from simphony.simulation import SimDevice, Simulation, SimulationResult
 
-class TimeSim:
+class TimeResult(SimulationResult):
+    def __init__(self):
+        print("Not Implemented")
+
+
+class TimeSim(Simulation):
     def __init__(self, netlist:dict, models:dict, active_components:set = None):
         self.netlist = netlist
         self.model_List = models
@@ -147,7 +153,7 @@ class TimeSim:
         plt.tight_layout()
         plt.show()
             
-    def run_sim(self, t: ArrayLike, inputs: dict)->dict:
+    def run(self, t: ArrayLike, inputs: dict)->dict:
                 self.inputs = inputs
                 self.t = t
                 self.instance_outputs = {}

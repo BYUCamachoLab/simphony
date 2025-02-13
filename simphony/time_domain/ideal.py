@@ -107,7 +107,7 @@ class TimeWaveguide(TimeSystem):
 
 
     
-class TimePhase_Modulator(TimeSystem):
+class Modulator(TimeSystem):
     def __init__(
             self,
             mod_signal: ArrayLike|float = 0.0,
@@ -138,6 +138,6 @@ class TimePhase_Modulator(TimeSystem):
         
         return response
     
-    def clear(self) -> None:
+    def reset(self) -> None:
         self.countstep = 0
 

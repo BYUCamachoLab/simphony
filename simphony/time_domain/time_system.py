@@ -3,9 +3,10 @@ from jax.typing import ArrayLike
 import numpy as np
 from simphony.time_domain.pole_residue_model import PoleResidueModel
 import jax.numpy as jnp
+from simphony.simulation import SimDevice
 
 
-class TimeSystem(ABC):
+class TimeSystem(SimDevice):
     def __init__(self) -> None:
         pass
 
@@ -15,7 +16,7 @@ class TimeSystem(ABC):
         pass
     
     @abstractmethod
-    def clear(self):
+    def reset(self):
         pass
 
 
@@ -110,7 +111,7 @@ class TimeSystemIIR(TimeSystem):
 
         return responses,t
     
-    def clear(self):
-         pass
+    def reset(self):
+        self.state_vector = None
     
     
