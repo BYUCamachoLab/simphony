@@ -15,10 +15,37 @@ from simphony.time_domain.pole_residue_model import IIRModelBaseband
 
 from simphony.libraries import siepic
 from simphony.simulation import SimDevice, Simulation, SimulationResult
+from dataclasses import dataclass
 
+@dataclass
 class TimeResult(SimulationResult):
-    def __init__(self):
-        print("Not Implemented")
+    outputs:ArrayLike
+    t:ArrayLike
+    inputs:ArrayLike
+
+def plot_time_result(
+        result: TimeResult,
+):
+        ports = len(result.outputs)
+        
+        fig, axs = plt.subplots(ports, 2, figsize=(10, 10))
+        for i in range(ports):
+            axs[i, 0].plot(result.t, jnp.abs(result.inputs[f'o{i}'])**2)
+            axs[i, 0].set_title(f'Input Signal {i+1}')
+            axs[i, 0].set_xlabel('Time (s)')
+            axs[i, 0].set_ylabel('Intensity')
+
+
+        # Plot output signals
+        for i in range(ports):
+            axs[i, 1].plot(result.t, jnp.abs(result.outputs[f'o{i}'])**2)
+            axs[i, 1].set_title(f'Output Signal o{i}')
+            axs[i, 1].set_xlabel('Time (s)')
+            axs[i, 1].set_ylabel('Intensity')
+            
+        plt.tight_layout()  
+        plt.show()
+
 
 
 class TimeSim(Simulation):
@@ -132,28 +159,9 @@ class TimeSim(Simulation):
             model = IIRModelBaseband(wvl,center_wvl,self.S, model_order)
             self.time_system = TimeSystemIIR(model)
 
-    def plot_sim(self):
-        ports = len(self.outputs)
-        
-        fig, axs = plt.subplots(ports, 2, figsize=(5, 5))
-        for i in range(ports):
-            axs[i, 0].plot(self.t, jnp.abs(self.inputs[f'o{i}'])**2)
-            axs[i, 0].set_title(f'Input Signal {i+1}')
-            axs[i, 0].set_xlabel('Time (s)')
-            axs[i, 0].set_ylabel('Intensity')
-
-
-        # Plot output signals
-        for i in range(ports):
-            axs[i, 1].plot(self.t, jnp.abs(self.outputs[f'o{i}'])**2)
-            axs[i, 1].set_title(f'Output Signal o{i}')
-            axs[i, 1].set_xlabel('Time (s)')
-            axs[i, 1].set_ylabel('Intensity')
+    
             
-        plt.tight_layout()
-        plt.show()
-            
-    def run(self, t: ArrayLike, inputs: dict)->dict:
+    def run(self, t: ArrayLike, inputs: dict)->TimeResult:
                 self.inputs = inputs
                 self.t = t
                 self.instance_outputs = {}
@@ -175,7 +183,13 @@ class TimeSim(Simulation):
                         pass
                 else:
                     self.outputs = self.time_system.response(inputs)
-                return self.outputs
+                result = TimeResult(
+                    outputs = self.outputs,
+                    t = t,
+                    inputs = self.inputs,
+
+                )
+                return result
                 
     
     def step(self, i):
@@ -361,7 +375,7 @@ class TimeSim(Simulation):
             on_stack.add(node)
             
             for w in graph.get(node, []):
-                if w not in indices:
+                if w not in indices:    
                     strongconnect(w)
                     lowlinks[node] = min(lowlinks[node], lowlinks[w])
                 elif w in on_stack:
