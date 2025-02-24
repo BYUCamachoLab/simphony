@@ -24,37 +24,37 @@ class TimeResult(SimulationResult):
     t:ArrayLike
     inputs:ArrayLike
     S_params:ArrayLike
-
-def plot_time_result(result: TimeResult):
     
-    input_keys = list(result.inputs.keys())
-    output_keys = list(result.outputs.keys())
-    
-    
-    ports = max(len(input_keys), len(output_keys))
-    
-    fig, axs = plt.subplots(ports, 2, figsize=(10, 5 * ports))
-    
-    
-    if ports == 1:
-        axs = axs.reshape(1, -1)
-    
-    
-    for i, key in enumerate(input_keys):
-        axs[i, 0].plot(result.t, jnp.abs(result.inputs[key])**2)
-        axs[i, 0].set_title(f'Input Signal {key}')
-        axs[i, 0].set_xlabel('Time (s)')
-        axs[i, 0].set_ylabel('Intensity')
-    
-    
-    for i, key in enumerate(output_keys):
-        axs[i, 1].plot(result.t, jnp.abs(result.outputs[key])**2)
-        axs[i, 1].set_title(f'Output Signal {key}')
-        axs[i, 1].set_xlabel('Time (s)')
-        axs[i, 1].set_ylabel('Intensity')
-    
-    plt.tight_layout()
-    plt.show()
+    def plot_sim(self):
+        
+        input_keys = list(self.inputs.keys())
+        output_keys = list(self.outputs.keys())
+        
+        
+        ports = max(len(input_keys), len(output_keys))
+        
+        fig, axs = plt.subplots(ports, 2, figsize=(10, 5 * ports))
+        
+        
+        if ports == 1:
+            axs = axs.reshape(1, -1)
+        
+        
+        for i, key in enumerate(input_keys):
+            axs[i, 0].plot(self.t, jnp.abs(self.inputs[key])**2)
+            axs[i, 0].set_title(f'Input Signal {key}')
+            axs[i, 0].set_xlabel('Time (s)')
+            axs[i, 0].set_ylabel('Intensity')
+        
+        
+        for i, key in enumerate(output_keys):
+            axs[i, 1].plot(self.t, jnp.abs(self.outputs[key])**2)
+            axs[i, 1].set_title(f'Output Signal {key}')
+            axs[i, 1].set_xlabel('Time (s)')
+            axs[i, 1].set_ylabel('Intensity')
+        
+        plt.tight_layout()
+        plt.show()
 
 
 
