@@ -16,35 +16,45 @@ from simphony.time_domain.pole_residue_model import IIRModelBaseband
 from simphony.libraries import siepic
 from simphony.simulation import SimDevice, Simulation, SimulationResult
 from dataclasses import dataclass
+import re
 
 @dataclass
 class TimeResult(SimulationResult):
     outputs:ArrayLike
     t:ArrayLike
     inputs:ArrayLike
+    S_params:ArrayLike
 
-def plot_time_result(
-        result: TimeResult,
-):
-        ports = len(result.outputs)
-        
-        fig, axs = plt.subplots(ports, 2, figsize=(10, 10))
-        for i in range(ports):
-            axs[i, 0].plot(result.t, jnp.abs(result.inputs[f'o{i}'])**2)
-            axs[i, 0].set_title(f'Input Signal {i+1}')
-            axs[i, 0].set_xlabel('Time (s)')
-            axs[i, 0].set_ylabel('Intensity')
-
-
-        # Plot output signals
-        for i in range(ports):
-            axs[i, 1].plot(result.t, jnp.abs(result.outputs[f'o{i}'])**2)
-            axs[i, 1].set_title(f'Output Signal o{i}')
-            axs[i, 1].set_xlabel('Time (s)')
-            axs[i, 1].set_ylabel('Intensity')
-            
-        plt.tight_layout()  
-        plt.show()
+def plot_time_result(result: TimeResult):
+    
+    input_keys = list(result.inputs.keys())
+    output_keys = list(result.outputs.keys())
+    
+    
+    ports = max(len(input_keys), len(output_keys))
+    
+    fig, axs = plt.subplots(ports, 2, figsize=(10, 5 * ports))
+    
+    
+    if ports == 1:
+        axs = axs.reshape(1, -1)
+    
+    
+    for i, key in enumerate(input_keys):
+        axs[i, 0].plot(result.t, jnp.abs(result.inputs[key])**2)
+        axs[i, 0].set_title(f'Input Signal {key}')
+        axs[i, 0].set_xlabel('Time (s)')
+        axs[i, 0].set_ylabel('Intensity')
+    
+    
+    for i, key in enumerate(output_keys):
+        axs[i, 1].plot(result.t, jnp.abs(result.outputs[key])**2)
+        axs[i, 1].set_title(f'Output Signal {key}')
+        axs[i, 1].set_xlabel('Time (s)')
+        axs[i, 1].set_ylabel('Intensity')
+    
+    plt.tight_layout()
+    plt.show()
 
 
 
@@ -89,21 +99,22 @@ class TimeSim(Simulation):
                 )
                 sub_circuit_list[i] = circuittemp
                 port_list[i] = netlist['ports']
-
+            self.S_params_dict = {}
             for i, circuit in sub_circuit_list.items():
         
                 # Execute circuit with generated parameters
                 s = circuit(**model_parameters)
                 temp_port_list = []
-                for k,v in port_list[i].items():
+                z = 0
+                for k, v in port_list[i].items():
                     temp_port_list.append(k)
                 temp_port_list = sorted(temp_port_list)
                 # Continue with existing processing
                 S = np.asarray(dict_to_matrix(s))
-
+                self.S_params_dict[i] = S
                 temp_model = TimeSystemIIR(IIRModelBaseband(wvl,center_wvl, S, model_order), temp_port_list)
                 self.modelList.append(temp_model)
-                
+
             self.step_list = {
                 "step_models":{},
                 "step_connections":{},
@@ -129,12 +140,12 @@ class TimeSim(Simulation):
                     if any(v in value1 or v in value2 for (value1,value2) in self.removed_connections):
                         for k, h in self.removed_connections:
                             if k == v:
-                                self.step_list = self.add_to_netlist( connection=(f"{i},{j}", h))
+                                self.step_list = self.add_to_netlist(connection=(f"{i},{j}", h))
                             elif h == v:
-                                self.step_list = self.add_to_netlist( connection=(f"{i},{j}", k))
+                                self.step_list = self.add_to_netlist(connection=(f"{i},{j}", k))
                                 
                     else:
-                        self.step_list = self.add_to_netlist( port=(j,f"{i},{j}"))
+                        self.step_list = self.add_to_netlist(port=(j,f"{i},{j}"))
                         
                         port_translation_list.append((j,v))
 
@@ -187,6 +198,7 @@ class TimeSim(Simulation):
                     outputs = self.outputs,
                     t = t,
                     inputs = self.inputs,
+                    S_params = self.S_params_dict
 
                 )
                 return result
@@ -213,7 +225,7 @@ class TimeSim(Simulation):
                         instance_inputs[port] = self.instance_outputs[source_name][source_port]
                 if found_source == None:
                     designation = f'{port}'
-                    circuit_port = next((k for k, v in self.step_list["step_ports"].items() if k == designation), None)
+                    circuit_port = next((k for k, v in self.step_list["step_ports"].items() if v.split(',')[1] == designation), None)
                     instance_inputs[port] = jnp.array([self.inputs[circuit_port][i]])
                     
             outputs = {}

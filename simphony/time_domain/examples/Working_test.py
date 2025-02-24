@@ -123,10 +123,10 @@ inputs = {
     f'o{i}': gaussian_pulse(t, t0 - 0.5 * t0, std) if i == 0 else jnp.zeros_like(t)
     for i in range(num_outputs)
 }
-inputs = {
-            f'o{i}': smooth_rectangular_pulse(t,0.5e-11,3.5e-11) if i == 0 else jnp.zeros_like(t)
-            for i in range(num_outputs)
-        }
+# inputs = {
+#             f'o{i}': smooth_rectangular_pulse(t,0.5e-11,3.5e-11) if i == 0 else jnp.zeros_like(t)
+#             for i in range(num_outputs)
+#         }
 
 
 tic = time.time()

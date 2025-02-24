@@ -96,7 +96,8 @@ class TimeSystemIIR(TimeSystem):
         # if state_vector is not None:
         #      self.state_vector = state_vector
 
-        N = inputs['o0'].shape
+        first_key = next(iter(inputs))
+        N = inputs[first_key].shape
         responses = {}
         
         input = jnp.hstack([value.reshape(-1, 1) 
