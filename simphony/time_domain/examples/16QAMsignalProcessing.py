@@ -5,7 +5,7 @@ import sax
 from jax import config
 config.update("jax_enable_x64", True)
 
-from simphony.time_domain.TimeSim import TimeSim, plot_time_result
+from simphony.time_domain.TimeSim import TimeSim, TimeResult
 from simphony.time_domain.utils import  gaussian_pulse, smooth_rectangular_pulse
 from simphony.libraries import siepic
 from simphony.time_domain.ideal import Modulator
@@ -14,13 +14,13 @@ import platform
 
 import time
 
-T = 4e-11
+T = 20e-11
 dt = 1e-14      # Total time duration (40 ps)
 t = jnp.arange(0, T, dt)  # Time array
 t0 = 1e-11  # Pulse start time
 std = 1e-12
 
-f_mod = 0
+f_mod = 3*3.14/2
 m = f_mod * jnp.ones(len(t),dtype = complex)
 x = jnp.linspace(0, 3.14, len(t))
 
@@ -83,10 +83,10 @@ netlist={
         # "o1": "bdc,port_3",
         # "o2": "bdc4, port_2",
         # "o3": "bdc4, port_4",
-        "in": "wg,o0",
-        "out": "pm,o1",
-        # "o0": "wg,o0",
-        # "o1": "pm,o1",
+        # "in": "wg,o0",
+        # "out": "pm,o1",
+        "o0": "wg,o0",
+        "o1": "pm,o1",
     },
 }
 models={
@@ -110,15 +110,15 @@ num_measurements = 200
 model_order = 100
 center_wvl = 1.548
 wvl = np.linspace(1.5, 1.6, num_measurements)
-options = {'wl':wvl,'wg':{"length": 10.0, "loss": 100}, 'wg2':{"length": 60.0, "loss": 100},'wg3':{"length":50.0, "loss":100}}
+options = {'wl':wvl,'wg':{"length": 15.0, "loss": 100}, 'wg2':{"length": 60.0, "loss": 100},'wg3':{"length":50.0, "loss":100}}
 
 tic = time.time()
 time_sim.build_model(model_parameters=options)
 toc = time.time()
 build_time = toc - tic
 from math import log2, sqrt
-num_symbols = 10   # For example, 40 symbols so that 40*100 = 4000 time steps.
-hold_time = 200  # Hold each symbol for 70 time steps.
+num_symbols = 400 # For example, 40 symbols so that 40*100 = 4000 time steps.
+hold_time = 10  # Hold each symbol for 70 time steps.
 
 
 def generate_16qam_piecewise_linear_signal(T, dt, num_symbols, hold_time):
@@ -204,8 +204,8 @@ num_outputs = 2
 # }
 
 inputs = {
-    "in": signal_complex,
-    "out": jnp.zeros_like(t)
+    "o0": signal_complex,
+    "o1": jnp.zeros_like(t)
     }
 plt.plot(t, jnp.abs(signal_complex)**2 )
 # inputs = {
@@ -226,26 +226,13 @@ run_time = toc - tic
 print(f"Build time: {build_time}")
 print(f"Run time: {run_time}")
 
-plot_time_result(modelResult)
+modelResult.plot_sim()
 I_original = np.real(signal_complex)
 Q_original = np.imag(signal_complex)
-I_output = jnp.abs(np.real(modelResult.outputs["o1"]))
-Q_output = jnp.abs(np.imag(modelResult.outputs["o1"]))
-import os
-def play_ding():
-    system = platform.system()
-    if system == 'Windows':
-        import winsound
-        # Plays the default "OK" sound
-        winsound.MessageBeep(winsound.MB_OK)
-    elif system == 'Darwin':  # macOS
-        # Use the built-in "Glass" sound
-        os.system("afplay /System/Library/Sounds/Glass.aiff")
-    else:
-        # For Linux: requires 'sox' installed for the 'play' command to work
-        # This generates a 440Hz sine wave tone lasting 0.1 seconds.
-        os.system("play -nq -t alsa synth 0.1 sine 440")
-play_ding()
+I_output = np.real(modelResult.outputs["o1"])
+Q_output = np.imag(modelResult.outputs["o1"])
+
+
 
 plt.figure(figsize=(10,8))
 
