@@ -58,9 +58,10 @@ def my_dlsimworks(system, u, t=None, x0=None):
         tout = np.linspace(0.0, stoptime, num=out_samples)
 
         xout[0, :] = np.zeros((system.A.shape[1],), dtype=complex)
-
+        
         if x0 is not None:
             xout[0, :] = x0
+            
 
         u_dt = u
 
@@ -92,7 +93,7 @@ class TimeSystemIIR(TimeSystem):
         self.state_vector = None
         
 
-    def response(self, inputs: dict) -> ArrayLike:
+    def response(self, inputs: dict, time_sim = True) -> ArrayLike:
         # if state_vector is not None:
         #      self.state_vector = state_vector
 
@@ -102,7 +103,10 @@ class TimeSystemIIR(TimeSystem):
         
         input = jnp.hstack([value.reshape(-1, 1) 
                             for value in inputs.values()])
-        t,y_out,x_out = my_dlsimworks(self.sys, input, x0 = self.state_vector)
+        if not time_sim:
+            t,y_out,x_out = my_dlsim(self.sys, input, x0 = self.state_vector)
+        else:
+            t,y_out,x_out = my_dlsimworks(self.sys, input, x0 = self.state_vector)
         self.state_vector = x_out
 
         j = 0

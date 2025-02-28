@@ -33,7 +33,7 @@ class TimeResult(SimulationResult):
         
         ports = max(len(input_keys), len(output_keys))
         
-        fig, axs = plt.subplots(ports, 2, figsize=(10, 5 * ports))
+        fig, axs = plt.subplots(ports, 2, figsize=(10, 3 * ports))
         
         
         if ports == 1:
@@ -164,7 +164,6 @@ class TimeSim(Simulation):
         else:
             circuit, info = sax.circuit(netlist = self.netlist, models= self.model_List)
             circuit_params = model_parameters
-            
             s = circuit(**circuit_params)
             self.S = np.asarray(dict_to_matrix(s))
             model = IIRModelBaseband(wvl,center_wvl,self.S, model_order)
@@ -178,27 +177,29 @@ class TimeSim(Simulation):
                 self.instance_outputs = {}
                 self.ports = {}
                 Statevector_save_list = {}
-                for circuit_port, designation in self.step_list['step_ports'].items():
-                    instance_name, instance_port = map(str.strip, designation.split(','))
-                    self.ports[circuit_port] = (instance_name, instance_port)
-                    if instance_name not in self.active_components:
-                        Statevector_save_list[instance_name] = None
-                self.outputs = {port: jnp.array([]) for port in self.step_list["step_ports"]}
-                for instance_name, time_system in self.step_list["step_models"].items():
-                    self.instance_outputs[instance_name] = {port: jnp.array([0+0j]) for port in time_system.ports}
-                i = 0
                 if self.active_components is not None:
+                    for circuit_port, designation in self.step_list['step_ports'].items():
+                        instance_name, instance_port = map(str.strip, designation.split(','))
+                        self.ports[circuit_port] = (instance_name, instance_port)
+                        if instance_name not in self.active_components:
+                            Statevector_save_list[instance_name] = None
+                    self.outputs = {port: jnp.array([]) for port in self.step_list["step_ports"]}
+                    for instance_name, time_system in self.step_list["step_models"].items():
+                        self.instance_outputs[instance_name] = {port: jnp.array([0+0j]) for port in time_system.ports}
+                    i = 0
+                
                     for _ in t:
                         self.step(i)
                         i +=1
                         pass
                 else:
-                    self.outputs = self.time_system.response(inputs)
+                    self.outputs,__ = self.time_system.response(self.inputs,time_sim=False)
+
                 result = TimeResult(
                     outputs = self.outputs,
-                    t = t,
+                    t = self.t,
                     inputs = self.inputs,
-                    S_params = self.S_params_dict
+                    S_params = self.S
 
                 )
                 return result
@@ -314,7 +315,7 @@ class TimeSim(Simulation):
         return filtered, removed_edges, removed_connections
 
 
-    def remove_ports_to_active(self,ports, active_components):
+    def remove_ports_to_active(self, ports, active_components):
         """
         Remove top-level ports that directly reference an active component.
         Returns (filtered_ports, removed_ports).
@@ -330,7 +331,7 @@ class TimeSim(Simulation):
         return filtered, removed
 
 
-    def build_component_graph(self,connections, ports, active_components, directed=False):
+    def build_component_graph(self,connections, ports, active_components,removed_edges, directed=False):
         """
         Build a graph (adjacency list) where each node is just the component name.
         For example:
@@ -362,6 +363,12 @@ class TimeSim(Simulation):
             A_is_active = (comp in active_components)
             if comp not in graph and not A_is_active:
                 graph[comp] = []
+
+        for k, v in removed_edges:
+            A_is_active = (k in active_components)
+            if  k not in graph and not A_is_active:
+                graph[k] = []
+        
         
         return graph
 
@@ -587,7 +594,7 @@ class TimeSim(Simulation):
         filtered_ports, removed_ports = self.remove_ports_to_active(ports, active_components)
         
         # 3) Build a graph at component level (ignore port detail)
-        graph = self.build_component_graph(filtered_conns, ports,active_components, directed=directed)
+        graph = self.build_component_graph(filtered_conns, ports,active_components,removed_edges, directed=directed)
         
         # 4) Find SCCs
         sccs = self.tarjan_scc(graph)  # e.g. [ ['cr1','wg1','cr2'], ['cr3','wg3','cr4'], ... ]
