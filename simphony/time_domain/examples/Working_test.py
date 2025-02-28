@@ -22,9 +22,10 @@ m   = jnp.array([], dtype=jnp.complex128)  # MZI#1 arm A
 m4  = jnp.array([], dtype=jnp.complex128)  # MZI#1 arm B
 m2  = jnp.array([], dtype=jnp.complex128)  # MZI#2 arm A
 m5  = jnp.array([], dtype=jnp.complex128)  # MZI#2 arm B
-
+#np.pi/6,-np.pi/6,np.pi/3,-np.pi/3,
+#np.pi/6,-np.pi/6,np.pi/3,-np.pi/3, 
 i_phase_table = [ -3*np.pi/4, -np.pi/4, np.pi/4, 3*np.pi/4 ]
-q_phase_table = [ -3*np.pi/4, -np.pi/4, np.pi/4, 3*np.pi/4 ]
+q_phase_table = [-3*np.pi/4, -np.pi/4, np.pi/4, 3*np.pi/4 ]
 
 num_symbols = int(len(t)/inter) - 1
 
@@ -105,8 +106,10 @@ netlist={
     },
     "connections": {
         
-        "y2,port_2":"y3,port_1",
-        "y2,port_3":"y4,port_1",
+        "bdc,port_3": "y3,port_1",
+        "bdc,port_4": "y4,port_1",
+        # "y2,port_2":"y3,port_1",
+        # "y2,port_3":"y4,port_1",
         
         "y4,port_2":"wg5,o0",
         "y4,port_3":"wg6,o0",
@@ -124,10 +127,11 @@ netlist={
 
         "y6,port_2":"pm2,o1",
         "y6,port_3":"pm5,o1",
-        "y6,port_1":"pm3,o0",
+        # "y6,port_1":"pm3,o0",
         
         
-        "y,port_3":"pm3,o1",
+        # "y,port_3":"pm3,o1",
+        "y,port_3":"y6,port_1",
         "y,port_2":"y5,port_1",
 
         
@@ -136,8 +140,10 @@ netlist={
 
     },
     "ports": {
-        "o0":"y2, port_1",
-        "o1":"y, port_1",
+        # "o0":"y2, port_1",
+        "o0":"bdc,port_1",
+        "o1":"bdc,port_2",
+        "o2":"y, port_1",
 
 
         
@@ -190,7 +196,7 @@ time_sim.build_model(model_parameters=options)
 toc = time.time()
 build_time = toc - tic
 
-num_outputs = 2
+num_outputs = 3
 
 
 # inputs = {

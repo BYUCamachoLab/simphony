@@ -45,8 +45,9 @@ netlist={
         "wg2": "waveguide",
     },
     "connections": {
-        "wg,o1":"pm,o0",
-        "pm,o1":"wg2,o0",
+        # "wg,o1":"pm,o0",
+        # "pm,o1":"wg2,o0",
+        "wg,o1":"wg2,o0",
     },
     "ports": {
         "o0":"wg,o0",
@@ -59,15 +60,14 @@ models={
     "bidirectional": siepic.bidirectional_coupler,
     "phase_modulator": timePhaseInstantiated,
 }
-active_components = {
-    "pm","pm2"
-}
+# active_components = {
+#     "pm","pm2"
+# }
 
 
 time_sim = TimeSim(
     netlist=netlist,
     models=models,
-    active_components=active_components,
     )
 
 num_measurements = 200
@@ -84,14 +84,14 @@ build_time = toc - tic
 num_outputs = 2
 
 
-# inputs = {
-#     f'o{i}': gaussian_pulse(t, t0 - 0.5 * t0, std) if i == 0   else jnp.zeros_like(t)
-#     for i in range(num_outputs)
-# }
 inputs = {
-            f'o{i}': smooth_rectangular_pulse(t, 0.0e-11,2.5e-11) if i == 0 else jnp.zeros_like(t)
-            for i in range(num_outputs)
-        }
+    f'o{i}': gaussian_pulse(t, t0 - 0.5 * t0, std) if i == 0   else jnp.zeros_like(t)
+    for i in range(num_outputs)
+}
+# inputs = {
+#             f'o{i}': smooth_rectangular_pulse(t, 0.0e-11,2.5e-11) if i == 0 else jnp.zeros_like(t)
+#             for i in range(num_outputs)
+#         }
 
 
 tic = time.time()
