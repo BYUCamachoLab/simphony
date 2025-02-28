@@ -165,7 +165,7 @@ class TimeSim(Simulation):
             circuit, info = sax.circuit(netlist = self.netlist, models= self.model_List)
             circuit_params = model_parameters
             s = circuit(**circuit_params)
-            self.S = np.asarray(dict_to_matrix(s))
+            self.S_params_dict = np.asarray(dict_to_matrix(s))
             model = IIRModelBaseband(wvl,center_wvl,self.S, model_order)
             self.time_system = TimeSystemIIR(model)
 
@@ -199,7 +199,7 @@ class TimeSim(Simulation):
                     outputs = self.outputs,
                     t = self.t,
                     inputs = self.inputs,
-                    S_params = self.S
+                    S_params = self.S_params_dict
 
                 )
                 return result
