@@ -13,8 +13,9 @@ from simphony.time_domain.ideal import Modulator
 import time
 
 T = 2.5e-11
-dt = 1e-14      # Total time duration (40 ps)
-t = jnp.arange(0, T, dt)  # Time array
+dt = 10e-14 
+dte = 5e-14     # Total time duration (40 ps)
+t = jnp.arange(0, T, dte)  # Time array
 t0 = 1e-11  # Pulse start time
 std = 1e-12
 inter = 250
@@ -45,9 +46,9 @@ netlist={
         "wg2": "waveguide",
     },
     "connections": {
-        # "wg,o1":"pm,o0",
-        # "pm,o1":"wg2,o0",
-        "wg,o1":"wg2,o0",
+        "wg,o1":"pm,o0",
+        "pm,o1":"wg2,o0",
+        # "wg,o1":"wg2,o0",
     },
     "ports": {
         "o0":"wg,o0",
@@ -60,14 +61,15 @@ models={
     "bidirectional": siepic.bidirectional_coupler,
     "phase_modulator": timePhaseInstantiated,
 }
-# active_components = {
-#     "pm","pm2"
-# }
+active_components = {
+    "pm", "pm2"
+}
 
 
 time_sim = TimeSim(
     netlist=netlist,
     models=models,
+    active_components=active_components,
     )
 
 num_measurements = 200
@@ -77,7 +79,7 @@ wvl = np.linspace(1.5, 1.6, num_measurements)
 options = {'wl':wvl,'wg':{"length": 10.0, "loss": 100}, 'wg2':{"length": 10.0, "loss": 100}}
 
 tic = time.time()
-time_sim.build_model(model_parameters=options)
+time_sim.build_model(model_parameters=options, dt = dt)
 toc = time.time()
 build_time = toc - tic
 

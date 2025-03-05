@@ -419,7 +419,7 @@ class IIRModelBaseband(PoleResidueModel):
         while iter < self.options.max_iterations:
             phi0, phi1 = self.compute_phi_matrices()
             M, V = self.compute_lstsq_matrices(phi0, phi1)
-            Q,R = np.linalg.qr(M,mode='reduced') 
+            Q, R = np.linalg.qr(M,mode='reduced') 
             solutions = np.linalg.pinv(R)@Q.conj().T@V
 
             # Calculate New Poles
