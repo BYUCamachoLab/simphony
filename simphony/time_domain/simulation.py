@@ -11,12 +11,13 @@ config.update("jax_enable_x64", True)
 from simphony.libraries import ideal
 from simphony.utils import dict_to_matrix
 
-from simphony.time_domain.pole_residue_model import IIRModelBaseband
+from simphony.time_domain.pole_residue_model import BVF_Options, IIRModelBaseband
 
 from simphony.libraries import siepic
 from simphony.simulation import SimDevice, Simulation, SimulationResult
 from dataclasses import dataclass
-import re
+
+from scipy.interpolate import interp1d
 
 @dataclass
 class TimeResult(SimulationResult):
@@ -74,9 +75,17 @@ class TimeSim(Simulation):
                     model_order = 50,
                     num_measurements = 200,
                     model_parameters=None,
+                    dt = 1e-14
                     ):
         self.modelList = []
-
+        self.dt = dt
+        c = 299792458
+        center_freq = c / (center_wvl * 1e-6)
+        freqs = c / (wvl * 1e-6) - center_freq
+        sampling_freq = -1 / dt
+        beta = sampling_freq / (freqs[-1] - freqs[0]) 
+        custom_options = BVF_Options(beta=beta)
+        
         if self.active_components is not None:
             
             self.sub_netlists, self.removed_connections, self.removed_ports = self.create_passive_sub_netlists(self.instances, self.connections, self.ports, self.active_components)
@@ -100,6 +109,7 @@ class TimeSim(Simulation):
                 sub_circuit_list[i] = circuittemp
                 port_list[i] = netlist['ports']
             self.S_params_dict = {}
+            
             for i, circuit in sub_circuit_list.items():
         
                 # Execute circuit with generated parameters
@@ -112,7 +122,7 @@ class TimeSim(Simulation):
                 # Continue with existing processing
                 S = np.asarray(dict_to_matrix(s))
                 self.S_params_dict[i] = S
-                temp_model = TimeSystemIIR(IIRModelBaseband(wvl,center_wvl, S, model_order), temp_port_list)
+                temp_model = TimeSystemIIR(IIRModelBaseband(wvl,center_wvl, S, model_order,options= custom_options), temp_port_list)
                 self.modelList.append(temp_model)
 
             self.step_list = {
@@ -172,11 +182,13 @@ class TimeSim(Simulation):
     
             
     def run(self, t: ArrayLike, inputs: dict)->TimeResult:
+                #interpolation of the beta and dt values defined dt 1/sampling frequency = dt, of the t and inputs to get new domain corresponds to the new dt
                 self.inputs = inputs
                 self.t = t
                 self.instance_outputs = {}
                 self.ports = {}
                 Statevector_save_list = {}
+                self.t, self.inputs = self.interpolate()
                 if self.active_components is not None:
                     for circuit_port, designation in self.step_list['step_ports'].items():
                         instance_name, instance_port = map(str.strip, designation.split(','))
@@ -188,7 +200,7 @@ class TimeSim(Simulation):
                         self.instance_outputs[instance_name] = {port: jnp.array([0+0j]) for port in time_system.ports}
                     i = 0
                 
-                    for _ in t:
+                    for _ in self.t:
                         self.step(i)
                         i +=1
                         pass
@@ -203,6 +215,21 @@ class TimeSim(Simulation):
 
                 )
                 return result
+    
+    def interpolate(self):
+        # Create the new time domain based on dt:
+        t_new = np.arange(self.t[0], self.t[-1] + self.dt, self.dt)
+        
+        # Initialize a new dictionary for interpolated inputs
+        new_inputs = {}
+        
+        # Interpolate each input using linear interpolation
+        for key, values in self.inputs.items():
+            # Create an interpolation function.
+            interp_func = interp1d(self.t, values, kind='linear', fill_value="extrapolate")
+            new_inputs[key] = interp_func(t_new)
+        
+        return t_new, new_inputs
                 
     
     def step(self, i):
