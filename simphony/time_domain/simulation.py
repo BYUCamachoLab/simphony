@@ -176,7 +176,7 @@ class TimeSim(Simulation):
             circuit_params = model_parameters
             s = circuit(**circuit_params)
             self.S_params_dict = np.asarray(dict_to_matrix(s))
-            model = IIRModelBaseband(wvl,center_wvl,self.S_params_dict, model_order)
+            model = IIRModelBaseband(wvl,center_wvl,self.S_params_dict, model_order, options=custom_options)
             self.time_system = TimeSystemIIR(model)
 
     
