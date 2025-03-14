@@ -47,10 +47,13 @@ def rect(r: ArrayLike, phi: ArrayLike) -> Array:
     ArrayLike
         An array of complex-valued numbers.
     """
+    r = jnp.asarray(r)
+    if jnp.any(r < 0):
+        raise ValueError("Negative radius not allowed in polar coordinates.")
     return r * jnp.exp(1j * phi)
 
 
-def polar(x: ArrayLike) -> Array:
+def polar(x: ArrayLike) -> tuple[Array, Array]:
     """Convert from rectangular to polar coordinates element-wise.
 
     Parameters
@@ -67,7 +70,7 @@ def polar(x: ArrayLike) -> Array:
     return jnp.abs(x), jnp.angle(x)
 
 
-def add_polar(c1, c2):
+def add_polar(c1: tuple[float, float], c2: tuple[float, float]):
     """Adds two polar coordinates together.
 
     Parameters
@@ -299,6 +302,8 @@ def freq2wl(freq: ArrayLike) -> Array:
     wl : float
         The wavelength in SI units (m).
     """
+    if jnp.any(jnp.less_equal(freq, 0)):
+        raise ValueError("Frequency must be positive.")
     return SPEED_OF_LIGHT / freq
 
 
@@ -315,6 +320,8 @@ def wl2freq(wl: ArrayLike) -> Array:
     freq : float
         The frequency in SI units (Hz).
     """
+    if jnp.any(jnp.less_equal(wl, 0)):
+        raise ValueError("Wavelength must be positive.")
     return SPEED_OF_LIGHT / wl
 
 
@@ -332,6 +339,8 @@ def wlum2freq(wl: ArrayLike) -> Array:
     freq : float
         The frequency in SI units (Hz).
     """
+    if jnp.any(jnp.less_equal(wl, 0)):
+        raise ValueError("Wavelength must be positive.")
     return wl2freq(wl * 1e-6)
 
 
