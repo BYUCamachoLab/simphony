@@ -276,18 +276,55 @@ class TestWlum2Freq():
 
 
 class TestXxppToXpxp():
-    # TODO: learn how this works and write tests
-    pass
+    def test_funcionality(self):
+        # [1, 2, 3, 4] -> [1, 3, 2, 4]
+        xxpp = jnp.array([1, 2, 3, 4])
+        xpxp = utils.xxpp_to_xpxp(xxpp)
+        assert jnp.array_equal(xpxp, jnp.array([1, 3, 2, 4]))
+        
+        # TODO: more advanced functionality tests
+
+    # TODO: exception and boundary-value tests
 
 
 class TestXpxpToXxpp():
-    # TODO: learn how this works abd write tests
-    pass
+    def test_functionality(self):
+        xpxp = jnp.array([1, 3, 2, 4])
+        xxpp = utils.xpxp_to_xxpp(xpxp)
+        assert jnp.array_equal(xxpp, jnp.array([1, 2, 3, 4]))
+
+        # TODO: more advanced functionality tests
+
+    # TODO: exception and boundary-value tests
 
 
 class TestDictToMatrix():
-    # TODO: learn how this works and write tests
-    pass
+    def test_functionality(self):
+        # Simple case
+        d = {("in0", "out0"): jnp.array(3.0)}
+        matrix = utils.dict_to_matrix(d)
+        # expected_matrix = jnp.array([[0, 3], [0, 0]])
+        expected_matrix = jnp.array([[
+            [0 + 0j, 3.0 + 0j],
+            [0 + 0j, 0 + 0j]
+        ]])
+        assert jnp.array_equal(matrix, expected_matrix)
+
+        # Slightly more complex
+        d = {("a", "b"): jnp.array(1), 
+            ("b", "a"): jnp.array(2), 
+            ("c", "c"): jnp.array(3)}
+        matrix = utils.dict_to_matrix(d)
+        expected_matrix = jnp.array([[
+            [0 + 0j, 1 + 0j, 0 + 0j], 
+            [2 + 0j, 0 + 0j, 0 + 0j], 
+            [0 + 0j, 0 + 0j, 3 + 0j]
+        ]])
+        assert jnp.array_equal(matrix, expected_matrix)
+
+        # TODO: more advanced functionality tests
+
+    # TODO: exception and boundary-value tests
 
 
 class TestValidateModel():
