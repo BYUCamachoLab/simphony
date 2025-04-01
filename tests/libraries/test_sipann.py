@@ -70,7 +70,9 @@ class TestStraightCoupler:
         sipann.straight_coupler(width=500, thickness=220, gap=150, length=1000)
 
     def test_s_params(self, std_wl_um):
-        dev: SDict = sipann.straight_coupler(width=500, thickness=220, gap=180, length=1000)
+        dev: SDict = sipann.straight_coupler(
+            width=500, thickness=220, gap=180, length=1000
+        )
         # TODO: Test the actual values returned in the SDict.
 
 
@@ -117,7 +119,9 @@ class TestDoubleHalfRing:
         sipann.double_half_ring(width=500, thickness=220, radius=5000, gap=100)
 
     def test_s_params(self, std_wl_um):
-        dev: SDict = sipann.double_half_ring(width=500, thickness=220, radius=5000, gap=100)
+        dev: SDict = sipann.double_half_ring(
+            width=500, thickness=220, radius=5000, gap=100
+        )
         # TODO: Test the actual values returned in the SDict.
 
 

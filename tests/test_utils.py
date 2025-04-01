@@ -8,7 +8,7 @@ from simphony import utils
 import jax.numpy as jnp
 
 
-class TestRect():
+class TestRect:
     def test_funcionality(self):
         r = 2
         phi = jnp.pi / 4
@@ -21,21 +21,21 @@ class TestRect():
         phi = 0
         res = utils.rect(r, phi)
         assert res == pytest.approx(1, abs=1e-15)
-        
+
         # 0 + 1j
         r = 1
         phi = jnp.pi / 2
         res = utils.rect(r, phi)
         assert res == pytest.approx(1j, abs=1e-15)
-        
+
         # -1 + 0j
         r = 1
         phi = jnp.pi
         res = utils.rect(r, phi)
         assert res == pytest.approx(-1, abs=1e-15)
-        
+
         # 0 - 1j
-        r = 1   
+        r = 1
         phi = 3 * jnp.pi / 2
         res = utils.rect(r, phi)
         assert res == pytest.approx(-1j, abs=1e-15)
@@ -45,52 +45,52 @@ class TestRect():
         phi = 0
         res = utils.rect(r, phi)
         assert res == pytest.approx(0, abs=1e-15)
-    
+
     def test_exceptions(self):
         # Negative radius
         with pytest.raises(ValueError):
             utils.rect(-1, 0)
-        
 
-class TestPolar():
+
+class TestPolar:
     def test_funcionality(self):
         z = 1 + 1j
         res = utils.polar(z)
         assert res == (jnp.sqrt(2), jnp.pi / 4)
-    
+
     def test_boundary(self):
         # 1 + 0j
         z = 1
         res = utils.polar(z)
         assert res == (1, 0)
-        
+
         # 0 + 1j
         z = 1j
         res = utils.polar(z)
         assert res == (1, jnp.pi / 2)
-        
+
         # -1 + 0j
         z = -1
         res = utils.polar(z)
         assert res == (1, jnp.pi)
-        
+
         # 0 - 1j
         z = -1j
         res = utils.polar(z)
         assert res == (1, -jnp.pi / 2)
-        
+
         # 0 + 0j
         z = 0
         res = utils.polar(z)
         assert res == (0, 0)
-    
+
     def test_exceptions(self):
         pass
 
 
-class TestAddPolar():
+class TestAddPolar:
     def test_functionality(self):
-        z1 = (1, jnp.pi / 4) # r, phi
+        z1 = (1, jnp.pi / 4)  # r, phi
         z2 = (1, jnp.pi / 4)
         res = utils.add_polar(z1, z2)
         assert jnp.allclose(res[0], 2)  # r
@@ -115,7 +115,7 @@ class TestAddPolar():
         assert jnp.allclose(res[1], jnp.pi / 4)
 
 
-class TestMulPolar():
+class TestMulPolar:
     def test_functionality(self):
         z1 = (1, jnp.pi / 4)  # r, phi
         z2 = (2, jnp.pi / 4)
@@ -141,12 +141,12 @@ class TestMulPolar():
         assert jnp.allclose(res[0], 0)
 
 
-class TestMatMulPolar():
+class TestMatMulPolar:
     # TODO: learn how this works and write tests
     pass
 
 
-class TestMatAddPolar():
+class TestMatAddPolar:
     # TODO: learn how this works and write tests
     pass
 
@@ -227,7 +227,7 @@ class TestFreq2Wl:
         pass
 
 
-class TestWl2Freq():
+class TestWl2Freq:
     def test_funcionality(self):
         # Test converting a few random wavelengths to frequencies
         assert utils.wl2freq(1) == 299792458
@@ -251,7 +251,7 @@ class TestWl2Freq():
         pass
 
 
-class TestWlum2Freq():
+class TestWlum2Freq:
     def test_funcionality(self):
         # Test converting a few random wavelengths in microns to frequencies
         assert utils.wlum2freq(1) == utils.wl2freq(1e-6)
@@ -275,19 +275,19 @@ class TestWlum2Freq():
         pass
 
 
-class TestXxppToXpxp():
+class TestXxppToXpxp:
     def test_funcionality(self):
         # [1, 2, 3, 4] -> [1, 3, 2, 4]
         xxpp = jnp.array([1, 2, 3, 4])
         xpxp = utils.xxpp_to_xpxp(xxpp)
         assert jnp.array_equal(xpxp, jnp.array([1, 3, 2, 4]))
-        
+
         # TODO: more advanced functionality tests
 
     # TODO: exception and boundary-value tests
 
 
-class TestXpxpToXxpp():
+class TestXpxpToXxpp:
     def test_functionality(self):
         xpxp = jnp.array([1, 3, 2, 4])
         xxpp = utils.xpxp_to_xxpp(xpxp)
@@ -298,28 +298,31 @@ class TestXpxpToXxpp():
     # TODO: exception and boundary-value tests
 
 
-class TestDictToMatrix():
+class TestDictToMatrix:
     def test_functionality(self):
         # Simple case
         d = {("in0", "out0"): jnp.array(3.0)}
         matrix = utils.dict_to_matrix(d)
         # expected_matrix = jnp.array([[0, 3], [0, 0]])
-        expected_matrix = jnp.array([[
-            [0 + 0j, 3.0 + 0j],
-            [0 + 0j, 0 + 0j]
-        ]])
+        expected_matrix = jnp.array([[[0 + 0j, 3.0 + 0j], [0 + 0j, 0 + 0j]]])
         assert jnp.array_equal(matrix, expected_matrix)
 
         # Slightly more complex
-        d = {("a", "b"): jnp.array(1), 
-            ("b", "a"): jnp.array(2), 
-            ("c", "c"): jnp.array(3)}
+        d = {
+            ("a", "b"): jnp.array(1),
+            ("b", "a"): jnp.array(2),
+            ("c", "c"): jnp.array(3),
+        }
         matrix = utils.dict_to_matrix(d)
-        expected_matrix = jnp.array([[
-            [0 + 0j, 1 + 0j, 0 + 0j], 
-            [2 + 0j, 0 + 0j, 0 + 0j], 
-            [0 + 0j, 0 + 0j, 3 + 0j]
-        ]])
+        expected_matrix = jnp.array(
+            [
+                [
+                    [0 + 0j, 1 + 0j, 0 + 0j],
+                    [2 + 0j, 0 + 0j, 0 + 0j],
+                    [0 + 0j, 0 + 0j, 3 + 0j],
+                ]
+            ]
+        )
         assert jnp.array_equal(matrix, expected_matrix)
 
         # TODO: more advanced functionality tests
@@ -327,11 +330,11 @@ class TestDictToMatrix():
     # TODO: exception and boundary-value tests
 
 
-class TestValidateModel():
+class TestValidateModel:
     # TODO: learn how this works and write tests
     pass
 
 
-class TestResample():
+class TestResample:
     # TODO: learn how this works and write tests
     pass

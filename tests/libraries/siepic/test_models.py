@@ -6,9 +6,9 @@ from simphony.libraries import siepic
 class TestBidirectionalCoupler:
     def test_invalid_parameters(self):
         with pytest.raises(TypeError):
-            siepic.bidirectional_coupler(pol="tem") # type: ignore
+            siepic.bidirectional_coupler(pol="tem")  # type: ignore
         with pytest.raises(TypeError):
-            siepic.bidirectional_coupler(pol="te", thickness=200) # type: ignore
+            siepic.bidirectional_coupler(pol="te", thickness=200)  # type: ignore
 
     def test_instantiable(self):
         siepic.bidirectional_coupler(thickness=220, width=500)
@@ -32,7 +32,7 @@ class TestDirectionalCoupler:
 class TestGratingCoupler:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            siepic.grating_coupler(pol="tem") # type: ignore
+            siepic.grating_coupler(pol="tem")  # type: ignore
         with pytest.raises(ValueError):
             siepic.grating_coupler(pol="te", thickness=200)
 
@@ -46,7 +46,7 @@ class TestGratingCoupler:
 class TestHalfRing:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            siepic.half_ring(pol="tem") # type: ignore
+            siepic.half_ring(pol="tem")  # type: ignore
         with pytest.raises(FileNotFoundError):
             siepic.half_ring(pol="te", gap=30, radius=10)
 
@@ -84,7 +84,7 @@ class TestTaper:
 class TestTerminator:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            siepic.terminator(pol="tem") # type: ignore
+            siepic.terminator(pol="tem")  # type: ignore
 
     def test_instantiable(self):
         siepic.terminator(pol="te")
@@ -98,7 +98,7 @@ class TestTerminator:
 class TestWaveguide:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            siepic.waveguide(pol="tem") # type: ignore
+            siepic.waveguide(pol="tem")  # type: ignore
         with pytest.raises(FileNotFoundError):
             siepic.waveguide(height=200)
 
@@ -114,7 +114,7 @@ class TestWaveguide:
 class TestYBranch:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            siepic.y_branch(pol="tem") # type: ignore
+            siepic.y_branch(pol="tem")  # type: ignore
 
     def test_instantiable(self):
         siepic.y_branch(pol="te", thickness=220, width=500)
