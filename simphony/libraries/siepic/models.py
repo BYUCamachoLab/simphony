@@ -397,15 +397,15 @@ def half_ring(
     return _create_sdict_from_df(wl, data)
 
 
-def _generate_parameter_sets_half_ring() -> pd.DataFrame:
-    """Generate a dataframe of all valid parameter sets by parsing the
-    filenames of the data files in the source directory."""
-    return _generate_parameter_sets(
-        r"(?P<pol>[a-z]+)_ebeam_dc_halfring_straight_gap=(?P<gap>\d+)nm_radius=(?P<radius>\d+)um_width=(?P<width>\d+)nm_thickness=(?P<thickness>\d+)nm_CoupleLength=(?P<coupling_length>\d+)um.dat"
-        "ebeam_dc_halfring_straight",
-        ext="dat",
-        columns=["gap", "radius", "width", "thickness", "coupling_length"],
-    )
+# def _generate_parameter_sets_half_ring() -> pd.DataFrame:
+#     """Generate a dataframe of all valid parameter sets by parsing the
+#     filenames of the data files in the source directory."""
+#     return _generate_parameter_sets(
+#         r"(?P<pol>[a-z]+)_ebeam_dc_halfring_straight_gap=(?P<gap>\d+)nm_radius=(?P<radius>\d+)um_width=(?P<width>\d+)nm_thickness=(?P<thickness>\d+)nm_CoupleLength=(?P<coupling_length>\d+)um.dat"
+#         "ebeam_dc_halfring_straight",
+#         ext="dat",
+#         columns=["gap", "radius", "width", "thickness", "coupling_length"],
+#     )
 
 
 def taper(
