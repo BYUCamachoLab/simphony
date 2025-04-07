@@ -57,8 +57,8 @@ def gap_func_symmetric(
     wl: Union[float, ArrayLike] = 1.55,
     width: float = 500.0,
     thickness: float = 220.0,
-    gap: Callable[[float], float] = 100.0,
-    dgap: Callable[[float], float] = 0.0,
+    gap: Callable[[float], float] = lambda _: 100.0,
+    dgap: Callable[[float], float] = lambda _: 0.0,
     zmin: float = 0.0,
     zmax: float = 10e3,
     sw_angle: float = 90.0,
@@ -104,7 +104,9 @@ def gap_func_symmetric(
     if sw_angle < 80 or sw_angle > 90:
         raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    model = scee.GapFuncSymmetric(width, thickness, gap, dgap, zmin, zmax, sw_angle)
+    model = scee.GapFuncSymmetric(
+        width, thickness, gap, dgap, zmin, zmax, int(sw_angle)
+    )
     sdict = _create_sdict_from_model(model, wl)
     return sdict
 
@@ -171,7 +173,7 @@ def gap_func_antisymmetric(
         raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
     model = scee.GapFuncAntiSymmetric(
-        width, thickness, gap, zmin, zmax, arc1, arc2, arc3, arc4, sw_angle
+        width, thickness, gap, zmin, zmax, arc1, arc2, arc3, arc4, int(sw_angle)
     )
     sdict = _create_sdict_from_model(model, wl)
     return sdict
@@ -224,7 +226,7 @@ def half_ring(
     if sw_angle < 80 or sw_angle > 90:
         raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    model = scee.HalfRing(width, thickness, radius * 1000, gap, sw_angle)
+    model = scee.HalfRing(width, thickness, radius * 1000, gap, int(sw_angle))
     sdict = _create_sdict_from_model(model, wl)
     return sdict
 
@@ -274,7 +276,7 @@ def straight_coupler(
     if sw_angle < 80 or sw_angle > 90:
         raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    model = scee.StraightCoupler(width, thickness, gap, length, sw_angle)
+    model = scee.StraightCoupler(width, thickness, gap, length, int(sw_angle))
     sdict = _create_sdict_from_model(model, wl)
     return sdict
 
@@ -333,7 +335,9 @@ def standard_coupler(
     if sw_angle < 80 or sw_angle > 90:
         raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    model = scee.Standard(width, thickness, gap, length, horizontal, vertical, sw_angle)
+    model = scee.Standard(
+        width, thickness, gap, length, horizontal, vertical, int(sw_angle)
+    )
     sdict = _create_sdict_from_model(model, wl)
     return sdict
 
@@ -387,7 +391,7 @@ def double_half_ring(
     if sw_angle < 80 or sw_angle > 90:
         raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    model = scee.DoubleHalfRing(width, thickness, radius, gap, sw_angle)
+    model = scee.DoubleHalfRing(width, thickness, radius, gap, int(sw_angle))
     sdict = _create_sdict_from_model(model, wl)
     return sdict
 
@@ -446,7 +450,7 @@ def angled_half_ring(
     if sw_angle < 80 or sw_angle > 90:
         raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    model = scee.AngledHalfRing(width, thickness, radius, gap, theta, sw_angle)
+    model = scee.AngledHalfRing(width, thickness, radius, gap, theta, int(sw_angle))
     sdict = _create_sdict_from_model(model, wl)
     return sdict
 
@@ -485,7 +489,7 @@ def waveguide(
     if sw_angle < 80 or sw_angle > 90:
         raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    model = scee.Waveguide(width, thickness, length, sw_angle)
+    model = scee.Waveguide(width, thickness, length, int(sw_angle))
     sdict = _create_sdict_from_model(model, wl)
     return sdict
 
@@ -543,7 +547,7 @@ def racetrack(
     if sw_angle < 80 or sw_angle > 90:
         raise ValueError("Sidewall angle must be between 80 and 90 degrees")
 
-    model = comp.racetrack_sb_rr(width, thickness, radius, gap, length, sw_angle)
+    model = comp.racetrack_sb_rr(width, thickness, radius, gap, length, int(sw_angle))
     sdict = _create_sdict_from_model(model, wl)
     return sdict
 
