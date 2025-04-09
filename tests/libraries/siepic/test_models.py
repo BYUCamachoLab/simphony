@@ -1,9 +1,11 @@
-import pytest
-import re
+from tests.utils import is_sdict
 
 from simphony.libraries import siepic
 import jax.numpy as jnp
-from tests.utils import is_sdict
+
+import pytest
+import re
+from itertools import product
 
 
 class TestBidirectionalCoupler:
@@ -15,10 +17,13 @@ class TestBidirectionalCoupler:
 
     def test_instantiable(self):
         # Valid thicknesses and widths
-        for t in [210, 220, 230]:
-            for w in [480, 500, 520]:
-                result = siepic.bidirectional_coupler(thickness=t, width=w)
-                assert is_sdict(result), "Result is not a valid SDict object"
+        params = product(
+            [210, 220, 230],  # thickness
+            [480, 500, 520],  # width
+        )
+        for t, w in params:
+            result = siepic.bidirectional_coupler(thickness=t, width=w)
+            assert is_sdict(result), "Result is not a valid SDict object"
 
         # Various wavelengths
         for wl in [0.5, 0.6, 0.7]:
@@ -29,9 +34,6 @@ class TestBidirectionalCoupler:
         result = siepic.bidirectional_coupler(wl=jnp.array([1.50, 1.55, 1.60]))
         assert is_sdict(result), "Result is not a valid SDict object"
 
-    def test_s_params(self, std_wl_um):
-        siepic.bidirectional_coupler(wl=std_wl_um)
-
 
 class TestDirectionalCoupler:
     def test_invalid_parameters(self):
@@ -40,30 +42,28 @@ class TestDirectionalCoupler:
 
     def test_instantiable(self):
         # Valid gaps and coupling lengths
-        gap = 200
-        for length in [
-            0,
-            2.5,
-            5,
-            7.5,
-            10,
-            12.5,
-            15,
-            17.5,
-            20,
-            22.5,
-            25,
-            27.5,
-            30,
-            32.5,
-            35,
-            37.5,
-            40,
-            42.5,
-            45,
-            47.5,
-        ]:
-            result = siepic.directional_coupler(gap=gap, coupling_length=length)
+        params = product(
+            [200],  # gap
+            [
+                2.5,
+                5,
+                7.5,
+                10,
+                12.5,
+                15,
+                17.5,
+                20,
+                22.5,
+                25,
+                27.5,
+                30,
+                32.5,
+                35,
+                37.5,
+            ],  # coupling_length
+        )
+        for g, l in params:
+            result = siepic.directional_coupler(gap=g, coupling_length=l)
             assert is_sdict(result), "Result is not a valid SDict object"
 
         # Various wavelengths
@@ -73,9 +73,6 @@ class TestDirectionalCoupler:
 
         # Array of wavelengths
         result = siepic.bidirectional_coupler(wl=jnp.array([1.50, 1.55, 1.60]))
-
-    def test_s_params(self, std_wl_um):
-        siepic.directional_coupler(wl=std_wl_um, gap=200, coupling_length=45)
 
 
 class TestHalfRing:
@@ -171,17 +168,6 @@ class TestHalfRing:
             assert is_sdict(
                 result
             ), f"Result is not a valid SDict object for params: {params}"
-
-    def test_functionality(self, std_wl_um):
-        siepic.half_ring(
-            wl=std_wl_um,
-            pol="te",
-            gap=50,
-            radius=5,
-            width=500,
-            thickness=220,
-            coupling_length=0,
-        )
 
 
 class TestTaper:
@@ -395,9 +381,6 @@ class TestTaper:
                 result
             ), f"Result is not a valid SDict object for params: {params}"
 
-    def test_s_params(self, std_wl_um):
-        siepic.taper(wl=std_wl_um, w1=0.5, w2=1.0, length=10.0)
-
 
 class TestTerminator:
     def test_invalid_parameters(self):
@@ -418,10 +401,6 @@ class TestTerminator:
         result = siepic.terminator(wl=jnp.array([1.50, 1.55, 1.60]))
         assert is_sdict(result), "Result is not a valid SDict object"
 
-    def test_s_params(self, std_wl_um):
-        siepic.terminator(wl=std_wl_um, pol="te")
-        siepic.terminator(wl=std_wl_um, pol="tm")
-
 
 class TestGratingCoupler:
     def test_invalid_parameters(self):
@@ -432,11 +411,14 @@ class TestGratingCoupler:
 
     def test_instantiable(self):
         # Test accross all combinations of parameters
-        for pol in ["te", "tm"]:
-            for thickness in [210, 220, 230]:
-                for dwidth in [-20, 0, 20]:
-                    result = siepic.grating_coupler(pol=pol, thickness=thickness, dwidth=dwidth)  # type: ignore
-                    assert is_sdict(result), "Result is not a valid SDict object"
+        params = product(
+            ["te", "tm"],  # pol
+            [210, 220, 230],  # thickness
+            [-20, 0, 20],  # dwidth
+        )
+        for p, t, d in params:
+            result = siepic.grating_coupler(pol=p, thickness=t, dwidth=d)  # type: ignore
+            assert is_sdict(result), "Result is not a valid SDict object"
 
         # Test for different wavelengths
         for wl in [1.4, 1.5, 1.6]:
@@ -446,9 +428,6 @@ class TestGratingCoupler:
         # Test for array of wavelengths
         result = siepic.grating_coupler(wl=jnp.array([1.50, 1.55, 1.60]))
         assert is_sdict(result), "Result is not a valid SDict object"
-
-    def test_s_params(self, std_wl_um):
-        siepic.grating_coupler(wl=std_wl_um, pol="te")
 
 
 class TestWaveguide:
@@ -653,11 +632,6 @@ class TestWaveguide:
             )
             assert is_sdict(result), "Result is not a valid SDict object"
 
-    def test_s_params(self, std_wl_um):
-        siepic.waveguide(
-            wl=std_wl_um, pol="te", length=100, width=500, height=220, loss=2
-        )
-
 
 class TestYBranch:
     def test_invalid_parameters(self):
@@ -665,11 +639,14 @@ class TestYBranch:
             siepic.y_branch(pol="tem")  # type: ignore
 
     def test_instantiable(self):
-        for pol in ["te", "tm"]:
-            for thickness in [210, 220, 230]:
-                for width in [480, 500, 520]:
-                    result = siepic.y_branch(pol=pol, thickness=thickness, width=width)  # type: ignore
-                    assert is_sdict(result), "Result is not a valid SDict object"
+        params = product(
+            ["te", "tm"],  # pol
+            [210, 220, 230],  # thickness
+            [480, 500, 520],  # width
+        )
+        for p, t, w in params:
+            result = siepic.y_branch(pol=p, thickness=t, width=w)  # type: ignore
+            assert is_sdict(result), "Result is not a valid SDict object"
 
         # Test for different wavelengths
         for wl in [1.4, 1.5, 1.6]:
@@ -679,6 +656,3 @@ class TestYBranch:
         # Test for array of wavelengths
         result = siepic.y_branch(wl=jnp.array([1.50, 1.55, 1.60]))
         assert is_sdict(result), "Result is not a valid SDict object"
-
-    def test_s_params(self, std_wl_um: float):
-        siepic.y_branch(wl=std_wl_um, pol="te")

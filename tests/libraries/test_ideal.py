@@ -29,11 +29,11 @@ class TestWaveguide:
             [5.0, 10.0, 15.0],  # length
             [0.0, 0.1, 1.0, 10.0],  # loss
         )
-        for wl0, ne, ng, l, lo in params:
-            result = ideal.waveguide(wl0=wl0, neff=ne, ng=ng, length=l, loss=lo)
+        for wo, ne, ng, l, lo in params:
+            result = ideal.waveguide(wl0=wo, neff=ne, ng=ng, length=l, loss=lo)
             assert is_sdict(
                 result
-            ), f"Failed for wl0={wl0}, neff={ne}, ng={ng}, length={l}, loss={lo}"
+            ), f"Failed w/ wl0={wo}, neff={ne}, ng={ng}, length={l}, loss={lo}"
 
         # Test accross various wavelengths
         wavelengths = [1.5, 1.55, 1.6]
