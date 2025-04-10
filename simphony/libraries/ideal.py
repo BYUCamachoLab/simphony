@@ -3,6 +3,8 @@
 # (see simphony/__init__.py for details)
 """Ideal circuit models."""
 
+from typing import Union
+
 import jax.numpy as jnp
 import sax
 from jax.typing import ArrayLike
@@ -18,10 +20,10 @@ def coupler(
 
     Ports are arranged as follows::
 
-        o2 ---\        /--- o3
-               --------
-               --------
-        o0 ---/        \--- o1
+        o2 ---\\        //--- o3
+                --------
+                --------
+        o0 ---//        \\--- o1
 
     Parameters
     ----------
@@ -53,7 +55,7 @@ def coupler(
 
 def waveguide(
     *,
-    wl: ArrayLike | float = 1.55,
+    wl: Union[ArrayLike, float] = 1.55,
     wl0: float = 1.55,
     neff: float = 2.34,
     ng: float = 3.4,
