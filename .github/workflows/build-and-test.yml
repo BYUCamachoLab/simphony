@@ -31,8 +31,6 @@ jobs:
           flake8 . --count --ignore=E501,E741,W503,W605 --max-complexity=18 --statistics
       - name: Run Tox
         run: tox -e py${{ matrix.python-version }}
-      - name: Upload coverage to Codecov in GitHub Actions
-        uses: codecov/codecov-action@v4
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
