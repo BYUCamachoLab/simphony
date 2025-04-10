@@ -1,5 +1,3 @@
-from tests.utils import is_sdict
-
 import pytest
 from itertools import product
 
@@ -37,20 +35,20 @@ class TestGapFuncSymmetric:
         )
         for w, t, g, sw in params:
             result = sipann.gap_func_symmetric(width=w, thickness=t, gap=lambda _: g, sw_angle=sw)  # type: ignore[call-arg]
-            assert is_sdict(
-                result
+            assert isinstance(
+                result, dict
             ), f"Failed for width={w}, thickness={t}, gap={g}, sw_angle={sw}"
 
         # Test for various wavelengths
         wavelengths = [1.55, 1.6, 1.65]  # in micrometers
         for wl in wavelengths:
             result = sipann.gap_func_symmetric(wl=wl)  # type: ignore[call-arg]
-            assert is_sdict(result), f"Failed for wavelength={wl}"
+            assert isinstance(result, dict), f"Failed for wavelength={wl}"
 
         # Test for array of wavelengths
         wl_array = [1.55, 1.6, 1.65]  # in micrometers
         result = sipann.gap_func_symmetric(wl=wl_array)  # type: ignore[call-arg]
-        assert is_sdict(result), f"Failed for wavelength array={wl_array}"
+        assert isinstance(result, dict), f"Failed for wavelength array={wl_array}"
 
         # NOTE: this instantiation test currently does not test accross values of dgap, zmin, or zmax
 
@@ -70,20 +68,20 @@ class TestGapFuncAntiSymmetric:
         )
         for w, t, g, sw in params:
             result = sipann.gap_func_antisymmetric(width=w, thickness=t, gap=lambda _: g, sw_angle=sw)  # type: ignore[call-arg]
-            assert is_sdict(
-                result
+            assert isinstance(
+                result, dict
             ), f"Failed for width={w}, thickness={t}, gap={g}, sw_angle={sw}"
 
         # Test for various wavelengths
         wavelengths = [1.55, 1.6, 1.65]  # in micrometers
         for wl in wavelengths:
             result = sipann.gap_func_antisymmetric(wl=wl)  # type: ignore[call-arg]
-            assert is_sdict(result), f"Failed for wavelength={wl}"
+            assert isinstance(result, dict), f"Failed for wavelength={wl}"
 
         # Test for array of wavelengths
         wl_array = [1.55, 1.6, 1.65]  # in micrometers
         result = sipann.gap_func_antisymmetric(wl=wl_array)  # type: ignore[call-arg]
-        assert is_sdict(result), f"Failed for wavelength array={wl_array}"
+        assert isinstance(result, dict), f"Failed for wavelength array={wl_array}"
 
         # NOTE: this does not currently test zmin, zmax, arc1-4
 
@@ -104,20 +102,20 @@ class TestHalfRing:
         )
         for w, t, r, g, sw in params:
             result = sipann.half_ring(width=w, thickness=t, radius=r, gap=g, sw_angle=sw)  # type: ignore[call-arg]
-            assert is_sdict(
-                result
+            assert isinstance(
+                result, dict
             ), f"Failed for width={w}, thickness={t}, radius={r}, gap={g}, sw_angle={sw}"
 
         # Test for various wavelengths
         wavelengths = [1.55, 1.6, 1.65]  # in micrometers
         for wl in wavelengths:
             result = sipann.half_ring(wl=wl)  # type: ignore[call-arg]
-            assert is_sdict(result), f"Failed for wavelength={wl}"
+            assert isinstance(result, dict), f"Failed for wavelength={wl}"
 
         # Test for array of wavelengths
         wl_array = [1.55, 1.6, 1.65]  # in micrometers
         result = sipann.half_ring(wl=wl_array)  # type: ignore[call-arg]
-        assert is_sdict(result), f"Failed for wavelength array={wl_array}"
+        assert isinstance(result, dict), f"Failed for wavelength array={wl_array}"
 
 
 class TestStraightCoupler:
@@ -136,20 +134,20 @@ class TestStraightCoupler:
         )
         for w, t, g, l, sw in params:
             result = sipann.straight_coupler(width=w, thickness=t, gap=g, length=l, sw_angle=sw)  # type: ignore[call-arg]
-            assert is_sdict(
-                result
+            assert isinstance(
+                result, dict
             ), f"Failed for width={w}, thickness={t}, gap={g}, length={l}, sw_angle={sw}"
 
         # Test for various wavelengths
         wavelengths = [1.55, 1.6, 1.65]  # in micrometers
         for wl in wavelengths:
             result = sipann.straight_coupler(wl=wl)  # type: ignore[call-arg]
-            assert is_sdict(result), f"Failed for wavelength={wl}"
+            assert isinstance(result, dict), f"Failed for wavelength={wl}"
 
         # Test for array of wavelengths
         wl_array = [1.55, 1.6, 1.65]  # in micrometers
         result = sipann.straight_coupler(wl=wl_array)  # type: ignore[call-arg]
-        assert is_sdict(result), f"Failed for wavelength array={wl_array}"
+        assert isinstance(result, dict), f"Failed for wavelength array={wl_array}"
 
 
 class TestStandardCoupler:
@@ -177,20 +175,20 @@ class TestStandardCoupler:
         )
         for w, t, g, l, h, v, sw in params:
             result = sipann.standard_coupler(width=w, thickness=t, gap=g, length=l, horizontal=h, vertical=v, sw_angle=sw)  # type: ignore[call-arg]
-            assert is_sdict(
-                result
+            assert isinstance(
+                result, dict
             ), f"Failed for width={w}, thickness={t}, gap={g}, length={l}, horizontal={h}, vertical={v}, sw_angle={sw}"
 
         # Test for various wavelengths
         wavelengths = [1.55, 1.6, 1.65]  # in micrometers
         for wl in wavelengths:
             result = sipann.standard_coupler(wl=wl)  # type: ignore[call-arg]
-            assert is_sdict(result), f"Failed for wavelength={wl}"
+            assert isinstance(result, dict), f"Failed for wavelength={wl}"
 
         # Test for array of wavelengths
         wl_array = [1.55, 1.6, 1.65]  # in micrometers
         result = sipann.standard_coupler(wl=wl_array)  # type: ignore[call-arg]
-        assert is_sdict(result), f"Failed for wavelength array={wl_array}"
+        assert isinstance(result, dict), f"Failed for wavelength array={wl_array}"
 
 
 class TestDoubleHalfRing:
@@ -209,20 +207,20 @@ class TestDoubleHalfRing:
         )
         for w, t, r, g, sw in params:
             result = sipann.double_half_ring(width=w, thickness=t, radius=r, gap=g, sw_angle=sw)  # type: ignore[call-arg]
-            assert is_sdict(
-                result
+            assert isinstance(
+                result, dict
             ), f"Failed for width={w}, thickness={t}, radius={r}, gap={g}, sw_angle={sw}"
 
         # Test for various wavelengths
         wavelengths = [1.55, 1.6, 1.65]  # in micrometers
         for wl in wavelengths:
             result = sipann.double_half_ring(wl=wl)  # type: ignore[call-arg]
-            assert is_sdict(result), f"Failed for wavelength={wl}"
+            assert isinstance(result, dict), f"Failed for wavelength={wl}"
 
         # Test for array of wavelengths
         wl_array = [1.55, 1.6, 1.65]  # in micrometers
         result = sipann.double_half_ring(wl=wl_array)  # type: ignore[call-arg]
-        assert is_sdict(result), f"Failed for wavelength array={wl_array}"
+        assert isinstance(result, dict), f"Failed for wavelength array={wl_array}"
 
 
 class TestAngledHalfRing:
@@ -244,20 +242,20 @@ class TestAngledHalfRing:
         )
         for w, t, r, g, th, sw in params:
             result = sipann.angled_half_ring(width=w, thickness=t, radius=r, gap=g, theta=th, sw_angle=sw)  # type: ignore[call-arg]
-            assert is_sdict(
-                result
+            assert isinstance(
+                result, dict
             ), f"Failed for width={w}, thickness={t}, radius={r}, gap={g}, theta={th}, sw_angle={sw}"
 
         # Test for various wavelengths
         wavelengths = [1.55, 1.6, 1.65]  # in micrometers
         for wl in wavelengths:
             result = sipann.angled_half_ring(wl=wl)  # type: ignore[call-arg]
-            assert is_sdict(result), f"Failed for wavelength={wl}"
+            assert isinstance(result, dict), f"Failed for wavelength={wl}"
 
         # Test for array of wavelengths
         wl_array = [1.55, 1.6, 1.65]  # in micrometers
         result = sipann.angled_half_ring(wl=wl_array)  # type: ignore[call-arg]
-        assert is_sdict(result), f"Failed for wavelength array={wl_array}"
+        assert isinstance(result, dict), f"Failed for wavelength array={wl_array}"
 
 
 class TestWaveguide:
@@ -275,21 +273,21 @@ class TestWaveguide:
         )
         for w, t, l, sw in params:
             result = sipann.waveguide(width=w, thickness=t, length=l, sw_angle=sw)  # type: ignore[call-arg]
-            assert is_sdict(
-                result
+            assert isinstance(
+                result, dict
             ), f"Failed for width={w}, thickness={t}, length={l}, sw_angle={sw}"
 
         # Test for various wavelengths
         wavelengths = [1.55, 1.6, 1.65]  # in micrometers
         for wl in wavelengths:
             result = sipann.waveguide(wl=wl)  # type: ignore[call-arg]
-            assert is_sdict(result), f"Failed for wavelength={wl}"
+            assert isinstance(result, dict), f"Failed for wavelength={wl}"
 
         # Test for array of wavelengths
         wl_array = [1.55, 1.6, 1.65]
         # in micrometers
         result = sipann.waveguide(wl=wl_array)  # type: ignore[call-arg]
-        assert is_sdict(result), f"Failed for wavelength array={wl_array}"
+        assert isinstance(result, dict), f"Failed for wavelength array={wl_array}"
 
 
 class TestRacetrack:
@@ -309,20 +307,20 @@ class TestRacetrack:
         )
         for w, t, r, g, l, sw in params:
             result = sipann.racetrack(width=w, thickness=t, radius=r, gap=g, length=l, sw_angle=sw)  # type: ignore[call-arg]
-            assert is_sdict(
-                result
+            assert isinstance(
+                result, dict
             ), f"Failed for width={w}, thickness={t}, radius={r}, gap={g}, length={l}, sw_angle={sw}"
 
         # Test for various wavelengths
         wavelengths = [1.55, 1.6, 1.65]
         for wl in wavelengths:
             result = sipann.racetrack(wl=wl)  # type: ignore[call-arg]
-            assert is_sdict(result), f"Failed for wavelength={wl}"
+            assert isinstance(result, dict), f"Failed for wavelength={wl}"
 
         # Test for array of wavelengths
         wl_array = [1.55, 1.6, 1.65]
         result = sipann.racetrack(wl=wl_array)  # type: ignore[call-arg]
-        assert is_sdict(result), f"Failed for wavelength array={wl_array}"
+        assert isinstance(result, dict), f"Failed for wavelength array={wl_array}"
 
 
 class TestPremadeCoupler:
@@ -330,15 +328,15 @@ class TestPremadeCoupler:
         # Test accross valid parameter ranges
         for s in [10, 20, 30, 40, 50, 100]:
             result = sipann.premade_coupler(split=s)  # type: ignore[call-arg]
-            assert is_sdict(result), f"Failed for split={s}"
+            assert isinstance(result, dict), f"Failed for split={s}"
 
         # Test for various wavelengths
         wavelengths = [1.55, 1.6, 1.65]
         for wl in wavelengths:
             result = sipann.premade_coupler(wl=wl)  # type: ignore[call-arg]
-            assert is_sdict(result), f"Failed for wavelength={wl}"
+            assert isinstance(result, dict), f"Failed for wavelength={wl}"
 
         # Test for array of wavelengths
         wl_array = [1.55, 1.6, 1.65]
         result = sipann.premade_coupler(wl=wl_array)  # type: ignore[call-arg]
-        assert is_sdict(result), f"Failed for wavelength array={wl_array}"
+        assert isinstance(result, dict), f"Failed for wavelength array={wl_array}"

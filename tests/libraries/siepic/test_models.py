@@ -1,5 +1,3 @@
-from tests.utils import is_sdict
-
 from simphony.libraries import siepic
 import jax.numpy as jnp
 
@@ -23,16 +21,16 @@ class TestBidirectionalCoupler:
         )
         for t, w in params:
             result = siepic.bidirectional_coupler(thickness=t, width=w)
-            assert is_sdict(result), "Result is not a valid SDict object"
+            assert isinstance(result, dict), "Result is not a valid SDict object"
 
         # Various wavelengths
         for wl in [0.5, 0.6, 0.7]:
             result = siepic.bidirectional_coupler(wl=wl)
-            assert is_sdict(result), "Result is not a valid SDict object"
+            assert isinstance(result, dict), "Result is not a valid SDict object"
 
         # Array of wavelengths
         result = siepic.bidirectional_coupler(wl=jnp.array([1.50, 1.55, 1.60]))
-        assert is_sdict(result), "Result is not a valid SDict object"
+        assert isinstance(result, dict), "Result is not a valid SDict object"
 
 
 class TestDirectionalCoupler:
@@ -64,12 +62,12 @@ class TestDirectionalCoupler:
         )
         for g, l in params:
             result = siepic.directional_coupler(gap=g, coupling_length=l)
-            assert is_sdict(result), "Result is not a valid SDict object"
+            assert isinstance(result, dict), "Result is not a valid SDict object"
 
         # Various wavelengths
         for wl in [0.5, 0.6, 0.7]:
             result = siepic.directional_coupler(wl=wl)
-            assert is_sdict(result), "Result is not a valid SDict object"
+            assert isinstance(result, dict), "Result is not a valid SDict object"
 
         # Array of wavelengths
         result = siepic.bidirectional_coupler(wl=jnp.array([1.50, 1.55, 1.60]))
@@ -165,8 +163,8 @@ class TestHalfRing:
                 thickness=params["thickness"],
                 coupling_length=params["coupling_length"],
             )
-            assert is_sdict(
-                result
+            assert isinstance(
+                result, dict
             ), f"Result is not a valid SDict object for params: {params}"
 
 
@@ -377,8 +375,8 @@ class TestTaper:
                 w2=params["w2"],
                 length=params["length"],
             )
-            assert is_sdict(
-                result
+            assert isinstance(
+                result, dict
             ), f"Result is not a valid SDict object for params: {params}"
 
 
@@ -390,16 +388,16 @@ class TestTerminator:
     def test_instantiable(self):
         for pol in ["te", "tm"]:
             result = siepic.terminator(pol=pol)  # type: ignore
-            assert is_sdict(result), "Result is not a valid SDict object"
+            assert isinstance(result, dict), "Result is not a valid SDict object"
 
         # Test for different wavelengths
         for wl in [1.4, 1.5, 1.6]:
             result = siepic.terminator(wl=wl)
-            assert is_sdict(result), "Result is not a valid SDict object"
+            assert isinstance(result, dict), "Result is not a valid SDict object"
 
         # Test for array of wavelengths
         result = siepic.terminator(wl=jnp.array([1.50, 1.55, 1.60]))
-        assert is_sdict(result), "Result is not a valid SDict object"
+        assert isinstance(result, dict), "Result is not a valid SDict object"
 
 
 class TestGratingCoupler:
@@ -418,16 +416,16 @@ class TestGratingCoupler:
         )
         for p, t, d in params:
             result = siepic.grating_coupler(pol=p, thickness=t, dwidth=d)  # type: ignore
-            assert is_sdict(result), "Result is not a valid SDict object"
+            assert isinstance(result, dict), "Result is not a valid SDict object"
 
         # Test for different wavelengths
         for wl in [1.4, 1.5, 1.6]:
             result = siepic.grating_coupler(wl=wl)
-            assert is_sdict(result), "Result is not a valid SDict object"
+            assert isinstance(result, dict), "Result is not a valid SDict object"
 
         # Test for array of wavelengths
         result = siepic.grating_coupler(wl=jnp.array([1.50, 1.55, 1.60]))
-        assert is_sdict(result), "Result is not a valid SDict object"
+        assert isinstance(result, dict), "Result is not a valid SDict object"
 
 
 class TestWaveguide:
@@ -612,25 +610,25 @@ class TestWaveguide:
                 height = width_height_combo["height"]
                 width = width_height_combo["width"]
                 result = siepic.waveguide(pol=pol, length=100, width=width, height=height, loss=2)  # type: ignore
-                assert is_sdict(result), "Result is not a valid SDict object"
+                assert isinstance(result, dict), "Result is not a valid SDict object"
 
         # Test for different wavelengths
         for wl in [1.4, 1.5, 1.6]:
             result = siepic.waveguide(wl=wl, length=100, width=500, height=220, loss=2)
-            assert is_sdict(result), "Result is not a valid SDict object"
+            assert isinstance(result, dict), "Result is not a valid SDict object"
 
         # Test for array of wavelengths
         result = siepic.waveguide(
             wl=jnp.array([1.50, 1.55, 1.60]), length=100, width=500, height=220, loss=2
         )
-        assert is_sdict(result), "Result is not a valid SDict object"
+        assert isinstance(result, dict), "Result is not a valid SDict object"
 
         # Test for several loss values
         for loss in [0.1, 0.2, 0.3]:
             result = siepic.waveguide(
                 wl=1.55, length=100, width=500, height=220, loss=loss
             )
-            assert is_sdict(result), "Result is not a valid SDict object"
+            assert isinstance(result, dict), "Result is not a valid SDict object"
 
 
 class TestYBranch:
@@ -646,13 +644,13 @@ class TestYBranch:
         )
         for p, t, w in params:
             result = siepic.y_branch(pol=p, thickness=t, width=w)  # type: ignore
-            assert is_sdict(result), "Result is not a valid SDict object"
+            assert isinstance(result, dict), "Result is not a valid SDict object"
 
         # Test for different wavelengths
         for wl in [1.4, 1.5, 1.6]:
             result = siepic.y_branch(wl=wl)
-            assert is_sdict(result), "Result is not a valid SDict object"
+            assert isinstance(result, dict), "Result is not a valid SDict object"
 
         # Test for array of wavelengths
         result = siepic.y_branch(wl=jnp.array([1.50, 1.55, 1.60]))
-        assert is_sdict(result), "Result is not a valid SDict object"
+        assert isinstance(result, dict), "Result is not a valid SDict object"
