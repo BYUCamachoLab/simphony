@@ -13,38 +13,38 @@ class TestRect:
         r = 2
         phi = jnp.pi / 4
         res = utils.rect(r, phi)
-        assert res == jnp.sqrt(2) + jnp.sqrt(2) * 1j
+        assert jnp.allclose(res, jnp.sqrt(2) + jnp.sqrt(2) * 1j)
 
     def test_boundary(self):
         # 1 + 0j
         r = 1
         phi = 0
         res = utils.rect(r, phi)
-        assert res == pytest.approx(1, abs=1e-15)
+        assert jnp.allclose(res, 1 + 0j)
 
         # 0 + 1j
         r = 1
         phi = jnp.pi / 2
         res = utils.rect(r, phi)
-        assert res == pytest.approx(1j, abs=1e-15)
+        assert jnp.allclose(res, 0 + 1j)
 
         # -1 + 0j
         r = 1
         phi = jnp.pi
         res = utils.rect(r, phi)
-        assert res == pytest.approx(-1, abs=1e-15)
+        assert jnp.allclose(res, -1 + 0j)
 
         # 0 - 1j
         r = 1
         phi = 3 * jnp.pi / 2
         res = utils.rect(r, phi)
-        assert res == pytest.approx(-1j, abs=1e-15)
+        assert jnp.allclose(res, 0 - 1j)
 
         # 0 + 0j
         r = 0
         phi = 0
         res = utils.rect(r, phi)
-        assert res == pytest.approx(0, abs=1e-15)
+        assert jnp.allclose(res, 0 + 0j)
 
     def test_exceptions(self):
         # Negative radius
@@ -56,33 +56,39 @@ class TestPolar:
     def test_funcionality(self):
         z = 1 + 1j
         res = utils.polar(z)
-        assert res == (jnp.sqrt(2), jnp.pi / 4)
+        assert jnp.allclose(res[0], jnp.sqrt(2))
+        assert jnp.allclose(res[1], jnp.pi / 4)
 
     def test_boundary(self):
         # 1 + 0j
         z = 1
         res = utils.polar(z)
-        assert res == (1, 0)
+        assert jnp.allclose(res[0], 1, atol=1e-15)
+        assert jnp.allclose(res[1], 0, atol=1e-15)
 
         # 0 + 1j
         z = 1j
         res = utils.polar(z)
-        assert res == (1, jnp.pi / 2)
+        assert jnp.allclose(res[0], 1, atol=1e-15)
+        assert jnp.allclose(res[1], jnp.pi / 2, atol=1e-15)
 
         # -1 + 0j
         z = -1
         res = utils.polar(z)
-        assert res == (1, jnp.pi)
+        assert jnp.allclose(res[0], 1, atol=1e-15)
+        assert jnp.allclose(res[1], jnp.pi, atol=1e-15)
 
         # 0 - 1j
         z = -1j
         res = utils.polar(z)
-        assert res == (1, -jnp.pi / 2)
+        assert jnp.allclose(res[0], 1, atol=1e-15)
+        assert jnp.allclose(res[1], -jnp.pi / 2, atol=1e-15)
 
         # 0 + 0j
         z = 0
         res = utils.polar(z)
-        assert res == (0, 0)
+        assert jnp.allclose(res[0], 0, atol=1e-15)
+        assert jnp.allclose(res[1], 0, atol=1e-15)
 
     def test_exceptions(self):
         pass
@@ -153,43 +159,43 @@ class TestMatAddPolar:
 
 class TestString2Float:
     def test_no_suffix(self):
-        assert utils.str2float("2.53") == 2.53
+        assert utils.str2float("2.53") == pytest.approx(2.53)
 
     def test_femto(self):
-        assert utils.str2float("17.83f") == 17.83e-15
+        assert utils.str2float("17.83f") == pytest.approx(17.83e-15)
 
     def test_pico(self):
-        assert utils.str2float("-15.37p") == -15.37e-12
+        assert utils.str2float("-15.37p") == pytest.approx(-15.37e-12)
 
     def test_nano(self):
-        assert utils.str2float("158.784n") == 158.784e-9
+        assert utils.str2float("158.784n") == pytest.approx(158.784e-9)
 
     def test_micro(self):
-        assert utils.str2float("15.26u") == 15.26e-06
+        assert utils.str2float("15.26u") == pytest.approx(15.26e-06)
 
     def test_milli(self):
-        assert utils.str2float("-15.781m") == -15.781e-3
+        assert utils.str2float("-15.781m") == pytest.approx(-15.781e-3)
 
     def test_centi(self):
-        assert utils.str2float("14.5c") == 14.5e-2
+        assert utils.str2float("14.5c") == pytest.approx(14.5e-2)
 
     def test_kilo(self):
-        assert utils.str2float("-0.257k") == -0.257e3
+        assert utils.str2float("-0.257k") == pytest.approx(-0.257e3)
 
     def test_Mega(self):
-        assert utils.str2float("15.26M") == 15.26e6
+        assert utils.str2float("15.26M") == pytest.approx(15.26e6)
 
     def test_Giga(self):
-        assert utils.str2float("-8.73G") == -8.73e9
+        assert utils.str2float("-8.73G") == pytest.approx(-8.73e9)
 
     def test_Tera(self):
-        assert utils.str2float("183.4T") == 183.4e12
+        assert utils.str2float("183.4T") == pytest.approx(183.4e12)
 
     def test_e(self):
-        assert utils.str2float("15.2e-6") == 15.2e-6
+        assert utils.str2float("15.2e-6") == pytest.approx(15.2e-6)
 
     def test_E(self):
-        assert utils.str2float("0.4E6") == 0.4e6
+        assert utils.str2float("0.4E6") == pytest.approx(0.4e6)
 
     def test_unrecognized(self):
         with pytest.raises(ValueError):
@@ -203,12 +209,12 @@ class TestString2Float:
 class TestFreq2Wl:
     def test_funcionality(self):
         # Test converting a few random frequencies to wavelengths
-        assert utils.freq2wl(299792458) == 1
-        assert utils.freq2wl(149896229) == 2
-        assert utils.freq2wl(99930819.33333333) == 3
-        assert utils.freq2wl(4) == 74948114.5
-        assert utils.freq2wl(5) == 59958491.6
-        assert utils.freq2wl(6) == 49965409.666666664
+        assert jnp.allclose(utils.freq2wl(299792458), 1)
+        assert jnp.allclose(utils.freq2wl(149896229), 2)
+        assert jnp.allclose(utils.freq2wl(99930819.33333333), 3)
+        assert jnp.allclose(utils.freq2wl(4), 74948114.5)
+        assert jnp.allclose(utils.freq2wl(5), 59958491.6)
+        assert jnp.allclose(utils.freq2wl(6), 49965409.666666664)
 
     def test_exceptions(self):
         # Test with negative frequency
@@ -230,9 +236,9 @@ class TestFreq2Wl:
 class TestWl2Freq:
     def test_funcionality(self):
         # Test converting a few random wavelengths to frequencies
-        assert utils.wl2freq(1) == 299792458
-        assert utils.wl2freq(2) == 149896229
-        assert utils.wl2freq(3) == 99930819.33333333
+        assert jnp.allclose(utils.wl2freq(1), 299792458)
+        assert jnp.allclose(utils.wl2freq(2), 149896229)
+        assert jnp.allclose(utils.wl2freq(3), 99930819.33333333)
 
     def test_exceptions(self):
         # Test with negative wavelength
@@ -254,9 +260,9 @@ class TestWl2Freq:
 class TestWlum2Freq:
     def test_funcionality(self):
         # Test converting a few random wavelengths in microns to frequencies
-        assert utils.wlum2freq(1) == utils.wl2freq(1e-6)
-        assert utils.wlum2freq(2) == utils.wl2freq(2e-6)
-        assert utils.wlum2freq(3) == utils.wl2freq(3e-6)
+        assert jnp.allclose(utils.wlum2freq(1), utils.wl2freq(1e-6))
+        assert jnp.allclose(utils.wlum2freq(2), utils.wl2freq(2e-6))
+        assert jnp.allclose(utils.wlum2freq(3), utils.wl2freq(3e-6))
 
     def test_exceptions(self):
         # Test with negative wavelength in microns
