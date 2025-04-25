@@ -5,18 +5,18 @@ import sax
 from jax import config
 config.update("jax_enable_x64", True)
 
-from simphony.time_domain.TimeSim import TimeSim,TimeResult
+from simphony.time_domain.simulation import TimeSim,TimeResult
 from simphony.time_domain.utils import  gaussian_pulse, smooth_rectangular_pulse
 from simphony.libraries import siepic
 from simphony.time_domain.ideal import Modulator
 
 import time
 
-T = 2.5e-11
-dt = 10e-14 
+T = 0.1e-13
+dt = 1e-16 
 dte = 5e-14     # Total time duration (40 ps)
-t = jnp.arange(0, T, dte)  # Time array
-t0 = 1e-11  # Pulse start time
+t = jnp.arange(0, T, dte) # Time array
+t0 = 0.05e-13  # Pulse start time
 std = 1e-12
 inter = 250
 

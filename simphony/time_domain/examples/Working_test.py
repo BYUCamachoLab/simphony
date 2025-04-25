@@ -5,7 +5,7 @@ import sax
 from jax import config
 config.update("jax_enable_x64", True)
 
-from simphony.time_domain.TimeSim import TimeSim,TimeResult
+from simphony.time_domain.simulation import TimeSim,TimeResult
 from simphony.time_domain.utils import  gaussian_pulse, smooth_rectangular_pulse
 from simphony.libraries import siepic
 from simphony.time_domain.ideal import Modulator
