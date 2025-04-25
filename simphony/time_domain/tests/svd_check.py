@@ -13,19 +13,21 @@ import matplotlib
 
 import time
 
-T = 10.0e-11 
+T = 20.0e-11 
 dt = 1e-14      # Total time duration (40 ps)
 t = jnp.arange(0, T, dt)  # Time array
 t0 = 1e-11  # Pulse start time
 std = 1e-12
 inter = 50
+
+
 m   = jnp.array([], dtype=jnp.complex128)  # MZI#1 arm A
 m4  = jnp.array([], dtype=jnp.complex128)  # MZI#1 arm B
 m2  = jnp.array([], dtype=jnp.complex128)  # MZI#2 arm A
 m5  = jnp.array([], dtype=jnp.complex128)  # MZI#2 arm B
-#np.pi/6,-np.pi/6,np.pi/3,-np.pi/3,
-#np.pi/6,-np.pi/6,np.pi/3,-np.pi/3, 
-general_table = [ np.pi/10, 9*np.pi/10, np.pi/2.45, np.pi/1.65 ]
+
+
+general_table = [ np.pi/8, 7*np.pi/8, np.pi/2.45, np.pi/1.65 ]
 i_phase_table = [general_table[0], general_table[1], general_table[2], general_table[3]]
 q_phase_table = [general_table[0], general_table[1], general_table[2], general_table[3]]
 
@@ -65,23 +67,15 @@ m3 = f_mod3 * jnp.ones(len(t),dtype = complex)
 # f_mod4 =0.0 
 # # m4 = f_mod4 * jnp.ones(len(t),dtype = complex)
 # m5 = f_mod4 * jnp.ones(len(t),dtype = complex)
-x = jnp.linspace(0, 3.14, len(t))
+f_mod6 =-jnp.pi/10
+m6 = f_mod6 * jnp.ones(len(t),dtype = complex)
 
-# Define Gaussian parameters
-mu = 1.14  # center the Gaussian in the middle of the interval
-sigma = 0.3     # adjust sigma for desired width
-
-# Compute the Gaussian function
-gaussian = jnp.exp(-0.5 * ((x - mu) / sigma) ** 2)
-
-# Optionally, normalize so the area under the curve is 1
-gaussian = gaussian / jnp.trapezoid(gaussian, x)
-zero = 0*x
 timePhaseInstantiated = Modulator(mod_signal=m)
 timePhaseInstantiated2 = Modulator(mod_signal=m2)
 timePhaseInstantiated3 = Modulator(mod_signal=m3)
 timePhaseInstantiated4 = Modulator(mod_signal=m4)
 timePhaseInstantiated5 = Modulator(mod_signal=m5)
+timePhaseInstantiated6 = Modulator(mod_signal=m6)
 
 netlist={
     "instances": {
@@ -92,6 +86,7 @@ netlist={
         "pm3": "phase_modulator3",
         "pm4": "phase_modulator4",
         "pm5": "phase_modulator5",
+        "pm6": "phase_modulator6",
         "y2": "y_branch",
         "wg2": "waveguide",
         "y3": "y_branch",
@@ -102,29 +97,56 @@ netlist={
         "wg4": "waveguide",
         "wg5": "waveguide",
         "wg6": "waveguide",
+        "bdc": "bidirectional",
+        "bdc2": "bidirectional",
+        "bdc3": "bidirectional",
     },
     "connections": {
         "y2,port_2":"y3,port_1",
         "y2,port_3":"y4,port_1",
+        
         "y4,port_2":"wg5,o0",
         "y4,port_3":"wg6,o0",
+
         "wg5,o1":"pm,o0",
         "wg6,o1":"pm4,o0",
+
+        #"wg5,o1":"y5,port_3",
+
+
         "y5,port_3":"pm,o1",
         "y5,port_2":"pm4,o1",
+        
+
         "y3,port_2":"wg,o0",
         "y3,port_3":"wg2,o0",
+
+        #"wg,o1":"y6,port_2",
+
+        #"wg2,o1":"y6,port_3",
+        
         "wg,o1":"pm2,o0",
         "wg2,o1":"pm5,o0",
+
         "y6,port_2":"pm2,o1",
+        
         "y6,port_3":"pm5,o1",
         "y6,port_1":"pm3,o0",
+        
+        
         "y,port_3":"pm3,o1",
+        #"y,port_3":"y6,port_1",
         "y,port_2":"y5,port_1",
+
+        "y,port_1":"pm6,o0",
+        
+
     },
     "ports": {
         "o0":"y2, port_1",
-        "o1":"y, port_1",
+        "o1":"pm6, o1",
+        
+
     },
 }
 models={
@@ -136,9 +158,10 @@ models={
     "phase_modulator3": timePhaseInstantiated3,
     "phase_modulator4": timePhaseInstantiated4,
     "phase_modulator5": timePhaseInstantiated5,
+    "phase_modulator6": timePhaseInstantiated6,
 }
 active_components = {
-    "pm","pm2","pm3","pm4","pm5",
+    "pm","pm2","pm3","pm4","pm5","pm6",
 }
 
 
@@ -152,20 +175,34 @@ num_measurements = 200
 model_order = 100
 center_wvl = 1.548
 wvl = np.linspace(1.5, 1.6, num_measurements)
-options = {'wl':wvl,'wg':{"length": 10.0, "loss": 100}}
+options = {'wl':wvl,'wg':{"length": 10.0, "loss": 100}, 'wg2':{"length": 10.0, "loss": 100},'wg3':{"length":10.0, "loss":100},'wg4':{"length":10.0, "loss":100},
+           'wg5':{"length":10.0, "loss":100},'wg6':{"length":10.0, "loss":100}}
 
-
-time_sim.build_model(model_parameters=options)
+tic = time.time()
+time_sim.build_model(model_parameters=options,max_size= 5)
+toc = time.time()
+build_time = toc - tic
 
 num_outputs = 2
 
+
+# inputs = {
+#     f'o{i}': gaussian_pulse(t, t0 - 0.5 * t0, std) if i == 0 or i == 1  else jnp.zeros_like(t)
+#     for i in range(num_outputs)
+# }
 inputs = {
             f'o{i}': smooth_rectangular_pulse(t,0.0e-11,20e-11) if i == 0 else jnp.zeros_like(t)
             for i in range(num_outputs)
         }
 
-modelResult =time_sim.run(t, inputs)
 
+tic = time.time()
+modelResult =time_sim.run(t, inputs)
+toc = time.time()
+run_time = toc - tic
+
+print(f"Build time: {build_time}")
+print(f"Run time: {run_time}")
 modelResult.plot_sim()
 
 I_output = np.real(modelResult.outputs["o1"])
@@ -173,7 +210,7 @@ Q_output = np.imag(modelResult.outputs["o1"])
 
 
 plt.subplot(2,1,1)
-plt.plot(t*1e12, Q_output, label='System Output I(t)', color='green', linestyle='--')
+plt.plot(t*1e12, I_output, label='System Output I(t)', color='green', linestyle='--')
 plt.xlabel('Time (ps)')
 plt.ylabel('Amplitude')
 plt.title('In-Phase Component Comparison')
@@ -183,7 +220,7 @@ plt.grid(True)
 # Plot Q components
 plt.subplot(2,1,2)
 
-plt.plot(t*1e12, I_output, label='System Output Q(t)', color='orange', linestyle='--')
+plt.plot(t*1e12, Q_output, label='System Output Q(t)', color='orange', linestyle='--')
 plt.xlabel('Time (ps)')
 plt.ylabel('Amplitude')
 plt.title('Quadrature Component Comparison')
@@ -196,7 +233,7 @@ plt.show()
 
 
 plt.figure(figsize=(6,6))
-plt.plot(Q_output, I_output, color='blue', linewidth=1, alpha=0.7, label='Transition Path')
+plt.plot(I_output, Q_output, color='blue', linewidth=1, alpha=0.7, label='Transition Path')
 #plt.scatter(symbols_I, symbols_Q, color='red', s=50, zorder=5, label='Symbols')
 plt.xlabel("In-Phase (I)")
 plt.ylabel("Quadrature (Q)")
@@ -205,7 +242,19 @@ plt.legend()
 plt.grid(True)
 plt.axis('equal')
 plt.show()
+results = []
+results.append({
 
+    "I_output": I_output,
+    "Q_output": Q_output,
+    
+})
+
+np.savez("simulation_data_QAM_signal_generation.npz",
+         results      = results,
+         t_in         = t,
+         
+)
 def upsample_trajectory(I, Q, factor=20):
     I_list, Q_list = [], []
     n = len(I)

@@ -11,3 +11,7 @@ class ModelValidationError(SimphonyError):
 
 class ShapeMismatchError(SimphonyError):
     """Error raised when the shape of an array is incorrect."""
+
+
+class UndefinedActiveComponent(SimphonyError):
+    """Error raised when an active component is included in passive circuit."""
