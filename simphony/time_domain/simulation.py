@@ -309,7 +309,8 @@ class TimeSim(Simulation):
                     wvl,
                     center_wvl,
                     s_matrix,
-                    model_order
+                    model_order,
+                    options=bvf_options
                 )
                 self.time_system = TimeSystemIIR(single_iir_model)
 
