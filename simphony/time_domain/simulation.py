@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from scipy.interpolate import interp1d
 from simphony.exceptions import UndefinedActiveComponent
 import sys
+from tqdm.auto import tqdm
+
 
 
 @dataclass
@@ -349,9 +351,9 @@ class TimeSim(Simulation):
                 }
             i = 0
             # Step through time, one index at a time
-            for time_index, _ in enumerate(self.t):
+            for time_index, _ in tqdm(enumerate(self.t),desc= "Processing", total=len(self.t)):
                 self.step(time_index)
-                print(f"Time index: {i} / {len(self.t)}")
+                # print(f"Time index: {i} / {len(self.t)}")
                 i += 1
               
         # If no active components, do a single time-domain response (already built)
