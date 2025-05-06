@@ -137,6 +137,9 @@ class Modulator(TimeSystem):
 
         
         return response
+    def append(self, mod_signal: ArrayLike|float) -> None:
+        self.s_mod = jnp.append(self.s_mod, jnp.exp(1j * mod_signal))
+        
     
     def reset(self) -> None:
         self.countstep = 0

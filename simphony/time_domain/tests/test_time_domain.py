@@ -330,7 +330,7 @@ def run_simulation4():
 
 
     modelResult =time_sim.run(t, inputs)
-    
+    modelResult.plot_sim()
     return modelResult.outputs
 
 @pytest.mark.simulation

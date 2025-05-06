@@ -138,7 +138,8 @@ class TimeSim(Simulation):
         model_order: int = 50,
         model_parameters: dict = None,
         dt: float = 1e-14,
-        max_size: int = 5
+        max_size: int = 5,
+        suppress_output: bool = False
     ) -> None:
         """
         Builds or configures the underlying IIR model(s) for the circuit.
@@ -166,6 +167,7 @@ class TimeSim(Simulation):
         sampling_freq = -1 / dt
         beta = sampling_freq / (freqs[-1] - freqs[0])
         bvf_options = BVF_Options(beta=beta)
+        self.suppress_output = suppress_output
 
         # If active components exist, break out passive sub-circuits
         if self.active_components is not None:
@@ -181,14 +183,14 @@ class TimeSim(Simulation):
                 self.active_components,
                 max_size=max_size
             )
-
+            if not self.suppress_output:
             # Print the passive sub-netlists for debugging/logging
-            for i, sub_net in enumerate(self.passive_subnetlists):
-                print(f"\n--- Passive Sub-Netlist {i} ---")
-                print("\nInstances:", sub_net["instances"])
-                print("\nConnections:", sub_net["connections"])
-                print("\nPorts:", sub_net["ports"])
-                print()
+                for i, sub_net in enumerate(self.passive_subnetlists):
+                    print(f"\n--- Passive Sub-Netlist {i} ---")
+                    print("\nInstances:", sub_net["instances"])
+                    print("\nConnections:", sub_net["connections"])
+                    print("\nPorts:", sub_net["ports"])
+                    print()
 
             # Build frequency-domain circuits via SAX and convert to time-domain models
             sub_circuit_list = {}
@@ -252,13 +254,13 @@ class TimeSim(Simulation):
                     self.active_components,
                     max_size=max_size
                 )
-
-                for i, sub_net in enumerate(self.passive_subnetlists):
-                    print(f"\n--- Passive Sub-Netlist {i} ---")
-                    print("\nInstances:", sub_net["instances"])
-                    print("\nConnections:", sub_net["connections"])
-                    print("\nPorts:", sub_net["ports"])
-                    print()
+                if not self.suppress_output:
+                    for i, sub_net in enumerate(self.passive_subnetlists):
+                        print(f"\n--- Passive Sub-Netlist {i} ---")
+                        print("\nInstances:", sub_net["instances"])
+                        print("\nConnections:", sub_net["connections"])
+                        print("\nPorts:", sub_net["ports"])
+                        print()
                 sub_circuit_list = {}
                 port_map_list = {}
                 self.active_components = []
@@ -532,13 +534,13 @@ class TimeSim(Simulation):
         # 4) Also re-add any removed top-level ports referencing active devices
             for port_label, comp_port_str in self.removed_ports.items():
                 self.add_to_time_domain_netlist(port=(port_label, comp_port_str))
-
-        # (Optional) Print the final time-domain netlist for debugging
-        print("\n--- Final Time-Domain Netlist ---")
-        print("\nModels:", self.td_netlist["models"])
-        print("\nConnections:", self.td_netlist["connections"])
-        print("\nPorts:", self.td_netlist["ports"])
-        print()
+        if not self.suppress_output:
+            # (Optional) Print the final time-domain netlist for debugging
+            print("\n--- Final Time-Domain Netlist ---")
+            print("\nModels:", self.td_netlist["models"])
+            print("\nConnections:", self.td_netlist["connections"])
+            print("\nPorts:", self.td_netlist["ports"])
+            print()
 
     def find_subcircuit_partner(self, target_str: str, port_map_list: dict) -> str:
         """

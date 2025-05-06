@@ -122,7 +122,43 @@ def phase_modulator(
 
     # Define the s_dict structure
     s_dict = {
-        ("o0", "o1"): s_input_output,  # Transmission from input to output
+        ("o0", "o1"): s_input_output,
+        ("o1","o0"): s_input_output,  # Transmission from input to output
     }
 
+    return s_dict
+
+def MMI(
+        *,
+        length: float = 10.0,
+        loss: float = 0.0,
+        r: int = 2,
+        s: int = 2,
+)-> sax.SDict:
+    """Multi-Mode Interference (MMI) function."""
+    N = r + s
+    phases = jnp.zeros((N, N))
+    for i in range(1, N+1):
+        for j in range(1, N+1):
+            num = ((j-1)*(2*N + i - j) if (i+j)%2==0
+                   else (i+j-1)*(2*N - i - j + 1))
+            phases[i-1, j-1] = (jnp.pi/ (4*N)) * num + jnp.pi
+
+    loss_mag = loss / (10 * jnp.log10(jnp.exp(1)))
+    alpha = loss_mag * 1e-4
+    amplitude = jnp.asarray(jnp.exp(-alpha * length / 2), dtype=complex)
+    s_dict = {}
+    for i in range(r):
+        for j in range(s):
+            if i != j:
+                s_dict[(f"o{i}", f"o{j+r}")] = 1/jnp.sqrt(s)*amplitude*jnp.exp(1j * phases[i, j+r])
+    for i in range(s):
+        for j in range(r):
+            if i != j:
+                s_dict[(f"o{i+s}", f"o{j}")] = 1/jnp.sqrt(r)*amplitude*jnp.exp(1j * phases[i+s, j])
+    for i in range(r):
+        for j in range(s):
+            s_dict[(f"o{i}", f"o{j}")] = 0.0
+            s_dict[(f"o{i+r}", f"o{j+r}")] = 0.0
+    
     return s_dict

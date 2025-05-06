@@ -13,7 +13,7 @@ from simphony.time_domain.ideal import Modulator
 
 import time
 
-T = 2.5e-12
+T = 5e-12
 dt = 1e-15      # Total time duration (40 ps)
 t = jnp.arange(0, T, dt) # Time array
 t0 = 1.0e-11  # Pulse start time
@@ -88,7 +88,7 @@ time_sim.build_model(model_parameters=options, dt = dt)
 num_outputs = 2
 
 inputs = {
-            f'o{i}': smooth_rectangular_pulse(t,0.0e-12,1.5e-12) if i == 0 else jnp.zeros_like(t)
+            f'o{i}': smooth_rectangular_pulse(t,0.1e-12,4.5e-12) if i == 0 else jnp.zeros_like(t)
             for i in range(num_outputs)
         }
 
@@ -100,26 +100,32 @@ run_time = toc - tic
 
 print(f"Run time: {run_time}")
 modelResult.plot_sim()
+plt.figure()
+plt.plot(t, gaussian, label='Gaussian Pulse')
+plt.xlabel('Time (s)')
+plt.ylabel('Amplitude')
+plt.title('Gaussian Pulse')
+plt.show()
 
-import os
-import pickle
+# import os
+# import pickle
 
-# 1. Build the path to the time_domain directory
-#    Adjust as needed if your script is one directory deeper or higher.
-time_domain_path = os.path.join("simphony", "time_domain","tests")
+# # 1. Build the path to the time_domain directory
+# #    Adjust as needed if your script is one directory deeper or higher.
+# time_domain_path = os.path.join("simphony", "time_domain","tests")
 
-# 2. Create a subdirectory called test_comparison_results inside time_domain
-comparison_dir = os.path.join(time_domain_path, "test_comparison_results")
-os.makedirs(comparison_dir, exist_ok=True)
+# # 2. Create a subdirectory called test_comparison_results inside time_domain
+# comparison_dir = os.path.join(time_domain_path, "test_comparison_results")
+# os.makedirs(comparison_dir, exist_ok=True)
 
-# 3. Define the output file path
-pickle_path = os.path.join(comparison_dir, "simulation_results4.pkl")
+# # 3. Define the output file path
+# pickle_path = os.path.join(comparison_dir, "simulation_results4.pkl")
 
-# 4. Grab your dictionary data (modelResult.outputs or modelResult.output())
-simulation_data = modelResult.outputs  # or modelResult.output() if that's the correct method
+# # 4. Grab your dictionary data (modelResult.outputs or modelResult.output())
+# simulation_data = modelResult.outputs  # or modelResult.output() if that's the correct method
 
-# 5. Write to a pickle file
-with open(pickle_path, "wb") as f:
-    pickle.dump(simulation_data, f)
+# # 5. Write to a pickle file
+# with open(pickle_path, "wb") as f:
+#     pickle.dump(simulation_data, f)
 
-print(f"Simulation output saved to {pickle_path}")
+# print(f"Simulation output saved to {pickle_path}")
