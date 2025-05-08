@@ -128,8 +128,9 @@ def phase_modulator(
 
     return s_dict
 
-def MMI(
+def MultiModeInterferometer(
         *,
+        wl: ArrayLike | float = 1.55,
         length: float = 10.0,
         loss: float = 0.0,
         r: int = 2,
@@ -142,23 +143,21 @@ def MMI(
         for j in range(1, N+1):
             num = ((j-1)*(2*N + i - j) if (i+j)%2==0
                    else (i+j-1)*(2*N - i - j + 1))
-            phases[i-1, j-1] = (jnp.pi/ (4*N)) * num + jnp.pi
+            new_val = (jnp.pi/(4*N)) * num + jnp.pi
+            phases = phases.at[i-1, j-1].set(new_val)
 
     loss_mag = loss / (10 * jnp.log10(jnp.exp(1)))
     alpha = loss_mag * 1e-4
     amplitude = jnp.asarray(jnp.exp(-alpha * length / 2), dtype=complex)
     s_dict = {}
+    ones = jnp.ones_like(wl)
     for i in range(r):
         for j in range(s):
             if i != j:
-                s_dict[(f"o{i}", f"o{j+r}")] = 1/jnp.sqrt(s)*amplitude*jnp.exp(1j * phases[i, j+r])
+                s_dict[(f"o{i}", f"o{j+r}")] = 1/jnp.sqrt(s)*amplitude*jnp.exp(1j * phases[i, j+r])*ones
     for i in range(s):
         for j in range(r):
             if i != j:
-                s_dict[(f"o{i+s}", f"o{j}")] = 1/jnp.sqrt(r)*amplitude*jnp.exp(1j * phases[i+s, j])
-    for i in range(r):
-        for j in range(s):
-            s_dict[(f"o{i}", f"o{j}")] = 0.0
-            s_dict[(f"o{i+r}", f"o{j+r}")] = 0.0
-    
-    return s_dict
+                s_dict[(f"o{i+s}", f"o{j}")] = 1/jnp.sqrt(r)*amplitude*jnp.exp(1j * phases[i+s, j])*ones
+    sdict = sax.reciprocal(s_dict)
+    return sdict
