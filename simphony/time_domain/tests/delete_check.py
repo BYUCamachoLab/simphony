@@ -50,7 +50,7 @@ T = 1.0e-11
 dt = 1e-14                   # Time step/resolution
 t = jnp.arange(0, T, dt)
 models = {
-    "MultiModeInterferometer": ideal.MMI,
+    "MultiModeInterferometer": ideal.MultiModeInterferometer,
     "waveguide": ideal.waveguide,
     "coupler": ideal.coupler,
     }
