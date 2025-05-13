@@ -137,10 +137,51 @@ class Modulator(TimeSystem):
 
         
         return response
+    
     def append(self, mod_signal: ArrayLike|float) -> None:
         self.s_mod = jnp.append(self.s_mod, jnp.exp(1j * mod_signal))
         
     
     def reset(self) -> None:
         self.countstep = 0
+
+
+class MMI(TimeSystem):
+    def __init__(
+            self,
+            r: int = 2,
+            s: int = 2,
+            length: float = 10.0,
+            loss: float = 0.0,
+    )-> None:
+        super().__init__()
+        self.num_ports = r + s
+        self.length = length
+        self.loss = loss
+        self.r = r
+        self.s = s
+        self.ports = [f'o{i}' for i in range(self.num_ports)]
+    def response(self, inputs:dict) -> dict:
+        loss_mag = self.loss / (10 * jnp.log10(jnp.exp(1)))
+        alpha = loss_mag * 1e-4
+        amplitude = jnp.asarray(jnp.exp(-alpha * self.length / 2), dtype=complex)
+        modifier_s_to_r = 1/jnp.sqrt(self.r) * amplitude
+        modifier_r_to_s = 1/jnp.sqrt(self.s) * amplitude
+        response = {}
+        sum_of_inputs_s = 0.0
+        sum_of_inputs_r = 0.0
+        for i in range(len(inputs)-self.r):
+            sum_of_inputs_s += inputs[f'o{i}']
+            sum_of_inputs_r += inputs[f'o{i+self.r}']
+        
+        
+        for i in range(self.r):
+            response[f'o{i}'] = sum_of_inputs_r * modifier_r_to_s
+            response[f'o{i+self.r}'] = sum_of_inputs_s * modifier_s_to_r
+
+        return response
+    
+        
+    def reset(self) -> None:
+        pass
 

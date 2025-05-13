@@ -353,7 +353,7 @@ class TimeSim(Simulation):
                 }
             i = 0
             # Step through time, one index at a time
-            for time_index, _ in tqdm(enumerate(self.t),desc= "Processing", total=len(self.t)):
+            for time_index, _ in tqdm(enumerate(self.t),desc= "Processing", total=len(self.t), disable=self.suppress_output):
                 self.step(time_index)
                 # print(f"Time index: {i} / {len(self.t)}")
                 i += 1
