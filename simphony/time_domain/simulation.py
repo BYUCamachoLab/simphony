@@ -6,7 +6,7 @@ import jax.numpy as jnp
 import math
 from jax import config
 
-from simphony.time_domain.time_system import TimeSystemIIR
+from simphony.time_domain.time_system import TimeSystemIIR, TimeSystem
 config.update("jax_enable_x64", True)
 
 from simphony.utils import dict_to_matrix
@@ -105,7 +105,18 @@ class TimeSim(Simulation):
         self.netlist = netlist
         self.models = models
         self.active_components = active_components
-
+        for model in self.models:
+            if isinstance(self.models[model], TimeSystem):
+                for instance in self.netlist["instances"]:
+                    if self.netlist["instances"][instance] == model:
+                        if self.active_components is None:
+                            self.active_components = set()
+                            if instance not in self.active_components:
+                                self.active_components.add(instance)
+                        else:
+                            if instance not in self.active_components:
+                                self.active_components.add(instance)
+        
         # Extract netlist info for convenience
         self.instances = netlist["instances"]
         self.connections = netlist["connections"]
@@ -529,11 +540,17 @@ class TimeSim(Simulation):
                 else:
                     # Otherwise, treat this as a top-level port
                     self.add_to_time_domain_netlist(port=(local_port_label, subckt_key))
+                    
+        # if not self.td_netlist.get("instances") :
+        #     for instance in self.active_components:
+        #         self.td_netlist["models"][instance] = self.models[self.instances[instance]]
+        #         for port in self.ports:
+        #             self.td_netlist["ports"][port] = f"{instance},{port}"
 
         if self.removed_ports is not None:
-        # 4) Also re-add any removed top-level ports referencing active devices
             for port_label, comp_port_str in self.removed_ports.items():
                 self.add_to_time_domain_netlist(port=(port_label, comp_port_str))
+        # 4) Add the top-level ports to the netlis
         if not self.suppress_output:
             # (Optional) Print the final time-domain netlist for debugging
             print("\n--- Final Time-Domain Netlist ---")
