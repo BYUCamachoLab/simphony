@@ -5,18 +5,13 @@ import sax
 import jax
 from jax import config
 config.update("jax_enable_x64", True)
-import os, sys
-sys.path.append("/Users/mw742/simphony")
-# 1. Where Python is “running” right now
-print("CWD:", os.getcwd())
 
-# 2. All the places Python will search for modules
-print("sys.path:", sys.path)
 
 from simphony.time_domain import TimeCircuit, TimeSim
 from simphony.time_domain.utils import gaussian_pulse, smooth_rectangular_pulse
 from simphony.libraries import siepic,ideal
-from simphony.time_domain.ideal import Modulator
+
+from simphony.time_domain.ideal import Modulator, MMI
 
 
 import json
@@ -24,56 +19,95 @@ import json
 
 netlist = {
     "instances":{
+        "wg": "waveguide",
         "mmi": "MultiModeInterferometer",
-        # "wg": "waveguide",
+        
 
 
     },
     "connections": {
+        "wg,o1": "mmi,o0",
+        
 
 
     },
     "ports": {
-        "o0": "mmi,o0",
+        # "o0": "mmi,o0",
+        "o0":"wg,o0",
         "o1": "mmi,o1",
         "o2": "mmi,o2",
         "o3": "mmi,o3",
+        "o4":"mmi,o4",
+        "o5":"mmi,o5",
+        "o6": "mmi,o6",
+        "o7": "mmi,o7",
+        "o8": "mmi,o8",
+        "o9": "mmi,o9",
+        "o10": "mmi,o10",
+        "o11": "mmi,o11",
+        "o12": "mmi,o12",
+        "o13": "mmi,o13",
+        "o14": "mmi,o14",
+        "o15": "mmi,o15",
+        "o16": "mmi,o16",
+        "o17": "mmi,o17",
 
-
-        # "o0": "wg,o0",
-        # "o1": "wg,o1",
+        
+        
+        
     },
 }
 
 
-T = 1.0e-11
+T = 0.5e-11
 dt = 1e-14                   # Time step/resolution
 t = jnp.arange(0, T, dt)
+MultiModeInterferometer = MMI(r = 9, s =9)
+
 models = {
-    "MultiModeInterferometer": ideal.MultiModeInterferometer,
+    "MultiModeInterferometer": MultiModeInterferometer,
     "waveguide": ideal.waveguide,
     "coupler": ideal.coupler,
+    "y_branch": siepic.y_branch,
     }
 num_measurements = 200
 wvl = np.linspace(1.5, 1.6, num_measurements)
 options = {
-    'wl': wvl, 'mmi': {'wl':wvl},
+    'wl': wvl,'wg': {'length':0.0},
 }
 
 
 time_sim = TimeSim(netlist=netlist, models=models)
 local_I = jnp.array([])
-time_sim.build_model(model_parameters=options, center_wvl=1.55, dt=dt, max_size=2, suppress_output=True)
+time_sim.build_model(model_parameters=options, center_wvl=1.55, dt=dt, max_size=10)
 num_outputs = len(time_sim.netlist['ports'])
-inputs = {
-    f'o{i}': smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10) if i == 0 else jnp.zeros_like(t)
-    for i in range(num_outputs)
-}
+inputs = {}
+for i in range(num_outputs):
+    if i == 0:  
+        inputs[f'o{i}'] = gaussian_pulse(t, t0=3e-12, std=0.5e-12)
+        # inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+        # # inputs[f'o{i}'] = jnp.ones_like(t)
+    elif i == 1:
+        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    # #     inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    elif i == 2:
+        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    elif i == 3:
+        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    elif i == 4:
+        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    elif i == 5:
+        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    elif i == 6:
+        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    elif i == 7:
+        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    elif i == 8:
+        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    else:
+        inputs[f'o{i}'] = jnp.zeros_like(t)
+
 result = time_sim.run(t, inputs)
 result.plot_sim()
-outputs = result.outputs
-plt.plot(t, jnp.angle(outputs['o3']))
-plt.show()
-
 
 

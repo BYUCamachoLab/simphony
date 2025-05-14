@@ -1,5 +1,6 @@
 """Ideal time-domain models."""
 import jax.numpy as jnp
+import numpy as np
 import sax
 from jax.typing import ArrayLike
 from simphony.time_domain.time_system import TimeSystem
@@ -137,10 +138,83 @@ class Modulator(TimeSystem):
 
         
         return response
+    
     def append(self, mod_signal: ArrayLike|float) -> None:
         self.s_mod = jnp.append(self.s_mod, jnp.exp(1j * mod_signal))
         
     
     def reset(self) -> None:
         self.countstep = 0
+
+
+class MMI(TimeSystem):
+    def __init__(
+            self,
+            r: int = 2,
+            s: int = 2,
+            length: float = 10.0,
+            loss: float = 0.0,
+    )-> None:
+        super().__init__()
+        self.num_ports = r + s
+        self.length = length
+        self.loss = loss
+        self.r = r
+        self.s = s
+        self.ports = [f'o{i}' for i in range(self.num_ports)]
+        N_size = self.r + self.s
+        phases = jnp.zeros((N_size, N_size))
+        N = self.r
+        for i in range(1, self.r+1):
+            for j in range(1, self.s+1):
+                if (i+j)%2==0:
+                    num = -(jnp.pi/(4*N))*(j-i)*(2*N + i - j)
+                else:
+                    num = -(jnp.pi/(4*N)) *(i+j-1)*(2*N - i - j + 1)
+                
+                phases = phases.at[i-1, N_size-j].set(num)
+                phases = phases.at[N_size -j, i-1].set(num)
+        
+                
+        loss_mag = self.loss / (10 * jnp.log10(jnp.exp(1)))
+        alpha = loss_mag * 1e-4
+        amplitude = jnp.asarray(jnp.exp(-alpha * self.length / 2), dtype=complex)
+        s_dict_time = {}
+        
+        for i in range(self.r):          # inputs 0 … r-1
+            for j in range(self.s):      # outputs r … r+s-1
+                phi = phases[i, j+self.r]
+                s_dict_time[(f"o{i}", f"o{j+self.r}")] = \
+                    amplitude / jnp.sqrt(self.s) * jnp.exp(1j*phi)
+
+        for i in range(self.s):          # inputs r … r+s-1
+            for j in range(self.r):      # outputs 0 … r-1
+                phi = phases[i+self.s, j]
+                s_dict_time[(f"o{i+self.r}", f"o{j}")] = \
+                    amplitude / jnp.sqrt(self.r) * jnp.exp(1j*phi)
+
+        # now build S as [output, input]
+        ports = self.ports
+        N = len(ports)
+        S = np.zeros((N, N), dtype=complex)
+        for (inp, out), val in s_dict_time.items():
+            ci = ports.index(inp)
+            rj = ports.index(out)
+            S[rj, ci] = val
+
+        self.s_dict_time = S        
+
+    def response(self, inputs:dict) -> dict:
+            
+        response = {}
+        N = len(self.ports)
+        for j, port in enumerate(self.ports):
+            # sum over all inputs
+            resp = sum(inputs[f'o{l}'] * self.s_dict_time[j, l]
+                    for l in range(N))
+            response[port] = resp
+        return response
+        
+    def reset(self) -> None:
+        pass
 
