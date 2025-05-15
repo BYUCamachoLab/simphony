@@ -21,9 +21,6 @@ netlist = {
     "instances":{
         "wg": "waveguide",
         "mmi": "MultiModeInterferometer",
-        
-
-
     },
     "connections": {
         "wg,o1": "mmi,o0",
@@ -62,7 +59,7 @@ netlist = {
 T = 0.5e-11
 dt = 1e-14                   # Time step/resolution
 t = jnp.arange(0, T, dt)
-MultiModeInterferometer = MMI(r = 9, s =9)
+MultiModeInterferometer = ideal.make_mmi_model(r=9, s=9)
 
 models = {
     "MultiModeInterferometer": MultiModeInterferometer,
@@ -84,27 +81,27 @@ num_outputs = len(time_sim.netlist['ports'])
 inputs = {}
 for i in range(num_outputs):
     if i == 0:  
-        inputs[f'o{i}'] = gaussian_pulse(t, t0=3e-12, std=0.5e-12)
-        # inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+        # inputs[f'o{i}'] = gaussian_pulse(t, t0=3e-12, std=0.5e-12)
+        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
         # # inputs[f'o{i}'] = jnp.ones_like(t)
-    elif i == 1:
-        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
-    # #     inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
-    elif i == 2:
-        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
-    elif i == 3:
-        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
-    elif i == 4:
-        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
-    elif i == 5:
-        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
-    elif i == 6:
-        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
-    elif i == 7:
-        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
-    elif i == 8:
-        inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
-    else:
+    # elif i == 1:
+    #     inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    #  #     inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    # elif i == 2:
+    #     inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    # elif i == 3:
+    #     inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    # elif i == 4:
+    #     inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    # elif i == 5:
+    #     inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    # elif i == 6:
+    #     inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    # elif i == 7:
+    #     inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    # elif i == 8:
+    #     inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
+    # else:
         inputs[f'o{i}'] = jnp.zeros_like(t)
 
 result = time_sim.run(t, inputs)
