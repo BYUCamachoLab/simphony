@@ -52,6 +52,7 @@ class BVF_Options:
         self.beta = beta
         self.gamma = gamma
         self.real_valued = real_valued
+        self.mode = "Fast"
 
 class IIRModelBaseband(PoleResidueModel):
     def __init__(self, wvl_microns, center_wvl, s_params, order, options=None):
@@ -107,19 +108,29 @@ class IIRModelBaseband(PoleResidueModel):
         iter = 1
         while iter < self.options.max_iterations:
             phi0, phi1 = self.compute_phi_matrices()
-            M, V = self.compute_lstsq_matrices(phi0, phi1)
-            # Q, R = np.linalg.qr(M,mode='reduced') 
-            # solutions = np.linalg.pinv(R)@Q.conj().T@V
-            solutions, residuals, rank, s = np.linalg.lstsq(M, V, rcond=None)
+            if self.options.mode == "Fast":
+                M, B = self.compute_lstsq_matrices(phi0, phi1)
+                weights, _, _, _ = np.linalg.lstsq(M, B)
+                weights_row = weights.reshape((len(weights), 1))
+                unity_column = np.ones((self.order, 1))
 
-            # Calculate New Poles
-            A = np.diag(self.poles)
-            weight_coefficients = solutions[(self.num_ports**2)*(self.order+1):]
-            weights_row = weight_coefficients.reshape((len(weight_coefficients), 1))
-            unity_column = np.ones((self.order, 1))
-            self.poles, _ = np.linalg.eig(A-unity_column@weights_row.T)
-            mask = np.abs(self.poles) > 1
-            self.poles[mask] = 1 / (self.poles[mask])
+                A = np.diag(self.poles)
+                self.poles, _ = np.linalg.eig(A-unity_column@weights_row.T)
+                mask = np.abs(self.poles) > 1
+                self.poles[mask] = 1 / (self.poles[mask])
+
+            else:
+                M, V = self.compute_lstsq_matrices(phi0, phi1)
+                solutions, _, _, _ = np.linalg.lstsq(M, V, rcond=None)
+
+                # Calculate New Poles
+                A = np.diag(self.poles)
+                weight_coefficients = solutions[(self.num_ports**2)*(self.order+1):]
+                weights_row = weight_coefficients.reshape((len(weight_coefficients), 1))
+                unity_column = np.ones((self.order, 1))
+                self.poles, _ = np.linalg.eig(A-unity_column@weights_row.T)
+                mask = np.abs(self.poles) > 1
+                self.poles[mask] = 1 / (self.poles[mask])
 
             if True:
                 for i in range(self.num_ports):
@@ -127,7 +138,7 @@ class IIRModelBaseband(PoleResidueModel):
                         phi0, _ = self.compute_phi_matrices()
                         # Q,R = np.linalg.qr(phi0,mode='reduced') 
                         # solutions = np.linalg.pinv(R)@Q.conj().T@self.S[:, i, j]
-                        solutions, residuals, rank, s = np.linalg.lstsq(phi0, self.S[:, i, j], rcond=None)
+                        solutions, _, _, _ = np.linalg.lstsq(phi0, self.S[:, i, j], rcond=None)
                         self.D[i, j] = np.array(solutions[0])
                         self.residues[:, i, j] = solutions[1:]
 
@@ -192,25 +203,71 @@ class IIRModelBaseband(PoleResidueModel):
 
         return t_out, yout
         
+    # def compute_lstsq_matrices(self, phi0, phi1):
+
     def compute_lstsq_matrices(self, phi0, phi1):
-        D = []
-        V = []
-        for i in range(self.num_ports):
-            for j in range(self.num_ports):
-                D.append(np.diag(self.S[:, i, j]))
-                V.append(self.S[:, i, j])
+        if self.options.mode == "Fast":
+            M = np.zeros(((self.num_ports**2)*self.order, self.order), dtype=complex)
+            B = np.zeros(((self.num_ports**2)*self.order), dtype=complex)
+            iter = 0
+            for i in range(self.num_ports):
+                for j in range(self.num_ports):
+                    D = np.diag(self.S[:, i, j])
+                    A1 = phi0
+                    A2 = -D@phi1
+                    # Here we perform the modified gram schmidt orthonalization on the block matrix [A1, A2] described here:
+                    # https://arxiv.org/pdf/2208.06194
+                    # This allows us to implement the Fast Vector Fitting algorithm:
+                    # https://scholar.googleusercontent.com/scholar?q=cache:u4aY-dn1tF8J:scholar.google.com/+piero+triverio+vector+fitting&hl=en&as_sdt=0,45
 
-        phi_column = []
-        for _D in D:
-            phi_column.append(-_D@phi1)
+                    Q1, R11 = np.linalg.qr(A1)
+                    R12 = Q1.T@A2
+                    Q2, R22 = np.linalg.qr(A2 - Q1@R12)
 
-        blocks = [phi0] * (self.num_ports*self.num_ports)
-        M = block_diag(*blocks)
+                    # Q_total = np.block([Q1, Q2])
+                    # R_total = np.block([[R11, R12], [np.zeros((50, 51)), R22]])
 
-        phi_column = np.vstack(phi_column)
-        M = np.hstack([M, phi_column])
+                    V = self.S[:, i, j]
+                    M[(iter)*self.order:(iter+1)*self.order, :] = R22
+                    B[(iter)*self.order:(iter+1)*self.order] = Q2.T@V
+                    iter += 1
+                    # plt.imshow(np.abs(M))
+                    # plt.show()
+                    # plt.plot(np.abs(B))
+                    # plt.show()
+                    pass
+            
+            return M, B
+        else:
+            D = []
+            V = []
+            for i in range(self.num_ports):
+                for j in range(self.num_ports):
+                    D.append(np.diag(self.S[:, i, j]))
+                    V.append(self.S[:, i, j])
 
-        return M, np.hstack(V)
+            phi_column = []
+            for _D in D:
+                phi_column.append(-_D@phi1)
+
+            blocks = [phi0] * (self.num_ports*self.num_ports)
+            M = block_diag(*blocks)
+
+            phi_column = np.vstack(phi_column)
+            M = np.hstack([M, phi_column])
+
+            return M, np.hstack(V)
+
+
+
+
+
+
+
+
+        
+        return A, B
+
     
     def generate_sys_discrete(self):
         _A = []
