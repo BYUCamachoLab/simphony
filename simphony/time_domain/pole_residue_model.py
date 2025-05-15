@@ -108,9 +108,9 @@ class IIRModelBaseband(PoleResidueModel):
         while iter < self.options.max_iterations:
             phi0, phi1 = self.compute_phi_matrices()
             M, V = self.compute_lstsq_matrices(phi0, phi1)
-            Q, R = np.linalg.qr(M,mode='reduced') 
-            solutions = np.linalg.pinv(R)@Q.conj().T@V
-            # solutions, residuals, rank, s = np.linalg.lstsq(M, V, rcond=None)
+            # Q, R = np.linalg.qr(M,mode='reduced') 
+            # solutions = np.linalg.pinv(R)@Q.conj().T@V
+            solutions, residuals, rank, s = np.linalg.lstsq(M, V, rcond=None)
 
             # Calculate New Poles
             A = np.diag(self.poles)
@@ -125,10 +125,10 @@ class IIRModelBaseband(PoleResidueModel):
                 for i in range(self.num_ports):
                     for j in range(self.num_ports):
                         phi0, _ = self.compute_phi_matrices()
-                        Q,R = np.linalg.qr(phi0,mode='reduced') 
-                        solutions = np.linalg.pinv(R)@Q.conj().T@self.S[:, i, j]
-                        # solutions = np.linalg.lstsq(M, V, rcond=None)
-                        self.D[i, j] = solutions[0]
+                        # Q,R = np.linalg.qr(phi0,mode='reduced') 
+                        # solutions = np.linalg.pinv(R)@Q.conj().T@self.S[:, i, j]
+                        solutions, residuals, rank, s = np.linalg.lstsq(phi0, self.S[:, i, j], rcond=None)
+                        self.D[i, j] = np.array(solutions[0])
                         self.residues[:, i, j] = solutions[1:]
 
             
