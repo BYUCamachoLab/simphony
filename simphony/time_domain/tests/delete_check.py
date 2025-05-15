@@ -101,7 +101,7 @@ for i in range(num_outputs):
     #     inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
     # elif i == 8:
     #     inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
-    # else:
+    else:
         inputs[f'o{i}'] = jnp.zeros_like(t)
 
 result = time_sim.run(t, inputs)

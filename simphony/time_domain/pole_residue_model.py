@@ -221,7 +221,7 @@ class IIRModelBaseband(PoleResidueModel):
                     # https://scholar.googleusercontent.com/scholar?q=cache:u4aY-dn1tF8J:scholar.google.com/+piero+triverio+vector+fitting&hl=en&as_sdt=0,45
 
                     Q1, R11 = np.linalg.qr(A1)
-                    R12 = Q1.T@A2
+                    R12 = Q1.conj().T@A2
                     Q2, R22 = np.linalg.qr(A2 - Q1@R12)
 
                     # Q_total = np.block([Q1, Q2])
@@ -229,7 +229,7 @@ class IIRModelBaseband(PoleResidueModel):
 
                     V = self.S[:, i, j]
                     M[(iter)*self.order:(iter+1)*self.order, :] = R22
-                    B[(iter)*self.order:(iter+1)*self.order] = Q2.T@V
+                    B[(iter)*self.order:(iter+1)*self.order] = Q2.conj().T@V
                     iter += 1
                     # plt.imshow(np.abs(M))
                     # plt.show()
@@ -258,37 +258,37 @@ class IIRModelBaseband(PoleResidueModel):
 
             return M, np.hstack(V)
 
-
-
-
-
-
-
-
-        
-        return A, B
-
     
     def generate_sys_discrete(self):
-        _A = []
-        _B = []
-        _C = []
-        for p in self.poles:
-            A_n = np.diag(np.full(self.num_ports, p))
-            _A.append(A_n)
+        A = np.zeros((self.order*self.num_ports, self.order*self.num_ports), dtype=complex)
+        B = np.zeros((self.order*self.num_ports, self.num_ports), dtype=complex)
+        C = np.zeros((self.num_ports, self.order*self.num_ports), dtype=complex)
+        for i in range(self.order):
+            A[i*self.num_ports:(i+1)*self.num_ports,i*self.num_ports:(i+1)*self.num_ports] = self.poles[i]*np.eye(self.num_ports)
+            B[i*self.num_ports:(i+1)*self.num_ports, :] = np.eye(self.num_ports)
+            C[:, i*self.num_ports:(i+1)*self.num_ports] = self.residues[i, :, :]
         
-        for n in range(self.order):
-            U, S, Vh = svd(self.residues[n, :, :])
-            _B.append(Vh)
-            _C.append(U@np.diag(S))
+        return StateSpace(A, B, C, self.D, dt = np.abs(1/self.sampling_freq))
 
-        A = block_diag(*_A)
-        B = np.vstack(_B)
-        C = np.hstack(_C)
-
-        D = self.D
+        # _A = []
+        # _B = []
+        # _C = []
+        # for p in self.poles:
+        #     A_n = np.diag(np.full(self.num_ports, p))
+        #     _A.append(A_n)
         
-        return StateSpace(A, B, C, D, dt = np.abs(1/self.sampling_freq))
+        # for n in range(self.order):
+        #     U, S, Vh = np.linalg.svd(self.residues[n, :, :])
+        #     _B.append(Vh)
+        #     _C.append(U@np.diag(S))
+
+        # A = block_diag(*_A)
+        # B = np.vstack(_B)
+        # C = np.hstack(_C)
+
+        # D = self.D
+        
+        # return StateSpace(A, B, C, self.D, dt = np.abs(1/self.sampling_freq))
     
     def plot_time_response(self):
         if self.time_response is None:
