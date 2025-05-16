@@ -69,6 +69,7 @@ models = {
     }
 num_measurements = 200
 wvl = np.linspace(1.5, 1.6, num_measurements)
+
 options = {
     'wl': wvl,'wg': {'length':0.0},
 }
@@ -76,7 +77,7 @@ options = {
 
 time_sim = TimeSim(netlist=netlist, models=models)
 local_I = jnp.array([])
-time_sim.build_model(model_parameters=options, center_wvl=1.55, dt=dt, max_size=10)
+time_sim.build_model(model_parameters=options, center_wvl=1.55, dt=dt)
 num_outputs = len(time_sim.netlist['ports'])
 inputs = {}
 for i in range(num_outputs):
@@ -101,7 +102,7 @@ for i in range(num_outputs):
     #     inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
     # elif i == 8:
     #     inputs[f'o{i}'] = smooth_rectangular_pulse(t, 0.01e-10, 0.25e-10)
-    # else:
+    else:
         inputs[f'o{i}'] = jnp.zeros_like(t)
 
 result = time_sim.run(t, inputs)

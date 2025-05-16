@@ -149,7 +149,7 @@ class TimeSim(Simulation):
         model_order: int = 50,
         model_parameters: dict = None,
         dt: float = 1e-14,
-        max_size: int = 5,
+        max_size: int = 10,
         suppress_output: bool = False
     ) -> None:
         """

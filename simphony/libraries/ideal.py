@@ -155,8 +155,9 @@ def MultiModeInterferometer(
             else:
                 phi = -(jnp.pi/(4*r)) * (i + j - 1) * (2*r - i - j + 1)
             # fill both symmetric entries
-            phases = phases.at[i-1, N_size-j].set(phi)
-            phases = phases.at[N_size-j, i-1].set(phi)
+            out_idx = r + (j - 1)
+            phases = phases.at[i-1, out_idx].set(phi)
+            phases = phases.at[out_idx, i-1].set(phi)
 
     # 2) Compute amplitude attenuation (same for all couplings)
     loss_mag = loss / (10 * jnp.log10(jnp.exp(1)))
@@ -165,7 +166,7 @@ def MultiModeInterferometer(
     ones     = jnp.ones_like(wl, dtype=complex)
 
     # 3) Build the forward S-dictionary (only inputs 0…r-1 → outputs r…r+s-1)
-    s_dict = {}
+    s_dict = {} 
     for inp in range(r):
         for out in range(r, r+s):
             φ    = phases[inp, out]
