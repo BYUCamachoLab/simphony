@@ -119,4 +119,3 @@ class TimeSystemIIR(TimeSystem):
     def reset(self):
         self.state_vector = None
     
-    
