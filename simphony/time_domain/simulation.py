@@ -2,6 +2,7 @@ from numpy.typing import ArrayLike
 import numpy as np
 import matplotlib.pyplot as plt
 import sax
+import jax
 import jax.numpy as jnp
 import math
 from jax import config
@@ -167,6 +168,7 @@ class TimeSim(Simulation):
             model_parameters (dict): Parameters to pass into the frequency-domain model evaluation.
             dt (float): Simulation time step.
             max_size (int): Maximum size of any strongly-connected sub-circuit (for splitting).
+            suppress_output (bool): If True, suppresses printing of intermediate results.
         """
         self.dt = dt
         self.max_size = max_size
@@ -186,13 +188,11 @@ class TimeSim(Simulation):
                 self.passive_subnetlists,
                 self.removed_connections,
                 self.removed_ports,
-                self.passive_reconnections
             ) = self.create_passive_sub_netlists(
                 self.instances,
                 self.connections,
                 self.ports,
                 self.active_components,
-                max_size=max_size
             )
             if not self.suppress_output:
             # Print the passive sub-netlists for debugging/logging
@@ -232,102 +232,35 @@ class TimeSim(Simulation):
                 self.S_params_dict[i] = s_matrix
 
                 sorted_ports = sorted(port_map_list[i].keys())
-                try:
-                    iir_model = IIRModelBaseband(
-                        wvl,
-                        center_wvl,
-                        s_matrix,
-                        model_order,
-                        options=bvf_options
-                    )
-                    td_system = TimeSystemIIR(iir_model, sorted_ports)
-                    self.subcircuit_time_systems.append(td_system)
-                except MemoryError as mem_err:
-                    print("MemoryError encountered during IIR model building:", mem_err)
-                except np.linalg.LinAlgError as err:
-                    print(f"SVD did not converge attempting further splits on Subcircuit {i}")
-                    sys.exit(1)
-
-            # Connect the newly created sub-circuits and the active components 
-            # in a consolidated time-domain netlist (self.td_netlist)
-            self.prepare_time_domain_netlist(port_map_list)
-
-        else:
-            # If no active components, just build a single circuit with the entire netlist
-            if len(self.netlist["instances"]) > max_size:
-                (
-                    self.passive_subnetlists,
-                    self.passive_reconnections
-                ) = self.create_passive_sub_netlists(
-                    self.instances,
-                    self.connections,
-                    self.ports,
-                    self.active_components,
-                    max_size=max_size
-                )
-                if not self.suppress_output:
-                    for i, sub_net in enumerate(self.passive_subnetlists):
-                        print(f"\n--- Passive Sub-Netlist {i} ---")
-                        print("\nInstances:", sub_net["instances"])
-                        print("\nConnections:", sub_net["connections"])
-                        print("\nPorts:", sub_net["ports"])
-                        print()
-                sub_circuit_list = {}
-                port_map_list = {}
-                self.active_components = []
-                self.removed_connections = []
                 
-                for i, sub_net in enumerate(self.passive_subnetlists):
-                    # Create circuit with sax
-                    circuittemp, _ = sax.circuit(
-                        netlist=sub_net,
-                        models=self.models,
-                    )
-                    sub_circuit_list[i] = circuittemp
-                    port_map_list[i] = sub_net['ports']
-                self.S_params_dict = {}
-
-                for i, circuit in sub_circuit_list.items():
-                    s_params_dict = circuit(**model_parameters)
-                    s_matrix = np.asarray(dict_to_matrix(s_params_dict))
-                    self.S_params_dict[i] = s_matrix
-
-                    sorted_ports = sorted(port_map_list[i].keys())
-                    try:
-                        iir_model = IIRModelBaseband(
-                            wvl,
-                            center_wvl,
-                            s_matrix,
-                            model_order,
-                            options=bvf_options
-                        )
-                        td_system = TimeSystemIIR(iir_model, sorted_ports)
-                        self.subcircuit_time_systems.append(td_system)
-                    except MemoryError as mem_err:
-                        print("MemoryError encountered during IIR model building:", mem_err)
-                    except np.linalg.LinAlgError as err:
-                        print(f"SVD did not converge attempting further splits on Subcircuit {i}")
-                        sys.exit(1)
-                    
-                self.prepare_time_domain_netlist(port_map_list)
-                
-                
-
-
-            else:
-                circuit, _ = sax.circuit(netlist=self.netlist, models=self.models)
-                fd_params = circuit(**model_parameters)
-                s_matrix = np.asarray(dict_to_matrix(fd_params))
-                self.S_params_dict = s_matrix
-
-                single_iir_model = IIRModelBaseband(
+                iir_model = IIRModelBaseband(
                     wvl,
                     center_wvl,
                     s_matrix,
                     model_order,
                     options=bvf_options
                 )
-                self.time_system = TimeSystemIIR(single_iir_model)
+                td_system = TimeSystemIIR(iir_model, sorted_ports)
+                self.subcircuit_time_systems.append(td_system)
+                
+            # Connect the newly created sub-circuits and the active components 
+            # in a consolidated time-domain netlist (self.td_netlist)
+            self.prepare_time_domain_netlist(port_map_list)
+
+        else:
+            circuit, _ = sax.circuit(netlist=self.netlist, models=self.models)
+            fd_params = circuit(**model_parameters)
+            s_matrix = np.asarray(dict_to_matrix(fd_params))
+            self.S_params_dict = s_matrix
+
+            single_iir_model = IIRModelBaseband(
+                wvl,
+                center_wvl,
+                s_matrix,
+                model_order,
+                options=bvf_options
+            )
+            self.time_system = TimeSystemIIR(single_iir_model)
 
     def run(self, t: ArrayLike, input_signals: dict, reset: bool = True) -> TimeResult:
         """
@@ -339,15 +272,21 @@ class TimeSim(Simulation):
         Args:
             t (ArrayLike): Original time array.
             input_signals (dict): Dictionary of input signals keyed by port name.
+            reset (bool): If True, resets the internal state of all sub-circuits and active components.
 
         Returns:
             TimeResult: An object containing the outputs, time array, inputs, and S-parameters.
         """
         self.t = t
         self.inputs = input_signals
+        
 
         # Interpolate input signals to the time resolution defined by self.dt
         self.t, self.inputs = self.interpolate_inputs()
+        n_steps   = len(self.t)
+        dtype_out = jnp.complex128            # or jnp.float32 if you store intensities
+
+        
         if reset:
             for model in self.subcircuit_time_systems:
                 model.reset()
@@ -355,8 +294,10 @@ class TimeSim(Simulation):
         # If active components exist, do multi-sub-circuit stepping
         if self.active_components is not None:
             # Initialize top-level outputs
-            self.outputs = {port: jnp.array([]) for port in self.td_netlist["ports"]}
-
+            self.outputs = {p: jnp.zeros((n_steps,), dtype=dtype_out)
+                        for p in self.td_netlist["ports"]}        
+            
+            
             # Initialize instance outputs for both active devices and sub-circuits
             for instance_name, td_model in self.td_netlist["models"].items():
                 self.instance_outputs[instance_name] = {
@@ -364,7 +305,7 @@ class TimeSim(Simulation):
                 }
             i = 0
             # Step through time, one index at a time
-            for time_index, _ in tqdm(enumerate(self.t),desc= "Processing", total=len(self.t), disable=self.suppress_output):
+            for time_index, _ in tqdm(enumerate(self.t) ):
                 self.step(time_index)
                 # print(f"Time index: {i} / {len(self.t)}")
                 i += 1
@@ -469,7 +410,11 @@ class TimeSim(Simulation):
             inst_name = inst_name.strip()
             port_name = port_name.strip()
             new_val = self.instance_outputs[inst_name][port_name]
-            self.outputs[circuit_port] = jnp.concatenate([self.outputs[circuit_port], new_val])
+            self.outputs[circuit_port] = jax.lax.dynamic_update_slice(
+                    self.outputs[circuit_port],
+                    new_val,                      # shape (1,)
+                    (time_index,)                 # write at this position
+                )
 
     def prepare_time_domain_netlist(self, port_map_list: dict) -> None:
         """
@@ -520,32 +465,9 @@ class TimeSim(Simulation):
                             self.add_to_time_domain_netlist(connection=(subckt_key, right_str))
                         elif right_str == global_port_str:
                             self.add_to_time_domain_netlist(connection=(subckt_key, left_str))
-                # If global_port_str is in the passive reconnections
-                elif any(
-                    global_port_str in d.keys() or global_port_str in d.values()
-                    for d in self.passive_reconnections
-                ):
-                    for d in self.passive_reconnections:
-                        for key_str, val_str in d.items():
-                            if key_str == global_port_str:
-                                # Reconnect subckt_key to appropriate partner
-                                partner = self.find_subcircuit_partner(val_str, port_map_list)
-                                if partner not in self.td_netlist["connections"]:
-                                    self.add_to_time_domain_netlist(connection=(subckt_key, partner))
-                            elif val_str == global_port_str:
-                                # Reconnect subckt_key to key_str
-                                partner = self.find_subcircuit_partner(key_str, port_map_list)
-                                if subckt_key not in self.td_netlist["connections"]:
-                                    self.add_to_time_domain_netlist(connection=(subckt_key, partner))
                 else:
                     # Otherwise, treat this as a top-level port
                     self.add_to_time_domain_netlist(port=(local_port_label, subckt_key))
-                    
-        # if not self.td_netlist.get("instances") :
-        #     for instance in self.active_components:
-        #         self.td_netlist["models"][instance] = self.models[self.instances[instance]]
-        #         for port in self.ports:
-        #             self.td_netlist["ports"][port] = f"{instance},{port}"
 
         if self.removed_ports is not None:
             for port_label, comp_port_str in self.removed_ports.items():
@@ -558,17 +480,6 @@ class TimeSim(Simulation):
             print("\nConnections:", self.td_netlist["connections"])
             print("\nPorts:", self.td_netlist["ports"])
             print()
-
-    def find_subcircuit_partner(self, target_str: str, port_map_list: dict) -> str:
-        """
-        Searches through sub-circuit port maps to see if a port matches 'target_str'.
-        Returns a "{i},local_port" string if found, otherwise None.
-        """
-        for idx, ports_dict in port_map_list.items():
-            for local_port_label, global_port_str in ports_dict.items():
-                if global_port_str == target_str:
-                    return f"{idx},{local_port_label}"
-        return None
 
     def add_to_time_domain_netlist(
         self,
@@ -611,7 +522,6 @@ class TimeSim(Simulation):
         connections: dict,
         ports: dict,
         active_components: set,
-        max_size: int = 5,
         directed: bool = False
     ) -> tuple:
         """
@@ -629,73 +539,46 @@ class TimeSim(Simulation):
                 removed_ports (dict): Ports removed because they referenced active components.
                 passive_reconnections (list): Info for reconnecting passive components externally.
         """
-        if active_components is not None:
         # 1) Remove edges that touch active components
-            filtered_connections, removed_active_edges, removed_conns = self.remove_active_edges_and_track_them(
-                connections, active_components
-            )
+        filtered_connections, removed_active_edges, removed_conns = self.remove_active_edges_and_track_them(
+            connections, active_components
+        )
 
             # 2) Remove ports that reference active components
-            filtered_ports, removed_ports = self.remove_ports_to_active(ports, active_components)
+        filtered_ports, removed_ports = self.remove_ports_to_active(ports, active_components)
 
         # 3) Build a graph for the remaining passive components
-            graph = self.build_component_graph_active(
+        graph = self.build_component_graph_active(
+            filtered_connections,
+            ports,
+            active_components,
+            removed_active_edges,
+            directed=directed
+        )
+        # 4) Find strongly connected components (SCCs)
+        connected_components = self.tarjan_scc(graph)
+
+        sub_netlists = []
+        
+
+        # 5) Build a sub-netlist for each SCC
+        for comp_list in connected_components:
+            comp_set = set(comp_list)
+            sub_net = self.build_sub_netlist(
+                comp_set,
                 filtered_connections,
-                ports,
-                active_components,
-                removed_active_edges,
-                directed=directed
+                filtered_ports,
+                removed_conns,
+                removed_ports,
+                instances,
+                active_components
             )
-            # 4) Find strongly connected components (SCCs)
-            connected_components = self.tarjan_scc(graph, max_size)
+            if sub_net["instances"]:
+                sub_netlists.append(sub_net)
+                
+        return sub_netlists, removed_conns, removed_ports
 
-            sub_netlists = []
-            passive_reconnections = []
-
-            # 5) Build a sub-netlist for each SCC
-            for comp_list in connected_components:
-                comp_set = set(comp_list)
-                sub_net, reconnect_passives = self.build_sub_netlist_active(
-                    comp_set,
-                    filtered_connections,
-                    filtered_ports,
-                    removed_conns,
-                    removed_ports,
-                    instances,
-                    active_components
-                )
-                if sub_net["instances"]:
-                    sub_netlists.append(sub_net)
-                    passive_reconnections.append(reconnect_passives)
-
-            return sub_netlists, removed_conns, removed_ports, passive_reconnections
-
-
-        else: 
-            graph = self.build_component_graph_passive(
-                connections,
-                ports,
-                directed=directed
-            )
-
-            connected_components = self.tarjan_scc(graph, max_size)
-
-            sub_netlists = []
-            passive_reconnections = []
-            for comp_list in connected_components:
-                comp_set = set(comp_list)
-                sub_net, reconnect_passives = self.build_sub_netlist_passive(
-                    comp_set,
-                    connections,
-                    ports,
-                    instances,
-                )
-
-                if sub_net["instances"]:
-                    sub_netlists.append(sub_net)
-                    passive_reconnections.append(reconnect_passives)
-
-            return sub_netlists, passive_reconnections
+        
 
         # 4) Find strongly connected components, splitting if they exceed `max_size`
         
@@ -764,49 +647,7 @@ class TimeSim(Simulation):
             else:
                 filtered_ports[port_label] = comp_port_str
 
-        return filtered_ports, removed_ports
-    
-    def build_component_graph_passive(
-        self,
-        connections: dict,
-        ports: dict,
-        directed: bool = False
-    ) -> dict:
-        """
-        Builds a graph (adjacency list) at the component level from the netlist.
-
-        Args:
-            connections (dict): e.g. {'compA,portA': 'compB,portB'}.
-            ports (dict): top-level ports in the netlist.
-            directed (bool): Whether to consider the graph as directed or undirected.
-
-        Returns:
-            dict: A dictionary {component: [neighbors, ...]} describing the graph.
-        """
-        graph = {}
-
-        def add_edge(a, b):
-            if a not in graph:
-                graph[a] = []
-            graph[a].append(b)
-
-        # Add edges for each connection
-        for k, v in connections.items():
-            compA, _ = k.split(',')
-            compB, _ = v.split(',')
-            add_edge(compA, compB)
-            if not directed:
-                add_edge(compB, compA)
-
-        # Ensure each passive component or removed edge is in the graph (even if no connections)
-        for _, comp_port_str in ports.items():
-            comp, _ = comp_port_str.split(',')
-            if comp not in graph:
-                graph[comp] = []
-
-
-        return graph
-    
+        return filtered_ports, removed_ports 
 
     def build_component_graph_active(
         self,
@@ -856,20 +697,19 @@ class TimeSim(Simulation):
 
         return graph
 
-    def tarjan_scc(self, graph: dict, max_size: int) -> list:
+    def tarjan_scc(self, graph: dict) -> list:
         """
         Computes strongly connected components (SCCs) for the given graph,
         and splits any SCC that exceeds `max_size` by removing selected edges.
 
         Args:
             graph (dict): adjacency list {node: [neighbors]}.
-            max_size (int): Maximum size of an SCC.
 
         Returns:
             list: A list of SCCs, where each SCC is a list of nodes.
         """
 
-        def compute_scc_no_split(g: dict) -> list:
+        def compute_scc(g: dict) -> list:
             """
             Standard Tarjan's algorithm to compute SCCs without splitting large ones.
             """
@@ -908,149 +748,12 @@ class TimeSim(Simulation):
                 if n not in indices:
                     strongconnect(n)
             return sccs
-
         
-        def split_large_scc(g: dict, scc: list, max_allowed: int) -> list:
-            """
-            Given an SCC (list of nodes) that is larger than max_allowed, split it into multiple groups.
-            Each new group is grown by adding connected nodes (from the induced subgraph) until reaching max_allowed nodes.
-            Note: This greedy approach does not guarantee that each resulting group is itself strongly connected.
-            """
-            # Build the induced subgraph (neighbors only within the SCC)
-            subgraph = {node: [nbr for nbr in g.get(node, []) if nbr in scc] for node in scc}
-            
-            # Using a list to maintain the order from scc
-            remaining = list(scc)  
-            new_components = []
-            
-            # While there are still nodes left to assign
-            while remaining:
-                # Remove the first element in the ordered list
-                start = remaining.pop(0)
-                component = [start]
-                stack = [start]
-                
-                # Greedily add neighbors until we reach max_allowed nodes.
-                while stack and len(component) < max_allowed:
-                    node = stack.pop()
-                    
-                    for nbr in list(subgraph.get(node, [])):
-                        if nbr in remaining:
-                            check = False
-                            empty_components = 0
-                            copy_subgraph = subgraph.copy()
-                            key_list = []
-                            for key in list(copy_subgraph.keys()):
-                                if nbr in copy_subgraph[key]:
-                                    copy_subgraph[key].remove(nbr)
-                                    if not copy_subgraph[key]:
-                                        check = True
-                                        empty_components += 1
-                                        key_list.append(key)
-                            
-                            # If deleting neighbor connections does not produce any "empty" connection lists…
-                            if not check:
-                                component.append(nbr)
-                                stack.append(nbr)
-                                remaining.remove(nbr)
-                                if len(component) >= max_allowed:
-                                    break
-                            # Else, if there are empty connection lists …
-                            elif check:
-                                if len(component) + empty_components + 1 <= max_allowed:
-                                    component.append(nbr)
-                                    stack.append(nbr)
-                                    remaining.remove(nbr)
-                                    for key in key_list:
-                                        if key not in component:
-                                            component.append(key)
-                                            stack.append(key)
-                                            if key in remaining:
-                                                remaining.remove(key)
-                                        
-                                else:
-                                    continue
-                
-                new_components.append(component)
-                    
-            return new_components
+        sccs = compute_scc(graph)
 
-        
-        initial_sccs = compute_scc_no_split(graph)
-        final_sccs = []
+        return sccs
 
-        for scc in initial_sccs:
-            if len(scc) > max_size:
-                splitted = split_large_scc(graph, scc, max_size)
-                final_sccs.extend(splitted)
-            else:
-                final_sccs.append(scc)
-
-        def dfs(graph, start, allowed_nodes):
-            """Perform a DFS that only traverses nodes in allowed_nodes."""
-            seen = set()
-            stack = [start]
-            while stack:
-                node = stack.pop()
-                if node not in seen:
-                    seen.add(node)
-                    # Only follow neighbors that are within allowed_nodes
-                    for nbr in graph.get(node, []):
-                        if nbr in allowed_nodes and nbr not in seen:
-                            stack.append(nbr)
-            return seen
-
-        def is_strongly_connected(graph, nodes):
-            """Check strong connectivity on the induced subgraph with nodes."""
-            if not nodes:
-                return True
-            nodes_set = set(nodes)
-            start = nodes[0]
-            forward = dfs(graph, start, nodes_set)
-            if forward != nodes_set:
-                return False
-            # Build the reverse graph for the induced subgraph
-            reverse_graph = {node: [] for node in nodes_set}
-            for node in nodes_set:
-                for nbr in graph.get(node, []):
-                    if nbr in nodes_set:
-                        reverse_graph[nbr].append(node)
-            backward = dfs(reverse_graph, start, nodes_set)
-            return backward == nodes_set
-        
-        def post_process_merge(final_sccs, graph, max_allowed):
-            """
-            Merge adjacent groups from final_sccs if their union:
-            - Is within the maximum allowed size.
-            - Is strongly connected according to the graph.
-            """
-            
-            merged = True  # to control the while loop
-            while merged:  # Keep trying until no more groups can be merged.
-                merged = False
-                new_groups = []
-                i = 0
-                while i < len(final_sccs):
-                    # If there is a next group, try merging current with next.
-                    if i < len(final_sccs) - 1 and len(final_sccs[i]) + len(final_sccs[i+1]) <= max_allowed:
-                        candidate = final_sccs[i] + final_sccs[i+1]
-                        # Check if the union is strongly connected in the induced subgraph.
-                        if is_strongly_connected(graph, candidate):
-                            new_groups.append(candidate)
-                            i += 2  # Skip the next group since we've merged it.
-                            merged = True
-                            continue  # Continue to the next iteration.
-                    # Otherwise, keep the current group as is.
-                    new_groups.append(final_sccs[i])
-                    i += 1
-                final_sccs = new_groups  # Update groups and try merging again if possible.
-            return final_sccs
-        
-        final_sccs = post_process_merge(final_sccs, graph, max_size)
-
-        return final_sccs
-
-    def build_sub_netlist_active(
+    def build_sub_netlist(
     self,
     scc_components,
     all_connections,
@@ -1078,55 +781,24 @@ class TimeSim(Simulation):
         scc_ports = {}
         # 2) Filter connections
         scc_connections = {}    
-        reconnect_dict = {}   
+        # reconnect_dict = {}   
         
         port_index_counter = 0  # This counter is used for new external port labels.
         
         # 3) Retain original top-level ports that reference a component in the SCC
         for port_label, comp_port_str in original_ports.items():
-            comp, port = comp_port_str.split(',')
+            comp, _ = comp_port_str.split(',')
             if comp in scc_components:
                 scc_ports[port_label] = comp_port_str
                 port_index_counter += 1
         temp_index = 0
         for conn_key, conn_value in all_connections.items():
-            compA, portA = conn_key.split(',')
-            compB, portB = conn_value.split(',')
+            compA, _ = conn_key.split(',')
+            compB, _ = conn_value.split(',')
 
             if compA in scc_components and compB in scc_components:
                 # Connection stays within the SCC
                 scc_connections[conn_key] = conn_value
-
-            elif compA in scc_components and compB not in active_components:
-                new_label = f"o{port_index_counter}"
-                temp_index += 1
-                port_index_counter += 1
-                if new_label in scc_ports:
-                    tempcheck = port_index_counter - 1
-                    while new_label in scc_ports:
-                        new_label = f"o{tempcheck}"
-                        tempcheck -= 1
-                    scc_ports[new_label] = conn_key
-                    reconnect_dict[conn_key] = conn_value
-                else:
-                    scc_ports[new_label] = conn_key
-                    reconnect_dict[conn_key] = conn_value
-                
-            elif compA not in active_components and compB in scc_components:
-                new_label = f"o{port_index_counter}"
-                temp_index += 1
-                port_index_counter += 1
-                if new_label in scc_ports:
-                    tempcheck = port_index_counter - 1
-                    while new_label in scc_ports:
-                        new_label = f"o{tempcheck}"
-                        tempcheck -= 1
-                    scc_ports[new_label] = conn_value
-                    reconnect_dict[conn_key] = conn_value
-                else:
-                    scc_ports[new_label] = conn_value
-                    reconnect_dict[conn_key] = conn_value
-
 
         # 4) Create external ports for removed passive->active edges if the passive component is in scc_components
         aux_port_index = 0  
@@ -1229,91 +901,5 @@ class TimeSim(Simulation):
             "connections": scc_connections,
             "ports": scc_ports,
         }
-        return sub_netlist, reconnect_dict
-    
-
-
-
-    def build_sub_netlist_passive(
-    self,
-    scc_components,
-    all_connections,
-    original_ports,
-    instances,
-    ):
-        """
-        Construct a single netlist for the given set of SCC components (e.g. { 'cr1', 'wg1', 'cr2' }).
-
-        1) Keep only those instances in scc_components (all passive).
-        2) Keep only those connections that link two components in scc_components.
-        3) Keep original ports referencing these components.
-        4) For each removed passive->active edge, if the passive comp is in scc_components,
-        create a new external port.
-        """
-        # 1) Filter instances
-        scc_instances = {}
-        for comp in scc_components:
-            if comp in instances:
-                scc_instances[comp] = instances[comp]  # e.g. "waveguide", "y_branch", etc.
-        
-        scc_ports = {}
-        # 2) Filter connections
-        scc_connections = {}    
-        reconnect_dict = {}   
-        
-        port_index_counter = 0  # This counter is used for new external port labels.
-        
-        # 3) Retain original top-level ports that reference a component in the SCC
-        for port_label, comp_port_str in original_ports.items():
-            comp, port = comp_port_str.split(',')
-            if comp in scc_components:
-                scc_ports[port_label] = comp_port_str
-                port_index_counter += 1
-        temp_index = 0
-        for conn_key, conn_value in all_connections.items():
-            compA, portA = conn_key.split(',')
-            compB, portB = conn_value.split(',')
-
-            if compA in scc_components and compB in scc_components:
-                # Connection stays within the SCC
-                scc_connections[conn_key] = conn_value
-
-            elif compA in scc_components:
-                new_label = f"o{port_index_counter}"
-                temp_index += 1
-                port_index_counter += 1
-                if new_label in scc_ports:
-                    tempcheck = port_index_counter - 1
-                    while new_label in scc_ports:
-                        new_label = f"o{tempcheck}"
-                        tempcheck -= 1
-                    scc_ports[new_label] = conn_key
-                    reconnect_dict[conn_key] = conn_value
-                else:
-                    scc_ports[new_label] = conn_key
-                    reconnect_dict[conn_key] = conn_value
-                
-            elif compB in scc_components:
-                new_label = f"o{port_index_counter}"
-                temp_index += 1
-                port_index_counter += 1
-                if new_label in scc_ports:
-                    tempcheck = port_index_counter - 1
-                    while new_label in scc_ports:
-                        new_label = f"o{tempcheck}"
-                        tempcheck -= 1
-                    scc_ports[new_label] = conn_value
-                    reconnect_dict[conn_key] = conn_value
-                else:
-                    scc_ports[new_label] = conn_value
-                    reconnect_dict[conn_key] = conn_value
-
-
-        # 4) Create external ports for removed passive->active edges if the passive component is in scc_components  
-        sub_netlist = {
-            "instances": scc_instances,
-            "connections": scc_connections,
-            "ports": scc_ports,
-        }
-        return sub_netlist, reconnect_dict
+        return sub_netlist
 

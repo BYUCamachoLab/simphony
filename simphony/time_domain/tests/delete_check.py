@@ -59,7 +59,7 @@ netlist = {
 T = 0.5e-11
 dt = 1e-14                   # Time step/resolution
 t = jnp.arange(0, T, dt)
-MultiModeInterferometer = ideal.make_mmi_model(r=9, s=9)
+MultiModeInterferometer = MMI(r = 9,s = 9)
 
 models = {
     "MultiModeInterferometer": MultiModeInterferometer,
@@ -73,7 +73,6 @@ wvl = np.linspace(1.5, 1.6, num_measurements)
 options = {
     'wl': wvl,'wg': {'length':0.0},
 }
-
 
 time_sim = TimeSim(netlist=netlist, models=models)
 local_I = jnp.array([])

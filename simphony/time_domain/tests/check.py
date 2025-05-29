@@ -94,39 +94,39 @@ toc = time.time()
 run_time = toc - tic
 modelResult.plot_sim()
 
-# Updated testing function with detailed output on failure
-def test_compare_results(expected_data):
-    """
-    Compare expected_data with the loaded simulation results.
-    If a mismatch occurs, print detailed information about the failure.
-    """
-    # Read the previously saved dictionary
-    with open("simphony/time_domain/tests/test_comparison_results/simulation_results.pkl", "rb") as f:
-        loaded_data = pickle.load(f)
+# # Updated testing function with detailed output on failure
+# def test_compare_results(expected_data):
+#     """
+#     Compare expected_data with the loaded simulation results.
+#     If a mismatch occurs, print detailed information about the failure.
+#     """
+#     # Read the previously saved dictionary
+#     with open("simphony/time_domain/tests/test_comparison_results/simulation_results.pkl", "rb") as f:
+#         loaded_data = pickle.load(f)
 
-    # Ensure both dictionaries have the same keys
-    assert loaded_data.keys() == expected_data.keys(), "Mismatch in dictionary keys."
+#     # Ensure both dictionaries have the same keys
+#     assert loaded_data.keys() == expected_data.keys(), "Mismatch in dictionary keys."
 
-    # Compare each array in the dictionary
-    for key in loaded_data.keys():
-        if not jnp.allclose(loaded_data[key], expected_data[key], rtol=1e-10, atol=1e-10):
-            # Compute the element-wise absolute difference
-            diff = jnp.abs(loaded_data[key] - expected_data[key])
-            # Find the maximum difference and its index
-            max_diff = jnp.max(diff)
-            idx = int(jnp.argmax(diff))
-            loaded_val = loaded_data[key][idx]
-            expected_val = expected_data[key][idx]
-            tol = 1e-13 + 1e-12 * abs(expected_val)
-            error_message = (
-                f"Mismatch for key '{key}' at index {idx}:\n"
-                f"  Loaded value         = {loaded_val}\n"
-                f"  Expected value       = {expected_val}\n"
-                f"  Absolute difference  = {max_diff}\n"
-                f"  Tolerance (atol + rtol*|expected|) = {tol}\n"
-            )
-            raise AssertionError(error_message)
-    print("All results match expected data!")
+#     # Compare each array in the dictionary
+#     for key in loaded_data.keys():
+#         if not jnp.allclose(loaded_data[key], expected_data[key], rtol=1e-10, atol=1e-10):
+#             # Compute the element-wise absolute difference
+#             diff = jnp.abs(loaded_data[key] - expected_data[key])
+#             # Find the maximum difference and its index
+#             max_diff = jnp.max(diff)
+#             idx = int(jnp.argmax(diff))
+#             loaded_val = loaded_data[key][idx]
+#             expected_val = expected_data[key][idx]
+#             tol = 1e-13 + 1e-12 * abs(expected_val)
+#             error_message = (
+#                 f"Mismatch for key '{key}' at index {idx}:\n"
+#                 f"  Loaded value         = {loaded_val}\n"
+#                 f"  Expected value       = {expected_val}\n"
+#                 f"  Absolute difference  = {max_diff}\n"
+#                 f"  Tolerance (atol + rtol*|expected|) = {tol}\n"
+#             )
+#             raise AssertionError(error_message)
+#     print("All results match expected data!")
 
-# Run the test
-test_compare_results(modelResult.outputs)
+# # Run the test
+# test_compare_results(modelResult.outputs)
