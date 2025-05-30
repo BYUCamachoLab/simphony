@@ -22,61 +22,146 @@ class TimeSystem(SimDevice):
 
 
 
+# def my_dlsim(system, u, t=None, x0=None):
+#         out_samples = len(u)
+#         stoptime = (out_samples - 1) * system.dt
+
+#         xout = np.zeros((out_samples, system.A.shape[0]), dtype=complex)
+#         yout = np.zeros((out_samples, system.C.shape[0]), dtype=complex)
+#         tout = np.linspace(0.0, stoptime, num=out_samples)
+
+#         xout[0, :] = np.zeros((system.A.shape[1],), dtype=complex)
+#         if x0 is not None:
+#             xout[0, :] = x0
+
+#         u_dt = u
+
+#         # Simulate the system
+#         for i in range(0, out_samples - 1):
+#             xout[i+1, :] = (np.dot(system.A, xout[i, :]) +
+#                             np.dot(system.B, u_dt[i, :]))
+#             yout[i, :] = (np.dot(system.C, xout[i, :]) +
+#                         np.dot(system.D, u_dt[i, :]))
+
+#         # Last point
+#         yout[out_samples-1, :] = (np.dot(system.C, xout[out_samples-1, :]) +
+#                                 np.dot(system.D, u_dt[out_samples-1, :]))
+
+#         return tout, yout, xout
+
 def my_dlsim(system, u, t=None, x0=None):
-        out_samples = len(u)
-        stoptime = (out_samples - 1) * system.dt
+    out_samples = len(u)
+    stoptime = (out_samples - 1) * system.dt
 
-        xout = np.zeros((out_samples, system.A.shape[0]), dtype=complex)
-        yout = np.zeros((out_samples, system.C.shape[0]), dtype=complex)
-        tout = np.linspace(0.0, stoptime, num=out_samples)
+    xout = jnp.zeros((out_samples, system.A.shape[0]), dtype=jnp.complex64)
+    yout = jnp.zeros((out_samples, system.C.shape[0]), dtype=jnp.complex64)
+    tout = jnp.linspace(0.0, stoptime, num=out_samples)
 
-        xout[0, :] = np.zeros((system.A.shape[1],), dtype=complex)
-        if x0 is not None:
-            xout[0, :] = x0
+    # Manually create a mutable copy because JAX arrays are immutable
+    xout = xout.at[0, :].set(jnp.zeros((system.A.shape[1],), dtype=jnp.complex64))
+    if x0 is not None:
+        xout = xout.at[0, :].set(x0.flatten())
+        # xout = xout.at[0, :].set(x0)
 
-        u_dt = u
+    u_dt = u
 
-        # Simulate the system
-        for i in range(0, out_samples - 1):
-            xout[i+1, :] = (np.dot(system.A, xout[i, :]) +
-                            np.dot(system.B, u_dt[i, :]))
-            yout[i, :] = (np.dot(system.C, xout[i, :]) +
-                        np.dot(system.D, u_dt[i, :]))
+    # Simulate the system (using Python loop since JAX loops need special handling)
+    xout_list = [xout[0, :]]
+    yout_list = []
 
-        # Last point
-        yout[out_samples-1, :] = (np.dot(system.C, xout[out_samples-1, :]) +
-                                np.dot(system.D, u_dt[out_samples-1, :]))
+    for i in range(out_samples - 1):
+        x_next = jnp.dot(system.A, xout_list[-1]) + jnp.dot(system.B, u_dt[i, :])
+        y_curr = jnp.dot(system.C, xout_list[-1]) + jnp.dot(system.D, u_dt[i, :])
+        xout_list.append(x_next)
+        yout_list.append(y_curr)
 
-        return tout, yout, xout
+    # Final output
+    y_last = jnp.dot(system.C, xout_list[-1]) + jnp.dot(system.D, u_dt[-1, :])
+    yout_list.append(y_last)
+
+    # Stack results
+    xout = jnp.stack(xout_list)
+    yout = jnp.stack(yout_list)
+
+    return tout, yout, xout
 
 def my_dlsimworks(system, u, t=None, x0=None):
         out_samples = len(u)
         stoptime = (out_samples) * system.dt
 
-        xout = np.zeros((out_samples, system.A.shape[0]), dtype=complex)
-        yout = np.zeros((out_samples, system.C.shape[0]), dtype=complex)
-        tout = np.linspace(0.0, stoptime, num=out_samples)
+        # xout = np.zeros((out_samples, system.A.shape[0]), dtype=complex)
+        # yout = np.zeros((out_samples, system.C.shape[0]), dtype=complex)
+        # tout = np.linspace(0.0, stoptime, num=out_samples)
+        xout = jnp.zeros((out_samples, system.A.shape[0]), dtype=jnp.complex128)
+        yout = jnp.zeros((out_samples, system.C.shape[0]), dtype=jnp.complex128)
+        tout = jnp.linspace(0.0, stoptime, num=out_samples)
 
-        xout[0, :] = np.zeros((system.A.shape[1],), dtype=complex)
-        
+
+        # xout[0, :] = np.zeros((system.A.shape[1],), dtype=complex)
+        # if x0 is not None:
+        #     xout[0, :] = x0
+        xout = xout.at[0, :].set(jnp.zeros((system.A.shape[1],), dtype=jnp.complex128))
         if x0 is not None:
-            xout[0, :] = x0
+            xout = xout.at[0, :].set(x0.flatten())
+            # xout = xout.at[0, :].set(x0)
             
 
         u_dt = u
 
+        # # Simulate the system
+        # for i in range(0, out_samples):
+        #     xout[i, :] = (np.dot(system.A, xout[i, :]) +
+        #                     np.dot(system.B, u_dt[i, :]))
+        #     yout[i, :] = (np.dot(system.C, xout[i, :]) +
+        #                 np.dot(system.D, u_dt[i, :]))
+
+        # # Last point
+        # yout[out_samples-1, :] = (np.dot(system.C, xout[out_samples-1, :]) +
+        #                         np.dot(system.D, u_dt[out_samples-1, :]))
         # Simulate the system
         for i in range(0, out_samples):
-            xout[i, :] = (np.dot(system.A, xout[i, :]) +
-                            np.dot(system.B, u_dt[i, :]))
-            yout[i, :] = (np.dot(system.C, xout[i, :]) +
-                        np.dot(system.D, u_dt[i, :]))
+            xout = xout.at[i, :].set(jnp.dot(system.A, xout[i, :]) +
+                                    jnp.dot(system.B, u_dt[i, :]))
+            yout = yout.at[i, :].set(jnp.dot(system.C, xout[i, :]) +
+                                    jnp.dot(system.D, u_dt[i, :]))
 
         # Last point
-        yout[out_samples-1, :] = (np.dot(system.C, xout[out_samples-1, :]) +
-                                np.dot(system.D, u_dt[out_samples-1, :]))
+        yout = yout.at[out_samples - 1, :].set(
+            jnp.dot(system.C, xout[out_samples - 1, :]) +
+            jnp.dot(system.D, u_dt[out_samples - 1, :])
+        )
 
         return tout, yout, xout
+
+
+# def my_dlsimworks(system, u, t=None, x0=None):
+#         out_samples = len(u)
+#         stoptime = (out_samples) * system.dt
+
+#         xout = np.zeros((out_samples, system.A.shape[0]), dtype=complex)
+#         yout = np.zeros((out_samples, system.C.shape[0]), dtype=complex)
+#         tout = np.linspace(0.0, stoptime, num=out_samples)
+
+#         xout[0, :] = np.zeros((system.A.shape[1],), dtype=complex)
+        
+#         if x0 is not None:
+#             xout[0, :] = x0
+            
+
+#         u_dt = u
+
+#         # Simulate the system
+#         for i in range(0, out_samples):
+#             xout[i, :] = (np.dot(system.A, xout[i, :]) +
+#                             np.dot(system.B, u_dt[i, :]))
+#             yout[i, :] = (np.dot(system.C, xout[i, :]) +
+#                         np.dot(system.D, u_dt[i, :]))
+
+#         # Last point
+#         yout[out_samples-1, :] = (np.dot(system.C, xout[out_samples-1, :]) +
+#                                 np.dot(system.D, u_dt[out_samples-1, :]))
+
+#         return tout, yout, xout
 
 
 
@@ -107,6 +192,7 @@ class TimeSystemIIR(TimeSystem):
             t,y_out,x_out = my_dlsim(self.sys, input, x0 = self.state_vector)
         else:
             t,y_out,x_out = my_dlsimworks(self.sys, input, x0 = self.state_vector)
+
         self.state_vector = x_out
 
         j = 0
