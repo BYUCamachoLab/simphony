@@ -150,7 +150,6 @@ class TimeSim(Simulation):
         model_order: int = 50,
         model_parameters: dict = None,
         dt: float = 1e-14,
-        max_size: int = 10,
         suppress_output: bool = False
     ) -> None:
         """
@@ -171,7 +170,6 @@ class TimeSim(Simulation):
             suppress_output (bool): If True, suppresses printing of intermediate results.
         """
         self.dt = dt
-        self.max_size = max_size
         c_light = 299792458
         center_freq = c_light / (center_wvl * 1e-6)
         freqs = c_light / (wvl * 1e-6) - center_freq
