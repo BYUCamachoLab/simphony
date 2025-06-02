@@ -8,13 +8,13 @@ from scipy import signal
 import time
 import pickle
 
-from simphony.time_domain.simulation import TimeSim, TimeResult
+from simphony.time_domain.optimizer_code import TimeSim, TimeResult
 from simphony.time_domain.utils import gaussian_pulse, smooth_rectangular_pulse
 from simphony.libraries import siepic
 from simphony.time_domain.ideal import Modulator
 
 # Simulation parameters
-T = 2.5e-11
+T = 100e-11
 dt = 1e-14      # Time step (Total time duration is T)
 t = jnp.arange(0, T, dt) # Time array
 t0 = 1.0e-11  # Pulse start time
@@ -83,7 +83,7 @@ time_sim.build_model(model_parameters=options, dt=dt)
 
 num_outputs = 2
 inputs = {
-    f'o{i}': smooth_rectangular_pulse(t, 0.5e-11, 1.5e-11) if i == 0 else jnp.zeros_like(t)
+    f'o{i}': jnp.ones_like(t) if i == 0 else jnp.zeros_like(t)
     for i in range(num_outputs)
 }
 
