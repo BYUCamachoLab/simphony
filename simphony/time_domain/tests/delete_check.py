@@ -8,7 +8,7 @@ from scipy import signal
 import time
 import pickle
 
-from simphony.time_domain.optimizer_code import TimeSim, TimeResult
+from simphony.time_domain.simulation import TimeSim, TimeResult
 from simphony.time_domain.utils import gaussian_pulse, smooth_rectangular_pulse
 from simphony.libraries import siepic
 from simphony.time_domain.ideal import Modulator

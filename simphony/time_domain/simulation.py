@@ -6,6 +6,7 @@ import jax
 import jax.numpy as jnp
 import math
 from jax import config
+from jax import jit, lax
 
 from simphony.time_domain.time_system import TimeSystemIIR, TimeSystem
 config.update("jax_enable_x64", True)
@@ -20,6 +21,7 @@ from scipy.interpolate import interp1d
 from simphony.exceptions import UndefinedActiveComponent
 import sys
 from tqdm.auto import tqdm
+from jax import debug   
 
 
 
@@ -130,6 +132,8 @@ class TimeSim(Simulation):
         self.removed_ports = None
         self.passive_reconnections = None
         self.S_params_dict = None
+        self._scan_jit      = None  # compiled lax.scan
+        self._prepared_maps      = False
 
         # Holds the final time-domain netlist after re-wiring sub-circuits and active comps
         self.td_netlist = {"models": {}, "connections": {}, "ports": {}}
@@ -150,6 +154,7 @@ class TimeSim(Simulation):
         model_order: int = 50,
         model_parameters: dict = None,
         dt: float = 1e-14,
+        max_size: int = 10,
         suppress_output: bool = False
     ) -> None:
         """
@@ -170,6 +175,7 @@ class TimeSim(Simulation):
             suppress_output (bool): If True, suppresses printing of intermediate results.
         """
         self.dt = dt
+        self.max_size = max_size
         c_light = 299792458
         center_freq = c_light / (center_wvl * 1e-6)
         freqs = c_light / (wvl * 1e-6) - center_freq
@@ -260,64 +266,216 @@ class TimeSim(Simulation):
             )
             self.time_system = TimeSystemIIR(single_iir_model)
 
-    def run(self, t: ArrayLike, input_signals: dict, reset: bool = True) -> TimeResult:
-        """
-        Runs the time-domain simulation over a specified time array with given input signals.
 
-        **User-Facing**: This is typically the final step. Provide your time array
-        and input signals here.
 
-        Args:
-            t (ArrayLike): Original time array.
-            input_signals (dict): Dictionary of input signals keyed by port name.
-            reset (bool): If True, resets the internal state of all sub-circuits and active components.
-
-        Returns:
-            TimeResult: An object containing the outputs, time array, inputs, and S-parameters.
-        """
-        self.t = t
+    def run(self, t: ArrayLike, input_signals: dict, reset: bool = True) -> TimeResult:  # noqa: D401,E501
+        """Run the simulation and return a **TimeResult** object.«"""  # noqa: E501
+        # 0) Resample inputs to internal time grid
+        self.t      = t
         self.inputs = input_signals
-        
-
-        # Interpolate input signals to the time resolution defined by self.dt
         self.t, self.inputs = self.interpolate_inputs()
-        n_steps   = len(self.t)
-        dtype_out = jnp.complex128            # or jnp.float32 if you store intensities
 
-        
-        if reset:
-            for model in self.subcircuit_time_systems:
-                model.reset()
+        # 1) Build static, hashable wiring maps once per build_model()
+        if not self._prepared_maps:
+            self._prepare_static_maps()
+            # Compile scan with hashable (tuple) static args
+            self._scan_jit = jit(self._scan_loop,
+                                 static_argnums=(4, 5, 6,7))
+            # self._scan_jit = self._scan_loop
+            self._prepared_maps = True
 
-        # If active components exist, do multi-sub-circuit stepping
-        if self.active_components is not None:
-            # Initialize top-level outputs
-            self.outputs = {p: jnp.zeros((n_steps,), dtype=dtype_out)
-                        for p in self.td_netlist["ports"]}        
-            
-            
-            # Initialize instance outputs for both active devices and sub-circuits
-            for instance_name, td_model in self.td_netlist["models"].items():
-                self.instance_outputs[instance_name] = {
-                    port: jnp.array([0 + 0j]) for port in td_model.ports
-                }
-            i = 0
-            # Step through time, one index at a time
-            for time_index, _ in tqdm(enumerate(self.t) ):
-                self.step(time_index)
-                # print(f"Time index: {i} / {len(self.t)}")
-                i += 1
-              
-        # If no active components, do a single time-domain response (already built)
-        else:
-            self.outputs, _ = self.time_system.response(self.inputs, time_sim=False)
+        # 2) Pack top‑level inputs into a single JAX array (T × nTop)
+        top_inputs = jnp.stack([jnp.asarray(self.inputs[p]) for p in self._port_order], axis=1, dtype=jnp.complex128)
+        n_steps    = top_inputs.shape[0]
 
-        return TimeResult(
-            outputs=self.outputs,
-            t=self.t,
-            inputs=self.inputs,
-            S_params=self.S_params_dict
-        )
+        # 3) Allocate initial carry arrays (all zeros)
+        n_inst    = len(self._systems)
+        max_ports = self._max_ports
+        init_inst = jnp.zeros((n_inst, max_ports, 1), dtype=jnp.complex128)
+        init_outs = jnp.zeros((n_steps, len(self._output_specs), 1), dtype=jnp.complex128)
+        init_states = self.build_initial_states()
+        # 4) Execute the fused lax.scan
+        final_outs = self._scan_jit(top_inputs,
+                                    init_inst,
+                                    init_outs,
+                                    init_states,
+                                    self._systems,
+                                    self._active_mask,
+                                    self._input_specs,
+                                    self._output_specs)
+
+        # 5) Convert back to dict for TimeResult
+        self.outputs = {p: final_outs[:, j, 0] for j, p in enumerate(self._port_order)}
+
+        return TimeResult(outputs=self.outputs,
+                          t=self.t,
+                          inputs=self.inputs,
+                          S_params=self.S_params_dict)
+
+    # ------------------------------------------------------------------
+    # HELPER: build immutable/tuple wiring maps (hashable for jit)
+    # ------------------------------------------------------------------
+    def _prepare_static_maps(self):
+        """Derive tuple‑based wiring tables from the current td_netlist."""
+        # Port order (deterministic)
+        self._port_order = tuple(self.td_netlist["ports"].keys())
+
+        # Flatten model dict ➜ ordered tuples
+        items            = list(self.td_netlist["models"].items())
+        self._names      = tuple(n for n, _ in items)
+        self._systems    = tuple(m for _, m in items)
+        self._inst_idx   = {n: i for i, n in enumerate(self._names)}
+        self._active_mask = tuple(n in (self.active_components or set()) for n in self._names)
+        self._max_ports   = max(len(s.ports) for s in self._systems) if self._systems else 0
+
+        # Input specs (padded later at runtime)
+        rows = []
+        for name, sys in items:
+            row = []
+            for p in sys.ports:
+                key_check = f"{name},{p}"
+                for key,value in self.td_netlist["connections"].items():
+                    if key == key_check:
+                        src = self.td_netlist["connections"][key]
+                        si, sp = (x.strip() for x in src.split(','))
+                        row.append((0, self._inst_idx[si], self._systems[self._inst_idx[si]].ports.index(sp)))
+                        break
+                    if value == key_check:
+                        src = key
+                        si, sp = (x.strip() for x in src.split(','))
+                        row.append((0, self._inst_idx[si], self._systems[self._inst_idx[si]].ports.index(sp)))
+                        break
+                        
+                
+                else:
+                    for tp_i, tp in enumerate(self._port_order):
+                        _, tgt = self.td_netlist["ports"][tp].split(',')
+                        if tgt.strip() == p:
+                            row.append((1, tp_i))
+                            break
+                    else:
+                        row.append((2,))
+            rows.append(tuple(row))
+        self._input_specs = tuple(rows)
+
+        # Output specs aligned with _port_order
+        outs = []
+        for tp in self._port_order:
+            inst, prt = (x.strip() for x in self.td_netlist["ports"][tp].split(','))
+            outs.append((self._inst_idx[inst], self._systems[self._inst_idx[inst]].ports.index(prt)))
+        self._output_specs = tuple(outs)
+
+    def build_initial_states(self):
+        """
+        Return a tuple of per‐instance initial states, in the same order
+        as `self._systems` / `self._names`.  Stateless components get ().
+        """
+        states_list = []
+        for sys in self._systems:
+            if hasattr(sys, "init_state"):
+                states_list.append(sys.init_state())
+            else:
+                states_list.append(())
+        return tuple(states_list)
+
+
+    def _scan_loop(self,
+               top_inputs: jnp.ndarray,          # (T, nTop)
+               inst0:      jnp.ndarray,          # (nInst, maxPorts, 1)
+               outs0:      jnp.ndarray,          # (T, nTop, 1)
+               states0:    tuple,                # <<< now a tuple of length = nInst
+               systems:    tuple,                # static tuple of length = nInst
+               active_mask: tuple,               # static tuple[bool] length = nInst
+               input_specs: tuple,               # static tuple-of-tuples, length = nInst
+               output_specs: tuple               # static tuple-of-(inst_idx, port_idx)
+               ) -> jnp.ndarray:
+        """Return stacked outputs (T, nTop, 1).  Handles heterogeneous port
+        counts by zero-padding to *max_ports* before stacking."""
+        n_steps   = top_inputs.shape[0]
+        max_ports = inst0.shape[1]   # compile-time constant
+        n_inst    = len(systems)     # number of instances
+
+        def step(carry, t_idx):
+            # Unpack the carry triple: (inst_outs, outs, states_tuple)
+            inst_outs, outs, states = carry
+            #   inst_outs: (nInst, maxPorts, 1)
+            #   outs:      (T, nTop, 1)
+            #   states:    tuple of length = nInst, each entry is that component’s prev_state
+
+            # --- gather inputs for each instance (pad to max_ports) ---
+            gathered_rows = []
+            for inst_i, sys in enumerate(systems):
+                vec = []
+                for spec in input_specs[inst_i]:
+                    tag = spec[0]
+                    if tag == 0:
+                        # (0, producer_inst_idx, producer_port_idx)
+                        _, si, sp = spec
+                        vec.append(inst_outs[si, sp])
+                    elif tag == 1:
+                        # (1, top_port_idx)
+                        _, tp_j = spec
+                        vec.append(top_inputs[t_idx, tp_j][None])
+                    else:
+                        # (2,) → unconnected → zero
+                        vec.append(jnp.zeros((1,), dtype=jnp.complex128))
+
+                arr = jnp.stack(vec, axis=0)                           # shape (#local_ports, 1)
+                arr = jnp.pad(arr, ((0, max_ports - arr.shape[0]), (0, 0)))  # (max_ports, 1)
+                gathered_rows.append(arr)
+
+            gathered = jnp.stack(gathered_rows, axis=0)  # shape (nInst, maxPorts, 1)
+
+            # --- call each model’s `step(...)`, building new_states_list & new_rows_list ---
+            new_rows_list = []      # for collecting each instance’s padded output (max_ports,1)
+            new_states_list = []    # for collecting each instance’s new_state
+
+            for inst_i, sys in enumerate(systems):
+                # Build port_dict exactly as before, but then flatten into input_tuple:
+                port_dict = {p: gathered[inst_i, k] for k, p in enumerate(sys.ports)}
+
+                # Flatten in the same order as sys.ports → a Python tuple of scalars
+                input_tuple = tuple(port_dict[p][0] for p in sys.ports)
+
+                # Fetch prev_state from the tuple
+                prev_state_i = states[inst_i]
+
+                # Call the new `step(...)` API; it returns (new_state_i, local_outputs_tuple)
+                new_state_i, local_outputs_tuple = sys.step(prev_state_i, *input_tuple)
+
+                # Append the new state to our list
+                new_states_list.append(new_state_i)
+
+                # Stack & pad the returned local_outputs_tuple, just like before:
+                arr = jnp.stack([jnp.atleast_1d(o) for o in local_outputs_tuple], axis=0)  # (#local_ports,1)
+                arr = jnp.pad(arr, ((0, max_ports - arr.shape[0]), (0,0)))                   # (max_ports,1)
+                new_rows_list.append(arr)
+
+            # Convert new_states_list → a tuple of length nInst
+            new_states = tuple(new_states_list)
+
+            # Convert new_rows_list → a single array of shape (nInst, max_ports, 1)
+            new_inst = jnp.stack(new_rows_list, axis=0)
+
+            # --- scatter to top-level outputs (same as before) ---
+            new_outs = outs
+            for top_j, (ii, pp) in enumerate(output_specs):
+                new_outs = new_outs.at[t_idx, top_j].set(new_inst[ii, pp])
+
+            # Pack the new carry: (new_inst, new_outs, new_states)
+            new_carry = (new_inst, new_outs, new_states)
+            return new_carry, None
+
+        # Run lax.scan; the only change is we now pass `states0` (a tuple) in the initial carry
+        (final_inst_outs, final_outs, final_states), _ = lax.scan(
+                                step,
+                                (inst0, outs0, states0),
+                                jnp.arange(n_steps)
+                            )
+        return final_outs   # shape (T, nTop, 1)
+
+
+
 
     ############################################################################
     #                         INTERNAL METHODS BELOW                            #
