@@ -16,8 +16,16 @@ class TimeSystem(SimDevice):
         pass
     
     @abstractmethod
-    def reset(self):
+    def init_state(self):
+        """Initialize the state of the system."""
         pass
+
+    @abstractmethod
+    def step(self, x_prev: jnp.ndarray, *inputs_tuple) -> jnp.ndarray:
+        """Compute the next state of the system."""
+        pass
+
+    
 
 
 
