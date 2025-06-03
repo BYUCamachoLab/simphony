@@ -8,7 +8,7 @@ import math
 from jax import config
 from jax import jit, lax
 
-from simphony.time_domain.time_system import TimeSystemIIR, TimeSystem
+from simphony.time_domain.time_system import TimeSystemIIR, TimeSystem, SampleModeSystem, BlockModeSystem
 config.update("jax_enable_x64", True)
 
 from simphony.utils import dict_to_matrix
@@ -74,7 +74,7 @@ class TimeResult(SimulationResult):
         plt.show()
 
 
-class TimeSim(Simulation):
+class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
     """
     A class for time-domain photonic circuit simulation, allowing for both passive
     and active components. 
@@ -95,7 +95,7 @@ class TimeSim(Simulation):
         active_components (set): Names of active components in the netlist.
     """
 
-    def __init__(self, netlist: dict, models: dict, active_components: set = None):
+    def __init__(self, netlist: dict, models: dict, active_components: set = None, mode: str = "sample"):
         """
         Initializes the TimeSim object with a netlist, a dictionary of models,
         and an optional set of active components.
@@ -105,6 +105,7 @@ class TimeSim(Simulation):
             component_models (dict): Dictionary mapping component names to corresponding models.
             active_components (set, optional): Names of active components in the netlist. Defaults to None.
         """
+        super().__init__()
         self.netlist = netlist
         self.models = models
         self.active_components = active_components
@@ -119,7 +120,8 @@ class TimeSim(Simulation):
                         else:
                             if instance not in self.active_components:
                                 self.active_components.add(instance)
-        
+        self.mode = mode  # Default mode, can be changed to "block" if needed
+
         # Extract netlist info for convenience
         self.instances = netlist["instances"]
         self.connections = netlist["connections"]
@@ -266,9 +268,16 @@ class TimeSim(Simulation):
             )
             self.time_system = TimeSystemIIR(single_iir_model)
 
+    def run(self, t: ArrayLike, input_signals: dict, reset: bool = True):
+        if self.mode=="sample":
+            return self._sample_mode_run(t, input_signals)
+        elif self.mode=="block":
+            return self._block_mode_run(t, input_signals)
+    
+    def init_state(self):
+        pass
 
-
-    def run(self, t: ArrayLike, input_signals: dict, reset: bool = True) -> TimeResult:  # noqa: D401,E501
+    def _sample_mode_run(self, t: ArrayLike, input_signals: dict) -> TimeResult:  # noqa: D401,E501
         """Run the simulation and return a **TimeResult** object.«"""  # noqa: E501
         # 0) Resample inputs to internal time grid
         self.t      = t
@@ -311,6 +320,8 @@ class TimeSim(Simulation):
                           t=self.t,
                           inputs=self.inputs,
                           S_params=self.S_params_dict)
+    def _block_mode_run(self, t: ArrayLike, input_signals: dict) -> TimeResult:
+        pass
 
     # ------------------------------------------------------------------
     # HELPER: build immutable/tuple wiring maps (hashable for jit)

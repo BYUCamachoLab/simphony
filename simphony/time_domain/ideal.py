@@ -139,6 +139,20 @@ class Modulator(TimeSystem):
         out0 = input1 * coeff
         out1 = input0 * coeff
         return prev_idx + 1, (out0, out1)
+    
+    def response(self, inputs:dict) -> dict:
+        N = inputs['o0'].shape[0]
+        o0_response = jnp.zeros((N),dtype = complex)
+        o1_response = jnp.zeros((N), dtype=complex)
+        
+        for i in range(N):
+            o0_response = o0_response.at[i].set(inputs['o1'][i] * self.s_mod[self.countstep])
+            o1_response = o1_response.at[i].set(inputs['o0'][i] * self.s_mod[self.countstep])
+        self.countstep += 1
+        response = {
+            "o0": o0_response,
+            "o1": o1_response,
+        }    
 
     
 # class Modulator(TimeSystem):

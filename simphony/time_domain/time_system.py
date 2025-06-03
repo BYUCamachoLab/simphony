@@ -5,26 +5,32 @@ from simphony.time_domain.pole_residue_model import PoleResidueModel
 import jax.numpy as jnp
 from simphony.simulation import SimDevice
 
+class TimeSystem(ABC):
+    def __init__(self) -> None:
+        pass
 
-class TimeSystem(SimDevice):
+class BlockModeSystem(TimeSystem):
     def __init__(self) -> None:
         pass
 
     @abstractmethod
-    def response(self, input_signal) -> ArrayLike:
+    def run(self, input_signal) -> ArrayLike:
         """Compute the system response."""
-        pass
+        raise NotImplementedError
+
+class SampleModeSystem(TimeSystem):
+    def __init__(self) -> None:
+        super().__init__()
     
     @abstractmethod
     def init_state(self):
         """Initialize the state of the system."""
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def step(self, x_prev: jnp.ndarray, *inputs_tuple) -> jnp.ndarray:
         """Compute the next state of the system."""
-        pass
-
+        raise NotImplementedError
     
 
 
@@ -142,34 +148,34 @@ def my_dlsimworks(system, u, t=None, x0=None):
         return tout, yout, xout
 
 
-# def my_dlsimworks(system, u, t=None, x0=None):
-#         out_samples = len(u)
-#         stoptime = (out_samples) * system.dt
+def my_dlsimworks(system, u, t=None, x0=None):
+        out_samples = len(u)
+        stoptime = (out_samples) * system.dt
 
-#         xout = np.zeros((out_samples, system.A.shape[0]), dtype=complex)
-#         yout = np.zeros((out_samples, system.C.shape[0]), dtype=complex)
-#         tout = np.linspace(0.0, stoptime, num=out_samples)
+        xout = np.zeros((out_samples, system.A.shape[0]), dtype=complex)
+        yout = np.zeros((out_samples, system.C.shape[0]), dtype=complex)
+        tout = np.linspace(0.0, stoptime, num=out_samples)
 
-#         xout[0, :] = np.zeros((system.A.shape[1],), dtype=complex)
+        xout[0, :] = np.zeros((system.A.shape[1],), dtype=complex)
         
-#         if x0 is not None:
-#             xout[0, :] = x0
+        if x0 is not None:
+            xout[0, :] = x0
             
 
-#         u_dt = u
+        u_dt = u
 
-#         # Simulate the system
-#         for i in range(0, out_samples):
-#             xout[i, :] = (np.dot(system.A, xout[i, :]) +
-#                             np.dot(system.B, u_dt[i, :]))
-#             yout[i, :] = (np.dot(system.C, xout[i, :]) +
-#                         np.dot(system.D, u_dt[i, :]))
+        # Simulate the system
+        for i in range(0, out_samples):
+            xout[i, :] = (np.dot(system.A, xout[i, :]) +
+                            np.dot(system.B, u_dt[i, :]))
+            yout[i, :] = (np.dot(system.C, xout[i, :]) +
+                        np.dot(system.D, u_dt[i, :]))
 
-#         # Last point
-#         yout[out_samples-1, :] = (np.dot(system.C, xout[out_samples-1, :]) +
-#                                 np.dot(system.D, u_dt[out_samples-1, :]))
+        # Last point
+        yout[out_samples-1, :] = (np.dot(system.C, xout[out_samples-1, :]) +
+                                np.dot(system.D, u_dt[out_samples-1, :]))
 
-#         return tout, yout, xout
+        return tout, yout, xout
 
 
 
@@ -256,4 +262,27 @@ class TimeSystemIIR(TimeSystem):
         # We need to return a Python tuple of length = n_outputs:
         #   e.g. (y_full[0], y_full[1], …)
         return x_next, tuple(jnp.atleast_1d(y_full[i]) for i in range(y_full.shape[0]))
-    
+
+    def response(self, inputs: dict, time_sim=True) -> ArrayLike:
+        # if state_vector is not None:
+        #      self.state_vector = state_vector
+
+        first_key = next(iter(inputs))
+        N = inputs[first_key].shape
+        responses = {}
+
+        input = jnp.hstack([value.reshape(-1, 1)
+                                for value in inputs.values()])
+        if not time_sim:
+            t,y_out,x_out = my_dlsim(self.sys, input, x0 = self.state_vector)
+        else:
+            t,y_out,x_out = my_dlsimworks(self.sys, input, x0 = self.state_vector)
+
+        self.state_vector = x_out
+
+        j = 0
+        for i in self.ports:
+            responses[i] = y_out[:,j]
+            j += 1
+
+        return responses,t
