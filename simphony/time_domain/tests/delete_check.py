@@ -65,21 +65,23 @@ models = {
     "phase_modulator": timePhaseInstantiated,
 }
 active_components = {"pm", "pm2"}
-
-# Create and build simulation
-time_sim = TimeSim(
-    netlist=netlist,
-    models=models,
-    active_components=active_components,
-)
-
 num_measurements = 200
 model_order = 50
 center_wvl = 1.548
 wvl = np.linspace(1.5, 1.6, num_measurements)
 options = {'wl': wvl, 'wg': {"length": 10.0, "loss": 100}, 'wg2': {"length": 10.0, "loss": 100}}
 
-time_sim.build_model(model_parameters=options, dt=dt)
+# Create and build simulation
+time_sim = TimeSim(
+    netlist=netlist,
+    models=models,
+    active_components=active_components,
+    model_parameters=options, 
+    dt=dt
+)
+
+
+
 
 num_outputs = 2
 inputs = {

@@ -23,7 +23,7 @@ import sys
 from tqdm.auto import tqdm
 from jax import debug   
 
-
+from typing import Tuple, Any
 
 @dataclass
 class TimeResult(SimulationResult):
@@ -95,7 +95,13 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         active_components (set): Names of active components in the netlist.
     """
 
-    def __init__(self, netlist: dict, models: dict, active_components: set = None, mode: str = "sample"):
+    def __init__(self, netlist: dict, models: dict, active_components: set = None, mode: str = "sample",
+                wvl: np.ndarray = np.linspace(1.5, 1.6, 200),
+                center_wvl: float = 1.55,
+                model_order: int = 50,
+                model_parameters: dict = None,
+                dt: float = 1e-14,
+                suppress_output: bool = False):
         """
         Initializes the TimeSim object with a netlist, a dictionary of models,
         and an optional set of active components.
@@ -148,6 +154,12 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         self.outputs = {}
         self.instance_outputs = {}
         self.t = None
+        self.build_model( wvl,
+            center_wvl,
+            model_order,
+            model_parameters,
+            dt,
+            suppress_output)
 
     def build_model(
         self,
@@ -156,7 +168,6 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         model_order: int = 50,
         model_parameters: dict = None,
         dt: float = 1e-14,
-        max_size: int = 10,
         suppress_output: bool = False
     ) -> None:
         """
@@ -177,7 +188,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
             suppress_output (bool): If True, suppresses printing of intermediate results.
         """
         self.dt = dt
-        self.max_size = max_size
+        
         c_light = 299792458
         center_freq = c_light / (center_wvl * 1e-6)
         freqs = c_light / (wvl * 1e-6) - center_freq
@@ -275,7 +286,25 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
             return self._block_mode_run(t, input_signals)
     
     def init_state(self):
-        pass
+        """
+        Exactly as before: build inst‐outs = zeros, states = tuple(sys.init_state())
+        and store in self._step_carry.
+        """
+        if not self._prepared_maps:
+            self._prepare_static_maps()
+            self._scan_jit = jit(self._scan_loop,
+                                 static_argnums=(3, 4, 5, 6))
+            self._prepared_maps = True
+
+        n_inst    = len(self._systems)
+        max_ports = self._max_ports
+
+        init_inst   = jnp.zeros((n_inst, max_ports, 1), dtype=jnp.complex128)
+        init_states = self.build_initial_states()  # tuple of length = n_inst
+
+        # Store “carry = (inst_outs, states)” for step‐by‐step mode
+        self._step_carry = (init_inst, init_states)
+    
 
     def _sample_mode_run(self, t: ArrayLike, input_signals: dict) -> TimeResult:  # noqa: D401,E501
         """Run the simulation and return a **TimeResult** object.«"""  # noqa: E501
@@ -320,6 +349,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
                           t=self.t,
                           inputs=self.inputs,
                           S_params=self.S_params_dict)
+    
     def _block_mode_run(self, t: ArrayLike, input_signals: dict) -> TimeResult:
         pass
 
@@ -514,74 +544,101 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
 
         return t_new, new_inputs
 
-    def step(self, time_index: int) -> None:
-        """
-        Steps the entire time-domain netlist forward by one time index.
+    def step(self,
+         carry: Tuple[jnp.ndarray, Tuple[Any,...]],
+         top_input_vector: jnp.ndarray
+        ) -> Tuple[ Tuple[jnp.ndarray, Tuple[Any,...]], jnp.ndarray ]:
+        inst_outs, states = carry
 
-        Internally collects inputs for each sub-circuit or active component
-        from either another component's output or a top-level input signal.
-        Then updates the outputs accordingly.
+        if self._step_carry is None:
+            raise RuntimeError("You must call `init_step_mode()` before calling `step(...)`.")
 
-        Args:
-            time_index (int): Index in the simulation time array.
-        """
-        # For each model (passive sub-circuit or active device) in the netlist
-        for instance_name, td_system in self.td_netlist["models"].items():
-            instance_inputs = {}
+        prev_inst_outs, prev_states = self._step_carry
+        n_inst    = len(self._systems)
+        max_ports = self._max_ports
+        n_top     = top_input_vector.shape[0]  # = len(self._port_order)
 
-            # Gather inputs from connections or from top-level inputs
-            for port in td_system.ports:
-                check_str = f'{instance_name},{port}'
-                source_found = False
+        # Wrap the existing logic into a “body” that matches lax.scan’s (carry, x) → (new_carry, y)
+        def _one_step_body(carry, top_in):
+            """
+            carry    = (prev_inst_outs, prev_states)
+            top_in   = a single array of shape (nTop,)
+            returns  ((new_inst_outs, new_states), out_row)
+            """
+            inst_outs, states = carry  # inst_outs: (nInst,max_ports,1); states: tuple length=nInst
 
-                for conn_key, conn_val in self.td_netlist["connections"].items():
-                    if check_str == conn_key:
-                        src_inst, src_port = conn_val.split(',')
-                        instance_inputs[port] = self.instance_outputs[src_inst][src_port]
-                        source_found = True
-                        break
-                    elif check_str == conn_val:
-                        src_inst, src_port = conn_key.split(',')
-                        instance_inputs[port] = self.instance_outputs[src_inst][src_port]
-                        source_found = True
-                        break
-
-                # If not found in connections, check if it's a top-level input
-                if not source_found:
-                    circuit_port = next(
-                        (p for p, val in self.td_netlist["ports"].items()
-                         if val.split(',')[1].strip() == port),
-                        None
-                    )
-                    if circuit_port is None:
-                        # No direct connection, no top-level input => assume zero
-                        instance_inputs[port] = jnp.array([0j])
+            # -----------------------------
+            # (1) Gather each subsystem’s inputs into a (nInst,max_ports,1) array
+            # -----------------------------
+            gathered_rows = []
+            for inst_i, sys in enumerate(self._systems):
+                vec = []
+                for spec in self._input_specs[inst_i]:
+                    tag = spec[0]
+                    if tag == 0:
+                        # (0, producer_inst_idx, producer_port_idx)
+                        _, si, sp = spec
+                        vec.append(inst_outs[si, sp])            
+                    elif tag == 1:
+                        # (1, top_port_idx)
+                        _, tp_j = spec
+                        vec.append(top_in[tp_j][None])        # wrap scalar → (1,)
                     else:
-                        instance_inputs[port] = jnp.array([self.inputs[circuit_port][time_index]])
+                        # (2,) unconnected
+                        vec.append(jnp.zeros((1,), dtype=jnp.complex128))
 
-            # Active device or passive sub-circuit: get the time-domain response
-            if instance_name in self.active_components:
-                # If it's an active component, the system might be storing internal states
-                outputs = td_system.response(instance_inputs)
-            else:
-                # Passive sub-circuit with a direct call to .response(...) in TimeSystemIIR
-                outputs, _ = td_system.response(instance_inputs)
+                arr = jnp.stack(vec, axis=0)                   # (n_local_ports, 1)
+                pad_amt = max_ports - arr.shape[0]
+                arr = jnp.pad(arr, ((0, pad_amt), (0, 0)))      # (max_ports, 1)
+                gathered_rows.append(arr)
 
-            # Update instance outputs
-            for out_port_name, out_signal in outputs.items():
-                self.instance_outputs[instance_name][out_port_name] = out_signal
+            gathered = jnp.stack(gathered_rows, axis=0)  # (nInst, max_ports, 1)
 
-        # Finally, gather outputs for top-level ports
-        for circuit_port, inst_port_str in self.td_netlist["ports"].items():
-            inst_name, port_name = inst_port_str.split(',')
-            inst_name = inst_name.strip()
-            port_name = port_name.strip()
-            new_val = self.instance_outputs[inst_name][port_name]
-            self.outputs[circuit_port] = jax.lax.dynamic_update_slice(
-                    self.outputs[circuit_port],
-                    new_val,                      # shape (1,)
-                    (time_index,)                 # write at this position
-                )
+            # -----------------------------
+            # (2) Call each sys.step(prev_state, *input_tuple) via Python‐loop over instances
+            # -----------------------------
+            new_rows_list   = []
+            new_states_list = []
+            for inst_i, sys in enumerate(self._systems):
+                prev_state_i = states[inst_i]
+                n_local = len(sys.ports)
+                input_tuple = tuple(gathered[inst_i, k, 0] for k in range(n_local))
+                new_state_i, local_outputs = sys.step(prev_state_i, *input_tuple)
+                new_states_list.append(new_state_i)
+
+                out_arr = jnp.stack([jnp.atleast_1d(o) for o in local_outputs], axis=0)  # (n_local,1)
+                pad_amt = max_ports - out_arr.shape[0]
+                out_arr = jnp.pad(out_arr, ((0, pad_amt), (0, 0)))                        # (max_ports,1)
+                new_rows_list.append(out_arr)
+
+            new_states    = tuple(new_states_list)
+            new_inst_outs = jnp.stack(new_rows_list, axis=0)  # (nInst, max_ports, 1)
+
+            # -----------------------------
+            # (3) Scatter to form one top‐level out_row of shape (nTop,)
+            # -----------------------------
+            out_values = []
+            for top_j, (ii, pp) in enumerate(self._output_specs):
+                out_values.append(new_inst_outs[ii, pp, 0])
+            out_row = jnp.stack(out_values, axis=0)  # (nTop,)
+
+            return (new_inst_outs, new_states), out_row
+
+        # Now run lax.scan for exactly one step.  We package top_input_vector into a (1, nTop) array.
+        carry0 = (prev_inst_outs, prev_states)
+        inputs_one = jnp.expand_dims(top_input_vector, axis=0)  # shape = (1, nTop)
+
+        (new_inst_outs, new_states), out_seq = lax.scan(
+            _one_step_body,
+            carry0,
+            inputs_one
+        )
+        # out_seq has shape (1, nTop); we only need out_seq[0]
+        out_row = out_seq[0]
+
+        # Update the stored carry so that the next call to step(...) picks up from here
+        self._step_carry = (new_inst_outs, new_states)
+        return (new_inst_outs, new_states), out_row
 
     def prepare_time_domain_netlist(self, port_map_list: dict) -> None:
         """
