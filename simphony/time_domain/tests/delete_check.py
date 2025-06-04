@@ -79,8 +79,28 @@ time_sim = TimeSim(
     model_parameters=options, 
     dt=dt
 )
+new_netlist = {
+    "instances":{
+        "wg":"waveguide",
+        "time": "time_system",
+    },
+    "connections":{
+        "wg,o0": "time,o1",
+    },
+    "ports":{
+        "o0": "time,o0",
+        "o1": "wg,o1",
+    },
+}
+models["time_system"] = time_sim
 
-
+time_simmer2 = TimeSim(
+    netlist=new_netlist,
+    models=models,
+    active_components=active_components,
+    model_parameters=options, 
+    dt=dt
+)
 
 
 num_outputs = 2
@@ -89,9 +109,6 @@ inputs = {
     for i in range(num_outputs)
 }
 
-# Run simulation and plot results
-tic = time.time()
-modelResult = time_sim.run(t, inputs)
-toc = time.time()
-run_time = toc - tic
+modelResult = time_simmer2.run(t, inputs)
+
 modelResult.plot_sim()
