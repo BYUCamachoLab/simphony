@@ -7,6 +7,7 @@ import jax.numpy as jnp
 import math
 from jax import config
 from jax import jit, lax
+import networkx as nx
 
 from simphony.time_domain.time_system import TimeSystemIIR, TimeSystem, SampleModeSystem, BlockModeSystem
 config.update("jax_enable_x64", True)
@@ -157,6 +158,11 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
             model_parameters,
             dt,
             suppress_output)
+
+    def set_mode(self, mode: str):
+        if mode not in {"sample", "block"}:
+            raise ValueError(f"Invalid mode: {mode}. Must be 'sample' or 'block'.")
+        self.mode = mode
 
     def build_model(
         self,
@@ -346,8 +352,43 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
                           inputs=self.inputs,
                           S_params=self.S_params_dict)
     
+    
+    
     def _block_mode_run(self, t: ArrayLike, input_signals: dict) -> TimeResult:
-        pass
+        graph = nx.DiGraph()
+        print("Hooray!")
+        
+        # --------------------------------------------------------------
+        # Turn self.td_netlist into a Networkx Graph
+        # --------------------------------------------------------------
+
+        # # Add nodes for models
+        # for model in self.td_netlist['models']:
+        #     graph.add_node(model, type='model')
+
+        # # Add edges for internal connections
+        # for from_port, to_port in self.td_netlist['connections'].items():
+        #     from_node, from_p = from_port.split(',')
+        #     to_node, to_p = to_port.split(',')
+        #     graph.add_edge(from_node, to_node, from_port=from_p, to_port=to_p)
+
+        # # Add nodes and edges for external ports
+        # for ext_port, internal in self.td_netlist['ports'].items():
+        #     internal_node, internal_port = internal.split(',')
+        #     port_node = f"ext_{ext_port}"
+        #     graph.add_node(port_node, type='port')
+        #     graph.add_edge(port_node, internal_node, to_port=internal_port)
+
+        # --------------------------------------------------------------
+        # Determine which exposed ports are Inputs and which are Outputs
+        # --------------------------------------------------------------
+        
+        
+        exposed_ports = {
+                         "inputs":[], 
+                         "outputs":[],
+                        }
+        
 
     # ------------------------------------------------------------------
     # HELPER: build immutable/tuple wiring maps (hashable for jit)
