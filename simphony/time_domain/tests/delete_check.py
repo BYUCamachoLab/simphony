@@ -78,7 +78,6 @@ options = {'wl': wvl, 'wg': {"length": 10.0, "loss": 100}, 'wg2': {"length": 10.
 time_sim = TimeSim(
     netlist=netlist,
     models=models,
-    active_components=active_components,
     model_parameters=options, 
     dt=dt
 )
@@ -132,7 +131,6 @@ models["phase_modulator_time"] = timePhaseInstantiated1
 time_simmer2 = TimeSim(
     netlist=new_netlist,
     models=models,
-    active_components=active_components,
     model_parameters=options, 
     dt=dt
 )
@@ -186,7 +184,6 @@ models["phase_modulator_time2"] = timePhaseInstantiated2
 time_simmer3 = TimeSim(
     netlist=new_netlist_2,
     models=models,
-    active_components=active_components,
     model_parameters=options, 
     dt=dt
 )
