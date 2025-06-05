@@ -4,6 +4,7 @@ import numpy as np
 from simphony.time_domain.pole_residue_model import PoleResidueModel
 import jax.numpy as jnp
 from simphony.simulation import SimDevice
+from typing import Tuple
 
 class TimeSystem(ABC):
     def __init__(self) -> None:
@@ -28,7 +29,7 @@ class SampleModeSystem(TimeSystem):
         raise NotImplementedError
 
     @abstractmethod
-    def step(self, x_prev: jnp.ndarray, *inputs_tuple) -> jnp.ndarray:
+    def step(self, x_prev, *inputs_tuple: Tuple) -> jnp.ndarray:
         """Compute the next state of the system."""
         raise NotImplementedError
     
