@@ -95,7 +95,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         active_components (set): Names of active components in the netlist.
     """
 
-    def __init__(self, netlist: dict, models: dict, active_components: set = None, mode: str = "sample",
+    def __init__(self, netlist: dict, models: dict, mode: str = "sample",
                 wvl: np.ndarray = np.linspace(1.5, 1.6, 200),
                 center_wvl: float = 1.55,
                 model_order: int = 50,
@@ -114,18 +114,15 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         super().__init__()
         self.netlist = netlist
         self.models = models
-        self.active_components = active_components
+        self.time_system_components = []
         for model in self.models:
             if isinstance(self.models[model], TimeSystem):
                 for instance in self.netlist["instances"]:
                     if self.netlist["instances"][instance] == model:
-                        if self.active_components is None:
-                            self.active_components = set()
-                            if instance not in self.active_components:
-                                self.active_components.add(instance)
-                        else:
-                            if instance not in self.active_components:
-                                self.active_components.add(instance)
+                        if instance not in self.time_system_components:
+                            self.time_system_components.append(instance)
+                            if instance not in self.time_system_components:
+                                self.time_system_components.add(instance)
         self.mode = mode  # Default mode, can be changed to "block" if needed
 
         # Extract netlist info for convenience
@@ -200,7 +197,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         self.suppress_output = suppress_output
 
         # If active components exist, break out passive sub-circuits
-        if self.active_components is not None:
+        if self.time_system_components is not None:
             (
                 self.passive_subnetlists,
                 self.removed_connections,
@@ -208,7 +205,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
             ) = self.create_passive_sub_netlists(
                 self.instances,
                 self.connections,
-                self.active_components,
+                self.time_system_components,
             )
             if not self.suppress_output:
             # Print the passive sub-netlists for debugging/logging
@@ -365,7 +362,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         self._names      = tuple(n for n, _ in items)
         self._systems    = tuple(m for _, m in items)
         self._inst_idx   = {n: i for i, n in enumerate(self._names)}
-        self._active_mask = tuple(n in (self.active_components or set()) for n in self._names)
+        self._active_mask = tuple(n in (self.time_system_components or set()) for n in self._names)
         self._max_ports   = max(len(s.ports) for s in self._systems) if self._systems else 0
 
         # Input specs (padded later at runtime)
@@ -650,13 +647,13 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
             left_comp = left_str.split(',')[0]
             right_comp = right_str.split(',')[0]
 
-            if left_comp in self.active_components:
+            if left_comp in self.time_system_components:
                 if left_comp not in self.td_netlist["models"]:
                     # Add the active model
                     active_model_instance = self.instances.get(left_comp)
                     self.td_netlist["models"][left_comp] = self.models.get(active_model_instance)
 
-            if right_comp in self.active_components:
+            if right_comp in self.time_system_components:
                 if right_comp not in self.td_netlist["models"]:
                     # Add the active model
                     active_model_instance = self.instances.get(right_comp)
@@ -689,13 +686,13 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         for k,v in self.actives_removed:
             # If the active component was removed, we need to add it back as a port
             self.add_to_time_domain_netlist(connection=(k, v))
-        for k in self.active_components:
+        for k in self.time_system_components:
             # If the active component was not removed, we need to add it back as a port
             if k not in self.td_netlist["models"]:
                 active_model_instance = self.instances.get(k)
                 if active_model_instance:
                     self.td_netlist["models"][k] = self.models.get(active_model_instance)
-                    
+
         if self.removed_ports is not None:
             for port_label, comp_port_str in self.removed_ports.items():
                 self.add_to_time_domain_netlist(port=(port_label, comp_port_str))
