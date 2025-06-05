@@ -359,7 +359,6 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
     
     def _block_mode_run(self, t: ArrayLike, input_signals: dict) -> TimeResult:
         graph = nx.DiGraph()
-        print("Hooray!")
         
         # --------------------------------------------------------------
         # Turn self.td_netlist into a Networkx Graph
