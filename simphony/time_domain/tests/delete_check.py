@@ -43,12 +43,15 @@ netlist = {
         "wg": "waveguide",
         "wg2": "waveguide",
         "pm": "phase_modulator",
+        # "pm2": "phase_modulator",
         "y": "y_branch",
         "y2": "y_branch",
     },
     "connections": {
         "wg,o0": "y,port_2",
         "wg,o1": "pm,o0",
+        # "pm,o1":"pm2,o0",
+        # "y2,port_2": "pm2,o1",
         "y2,port_2": "pm,o1",
         "wg2,o0": "y,port_3",
         "y2,port_3": "wg2,o1",
@@ -79,21 +82,53 @@ time_sim = TimeSim(
     model_parameters=options, 
     dt=dt
 )
+# modelResult = time_sim.run(t, {"o0": jnp.ones_like(t), "o1": jnp.zeros_like(t)})
+
+# modelResult.plot_sim()
 new_netlist = {
     "instances":{
         "wg":"waveguide",
+        "wg2": "waveguide",
+        "pm": "phase_modulator_time",
+        "y": "y_branch",
+        "y2": "y_branch",
         "time": "time_system",
     },
     "connections":{
-        "wg,o0": "time,o1",
+        "wg,o0": "y,port_2",
+        "wg,o1": "pm,o0",
+        "y2,port_2": "pm,o1",
+        "wg2,o0": "y,port_3",
+        "y2,port_3": "wg2,o1",
+        "y2,port_1": "time,o0",
     },
     "ports":{
-        "o0": "time,o0",
-        "o1": "wg,o1",
+        "o0": "y,port_1",
+        "o1": "time,o1",
     },
 }
-models["time_system"] = time_sim
 
+
+f_mod = 0
+m = f_mod * jnp.ones(len(t), dtype=complex)
+f_mod2 = jnp.pi/4 
+# m2 = f_mod2 * jnp.ones(len(t),dtype=complex)
+
+x = jnp.linspace(0, 3.14, len(t))
+mu = 0.5  # center the Gaussian in the middle of the interval
+sigma = 0.15     # adjust sigma for desired width
+
+# Compute the Gaussian function
+gaussian = np.pi * jnp.exp(-0.5 * ((x - mu) / sigma) ** 2)
+
+# Optionally, normalize so the area under the curve is 1
+# gaussian = gaussian / jnp.trapezoid(gaussian, x)
+zero = 0 * x
+timePhaseInstantiated1 = Modulator(mod_signal=gaussian)
+
+
+models["time_system"] = time_sim
+models["phase_modulator_time"] = timePhaseInstantiated1
 time_simmer2 = TimeSim(
     netlist=new_netlist,
     models=models,
@@ -102,13 +137,65 @@ time_simmer2 = TimeSim(
     dt=dt
 )
 
+new_netlist_2 = {
+    "instances":{
+        "wg":"waveguide",
+        "wg2": "waveguide",
+        "pm": "phase_modulator_time2",
+        "y": "y_branch",
+        "y2": "y_branch",
+        "time2": "time_system2",
+        "time": "time_system",
+        
+    },
+    "connections":{
+        "wg,o0": "y,port_2",
+        "wg,o1": "pm,o0",
+        "y2,port_2": "pm,o1",
+        "wg2,o0": "y,port_3",
+        "y2,port_3": "wg2,o1",
+        "y2,port_1": "time2,o0",
+        "time,o0": "time2,o1",
+        
+    },
+    "ports":{
+        "o0": "y,port_1",
+        "o1": "time,o1",
+    },
+}
+f_mod = 0
+m = f_mod * jnp.ones(len(t), dtype=complex)
+f_mod2 = jnp.pi/4 
+# m2 = f_mod2 * jnp.ones(len(t),dtype=complex)
 
+x = jnp.linspace(0, 3.14, len(t))
+mu = 2.0  # center the Gaussian in the middle of the interval
+sigma = 0.15     # adjust sigma for desired width
+
+# Compute the Gaussian function
+gaussian = np.pi * jnp.exp(-0.5 * ((x - mu) / sigma) ** 2)
+
+# Optionally, normalize so the area under the curve is 1
+# gaussian = gaussian / jnp.trapezoid(gaussian, x)
+zero = 0 * x
+timePhaseInstantiated2 = Modulator(mod_signal=gaussian)
+
+
+models["time_system2"] = time_simmer2
+models["phase_modulator_time2"] = timePhaseInstantiated2
+time_simmer3 = TimeSim(
+    netlist=new_netlist_2,
+    models=models,
+    active_components=active_components,
+    model_parameters=options, 
+    dt=dt
+)
 num_outputs = 2
 inputs = {
     f'o{i}': jnp.ones_like(t) if i == 0 else jnp.zeros_like(t)
     for i in range(num_outputs)
 }
 
-modelResult = time_simmer2.run(t, inputs)
+modelResult = time_simmer3.run(t, inputs)
 
 modelResult.plot_sim()

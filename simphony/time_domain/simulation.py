@@ -302,7 +302,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         init_states = self.build_initial_states()  # tuple of length = n_inst
 
         # Store “carry = (inst_outs, states)” for step‐by‐step mode
-        self._step_carry = (init_inst, init_states)
+        return (init_inst, init_states)
     
 
     def _sample_mode_run(self, t: ArrayLike, input_signals: dict) -> TimeResult:  # noqa: D401,E501
@@ -544,18 +544,12 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         return t_new, new_inputs
 
     def step(self,
-         carry: Tuple[jnp.ndarray, Tuple[Any,...]],
-         top_input_vector: jnp.ndarray
-        ) -> Tuple[ Tuple[jnp.ndarray, Tuple[Any,...]], jnp.ndarray ]:
-        inst_outs, states = carry
-
-        if self._step_carry is None:
-            raise RuntimeError("You must call `init_step_mode()` before calling `step(...)`.")
-
-        prev_inst_outs, prev_states = self._step_carry
+         xprev,
+         *inputs_tuple):
+        inst_outs, states = xprev
         n_inst    = len(self._systems)
         max_ports = self._max_ports
-        n_top     = top_input_vector.shape[0]  # = len(self._port_order)
+        inputs     = jnp.stack(inputs_tuple,axis = 0)  # = len(self._port_order)
 
         # Wrap the existing logic into a “body” that matches lax.scan’s (carry, x) → (new_carry, y)
         def _one_step_body(carry, top_in):
@@ -624,8 +618,8 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
             return (new_inst_outs, new_states), out_row
 
         # Now run lax.scan for exactly one step.  We package top_input_vector into a (1, nTop) array.
-        carry0 = (prev_inst_outs, prev_states)
-        inputs_one = jnp.expand_dims(top_input_vector, axis=0)  # shape = (1, nTop)
+        carry0 = (inst_outs, states)  # carry0: (nInst, max_ports, 1), states: tuple of length nInst
+        inputs_one = jnp.expand_dims(inputs, axis=0)  # shape = (1, nTop)
 
         (new_inst_outs, new_states), out_seq = lax.scan(
             _one_step_body,
@@ -692,6 +686,16 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
                     # Otherwise, treat this as a top-level port
                     self.add_to_time_domain_netlist(port=(local_port_label, subckt_key))
 
+        for k,v in self.actives_removed:
+            # If the active component was removed, we need to add it back as a port
+            self.add_to_time_domain_netlist(connection=(k, v))
+        for k in self.active_components:
+            # If the active component was not removed, we need to add it back as a port
+            if k not in self.td_netlist["models"]:
+                active_model_instance = self.instances.get(k)
+                if active_model_instance:
+                    self.td_netlist["models"][k] = self.models.get(active_model_instance)
+                    
         if self.removed_ports is not None:
             for port_label, comp_port_str in self.removed_ports.items():
                 self.add_to_time_domain_netlist(port=(port_label, comp_port_str))
@@ -824,7 +828,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         filtered_connections = {}
         removed_edges = []
         removed_connections = []
-
+        self.actives_removed= []
         for k, v in connections.items():
             compA, _ = k.split(',')
             compB, _ = v.split(',')
@@ -833,7 +837,8 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
             B_is_active = (compB in active_components)
 
             if A_is_active and B_is_active:
-                # Both are active => remove it entirely
+                # Both components are active => remove the connection
+                self.actives_removed.append((k, v))
                 continue
 
             if A_is_active and not B_is_active:
