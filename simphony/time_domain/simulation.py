@@ -131,7 +131,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         # Extract netlist info for convenience
         self.instances = netlist["instances"]
         self.connections = netlist["connections"]
-        self.ports = netlist["ports"]
+        self.ports = list(netlist["ports"].keys())
 
         # Internal placeholders for models, S-parameters, and time stepping
         self.dt = None
@@ -208,7 +208,6 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
             ) = self.create_passive_sub_netlists(
                 self.instances,
                 self.connections,
-                self.ports,
                 self.active_components,
             )
             if not self.suppress_output:
@@ -744,7 +743,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         self,
         instances: dict,
         connections: dict,
-        ports: dict,
+        # ports: dict,
         active_components: set,
         directed: bool = False
     ) -> tuple:
@@ -769,12 +768,11 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         )
 
             # 2) Remove ports that reference active components
-        filtered_ports, removed_ports = self.remove_ports_to_active(ports, active_components)
+        filtered_ports, removed_ports = self.remove_ports_to_active(self.netlist['ports'], active_components)
 
         # 3) Build a graph for the remaining passive components
         graph = self.build_component_graph_active(
             filtered_connections,
-            ports,
             active_components,
             removed_active_edges,
             directed=directed
@@ -876,7 +874,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
     def build_component_graph_active(
         self,
         connections: dict,
-        ports: dict,
+        # ports: dict,
         active_components: set,
         removed_edges: list,
         directed: bool = False
@@ -910,7 +908,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
                 add_edge(compB, compA)
 
         # Ensure each passive component or removed edge is in the graph (even if no connections)
-        for _, comp_port_str in ports.items():
+        for _, comp_port_str in self.netlist["ports"].items():
             comp, _ = comp_port_str.split(',')
             if comp not in graph and comp not in active_components:
                 graph[comp] = []
