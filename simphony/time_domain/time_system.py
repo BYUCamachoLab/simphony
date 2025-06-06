@@ -37,7 +37,7 @@ class SampleModeSystem(TimeSystem, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def step(self, x_prev, *inputs_tuple: Tuple, **kwargs) -> jnp.ndarray:
+    def step(self, x_prev, inputs: Tuple, **kwargs) -> jnp.ndarray:
         """Compute the next state of the system."""
         raise NotImplementedError
     
@@ -253,7 +253,7 @@ class TimeSystemIIR(SampleModeSystem, BlockModeSystem):
         n_states = self.sys.A.shape[0]
         return jnp.zeros((n_states,), dtype=jnp.complex128)
 
-    def step(self, x_prev: jnp.ndarray, *inputs_tuple, **kwargs):
+    def step(self, x_prev: jnp.ndarray, inputs: tuple, **kwargs):
         """
         A pure function (no in-place mutation). 
         If there are N inputs to this IIR block, `inputs_tuple` is a tuple of length N,
@@ -265,7 +265,7 @@ class TimeSystemIIR(SampleModeSystem, BlockModeSystem):
         """
         # Stack all inputs into one (n_inputs,) vector:
         self.test_array = jnp.array([])
-        u_row = jnp.stack(inputs_tuple, axis=0)    # shape = (n_inputs,)
+        u_row = jnp.stack(inputs, axis=0)    # shape = (n_inputs,)
         A, B, C, D = self.sys.A, self.sys.B, self.sys.C, self.sys.D
         x_next = A @ x_prev + B @ u_row            # shape = (n_states,)
         y_full = C @ x_prev + D @ u_row            # shape = (n_outputs,)

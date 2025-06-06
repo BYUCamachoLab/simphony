@@ -521,7 +521,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
                 prev_state_i = states[inst_i]
 
                 # Call the new `step(...)` API; it returns (new_state_i, local_outputs_tuple)
-                new_state_i, local_outputs_tuple = sys.step(prev_state_i, *input_tuple, dt=self.dt, carrier_freq=self.carrier_freq)
+                new_state_i, local_outputs_tuple = sys.step(prev_state_i, input_tuple, dt=self.dt, carrier_freq=self.carrier_freq)
 
                 # Append the new state to our list
                 new_states_list.append(new_state_i)
@@ -589,7 +589,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         inst_outs, states = xprev
         n_inst    = len(self._systems)
         max_ports = self._max_ports
-        inputs     = jnp.stack(inputs_tuple,axis = 0)  # = len(self._port_order)
+        inputs     = jnp.stack(*inputs_tuple,axis = 0)  # = len(self._port_order)
 
         # Wrap the existing logic into a “body” that matches lax.scan’s (carry, x) → (new_carry, y)
         def _one_step_body(carry, top_in):
@@ -636,7 +636,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
                 prev_state_i = states[inst_i]
                 n_local = len(sys.ports)
                 input_tuple = tuple(gathered[inst_i, k, 0] for k in range(n_local))
-                new_state_i, local_outputs = sys.step(prev_state_i, *input_tuple)
+                new_state_i, local_outputs = sys.step(prev_state_i, input_tuple, dt=self.dt, carrier_freq=self.carrier_freq)
                 new_states_list.append(new_state_i)
 
                 out_arr = jnp.stack([jnp.atleast_1d(o) for o in local_outputs], axis=0)  # (n_local,1)

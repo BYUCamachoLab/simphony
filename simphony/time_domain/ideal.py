@@ -122,6 +122,60 @@ class Modulator(SampleModeSystem, BlockModeSystem):
     def init_state(self, **kwargs):
         # Return whatever you want the initial state to be.
         # For example, if you have a JAX array of per‐time phases, just return index = 0:
+        
+        
+        return jnp.int32(0)
+
+    def step(self, prev_idx: jnp.ndarray, inputs: tuple, **kwargs):
+        """
+        A _pure_ function—no side‐effects!—that returns (new_idx, (out0, out1)).
+        E.g.:
+           phase = self.phase_sequence[prev_idx]
+           coeff = jnp.exp(1j * phase)
+           out0 = input1 * coeff
+           out1 = input0 * coeff
+           return prev_idx + 1, (out0, out1)
+        """
+        phase = self.phase_sequence[prev_idx]
+        coeff = jnp.exp(1j * phase)
+        out0 = inputs[1] * coeff
+        out1 = inputs[0] * coeff
+        return prev_idx + 1, (out0, out1)
+    
+    def run(self, inputs:dict, **kwargs) -> dict:
+        N = inputs['o0'].shape[0]
+        o0_response = jnp.zeros((N),dtype = complex)
+        o1_response = jnp.zeros((N), dtype=complex)
+        
+        for i in range(N):
+            o0_response = o0_response.at[i].set(inputs['o1'][i] * self.s_mod[self.countstep])
+            o1_response = o1_response.at[i].set(inputs['o0'][i] * self.s_mod[self.countstep])
+        self.countstep += 1
+        response = {
+            "o0": o0_response,
+            "o1": o1_response,
+        }    
+
+class PhaseModulator(SampleModeSystem, BlockModeSystem):
+    # … your __init__ stays as before (but remove any internal “self.countstep” updates) …
+    def __init__(
+            self,
+            time: ArrayLike,
+            voltage: ArrayLike
+     ) -> None:
+        super().__init__()
+
+        self.num_ports = 2
+        self.ports = ['o0','o1']
+        
+        self.time = time
+        self.voltage = voltage   
+
+    def init_state(self, **kwargs):
+        # Return whatever you want the initial state to be.
+        # For example, if you have a JAX array of per‐time phases, just return index = 0:
+        self._voltage
+        
         return jnp.int32(0)
 
     def step(self, prev_idx: jnp.ndarray, input0, input1, **kwargs):
@@ -152,7 +206,7 @@ class Modulator(SampleModeSystem, BlockModeSystem):
         response = {
             "o0": o0_response,
             "o1": o1_response,
-        }    
+        }   
 
     
 # class Modulator(TimeSystem):
