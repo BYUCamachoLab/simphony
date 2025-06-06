@@ -78,8 +78,7 @@ options = {'wl': wvl, 'wg': {"length": 10.0, "loss": 100}, 'wg2': {"length": 10.
 time_sim = TimeSim(
     netlist=netlist,
     models=models,
-    model_parameters=options, 
-    dt=dt
+    model_settings=options, 
 )
 # modelResult = time_sim.run(t, {"o0": jnp.ones_like(t), "o1": jnp.zeros_like(t)})
 
@@ -131,8 +130,7 @@ models["phase_modulator_time"] = timePhaseInstantiated1
 time_simmer2 = TimeSim(
     netlist=new_netlist,
     models=models,
-    model_parameters=options, 
-    dt=dt
+    model_settings=options, 
 )
 
 new_netlist_2 = {
@@ -184,8 +182,7 @@ models["phase_modulator_time2"] = timePhaseInstantiated2
 time_simmer3 = TimeSim(
     netlist=new_netlist_2,
     models=models,
-    model_parameters=options, 
-    dt=dt
+    model_settings=options, 
 )
 num_outputs = 2
 inputs = {
@@ -193,6 +190,6 @@ inputs = {
     for i in range(num_outputs)
 }
 
-modelResult = time_simmer3.run(t, inputs)
+modelResult = time_simmer3.run(t, inputs, carrier_freq=193e12, dt=dt)
 
 modelResult.plot_sim()

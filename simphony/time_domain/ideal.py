@@ -169,7 +169,7 @@ class PhaseModulator(SampleModeSystem, BlockModeSystem):
         self.ports = ['o0','o1']
         
         self.time = time
-        self.voltage = voltage   
+        self.voltage = voltage
 
     def init_state(self, **kwargs):
         # Return whatever you want the initial state to be.

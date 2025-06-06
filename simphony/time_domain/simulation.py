@@ -98,12 +98,13 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
     """
 
     def __init__(self, netlist: dict, models: dict, mode: str = "sample",
-                wvl: np.ndarray = np.linspace(1.5, 1.6, 200),
-                center_wvl: float = 1.55,
-                model_order: int = 50,
-                model_parameters: dict = None,
-                dt: float = 1e-14,
-                suppress_output: bool = False):
+                # wvl: np.ndarray = np.linspace(1.5, 1.6, 200),
+                # center_wvl: float = 1.55,
+                # model_order: int = 50,
+                model_settings: dict = None,
+                # dt: float = 1e-14,
+                # suppress_output: bool = False
+                ):
         """
         Initializes the TimeSim object with a netlist, a dictionary of models,
         and an optional set of active components.
@@ -153,14 +154,8 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         self.outputs = {}
         self.instance_outputs = {}
         self.t = None
-        self.center_wvl = center_wvl
-        self.carrier_freq = SPEED_OF_LIGHT / center_wvl
-        self.build_model( wvl,
-            center_wvl,
-            model_order,
-            model_parameters,
-            dt,
-            suppress_output)
+        self.model_settings = model_settings
+        
 
     def set_mode(self, mode: str):
         if mode not in {"sample", "block"}:
@@ -169,10 +164,10 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
 
     def build_model(
         self,
-        wvl: np.ndarray = np.linspace(1.5, 1.6, 200),
+        # wvl: np.ndarray = np.linspace(1.5, 1.6, 200),
         center_wvl: float = 1.55,
         model_order: int = 50,
-        model_parameters: dict = None,
+        model_settings: dict = None,
         dt: float = 1e-14,
         suppress_output: bool = False
     ) -> None:
@@ -194,7 +189,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
             suppress_output (bool): If True, suppresses printing of intermediate results.
         """
         self.dt = dt
-        
+        wvl = model_settings['wl']
         c_light = 299792458
         center_freq = c_light / (center_wvl * 1e-6)
         freqs = c_light / (wvl * 1e-6) - center_freq
@@ -249,7 +244,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
             # Evaluate S-parameters and build time-domain IIR models
             self.S_params_dict = {}
             for i, circuit in sub_circuit_list.items():
-                s_params_dict = circuit(**model_parameters)
+                s_params_dict = circuit(**model_settings)
                 s_matrix = np.asarray(dict_to_matrix(s_params_dict))
                 self.S_params_dict[i] = s_matrix
 
@@ -271,7 +266,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
 
         else:
             circuit, _ = sax.circuit(netlist=self.netlist, models=self.models)
-            fd_params = circuit(**model_parameters)
+            fd_params = circuit(**model_settings)
             s_matrix = np.asarray(dict_to_matrix(fd_params))
             self.S_params_dict = s_matrix
 
@@ -284,8 +279,11 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
             )
             self.time_system = TimeSystemIIR(single_iir_model)
 
-    def run(self, t: ArrayLike, input_signals: dict, reset: bool = True, **kwargs):
-        if self.mode=="sample":
+    def run(self, t: ArrayLike, input_signals: dict, **kwargs):
+        self.carrier_freq =  kwargs['carrier_freq']
+        self.dt = kwargs['dt']
+       
+        if self.mode=="sample":            
             return self._sample_mode_run(t, input_signals)
         elif self.mode=="block":
             return self._block_mode_run(t, input_signals)
@@ -295,6 +293,16 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         Exactly as before: build inst‐outs = zeros, states = tuple(sys.init_state())
         and store in self._step_carry.
         """
+        self.carrier_freq =  kwargs['carrier_freq']
+        self.dt = kwargs['dt']
+        
+        self.build_model(
+            SPEED_OF_LIGHT / self.carrier_freq * 1e6,
+            50,
+            self.model_settings,
+            self.dt,
+            False)
+        
         if not self._prepared_maps:
             self._prepare_static_maps()
             self._scan_jit = jit(self._scan_loop,
@@ -317,7 +325,13 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         self.t      = t
         self.inputs = input_signals
         self.t, self.inputs = self.interpolate_inputs()
-
+        self.build_model(
+            SPEED_OF_LIGHT / self.carrier_freq  * 1e6,
+            50,
+            self.model_settings,
+            self.dt,
+            False)
+        
         # 1) Build static, hashable wiring maps once per build_model()
         if not self._prepared_maps:
             self._prepare_static_maps()
