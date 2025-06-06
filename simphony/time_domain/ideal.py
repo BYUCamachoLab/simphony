@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import numpy as np
 import sax
 from jax.typing import ArrayLike
-from simphony.time_domain.time_system import TimeSystem
+from simphony.time_domain.time_system import TimeSystem, BlockModeSystem, SampleModeSystem
 import simphony.libraries.ideal as fd
 from simphony.utils import dict_to_matrix, mul_polar
 from queue import Queue
@@ -76,7 +76,7 @@ class TimeWaveguide(TimeSystem):
             self.forward_wave.put(0+0j)
             self.backward_wave.put(0+0j)
 
-    def response(self, inputs: dict) -> dict:
+    def run(self, inputs: dict) -> dict:
         N = inputs['o0'].shape[0]
         o0_response = jnp.zeros((N), dtype=complex)
         o1_response = jnp.zeros((N), dtype=complex)
@@ -106,7 +106,7 @@ class TimeWaveguide(TimeSystem):
             self.forward_wave.put(0+0j)
             self.backward_wave.put(0+0j)
 
-class Modulator(TimeSystem):
+class Modulator(SampleModeSystem, BlockModeSystem):
     # … your __init__ stays as before (but remove any internal “self.countstep” updates) …
     def __init__(
             self,
@@ -140,7 +140,7 @@ class Modulator(TimeSystem):
         out1 = input0 * coeff
         return prev_idx + 1, (out0, out1)
     
-    def response(self, inputs:dict) -> dict:
+    def run(self, inputs:dict) -> dict:
         N = inputs['o0'].shape[0]
         o0_response = jnp.zeros((N),dtype = complex)
         o1_response = jnp.zeros((N), dtype=complex)

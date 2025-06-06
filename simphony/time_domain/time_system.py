@@ -5,21 +5,29 @@ from simphony.time_domain.pole_residue_model import PoleResidueModel
 import jax.numpy as jnp
 from simphony.simulation import SimDevice
 from typing import Tuple
+import sax
+from jax.typing import ArrayLike
 
 class TimeSystem(ABC):
     def __init__(self) -> None:
         pass
 
-class BlockModeSystem(TimeSystem):
+    def __call__(self, wl: ArrayLike, **kwargs) -> sax.SDict:
+        return self.frequency_response(wl, **kwargs)
+    
+    def frequency_response(self, wl: ArrayLike, **kwargs)->sax.SDict:
+        raise NotImplementedError
+
+class BlockModeSystem(TimeSystem, ABC):
     def __init__(self) -> None:
-        pass
+        super().__init__()
 
     @abstractmethod
-    def run(self, input_signal) -> ArrayLike:
+    def run(self, input_signal: ArrayLike) -> ArrayLike:
         """Compute the system response."""
         raise NotImplementedError
 
-class SampleModeSystem(TimeSystem):
+class SampleModeSystem(TimeSystem, ABC):
     def __init__(self) -> None:
         super().__init__()
     
@@ -220,7 +228,7 @@ def my_dlsimworks(system, u, t=None, x0=None):
 #     def reset(self):
 #         self.state_vector = None
 
-class TimeSystemIIR(TimeSystem):
+class TimeSystemIIR(SampleModeSystem, BlockModeSystem):
     def __init__(self, pole_model: PoleResidueModel, ports=None):
         super().__init__()
         # Generate the discrete‐time state‐space (A,B,C,D) from your pole‐residue model:
@@ -256,6 +264,7 @@ class TimeSystemIIR(TimeSystem):
            return (x_next, tuple(y_row_i for each scalar output)).
         """
         # Stack all inputs into one (n_inputs,) vector:
+        self.test_array = jnp.array([])
         u_row = jnp.stack(inputs_tuple, axis=0)    # shape = (n_inputs,)
         A, B, C, D = self.sys.A, self.sys.B, self.sys.C, self.sys.D
         x_next = A @ x_prev + B @ u_row            # shape = (n_states,)
@@ -264,7 +273,7 @@ class TimeSystemIIR(TimeSystem):
         #   e.g. (y_full[0], y_full[1], …)
         return x_next, tuple(jnp.atleast_1d(y_full[i]) for i in range(y_full.shape[0]))
 
-    def response(self, inputs: dict, time_sim=True) -> ArrayLike:
+    def run(self, inputs: dict, time_sim=True) -> ArrayLike:
         # if state_vector is not None:
         #      self.state_vector = state_vector
 

@@ -320,7 +320,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
             self._prepare_static_maps()
             # Compile scan with hashable (tuple) static args
             self._scan_jit = jit(self._scan_loop,
-                                 static_argnums=(4, 5, 6,7))
+                                 static_argnums=(4, 5, 6, 7))
             # self._scan_jit = self._scan_loop
             self._prepared_maps = True
 
