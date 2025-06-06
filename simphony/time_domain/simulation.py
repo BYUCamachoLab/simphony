@@ -8,6 +8,7 @@ import math
 from jax import config
 from jax import jit, lax
 import networkx as nx
+from simphony.utils import SPEED_OF_LIGHT
 
 from simphony.time_domain.time_system import TimeSystemIIR, TimeSystem, SampleModeSystem, BlockModeSystem
 config.update("jax_enable_x64", True)
@@ -152,6 +153,8 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         self.outputs = {}
         self.instance_outputs = {}
         self.t = None
+        self.center_wvl = center_wvl
+        self.carrier_freq = SPEED_OF_LIGHT / center_wvl
         self.build_model( wvl,
             center_wvl,
             model_order,
@@ -281,13 +284,13 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
             )
             self.time_system = TimeSystemIIR(single_iir_model)
 
-    def run(self, t: ArrayLike, input_signals: dict, reset: bool = True):
+    def run(self, t: ArrayLike, input_signals: dict, reset: bool = True, **kwargs):
         if self.mode=="sample":
             return self._sample_mode_run(t, input_signals)
         elif self.mode=="block":
             return self._block_mode_run(t, input_signals)
     
-    def init_state(self):
+    def init_state(self, **kwargs):
         """
         Exactly as before: build inst‐outs = zeros, states = tuple(sys.init_state())
         and store in self._step_carry.
@@ -450,7 +453,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         states_list = []
         for sys in self._systems:
             if hasattr(sys, "init_state"):
-                states_list.append(sys.init_state())
+                states_list.append(sys.init_state(dt=self.dt, carrier_freq=self.carrier_freq))
             else:
                 states_list.append(())
         return tuple(states_list)
@@ -518,7 +521,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
                 prev_state_i = states[inst_i]
 
                 # Call the new `step(...)` API; it returns (new_state_i, local_outputs_tuple)
-                new_state_i, local_outputs_tuple = sys.step(prev_state_i, *input_tuple)
+                new_state_i, local_outputs_tuple = sys.step(prev_state_i, *input_tuple, dt=self.dt, carrier_freq=self.carrier_freq)
 
                 # Append the new state to our list
                 new_states_list.append(new_state_i)
@@ -555,7 +558,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
 
 
     ############################################################################
-    #                         INTERNAL METHODS BELOW                            #
+    #                         INTERNAL METHODS BELOW                           #
     #     (Users typically do not need to modify or call these directly.)      #
     ############################################################################
 
@@ -582,7 +585,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
 
     def step(self,
          xprev,
-         *inputs_tuple):
+         *inputs_tuple, **kwargs):
         inst_outs, states = xprev
         n_inst    = len(self._systems)
         max_ports = self._max_ports

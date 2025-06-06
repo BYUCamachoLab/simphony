@@ -119,12 +119,12 @@ class Modulator(SampleModeSystem, BlockModeSystem):
         self.ports = ['o0','o1']
         self.phase_sequence = mod_signal * k_p
 
-    def init_state(self):
+    def init_state(self, **kwargs):
         # Return whatever you want the initial state to be.
         # For example, if you have a JAX array of per‐time phases, just return index = 0:
         return jnp.int32(0)
 
-    def step(self, prev_idx: jnp.ndarray, input0, input1):
+    def step(self, prev_idx: jnp.ndarray, input0, input1, **kwargs):
         """
         A _pure_ function—no side‐effects!—that returns (new_idx, (out0, out1)).
         E.g.:
@@ -140,7 +140,7 @@ class Modulator(SampleModeSystem, BlockModeSystem):
         out1 = input0 * coeff
         return prev_idx + 1, (out0, out1)
     
-    def run(self, inputs:dict) -> dict:
+    def run(self, inputs:dict, **kwargs) -> dict:
         N = inputs['o0'].shape[0]
         o0_response = jnp.zeros((N),dtype = complex)
         o1_response = jnp.zeros((N), dtype=complex)

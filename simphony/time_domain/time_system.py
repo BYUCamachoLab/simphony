@@ -23,7 +23,7 @@ class BlockModeSystem(TimeSystem, ABC):
         super().__init__()
 
     @abstractmethod
-    def run(self, input_signal: ArrayLike) -> ArrayLike:
+    def run(self, input_signal: ArrayLike, **kwargs) -> ArrayLike:
         """Compute the system response."""
         raise NotImplementedError
 
@@ -32,12 +32,12 @@ class SampleModeSystem(TimeSystem, ABC):
         super().__init__()
     
     @abstractmethod
-    def init_state(self):
+    def init_state(self, **kwargs):
         """Initialize the state of the system."""
         raise NotImplementedError
 
     @abstractmethod
-    def step(self, x_prev, *inputs_tuple: Tuple) -> jnp.ndarray:
+    def step(self, x_prev, *inputs_tuple: Tuple, **kwargs) -> jnp.ndarray:
         """Compute the next state of the system."""
         raise NotImplementedError
     
@@ -245,7 +245,7 @@ class TimeSystemIIR(SampleModeSystem, BlockModeSystem):
         else:
             self.ports = ports
 
-    def init_state(self):
+    def init_state(self, **kwargs):
         """
         Return the initial x(0) for this IIR system. 
         If you want x(0)=0, make a zeros vector of shape (A.shape[0],).
@@ -253,7 +253,7 @@ class TimeSystemIIR(SampleModeSystem, BlockModeSystem):
         n_states = self.sys.A.shape[0]
         return jnp.zeros((n_states,), dtype=jnp.complex128)
 
-    def step(self, x_prev: jnp.ndarray, *inputs_tuple):
+    def step(self, x_prev: jnp.ndarray, *inputs_tuple, **kwargs):
         """
         A pure function (no in-place mutation). 
         If there are N inputs to this IIR block, `inputs_tuple` is a tuple of length N,
@@ -273,7 +273,7 @@ class TimeSystemIIR(SampleModeSystem, BlockModeSystem):
         #   e.g. (y_full[0], y_full[1], …)
         return x_next, tuple(jnp.atleast_1d(y_full[i]) for i in range(y_full.shape[0]))
 
-    def run(self, inputs: dict, time_sim=True) -> ArrayLike:
+    def run(self, inputs: dict, time_sim=True, **kwargs) -> ArrayLike:
         # if state_vector is not None:
         #      self.state_vector = state_vector
 
