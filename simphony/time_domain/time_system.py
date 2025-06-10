@@ -9,8 +9,9 @@ import sax
 from jax.typing import ArrayLike
 
 class TimeSystem(ABC):
-    def __init__(self) -> None:
-        pass
+    def __init__(self, optical_ports, electrical_ports) -> None:
+        self.optical_ports = optical_ports
+        self.electrical_ports = electrical_ports
 
     def __call__(self, wl: ArrayLike, **kwargs) -> sax.SDict:
         return self.frequency_response(wl, **kwargs)
@@ -19,8 +20,8 @@ class TimeSystem(ABC):
         raise NotImplementedError
 
 class BlockModeSystem(TimeSystem, ABC):
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, optical_ports, electrical_ports) -> None:
+        super().__init__(optical_ports, electrical_ports)
 
     @abstractmethod
     def run(self, input_signal: ArrayLike, **kwargs) -> ArrayLike:

@@ -97,11 +97,15 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         active_components (set): Names of active components in the netlist.
     """
 
-    def __init__(self, netlist: dict, models: dict, mode: str = "sample",
+    def __init__(self, 
+                 netlist: dict, 
+                 models: dict, 
+                 settings: dict = None,
+                 mode: str = "sample",
                 # wvl: np.ndarray = np.linspace(1.5, 1.6, 200),
                 # center_wvl: float = 1.55,
                 # model_order: int = 50,
-                model_settings: dict = None,
+                
                 # dt: float = 1e-14,
                 # suppress_output: bool = False
                 ):
@@ -118,14 +122,18 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         self.netlist = netlist
         self.models = models
         self.time_system_components = []
-        for model in self.models:
+        # for model in self.models:
+        #     if isinstance(self.models[model], TimeSystem):
+        #         for instance in self.netlist["instances"]:
+        #             if self.netlist["instances"][instance] == model:
+        #                 if instance not in self.time_system_components:
+        #                     self.time_system_components.append(instance)
+        #                     if instance not in self.time_system_components:
+        #                         self.time_system_components.add(instance)
+        for instance, model in self.netlist["instances"].items():
             if isinstance(self.models[model], TimeSystem):
-                for instance in self.netlist["instances"]:
-                    if self.netlist["instances"][instance] == model:
-                        if instance not in self.time_system_components:
-                            self.time_system_components.append(instance)
-                            if instance not in self.time_system_components:
-                                self.time_system_components.add(instance)
+                self.time_system_components.append(instance)
+
         self.mode = mode  # Default mode, can be changed to "block" if needed
 
         # Extract netlist info for convenience
@@ -154,7 +162,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         self.outputs = {}
         self.instance_outputs = {}
         self.t = None
-        self.model_settings = model_settings
+        self.model_settings = settings
         
 
     def set_mode(self, mode: str):

@@ -4,6 +4,7 @@ import jax.numpy as jnp
 from jax.typing import ArrayLike
 from sax.saxtypes import Model
 
+from simphony.circuit import Circuit
 
 class SimDevice:
     """Base class for all source or measure devices."""
@@ -35,3 +36,8 @@ class Simulation:
 
 class SimulationResult:
     """Base class for simphony simulation results."""
+
+
+class FreqSim:
+    def __init__(self, ckt: Circuit, settings: dict):
+        pass

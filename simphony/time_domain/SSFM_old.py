@@ -119,9 +119,6 @@ class Fiber_config:
       self.alpha_Np_per_m = self.alpha_dB_per_m*np.log(10)/10.0 #Loss coeff is usually specified in dB/km, but Nepers/km is more useful for calculations
       #TODO: Make alpha frequency dependent.
 
-
-
-
 def SSFM(fiber:Fiber_config,sim:SIM_config, pulse):
 
     #Initialize arrays to store pulse and spectrum throughout fiber
