@@ -3,3 +3,6 @@ class ElectricalComponent:
 
 class OpticalComponent:
     pass
+
+class LogicComponent:
+    pass

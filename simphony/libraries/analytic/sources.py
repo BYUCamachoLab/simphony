@@ -1,5 +1,5 @@
 from simphony.time_domain import BlockModeSystem, SampleModeSystem
-from .component_types import OpticalComponent, ElectricalComponent
+from .component_types import OpticalComponent, ElectricalComponent, LogicComponent
 from jax.typing import ArrayLike
 
 class CWLaser(BlockModeSystem, SampleModeSystem, OpticalComponent):
@@ -11,7 +11,25 @@ class VoltageSource(BlockModeSystem, ElectricalComponent):
         optical_ports = None
         electrical_ports = ['e0']
         logic_ports = None
-        super().__init__(optical_ports, electrical_ports, logic_ports)
+        super().__init__(
+            optical_ports=optical_ports, 
+            electrical_ports=electrical_ports, 
+            logic_ports=logic_ports
+        )
+    
+    def run(self, input_signal: ArrayLike, **kwargs):
+        pass
+
+class PRNG(BlockModeSystem, LogicComponent):
+    def __init__(self):
+        optical_ports = None
+        electrical_ports = ['e0']
+        logic_ports = None
+        super().__init__(
+            optical_ports=optical_ports, 
+            electrical_ports=electrical_ports, 
+            logic_ports=logic_ports
+        )
     
     def run(self, input_signal: ArrayLike, **kwargs):
         pass

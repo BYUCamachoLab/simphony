@@ -546,7 +546,9 @@ def netlist_to_graph(netlist: Union[dict, str]):
         except yaml.YAMLError as e:
             raise yaml.YAMLError(f"Error parsing YAML file: {e}")
         
-    graph = nx.Graph()
+    # graph = nx.Graph()
+    # graph = nx.MultiGraph()
+    graph = nx.MultiDiGraph()
     # Add nodes for each instance
     for instance_name, instance_data in netlist['instances'].items():
         graph.add_node(instance_name, component=instance_data['component'], settings=instance_data['settings'])

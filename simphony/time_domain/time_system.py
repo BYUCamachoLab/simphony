@@ -10,9 +10,27 @@ from jax.typing import ArrayLike
 
 class TimeSystem(ABC):
     def __init__(self, optical_ports, electrical_ports, logic_ports) -> None:
-        self.optical_ports = optical_ports
-        self.electrical_ports = electrical_ports
-        self.logic_ports = logic_ports
+        if optical_ports == None:
+            self.optical_ports = []
+        else:
+            self.optical_ports = optical_ports
+        
+        if electrical_ports == None:
+            self.electrical_ports = []
+        else:
+            self.electrical_ports = electrical_ports
+        # self.electrical_ports = electrical_ports
+        if logic_ports == None:
+            self.logic_ports = []
+        else:
+            self.logic_ports = logic_ports
+
+        total_ports = self.optical_ports + self.electrical_ports + self.logic_ports
+        unique_port_names = len(total_ports) == len(set(total_ports))
+
+        if not unique_port_names:
+            raise ValueError("Port names must be uniqe")
+        pass
 
     def __call__(self, wl: ArrayLike, **kwargs) -> sax.SDict:
         return self.frequency_response(wl, **kwargs)
@@ -21,7 +39,7 @@ class TimeSystem(ABC):
         raise NotImplementedError
 
 class BlockModeSystem(TimeSystem, ABC):
-    def __init__(self, optical_ports, electrical_ports, logic_ports) -> None:
+    def __init__(self, optical_ports=None, electrical_ports=None, logic_ports=None) -> None:
         super().__init__(optical_ports, electrical_ports, logic_ports)
 
     @abstractmethod

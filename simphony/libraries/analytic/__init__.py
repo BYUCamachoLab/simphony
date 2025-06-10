@@ -23,6 +23,7 @@ from simphony.libraries.analytic.waveguides import (
 from simphony.libraries.analytic.sources import (
     CWLaser,
     VoltageSource,
+    PRNG,
 )
 from simphony.libraries.analytic.modulators import (
     MachZehnderModulator,
@@ -36,5 +37,6 @@ __all__ = [
     "CWLaser",
     "MachZehnderModulator",
     "PhaseModulator",
-    "VoltageSource"
+    "VoltageSource",
+    "PRNG",
 ]
