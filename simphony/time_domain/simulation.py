@@ -21,11 +21,8 @@ from dataclasses import dataclass
 
 from scipy.interpolate import interp1d
 from simphony.exceptions import UndefinedActiveComponent
-import sys
-from tqdm.auto import tqdm
-from jax import debug   
 
-from typing import Tuple, Any
+
 
 @dataclass
 class TimeResult(SimulationResult):
@@ -210,6 +207,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
 
         # If active components exist, break out passive sub-circuits
         if self.time_system_components is not None:
+            
             (
                 self.passive_subnetlists,
                 self.removed_connections,
@@ -219,58 +217,67 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
                 self.connections,
                 self.time_system_components,
             )
-            if not self.suppress_output:
-            # Print the passive sub-netlists for debugging/logging
-                for i, sub_net in enumerate(self.passive_subnetlists):
-                    print(f"\n--- Passive Sub-Netlist {i} ---")
-                    print("\nInstances:", sub_net["instances"])
-                    print("\nConnections:", sub_net["connections"])
-                    print("\nPorts:", sub_net["ports"])
-                    print()
+            if self.passive_subnetlists:
+                if not self.suppress_output:
+                # Print the passive sub-netlists for debugging/logging
+                    for i, sub_net in enumerate(self.passive_subnetlists):
+                        print(f"\n--- Passive Sub-Netlist {i} ---")
+                        print("\nInstances:", sub_net["instances"])
+                        print("\nConnections:", sub_net["connections"])
+                        print("\nPorts:", sub_net["ports"])
+                        print()
 
-            # Build frequency-domain circuits via SAX and convert to time-domain models
-            sub_circuit_list = {}
-            port_map_list = {}
+                # Build frequency-domain circuits via SAX and convert to time-domain models
+                sub_circuit_list = {}
+                port_map_list = {}
 
-            try:
-                for i, sub_net in enumerate(self.passive_subnetlists):
-                    # Create circuit with sax
-                    circuittemp, _ = sax.circuit(
-                        netlist=sub_net,
-                        models=self.models,
+                try:
+                    for i, sub_net in enumerate(self.passive_subnetlists):
+                        # Create circuit with sax
+                        circuittemp, _ = sax.circuit(
+                            netlist=sub_net,
+                            models=self.models,
+                        )
+                        sub_circuit_list[i] = circuittemp
+                        port_map_list[i] = sub_net['ports']
+
+                except TypeError as originalerror:
+                    # This generally happens if an active component is incorrectly included
+                    # in a subcircuit that should be purely passive
+                    raise UndefinedActiveComponent(
+                        "Active component is included in a passive-only circuit"
+                    ) from originalerror
+
+                # Evaluate S-parameters and build time-domain IIR models
+                self.S_params_dict = {}
+                for i, circuit in sub_circuit_list.items():
+                    s_params_dict = circuit(**model_settings)
+                    s_matrix = np.asarray(dict_to_matrix(s_params_dict))
+                    self.S_params_dict[i] = s_matrix
+
+                    sorted_ports = sorted(port_map_list[i].keys())
+                    
+                    iir_model = IIRModelBaseband(
+                        wvl,
+                        center_wvl,
+                        s_matrix,
+                        model_order,
+                        options=bvf_options
                     )
-                    sub_circuit_list[i] = circuittemp
-                    port_map_list[i] = sub_net['ports']
-
-            except TypeError as originalerror:
-                # This generally happens if an active component is incorrectly included
-                # in a subcircuit that should be purely passive
-                raise UndefinedActiveComponent(
-                    "Active component is included in a passive-only circuit"
-                ) from originalerror
-
-            # Evaluate S-parameters and build time-domain IIR models
-            self.S_params_dict = {}
-            for i, circuit in sub_circuit_list.items():
-                s_params_dict = circuit(**model_settings)
-                s_matrix = np.asarray(dict_to_matrix(s_params_dict))
-                self.S_params_dict[i] = s_matrix
-
-                sorted_ports = sorted(port_map_list[i].keys())
-                
-                iir_model = IIRModelBaseband(
-                    wvl,
-                    center_wvl,
-                    s_matrix,
-                    model_order,
-                    options=bvf_options
-                )
-                td_system = TimeSystemIIR(iir_model, sorted_ports)
-                self.subcircuit_time_systems.append(td_system)
-                
-            # Connect the newly created sub-circuits and the active components 
-            # in a consolidated time-domain netlist (self.td_netlist)
-            self.prepare_time_domain_netlist(port_map_list)
+                    td_system = TimeSystemIIR(iir_model, sorted_ports)
+                    self.subcircuit_time_systems.append(td_system)
+                    
+                # Connect the newly created sub-circuits and the active components 
+                # in a consolidated time-domain netlist (self.td_netlist)
+                self.prepare_time_domain_netlist(port_map_list)
+            else:
+                # If no passive sub-circuits, we can directly use the netlist
+                self.td_netlist["connections"] = self.netlist["connections"]
+                self.td_netlist["ports"] = self.netlist["ports"]
+                for instance, model in self.netlist["instances"].items():
+                    if model in self.models:
+                        self.td_netlist["models"][instance] = self.models[model]
+            
 
         else:
             circuit, _ = sax.circuit(netlist=self.netlist, models=self.models)
@@ -451,8 +458,8 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
                 
                 else:
                     for tp_i, tp in enumerate(self._port_order):
-                        _, tgt = self.td_netlist["ports"][tp].split(',')
-                        if tgt.strip() == p:
+                        inst_name, tgt = self.td_netlist["ports"][tp].split(',')
+                        if inst_name.strip() == name and tgt.strip() == p:
                             row.append((1, tp_i))
                             break
                     else:
@@ -1114,6 +1121,7 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
                                 else:
                                     scc_ports[new_label] = f"{k_comp},{k_string.split(',')[1]}"
                                 break
+                            
                     else:
                         new_label = f"o{port_index_counter}"
                         aux_port_index += 1
