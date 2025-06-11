@@ -1,5 +1,5 @@
 from simphony.utils import add_settings_to_netlist, netlist_to_graph
-from simphony.libraries.analytic.component_types import OpticalComponent, ElectricalComponent, LogicComponent
+# from simphony.libraries.analytic.component_types import OpticalComponent, ElectricalComponent, LogicComponent
 import gravis as gv
 import inspect
 import sax
@@ -12,20 +12,41 @@ COMPONENT_COLOR_ELECTRICAL = "red"
 COMPONENT_COLOR_OPTOELECTRICAL = "purple"
 COMPONENT_COLOR_LOGIC = "gray"
 
+class Component:
+    pass
+
+class ElectricalComponent(Component):
+    pass
+
+class OpticalComponent(Component):
+    pass
+
+class LogicComponent(Component):
+    pass
+
+
+"""
+Todo: Give S-parameter elements proper abstraction
+"""
+# class SParameterComponent(Component):
+#     pass
 
 class Circuit:
     def __init__(
         self, 
         netlist: dict, 
         models: dict,
-        settings: dict = None
+        # settings: dict = None
     ) -> None:
-        if settings is not None:
-            add_settings_to_netlist(netlist, settings)
-        
+        # if settings is not None:
+        #     add_settings_to_netlist(netlist, settings)
+        # else:
+        #     add_settings_to_netlist(netlist, None)
+        add_settings_to_netlist(netlist, None)
         self.netlist = netlist
         self.models = models
-        self.settings = settings
+        # self.settings = settings
+        self.settings = None
         self.graph = netlist_to_graph(netlist)
         
         self._mark_component_types()
@@ -43,44 +64,55 @@ class Circuit:
         for instance, attr in self.graph.nodes.items():
             model = attr['component']
             component = self.models[model]
-            tags = set()
             
-            if isinstance(component, ElectricalComponent):
+            if not inspect.isclass(component):
+                self.graph.nodes[instance]['type'] = 's-parameter: optical'
+                continue
+            
+            tags = set()
+            if issubclass(component, ElectricalComponent):
                 tags.add('electrical')
-            if isinstance(component, LogicComponent):
+            if issubclass(component, LogicComponent):
                 tags.add('logic')
-            if isinstance(component, OpticalComponent):
+            if issubclass(component, OpticalComponent):
                 tags.add('optical')
             
+            self.graph.nodes[instance]['type'] = '/'.join(sorted(tags))
+            # if isinstance(component, ElectricalComponent):
+            #     tags.add('electrical')
+            # if isinstance(component, LogicComponent):
+            #     tags.add('logic')
+            # if isinstance(component, OpticalComponent):
+            #     tags.add('optical')
             
-            if len(tags) == 0:
-                self.graph.nodes[instance]['type'] = 's-parameter'
-            else:
-                self.graph.nodes[instance]['type'] = '/'.join(sorted(tags))
-
-
             
-            # if isinstance(self.models[model], OpticalComponent) and isinstance(self.models[model], ElectricalComponent):
-            #     self.graph.nodes[instance]['type'] = 'electrical/optical'
-            # elif isinstance(self.models[model], OpticalComponent):
-            #     self.graph.nodes[instance]['type'] = 'optical'
-            # elif isinstance(self.models[model], ElectricalComponent):
-            #     self.graph.nodes[instance]['type'] = 'electrical'
-            # else:
+            # if len(tags) == 0:
             #     self.graph.nodes[instance]['type'] = 's-parameter'
+            # else:
+            #     self.graph.nodes[instance]['type'] = '/'.join(sorted(tags))
      
     def _add_ports_to_graph(self):
         for instance, attr in self.graph.nodes.items():
+            self.graph.nodes[instance]['electrical ports'] = []
+            self.graph.nodes[instance]['logic ports'] = []
+            self.graph.nodes[instance]['optical ports'] = []
+
             model = attr['component']
-            if self.graph.nodes[instance]['type'] == 's-parameter':
-                self.graph.nodes[instance]['optical ports'] = sax.get_ports(self.models[model])
+            component = self.models[model]
+            
+            if self.graph.nodes[instance]['type'] == 's-parameter: optical':
+                self.graph.nodes[instance]['optical ports'] = sax.get_ports(component)
                 self.graph.nodes[instance]['electrical ports'] = []
                 self.graph.nodes[instance]['logic ports'] = []
-            else:
-                self.graph.nodes[instance]['optical ports'] = self.models[model].optical_ports
+                continue
+            
+            if issubclass(component, ElectricalComponent):
                 self.graph.nodes[instance]['electrical ports'] = self.models[model].electrical_ports
+            if issubclass(component, LogicComponent):
                 self.graph.nodes[instance]['logic ports'] = self.models[model].logic_ports
-    
+            if issubclass(component, OpticalComponent):
+                self.graph.nodes[instance]['optical ports'] = self.models[model].optical_ports         
+
     def _get_port_type(self, instance, port):
         optical_ports = self.graph.nodes[instance]['optical ports']
         electrical_ports = self.graph.nodes[instance]['electrical ports']

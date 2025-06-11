@@ -520,7 +520,9 @@ def resample(x: ArrayLike, xp: ArrayLike, sdict: sax.SDict) -> sax.SDict:
         new_sdict[k] = cs(x)
     return new_sdict
 
-def add_settings_to_netlist(netlist, settings):
+def add_settings_to_netlist(netlist, settings=None):
+    if settings is None:
+        settings = {}
     # Ensure Instance Name corresponds to a dictionary with the proper format
     for instance_name, model in netlist['instances'].items():
         if isinstance(model, str):

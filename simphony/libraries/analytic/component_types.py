@@ -1,8 +1,8 @@
-class ElectricalComponent:
-    pass
+# class ElectricalComponent:
+#     pass
 
-class OpticalComponent:
-    pass
+# class OpticalComponent:
+#     pass
 
-class LogicComponent:
-    pass
+# class LogicComponent:
+#     pass

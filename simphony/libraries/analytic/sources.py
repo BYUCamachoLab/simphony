@@ -1,5 +1,5 @@
 from simphony.time_domain import BlockModeSystem, SampleModeSystem
-from .component_types import OpticalComponent, ElectricalComponent, LogicComponent
+from simphony.circuit import OpticalComponent, ElectricalComponent, LogicComponent
 from jax.typing import ArrayLike
 
 class CWLaser(BlockModeSystem, SampleModeSystem, OpticalComponent):
@@ -7,29 +7,33 @@ class CWLaser(BlockModeSystem, SampleModeSystem, OpticalComponent):
         pass
 
 class VoltageSource(BlockModeSystem, ElectricalComponent):
+    electrical_ports = ['e0']
     def __init__(self):
-        optical_ports = None
-        electrical_ports = ['e0']
-        logic_ports = None
-        super().__init__(
-            optical_ports=optical_ports, 
-            electrical_ports=electrical_ports, 
-            logic_ports=logic_ports
-        )
+        pass
+        # optical_ports = None
+        # electrical_ports = ['e0']
+        # logic_ports = None
+        # super().__init__(
+        #     optical_ports=optical_ports, 
+        #     electrical_ports=electrical_ports, 
+        #     logic_ports=logic_ports
+        # )
     
     def run(self, input_signal: ArrayLike, **kwargs):
         pass
 
 class PRNG(BlockModeSystem, LogicComponent):
+    logic_ports = ['l0']
     def __init__(self):
-        optical_ports = None
-        electrical_ports = ['e0']
-        logic_ports = None
-        super().__init__(
-            optical_ports=optical_ports, 
-            electrical_ports=electrical_ports, 
-            logic_ports=logic_ports
-        )
+        pass
+        # optical_ports = None
+        # electrical_ports = None
+        # logic_ports = ['l0']
+        # super().__init__(
+        #     optical_ports=optical_ports, 
+        #     electrical_ports=electrical_ports, 
+        #     logic_ports=logic_ports
+        # )
     
     def run(self, input_signal: ArrayLike, **kwargs):
         pass

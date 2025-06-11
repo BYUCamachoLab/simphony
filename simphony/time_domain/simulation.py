@@ -21,6 +21,7 @@ from dataclasses import dataclass
 
 from scipy.interpolate import interp1d
 from simphony.exceptions import UndefinedActiveComponent
+from simphony.circuit import Circuit
 
 
 
@@ -298,9 +299,9 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         self.carrier_freq =  kwargs['carrier_freq']
         self.dt = kwargs['dt']
        
-        if self.mode=="sample":            
+        if self.mode == "sample":            
             return self._sample_mode_run(t, input_signals)
-        elif self.mode=="block":
+        elif self.mode == "block":
             return self._block_mode_run(t, input_signals)
     
     def init_state(self, **kwargs):
@@ -1199,4 +1200,50 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
             "ports": scc_ports,
         }
         return sub_netlist
+
+class SampleModeSimulation(SampleModeSystem, BlockModeSystem):
+    """
+    `SampleModeSimulation` runs bidirectional, element-by-element, simulations on circuits 
+    composed of s-parameter elements and/or `SampleModeSystem` objects.
+
+    Should be used when reflections are not neglible and/or there are recursive elements
+    within the circuit
+
+    `SampleModeSimulation` objects are compatible with block mode simulations 
+    as well as sample mode simulations, hence a sample mode simulation is of type
+    `BlockModeSystem` and `SampleModeSystem`.
+    """
+    def __init__(
+        self, 
+        ckt: Circuit, 
+        settings=None, 
+        carrier_freq=None, 
+        center_wl=None, 
+        sampling_freq=None, 
+        dt=None
+        ):
+        # Verify all subcircuits are compatible with sample mode simulations
+        
+
+        # Verify all subcircuits use the same simulation parameters (sampling period, carrier frequency)
+        
+
+
+        pass
+
+class BlockModeSimulation(BlockModeSystem):
+    """
+    `BlockModeSimulation` runs each unidirectional simulations on circuits 
+    composed of s-parameter elements and/or `BlockModeSystem` objects.
+
+    Should be used when reflections are neglibible and recursive elements are
+    abstracted with subnetworks.
+
+    Because `BlockModeSimulation` objects cannot be time-stepped, they 
+    CANNOT be used as subcircuits in sample-mode simulations.
+    """
+    def __init__(
+        
+    ):
+        pass
 

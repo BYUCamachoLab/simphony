@@ -38,6 +38,11 @@ class SimulationResult:
     """Base class for simphony simulation results."""
 
 
-class FreqSim:
+class FrequencySimulation:
     def __init__(self, ckt: Circuit, settings: dict):
+        self.circuit = ckt
+        self.settings = ...
+
+    def run(self):
         pass
+
