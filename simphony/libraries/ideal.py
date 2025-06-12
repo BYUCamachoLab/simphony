@@ -101,10 +101,9 @@ def waveguide(
 
 def phase_modulator(
     *,
-    mod_signal: ArrayLike|float = 0.0,
+    mod_signal: ArrayLike | float = 0.0,
     k_p: float = 1.0,
-)-> sax.SDict:
-    
+) -> sax.SDict:
     """
     Parameters:
     - freq: Frequency array (input carrier frequencies).
@@ -123,11 +122,10 @@ def phase_modulator(
     # Define the s_dict structure
     s_dict = {
         ("o0", "o1"): s_input_output,
-        ("o1","o0"): s_input_output,  # Transmission from input to output
+        ("o1", "o0"): s_input_output,  # Transmission from input to output
     }
 
     return s_dict
-
 
 
 def MultiModeInterferometer(
@@ -148,57 +146,55 @@ def MultiModeInterferometer(
 
     # 1) Build the phase matrix (quadratic law)
     phases = jnp.zeros((N_size, N_size))
-    for i in range(1, r+1):
-        for j in range(1, s+1):
-            if (i+j) % 2 == 0:
-                phi = -(jnp.pi/(4*r)) * (j - i) * (2*r + i - j)
+    for i in range(1, r + 1):
+        for j in range(1, s + 1):
+            if (i + j) % 2 == 0:
+                phi = -(jnp.pi / (4 * r)) * (j - i) * (2 * r + i - j)
             else:
-                phi = -(jnp.pi/(4*r)) * (i + j - 1) * (2*r - i - j + 1)
+                phi = -(jnp.pi / (4 * r)) * (i + j - 1) * (2 * r - i - j + 1)
             # fill both symmetric entries
             out_idx = r + (j - 1)
-            phases = phases.at[i-1, out_idx].set(phi)
-            phases = phases.at[out_idx, i-1].set(phi)
+            phases = phases.at[i - 1, out_idx].set(phi)
+            phases = phases.at[out_idx, i - 1].set(phi)
 
     # 2) Compute amplitude attenuation (same for all couplings)
     loss_mag = loss / (10 * jnp.log10(jnp.exp(1)))
-    alpha    = loss_mag * 1e-4
-    amp      = jnp.exp(-alpha * length / 2)  # scalar real
-    ones     = jnp.ones_like(wl, dtype=complex)
+    alpha = loss_mag * 1e-4
+    amp = jnp.exp(-alpha * length / 2)  # scalar real
+    ones = jnp.ones_like(wl, dtype=complex)
 
     # 3) Build the forward S-dictionary (only inputs 0…r-1 → outputs r…r+s-1)
-    s_dict = {} 
+    s_dict = {}
     for inp in range(r):
-        for out in range(r, r+s):
-            φ    = phases[inp, out]
+        for out in range(r, r + s):
+            φ = phases[inp, out]
             gain = amp / jnp.sqrt(s) * jnp.exp(1j * φ)
             s_dict[(f"o{inp}", f"o{out}")] = gain * ones
 
     # 4) Mirror it back to get a fully reciprocal device
     return sax.reciprocal(s_dict)
 
-def make_mmi_model(*, r: int, s: int,
-                   default_wl: float = 1.55,
-                   default_length: float = 10.0,
-                   default_loss: float   = 0.0):
+
+def make_mmi_model(
+    *,
+    r: int,
+    s: int,
+    default_wl: float = 1.55,
+    default_length: float = 10.0,
+    default_loss: float = 0.0,
+):
     """
     Factory that returns an MMI_model(recipient of no-args or wl/length/loss).
     """
 
     def MMI_model(
         *,
-        wl:     ArrayLike | float = default_wl,
-        length: float              = default_length,
-        loss:   float              = default_loss,
+        wl: ArrayLike | float = default_wl,
+        length: float = default_length,
+        loss: float = default_loss,
     ) -> sax.SDict:
-        return MultiModeInterferometer(
-            wl=wl,
-            length=length,
-            loss=loss,
-            r=r,
-            s=s
-        )
+        return MultiModeInterferometer(wl=wl, length=length, loss=loss, r=r, s=s)
 
     # give it a meaningful name
     MMI_model.__name__ = f"MMI_{r}x{s}"
     return MMI_model
-

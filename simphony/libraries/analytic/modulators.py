@@ -1,9 +1,11 @@
 # class OpticalAmplitudeModulator():
 #     pass
-from simphony.circuit import OpticalComponent, ElectricalComponent
+from simphony.circuit import SpectralSystem
 from simphony.time_domain import BlockModeSystem, SampleModeSystem
 from jax.typing import ArrayLike
-class MachZehnderModulator(BlockModeSystem, OpticalComponent, ElectricalComponent):
+
+
+class MachZehnderModulator(SpectralSystem, SampleModeSystem, BlockModeSystem):
     optical_ports = ["o0", "o1"]
     electrical_ports = ["e0", "e1"]
     def __init__(self):
@@ -19,7 +21,7 @@ class MachZehnderModulator(BlockModeSystem, OpticalComponent, ElectricalComponen
     def run(self, input_signal: ArrayLike, **kwargs):
         pass
 
-class PhaseModulator(BlockModeSystem, OpticalComponent, ElectricalComponent):
+class PhaseModulator(SpectralSystem, SampleModeSystem, BlockModeSystem):
     optical_ports = ["o0", "o1"]
     electrical_ports = ["e0"]
     def __init__(self):

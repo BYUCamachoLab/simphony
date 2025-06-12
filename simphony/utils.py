@@ -6,10 +6,13 @@ to the average user."""
 
 import inspect
 import re
+from typing import Union
 
 import deprecation
 import jax.numpy as jnp
+import networkx as nx
 import sax
+import yaml
 from jax import Array
 from jax.typing import ArrayLike
 from sax.utils import get_ports
@@ -17,10 +20,6 @@ from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import CubicSpline, interp1d
 
 from simphony import __version__
-
-import yaml
-from typing import Union
-import networkx as nx
 
 MATH_SUFFIXES = {
     "f": "e-15",
@@ -520,20 +519,20 @@ def resample(x: ArrayLike, xp: ArrayLike, sdict: sax.SDict) -> sax.SDict:
         new_sdict[k] = cs(x)
     return new_sdict
 
+
 def add_settings_to_netlist(netlist, settings=None):
     if settings is None:
         settings = {}
     # Ensure Instance Name corresponds to a dictionary with the proper format
-    for instance_name, model in netlist['instances'].items():
+    for instance_name, model in netlist["instances"].items():
         if isinstance(model, str):
-            netlist['instances'][instance_name] = {'component': model, 'settings': {}}        
+            netlist["instances"][instance_name] = {"component": model, "settings": {}}
         elif isinstance(model, dict):
-            if not netlist['instances'][instance_name].get('settings'):
-                netlist['instances'][instance_name]['settings'] = {}
-    
+            if not netlist["instances"][instance_name].get("settings"):
+                netlist["instances"][instance_name]["settings"] = {}
+
     for instance_name, instance_settings in settings.items():
-        netlist['instances'][instance_name]['settings'].update(instance_settings)
-        
+        netlist["instances"][instance_name]["settings"].update(instance_settings)
 
 
 def netlist_to_graph(netlist: Union[dict, str]):
@@ -541,26 +540,30 @@ def netlist_to_graph(netlist: Union[dict, str]):
         pass
     elif isinstance(netlist, str):
         try:
-            with open(netlist, 'r') as file:
+            with open(netlist, "r") as file:
                 netlist = yaml.safe_load(file)
         except FileNotFoundError:
             raise FileNotFoundError(f"YAML file '{netlist}' not found.")
         except yaml.YAMLError as e:
             raise yaml.YAMLError(f"Error parsing YAML file: {e}")
-        
+
     # graph = nx.Graph()
     # graph = nx.MultiGraph()
     graph = nx.MultiDiGraph()
     # Add nodes for each instance
-    for instance_name, instance_data in netlist['instances'].items():
-        graph.add_node(instance_name, component=instance_data['component'], settings=instance_data['settings'])
+    for instance_name, instance_data in netlist["instances"].items():
+        graph.add_node(
+            instance_name,
+            component=instance_data["component"],
+            settings=instance_data["settings"],
+        )
         # graph.add_node(instance_name, label="test", click="Test: $label", **instance_data)
         # graph.add_node(instance_name, weight=netlist['instances'][instance_name]["weight"])
 
     # Add edges based on connections
-    for src, dst in netlist['connections'].items():
-        src_instance, src_port = src.split(',')
-        dst_instance, dst_port = dst.split(',')
+    for src, dst in netlist["connections"].items():
+        src_instance, src_port = src.split(",")
+        dst_instance, dst_port = dst.split(",")
         graph.add_edge(src_instance, dst_instance, src_port=src_port, dst_port=dst_port)
-    
+
     return graph

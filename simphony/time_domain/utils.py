@@ -1,10 +1,10 @@
-from jax.typing import ArrayLike
 import jax.numpy as jnp
-
+from jax.typing import ArrayLike
 
 
 def gaussian_pulse(t, t0, std, a=1.0) -> ArrayLike:
-    return a * jnp.exp(-(t - t0)**2 / std**2)
+    return a * jnp.exp(-((t - t0) ** 2) / std**2)
+
 
 def smooth_rectangular_pulse(t, t_start, t_end, width=None):
     """
@@ -20,7 +20,7 @@ def smooth_rectangular_pulse(t, t_start, t_end, width=None):
     # Transition functions
     rise = 0.5 * (1 + jnp.tanh((t - t_start) / width))
     fall = 0.5 * (1 + jnp.tanh((t_end - t) / width))
-    
+
     # Smooth pulse
     pulse = rise * fall
     return pulse

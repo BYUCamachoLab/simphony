@@ -1,33 +1,35 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
+import numpy as np
 import sax
 from jax import config
-config.update("jax_enable_x64", True)
-from scipy import signal
-import time
-import pickle
 
-from simphony.time_domain.simulation import TimeSim, TimeResult
-from simphony.time_domain.utils import gaussian_pulse, smooth_rectangular_pulse
+config.update("jax_enable_x64", True)
+import pickle
+import time
+
+from scipy import signal
+
 from simphony.libraries import siepic
 from simphony.time_domain.ideal import Modulator
+from simphony.time_domain.simulation import TimeResult, TimeSim
+from simphony.time_domain.utils import gaussian_pulse, smooth_rectangular_pulse
 
 # Simulation parameters
 T = 100e-11
-dt = 1e-14      # Time step (Total time duration is T)
-t = jnp.arange(0, T, dt) # Time array
+dt = 1e-14  # Time step (Total time duration is T)
+t = jnp.arange(0, T, dt)  # Time array
 t0 = 1.0e-11  # Pulse start time
 
 # Modulator signals
 f_mod = 0
 m = f_mod * jnp.ones(len(t), dtype=complex)
-f_mod2 = jnp.pi/4 
+f_mod2 = jnp.pi / 4
 # m2 = f_mod2 * jnp.ones(len(t),dtype=complex)
 
 x = jnp.linspace(0, 3.14, len(t))
 mu = 1.30  # center the Gaussian in the middle of the interval
-sigma = 0.15     # adjust sigma for desired width
+sigma = 0.15  # adjust sigma for desired width
 
 # Compute the Gaussian function
 gaussian = np.pi * jnp.exp(-0.5 * ((x - mu) / sigma) ** 2)
@@ -72,27 +74,31 @@ num_measurements = 200
 model_order = 50
 center_wvl = 1.548
 wvl = np.linspace(1.5, 1.6, num_measurements)
-options = {'wl': wvl, 'wg': {"length": 10.0, "loss": 100}, 'wg2': {"length": 10.0, "loss": 100}}
+options = {
+    "wl": wvl,
+    "wg": {"length": 10.0, "loss": 100},
+    "wg2": {"length": 10.0, "loss": 100},
+}
 
 # Create and build simulation
 time_sim = TimeSim(
     netlist=netlist,
     models=models,
-    model_settings=options, 
+    model_settings=options,
 )
 # modelResult = time_sim.run(t, {"o0": jnp.ones_like(t), "o1": jnp.zeros_like(t)})
 
 # modelResult.plot_sim()
 new_netlist = {
-    "instances":{
-        "wg":"waveguide",
+    "instances": {
+        "wg": "waveguide",
         "wg2": "waveguide",
         "pm": "phase_modulator_time",
         "y": "y_branch",
         "y2": "y_branch",
         "time": "time_system",
     },
-    "connections":{
+    "connections": {
         "wg,o0": "y,port_2",
         "wg,o1": "pm,o0",
         "y2,port_2": "pm,o1",
@@ -100,7 +106,7 @@ new_netlist = {
         "y2,port_3": "wg2,o1",
         "y2,port_1": "time,o0",
     },
-    "ports":{
+    "ports": {
         "o0": "y,port_1",
         "o1": "time,o1",
     },
@@ -109,12 +115,12 @@ new_netlist = {
 
 f_mod = 0
 m = f_mod * jnp.ones(len(t), dtype=complex)
-f_mod2 = jnp.pi/4 
+f_mod2 = jnp.pi / 4
 # m2 = f_mod2 * jnp.ones(len(t),dtype=complex)
 
 x = jnp.linspace(0, 3.14, len(t))
 mu = 0.5  # center the Gaussian in the middle of the interval
-sigma = 0.15     # adjust sigma for desired width
+sigma = 0.15  # adjust sigma for desired width
 
 # Compute the Gaussian function
 gaussian = np.pi * jnp.exp(-0.5 * ((x - mu) / sigma) ** 2)
@@ -130,21 +136,20 @@ models["phase_modulator_time"] = timePhaseInstantiated1
 time_simmer2 = TimeSim(
     netlist=new_netlist,
     models=models,
-    model_settings=options, 
+    model_settings=options,
 )
 
 new_netlist_2 = {
-    "instances":{
-        "wg":"waveguide",
+    "instances": {
+        "wg": "waveguide",
         "wg2": "waveguide",
         "pm": "phase_modulator_time2",
         "y": "y_branch",
         "y2": "y_branch",
         "time2": "time_system2",
         "time": "time_system",
-        
     },
-    "connections":{
+    "connections": {
         "wg,o0": "y,port_2",
         "wg,o1": "pm,o0",
         "y2,port_2": "pm,o1",
@@ -152,21 +157,20 @@ new_netlist_2 = {
         "y2,port_3": "wg2,o1",
         "y2,port_1": "time2,o0",
         "time,o0": "time2,o1",
-        
     },
-    "ports":{
+    "ports": {
         "o0": "y,port_1",
         "o1": "time,o1",
     },
 }
 f_mod = 0
 m = f_mod * jnp.ones(len(t), dtype=complex)
-f_mod2 = jnp.pi/4 
+f_mod2 = jnp.pi / 4
 # m2 = f_mod2 * jnp.ones(len(t),dtype=complex)
 
 x = jnp.linspace(0, 3.14, len(t))
 mu = 2.0  # center the Gaussian in the middle of the interval
-sigma = 0.15     # adjust sigma for desired width
+sigma = 0.15  # adjust sigma for desired width
 
 # Compute the Gaussian function
 gaussian = np.pi * jnp.exp(-0.5 * ((x - mu) / sigma) ** 2)
@@ -182,11 +186,11 @@ models["phase_modulator_time2"] = timePhaseInstantiated2
 time_simmer3 = TimeSim(
     netlist=new_netlist_2,
     models=models,
-    model_settings=options, 
+    model_settings=options,
 )
 num_outputs = 2
 inputs = {
-    f'o{i}': jnp.ones_like(t) if i == 0 else jnp.zeros_like(t)
+    f"o{i}": jnp.ones_like(t) if i == 0 else jnp.zeros_like(t)
     for i in range(num_outputs)
 }
 
