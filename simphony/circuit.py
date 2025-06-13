@@ -13,22 +13,9 @@ class Component:
     logic_ports = []
     optical_ports = []
 
-
-class OpticalSParameter(Component):
-
-    def s_parameters(self, wl: ArrayLike, **kwargs):
-        """
-        Returns an S-parameter matrix for the optical ports in the system
-        """
-        raise NotImplementedError(
-            f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
-        )
-
-
 class SpectralSystem(Component):
     """ 
     """
-
     def s_parameters(self, wl: ArrayLike, **kwargs):
         """
         Returns an S-parameter matrix for the optical ports in the system
@@ -37,13 +24,31 @@ class SpectralSystem(Component):
             f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
         )
 
-    def dc_voltage(self, **kwargs):
+    def steady_state(self):
         """
-        Returns the dc voltage for each electrical port in the system
+        Used when calculating steady state voltages for SParameterSimulation
         """
         raise NotImplementedError(
             f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
         )
+
+class OpticalSParameter(SpectralSystem):
+    # def __init__(self):
+    #     super().__init__()
+    
+    def steady_state(self):
+        pass
+
+
+
+
+    # def dc_voltage(self, **kwargs):
+    #     """
+    #     Returns the dc voltage for each electrical port in the system
+    #     """
+    #     raise NotImplementedError(
+    #         f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
+    #     )
 
 
 def _optical_s_parameter(sax_model: SaxModel):
@@ -52,7 +57,7 @@ def _optical_s_parameter(sax_model: SaxModel):
         optical_ports = sax.get_ports(sax_model)
 
         def __init__(self):
-            pass
+            super().__init__()
 
         def s_parameters(self, wl: ArrayLike, **kwargs):
             return sax_model(wl, **kwargs)
@@ -102,8 +107,9 @@ class Circuit:
         # self.settings = settings
         self.settings = None
         self.graph = netlist_to_graph(netlist)
-
+        
         self._convert_sax_models()
+        # self._add_models_to_graph(self.models)
         self._mark_component_types()
         self._add_ports_to_graph()
         self._validate_connections()
@@ -112,6 +118,10 @@ class Circuit:
     def display(self, inline=True):
         fig = gv.d3(self.graph)
         fig.display(inline=inline)
+
+    # def _add_models_to_graph(self, models: dict):
+    #     for _, node_attr in self.graph.nodes(data=True):
+    #         node_attr['model'] = models[node_attr['component']]
 
     def _convert_sax_models(self):
         for model in self.models:

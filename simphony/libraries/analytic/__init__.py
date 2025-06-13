@@ -35,6 +35,12 @@ from simphony.libraries.analytic.waveguides import (
     GRINFiber,
     Waveguide,
 )
+from simphony.libraries.analytic.integrated_circuits import (
+    VoltageFollower,
+)
+# from simphony.libraries.analytic.photonic_integrated_circuits import (
+
+# )
 
 __all__ = [
     "Waveguide",
@@ -47,4 +53,5 @@ __all__ = [
     "PRNG",
     "star_coupler",
     "optical_s_parameter",
+    "VoltageFollower",
 ]
