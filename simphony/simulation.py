@@ -75,36 +75,38 @@ class SParameterSimulation:
         self._determine_steady_state_order()
 
 
-    def run(self, wl: ArrayLike, settings: dict = None):
+    def run(
+            self, 
+            wl: ArrayLike, 
+            settings: dict = None, 
+            use_default_settings: bool = True
+        ):
         if settings is not None:
-            self.change_settings(settings)
+            self.reset_settings(use_default_settings=use_default_settings)
+            self.add_settings(settings)
 
         self._calculate_dc_voltages()
         self._calculate_scattering_matrices()
 
-    def change_settings(self, settings: dict, use_default_settings: bool = True):
-        """
-        update self.settings with the specified settings and the default settings (if desired)
+    def _clear_settings(self):
+        for instance in self.circuit.graph.nodes:
+                self.settings[instance] = {}
 
-        Useful when running parameter sweeps
-
-        `use_default_settings` parameter controls whether settings specified in
-        the Circuit object will be used. Even if use_default_settings is true,
-        the `settings` parameter has a higher priority.
+    def reset_settings(self, use_default_settings: bool = True):
         """
-        self.settings = {}
-        
+        Reset settings to their defaults (specified in Circuit) or clear all settings
+        """
         if use_default_settings:
             self.settings = deepcopy(self.circuit.default_settings)
         else:
-            for instance in self.circuit.graph.nodes:
-                self.settings[instance] = {}
-        
+            self._clear_settings()
+
+    def add_settings(self, settings: dict):
+        """
+        Update the current settings with additional settings.
+        """
         for instance, instance_settings in settings.items():
             self.settings[instance].update(instance_settings)
-        
-        
-
 
     def _identify_component_types(self):
         self.all_components = set()
