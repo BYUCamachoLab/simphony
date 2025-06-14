@@ -561,9 +561,12 @@ def netlist_to_graph(netlist: Union[dict, str]):
         # graph.add_node(instance_name, weight=netlist['instances'][instance_name]["weight"])
 
     # Add edges based on connections
-    for src, dst in netlist["connections"].items():
-        src_instance, src_port = src.split(",")
-        dst_instance, dst_port = dst.split(",")
-        graph.add_edge(src_instance, dst_instance, src_port=src_port, dst_port=dst_port)
+    for src, dsts in netlist["connections"].items():
+        for dst in dsts.split(";"):
+            if dst =='':
+                continue
+            src_instance, src_port = src.split(",")
+            dst_instance, dst_port = dst.split(",")
+            graph.add_edge(src_instance.strip(), dst_instance.strip(), src_port=src_port.strip(), dst_port=dst_port.strip())
 
     return graph

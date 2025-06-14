@@ -37,6 +37,7 @@ from simphony.libraries.analytic.waveguides import (
 )
 from simphony.libraries.analytic.integrated_circuits import (
     VoltageFollower,
+    OpAmp,
 )
 # from simphony.libraries.analytic.photonic_integrated_circuits import (
 
@@ -51,7 +52,9 @@ __all__ = [
     "PhaseModulator",
     "VoltageSource",
     "PRNG",
+    "VoltageFollower",
+    "OpAmp",
+
     "star_coupler",
     "optical_s_parameter",
-    "VoltageFollower",
 ]
