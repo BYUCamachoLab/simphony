@@ -534,6 +534,13 @@ def add_settings_to_netlist(netlist, settings=None):
     for instance_name, instance_settings in settings.items():
         netlist["instances"][instance_name]["settings"].update(instance_settings)
 
+def get_settings_from_netlist(netlist):
+    settings = {}
+    for instance, attr in netlist['instances'].items():
+        settings[instance] = attr['settings']
+    
+    return settings
+
 
 def netlist_to_graph(netlist: Union[dict, str]):
     if isinstance(netlist, dict):

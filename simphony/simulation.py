@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from simphony.circuit import Circuit
 
+from copy import deepcopy
 
 class SimDevice:
     """Base class for all source or measure devices."""
@@ -47,7 +48,12 @@ class SimulationResult:
 
 
 class SParameterSimulation:
-    def __init__(self, ckt: Circuit, ports=None, settings: dict = None):
+    def __init__(
+            self, 
+            ckt: Circuit, 
+            ports=None, 
+            # settings: dict = None
+        ):
         """
         Calculates the S-parameters for a given set of ports in an optical
         circuit. 
@@ -60,8 +66,8 @@ class SParameterSimulation:
         if ports is None:
             self.ports = self.circuit.netlist['ports']
         
-        if settings is not None:
-            self.update_settings(settings)
+        # if settings is not None:
+        #     self.update_settings(settings)
 
         self._identify_component_types()
         self._build_s_parameter_graph()
@@ -69,18 +75,36 @@ class SParameterSimulation:
         self._determine_steady_state_order()
 
 
-    def run(self, settings: dict = None):
+    def run(self, wl: ArrayLike, settings: dict = None):
         if settings is not None:
-            self.update_settings(settings)
+            self.change_settings(settings)
 
         self._calculate_dc_voltages()
         self._calculate_scattering_matrices()
 
-    def update_settings(self, settings: dict):
+    def change_settings(self, settings: dict, use_default_settings: bool = True):
         """
+        update self.settings with the specified settings and the default settings (if desired)
+
         Useful when running parameter sweeps
+
+        `use_default_settings` parameter controls whether settings specified in
+        the Circuit object will be used. Even if use_default_settings is true,
+        the `settings` parameter has a higher priority.
         """
-        pass
+        self.settings = {}
+        
+        if use_default_settings:
+            self.settings = deepcopy(self.circuit.default_settings)
+        else:
+            for instance in self.circuit.graph.nodes:
+                self.settings[instance] = {}
+        
+        for instance, instance_settings in settings.items():
+            self.settings[instance].update(instance_settings)
+        
+        
+
 
     def _identify_component_types(self):
         self.all_components = set()
@@ -170,10 +194,19 @@ class SParameterSimulation:
         able to find the order in which electrical component voltages must
         be calculated to find the proper steady state.
         """
-        pass
+        self.steady_state_order = []
+        graph = self.circuit.graph.copy()
+        graph.remove_nodes_from(self.s_parameter_graph.nodes)
+        while graph.number_of_nodes() > 0:
+            source_nodes = [n for n in graph.nodes if graph.in_degree(n)==0]
+            if len(source_nodes) == 0:
+                break
+            self.steady_state_order += source_nodes
+            graph.remove_nodes_from(source_nodes)
 
-    def _calculate_dc_voltages(self):
-        pass
+        if graph.number_of_nodes() > 0:
+            raise ValueError(
+                "Failed to determine steady state order. " \
+                "Hint: Steady state cannot be determined for circular connections."
+            )
 
-    def _calculate_scattering_matrices(self):
-        pass

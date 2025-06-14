@@ -6,7 +6,7 @@ import sax
 from jax.typing import ArrayLike
 from sax.saxtypes import Model as SaxModel
 
-from simphony.utils import add_settings_to_netlist, netlist_to_graph
+from simphony.utils import add_settings_to_netlist, get_settings_from_netlist, netlist_to_graph
 
 class Component:
     electrical_ports = []
@@ -95,17 +95,19 @@ class Circuit:
         self,
         netlist: dict,
         models: dict,
-        # settings: dict = None
+        default_settings: dict = None
     ) -> None:
         # if settings is not None:
         #     add_settings_to_netlist(netlist, settings)
         # else:
         #     add_settings_to_netlist(netlist, None)
-        add_settings_to_netlist(netlist, None)
+        add_settings_to_netlist(netlist, default_settings)
+        self.default_settings = get_settings_from_netlist(netlist)
+        
         self.netlist = netlist
         self.models = models
         # self.settings = settings
-        self.settings = None
+        
         self.graph = netlist_to_graph(netlist)
         
         self._convert_sax_models()
