@@ -76,11 +76,11 @@ class SParameterSimulation:
 
 
     def run(
-            self, 
-            wl: ArrayLike, 
-            settings: dict = None, 
-            use_default_settings: bool = True
-        ):
+        self, 
+        wl: ArrayLike, 
+        settings: dict = None, 
+        use_default_settings: bool = True
+    ):
         if settings is not None:
             self.reset_settings(use_default_settings=use_default_settings)
             self.add_settings(settings)
