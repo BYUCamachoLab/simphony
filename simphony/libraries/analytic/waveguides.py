@@ -7,8 +7,8 @@ from simphony.time_domain import SSFM, BlockModeSystem
 class Waveguide(SpectralSystem, BlockModeSystem):
     optical_ports = ["o0", "o1"]
 
-    def __init__(self):
-        pass
+    def __init__(self, **settings):
+        super().__init__(**settings)
         # optical_ports = ["o0","o1"]
         # electrical_ports = None
         # logic_ports = None

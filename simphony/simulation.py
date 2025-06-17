@@ -73,6 +73,7 @@ class SParameterSimulation:
         self._build_s_parameter_graph()
         self._validate_s_parameter_graph()
         self._determine_steady_state_order()
+        self.reset_settings(use_default_settings=True)
 
 
     def run(
@@ -85,8 +86,9 @@ class SParameterSimulation:
             self.reset_settings(use_default_settings=use_default_settings)
             self.add_settings(settings)
 
-        self._calculate_dc_voltages()
-        self._calculate_scattering_matrices()
+        self._instantiate_components()
+        self._calculate_steady_states()
+        self._calculate_scattering_matrix()
 
     def _clear_settings(self):
         for instance in self.circuit.graph.nodes:
@@ -211,4 +213,19 @@ class SParameterSimulation:
                 "Failed to determine steady state order. " \
                 "Hint: Steady state cannot be determined for circular connections."
             )
+    
+    def _instantiate_components(self):
+        self.components = {}
+        for component_name in self.circuit.graph.nodes:
+            model_name = self.circuit.netlist['instances'][component_name]['component']
+            model = self.circuit.models[model_name]
+            settings = self.settings[component_name]
+            self.components[component_name] = model(**settings)
 
+    
+    def _calculate_steady_states(self):
+        for component in self.steady_state_order:
+            pass
+    
+    def _calculate_scattering_matrix(self):
+        pass

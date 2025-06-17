@@ -7,24 +7,28 @@ from jax.typing import ArrayLike
 from sax.saxtypes import Model as SaxModel
 
 from simphony.utils import add_settings_to_netlist, get_settings_from_netlist, netlist_to_graph
+from copy import deepcopy
 
 class Component:
     electrical_ports = []
     logic_ports = []
     optical_ports = []
 
+    def __init__(self, **kwargs):
+        self.settings = kwargs
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
 class SpectralSystem(Component):
     """ 
     """
-    def s_parameters(self, wl: ArrayLike, **kwargs):
-        """
-        Returns an S-parameter matrix for the optical ports in the system
-        """
-        raise NotImplementedError(
-            f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
-        )
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
-    def steady_state(self):
+    def steady_state(
+        self, 
+        inputs: dict
+        ) -> dict:
         """
         Used when calculating steady state voltages for SParameterSimulation
         """
@@ -33,11 +37,20 @@ class SpectralSystem(Component):
         )
 
 class OpticalSParameter(SpectralSystem):
-    # def __init__(self):
-    #     super().__init__()
-    
-    def steady_state(self):
-        pass
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def s_parameters(
+        self, 
+        wl: ArrayLike, 
+        # **kwargs
+    ):
+        """
+        Returns an S-parameter matrix for the optical ports in the system
+        """
+        raise NotImplementedError(
+            f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
+        )
 
 
 
@@ -56,11 +69,15 @@ def _optical_s_parameter(sax_model: SaxModel):
     # class SParameterSax():
         optical_ports = sax.get_ports(sax_model)
 
-        def __init__(self):
-            super().__init__()
+        def __init__(self, **settings):
+            super().__init__(**settings)
 
-        def s_parameters(self, wl: ArrayLike, **kwargs):
-            return sax_model(wl, **kwargs)
+        def s_parameters(
+            self, 
+            wl: ArrayLike, 
+            # **kwargs,
+        ):
+            return sax_model(wl, **self.settings)
 
     return SParameterSax
 
@@ -101,14 +118,15 @@ class Circuit:
         #     add_settings_to_netlist(netlist, settings)
         # else:
         #     add_settings_to_netlist(netlist, None)
-        add_settings_to_netlist(netlist, default_settings)
-        self.default_settings = get_settings_from_netlist(netlist)
+        self.netlist = deepcopy(netlist)
+        add_settings_to_netlist(self.netlist, default_settings)
+        self.default_settings = get_settings_from_netlist(self.netlist)
         
-        self.netlist = netlist
+        
         self.models = models
         # self.settings = settings
         
-        self.graph = netlist_to_graph(netlist)
+        self.graph = netlist_to_graph(self.netlist)
         
         self._convert_sax_models()
         # self._add_models_to_graph(self.models)
