@@ -108,8 +108,8 @@ class _SparamsTransformer(Transformer):
         port_in,
         mode_in,
         valuetype,
-        groupdelay,
-        sweepparams,
+        groupdelay=None,
+        sweepparams=None,
     ):
         return {
             "port_out": port_out,
