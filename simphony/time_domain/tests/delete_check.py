@@ -71,97 +71,93 @@ models = {
 }
 active_components = {"pm", "pm2"}
 num_measurements = 200
-model_order = 50
-center_wvl = 1.548
+
+center_wvl = 1.55
 wvl = np.linspace(1.5, 1.6, num_measurements)
 options = {
     "wl": wvl,
-    "wg1": {"length": 10000.0, "loss": 0},
-    
-
+    "wg1": {"length": 290.0, "loss": 0},
 }
 
-# # Create and build simulation
-# time_sim = TimeSim(
-#     netlist=netlist,
-#     models=models,
-#     settings=options,
-# )
-# result = time_sim.run(t, {
-#     "o0": smooth_rectangular_pulse(t, 0.0, T+ 20.0e-11)*jnp.sqrt(10),
-#     "o1" : jnp.zeros_like(t),
-# }, carrier_freq=SPEED_OF_LIGHT/(1.55*1e-6), dt=dt)
-# result.plot_sim()
-models = {
-    "waveguide": siepic.waveguide,
-    "y_branch": siepic.y_branch,
-}       
-
-circuit, _ = sax.circuit(
-                            netlist=netlist,
-                            models=models,
-                        )
-
-s_params_dict = circuit(**options)
-s_matrix = np.asarray(dict_to_matrix(s_params_dict))
-center_wvl = 1.55
-c_light = 299792458
-center_freq = c_light / (center_wvl * 1e-6)
-freqs = c_light / (wvl * 1e-6) - center_freq
-sampling_freq = -1 / dt
-beta = sampling_freq / (freqs[-1] - freqs[0])
-bvf_options = BVF_Options(beta=beta,max_iterations = 30)
-sorted_ports = sorted(netlist["ports"].keys(), key=lambda p: int(p.lstrip('o')))
-freqs_hz = SPEED_OF_LIGHT / (wvl * 1e-6)    # wvl was in μm → convert to m
-omega = 2 * np.pi * freqs_hz   
-idx         = np.argsort(omega)
-omega_s     = omega[idx]
-group_delay = -np.gradient(np.unwrap(np.angle(s_matrix[:, 0, 1])),omega_s)
-plt.plot(wvl, group_delay*1e12)              # convert s → ps
-plt.xlabel("Angular frequency ω (rad/s)")
-plt.ylabel("Group delay")
-plt.show() 
-iir_model = IIRModelBaseband(
-    wvl, center_wvl, s_matrix,order = 50, options=bvf_options
+# Create and build simulation
+time_sim = TimeSim(
+    netlist=netlist,
+    models=models,
+    settings=options,
 )
+result = time_sim.run(t, {
+    "o0": smooth_rectangular_pulse(t, 0.0, T+ 20.0e-11),
+    "o1" : jnp.zeros_like(t),
+}, carrier_freq=SPEED_OF_LIGHT/(center_wvl*1e-6), dt=dt)
 
-poles = iir_model.poles
-residues = iir_model.residues
-D = iir_model.D
-Ω = 2*np.pi * freqs / sampling_freq   
+result.plot_sim()   
 
-z = np.exp(1j * Ω)
+# circuit, _ = sax.circuit(
+#                             netlist=netlist,
+#                             models=models,
+#                         )
 
-S_fit = np.zeros_like(z, dtype=complex)
-for i, p in enumerate(poles):
-    r01    = residues[i,0,1]
-    S_fit += r01 / (z - p)
-S_fit += D[0,1]
-print(residues[:,0,1])
-print(poles)
-plt.plot(wvl, np.angle(s_matrix[:, 0, 1]), label='IIR Model')
-plt.plot(wvl, np.angle(S_fit), label='IIR Model')
-plt.show()
+# s_params_dict = circuit(**options)
+# s_matrix = np.asarray(dict_to_matrix(s_params_dict))
+# c_light = 299792458
+# center_freq = c_light / (center_wvl * 1e-6)
 
-plt.plot(wvl, np.abs(s_matrix[:, 0, 1]), label='IIR Model')
-plt.plot(wvl, np.abs(S_fit), label='IIR Model Fit')
-plt.show()
+# freqs = c_light / (wvl * 1e-6) - center_freq
+# sampling_freq = -1 / dt
+# beta = sampling_freq / (freqs[-1] - freqs[0])
+# bvf_options = BVF_Options(beta=beta,max_iterations = 30)
+# sorted_ports = sorted(netlist["ports"].keys(), key=lambda p: int(p.lstrip('o')))
+# freqs_hz = SPEED_OF_LIGHT / (wvl * 1e-6)    # wvl was in μm → convert to m
 
-plt.figure(figsize=(5,5))
-# unit circle
-angle = np.linspace(0, 2*np.pi, 400)
-plt.plot(np.cos(angle), np.sin(angle), 'gray', lw=1)
+# omega = 2 * np.pi * freqs_hz   
+# idx         = np.argsort(omega)
+# omega_s     = omega[idx]
+# group_delay = -np.gradient(np.unwrap(np.angle(s_matrix[:, 0, 1])),omega_s)
+# plt.plot(wvl, group_delay*1e12)              # convert s → ps
+# plt.xlabel("Angular frequency ω (rad/s)")
+# plt.ylabel("Group delay")
+# plt.show() 
+# iir_model = IIRModelBaseband(
+#     wvl, center_wvl, s_matrix,order = 80, options=bvf_options
+# )
 
-plt.scatter(poles.real, poles.imag, marker='x', s=80, label='Poles')
+# poles = iir_model.poles
+# residues = iir_model.residues
+# D = iir_model.D
+# Ω = 2*np.pi * freqs / sampling_freq   
 
-plt.axhline(0, color='black', lw=1)
-plt.axvline(0, color='black', lw=1)
-plt.xlabel('Re\{z\}')
-plt.ylabel('Im\{z\}')
-plt.title('Pole–Zero Map (z-plane)')
-plt.legend()
-plt.axis('equal')
-plt.grid(True, ls='--', alpha=0.5)
-plt.show()
+# z = np.exp(1j * Ω)
+
+# S_fit = np.zeros_like(z, dtype=complex)
+# for i, p in enumerate(poles):
+#     r01    = residues[i,0,1]
+#     S_fit += r01 / (z - p)
+# S_fit += D[0,1]
+# print(residues[:,0,1])
+# print(poles)
+# plt.plot(wvl, np.angle(s_matrix[:, 0, 1]), label='IIR Model')
+# plt.plot(wvl, np.angle(S_fit), label='IIR Model')
+# plt.show()
+
+# plt.plot(wvl, np.abs(s_matrix[:, 0, 1]), label='IIR Model')
+# plt.plot(wvl, np.abs(S_fit), label='IIR Model Fit')
+# plt.show()
+
+# plt.figure(figsize=(5,5))
+# # unit circle
+# angle = np.linspace(0, 2*np.pi, 400)
+# plt.plot(np.cos(angle), np.sin(angle), 'gray', lw=1)
+
+# plt.scatter(poles.real, poles.imag, marker='x', s=80, label='Poles')
+
+# plt.axhline(0, color='black', lw=1)
+# plt.axvline(0, color='black', lw=1)
+# plt.xlabel('Re\{z\}')
+# plt.ylabel('Im\{z\}')
+# plt.title('Pole–Zero Map (z-plane)')
+# plt.legend()
+# plt.axis('equal')
+# plt.grid(True, ls='--', alpha=0.5)
+# plt.show()
 
 
