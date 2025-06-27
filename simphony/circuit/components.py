@@ -142,3 +142,6 @@ class SampleModeComponent(Component):
     def step(self, previous_state, inputs: dict) -> jnp.ndarray:
         """Compute the next state of the system."""
         raise NotImplementedError
+    
+    def _step(self):
+        pass
