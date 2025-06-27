@@ -4,7 +4,9 @@ from typing import Tuple
 import jax.numpy as jnp
 import numpy as np
 import sax
+import jax
 from jax.typing import ArrayLike
+from functools import partial
 
 from simphony.time_domain.pole_residue_model import PoleResidueModel
 
@@ -274,7 +276,8 @@ class TimeSystemIIR(SampleModeSystem, BlockModeSystem):
         """
         n_states = self.sys.A.shape[0]
         return jnp.zeros((n_states,), dtype=jnp.complex128)
-
+    
+    @partial(jax.jit, static_argnums=(0,))
     def step(self, x_prev: jnp.ndarray, inputs: tuple, **kwargs):
         """
         A pure function (no in-place mutation).
