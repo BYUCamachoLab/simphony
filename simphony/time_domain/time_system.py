@@ -9,7 +9,7 @@ from jax.typing import ArrayLike
 from functools import partial
 
 from simphony.time_domain.pole_residue_model import PoleResidueModel
-
+from simphony.circuit import SampleModeComponent, BlockModeComponent
 
 class TimeSystem(ABC):
     def __init__(self, optical_ports, electrical_ports, logic_ports) -> None:
@@ -42,31 +42,31 @@ class TimeSystem(ABC):
         raise NotImplementedError
 
 
-class BlockModeComponent(TimeSystem, ABC):
-    def __init__(
-        self, optical_ports=None, electrical_ports=None, logic_ports=None
-    ) -> None:
-        super().__init__(optical_ports, electrical_ports, logic_ports)
+# class BlockModeComponent(TimeSystem, ABC):
+#     def __init__(
+#         self, optical_ports=None, electrical_ports=None, logic_ports=None
+#     ) -> None:
+#         super().__init__(optical_ports, electrical_ports, logic_ports)
 
-    @abstractmethod
-    def run(self, input_signal: ArrayLike, **kwargs) -> ArrayLike:
-        """Compute the system response."""
-        raise NotImplementedError
+#     @abstractmethod
+#     def run(self, input_signal: ArrayLike, **kwargs) -> ArrayLike:
+#         """Compute the system response."""
+#         raise NotImplementedError
 
 
-class SampleModeComponent(TimeSystem, ABC):
-    def __init__(self) -> None:
-        super().__init__()
+# class SampleModeComponent(TimeSystem, ABC):
+#     def __init__(self) -> None:
+#         super().__init__()
 
-    @abstractmethod
-    def init_state(self, **kwargs):
-        """Initialize the state of the system."""
-        raise NotImplementedError
+#     @abstractmethod
+#     def init_state(self, **kwargs):
+#         """Initialize the state of the system."""
+#         raise NotImplementedError
 
-    @abstractmethod
-    def step(self, x_prev, inputs: Tuple, **kwargs) -> jnp.ndarray:
-        """Compute the next state of the system."""
-        raise NotImplementedError
+#     @abstractmethod
+#     def step(self, x_prev, inputs: Tuple, **kwargs) -> jnp.ndarray:
+#         """Compute the next state of the system."""
+#         raise NotImplementedError
 
 
 # def my_dlsim(system, u, t=None, x0=None):

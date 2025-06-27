@@ -1,12 +1,17 @@
 # from typing import TYPE_CHECKING
 # if TYPE_CHECKING:
 #     from simphony.circuit import Circuit
+from .simulation import Simulation, SimulationResult
 from simphony.circuit import Circuit
 from jax.typing import ArrayLike
 from copy import deepcopy
 import networkx as nx
 
-class SParameterSimulation:
+class SParameterSimulationResult(SimulationResult):
+    def __init__(self):
+        ...
+
+class SParameterSimulation(Simulation):
     def __init__(
             self, 
             ckt: Circuit, 
@@ -40,7 +45,7 @@ class SParameterSimulation:
         wl: ArrayLike, 
         settings: dict = None, 
         use_default_settings: bool = True
-    ):
+    )->SParameterSimulationResult:
         if settings is not None:
             self.reset_settings(use_default_settings=use_default_settings)
             self.add_settings(settings)
@@ -48,6 +53,9 @@ class SParameterSimulation:
         self._instantiate_components()
         self._calculate_steady_states()
         self._calculate_scattering_matrix()
+
+        # TODO
+        return SParameterSimulationResult()
 
     def _clear_settings(self):
         for instance in self.circuit.graph.nodes:
