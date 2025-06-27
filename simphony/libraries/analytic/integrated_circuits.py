@@ -1,8 +1,8 @@
-from simphony.circuit import SteadyStateSystem
+from simphony.circuit import SteadyStateComponent
 
-class VoltageFollower(SteadyStateSystem):
+class VoltageFollower(SteadyStateComponent):
     electrical_ports = ["e0", "e1"]
 
-class OpAmp(SteadyStateSystem):
+class OpAmp(SteadyStateComponent):
     electrical_ports = ["ninv","inv","vp","vn","vout"]
     

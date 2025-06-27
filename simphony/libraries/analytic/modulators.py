@@ -1,6 +1,6 @@
 # class OpticalAmplitudeModulator():
 #     pass
-from simphony.circuit import SteadyStateSystem
+from simphony.circuit import SteadyStateComponent
 from simphony.time_domain import BlockModeSystem, SampleModeSystem
 from jax.typing import ArrayLike
 import jax
@@ -10,7 +10,7 @@ from typing import Callable
 from simphony.signals import optical_signal, electrical_signal
 
 class MachZehnderModulator(
-    SteadyStateSystem, 
+    SteadyStateComponent, 
     # SampleModeSystem, 
     BlockModeSystem
 ):
@@ -21,7 +21,7 @@ class MachZehnderModulator(
     #     super().__init__(**settings)
 
 class OpticalModulator(
-    SteadyStateSystem, 
+    SteadyStateComponent, 
     # SampleModeSystem, 
     # BlockModeSystem
 ):

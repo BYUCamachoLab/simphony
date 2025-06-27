@@ -7,10 +7,10 @@
 from simphony.circuit.circuit import (
     Circuit,
 )
-from simphony.circuit.component import (
+from simphony.circuit.components import (
     Component,
-    SteadyStateSystem,
-    OpticalSParameter,
+    SteadyStateComponent,
+    OpticalSParameterComponent,
 
     _optical_s_parameter,
 )
@@ -18,7 +18,7 @@ from simphony.circuit.component import (
 __all__ = [
     "Circuit",
     "Component",
-    "SteadyStateSystem",
-    "OpticalSParameter",
+    "SteadyStateComponent",
+    "OpticalSParameterComponent",
     "_optical_s_parameter",
 ]

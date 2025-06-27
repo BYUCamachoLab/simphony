@@ -1,18 +1,18 @@
 import jax
 from jax.typing import ArrayLike
 
-from simphony.circuit import SteadyStateSystem
+from simphony.circuit import SteadyStateComponent
 from simphony.time_domain import BlockModeSystem, SampleModeSystem
 from simphony.signals import electrical_signal
 
 
-class CWLaser(SteadyStateSystem, SampleModeSystem, BlockModeSystem):
+class CWLaser(SteadyStateComponent, SampleModeSystem, BlockModeSystem):
     def __init__(self):
         pass
 
 
 class VoltageSource(
-    SteadyStateSystem, 
+    SteadyStateComponent, 
     # SampleModeSystem, 
     BlockModeSystem,
 ):
@@ -47,7 +47,7 @@ class VoltageSource(
 
 
 class PRNG(
-    SteadyStateSystem, 
+    SteadyStateComponent, 
     # SampleModeSystem, 
     BlockModeSystem
 ):

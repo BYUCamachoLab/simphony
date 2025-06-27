@@ -13,7 +13,7 @@ from copy import deepcopy
 import jax
 import jax.numpy as jnp
 
-from .component import Component, _optical_s_parameter
+from .components import Component, _optical_s_parameter
 
 # from simphony.utils import dict_to_matrix
 

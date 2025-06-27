@@ -26,7 +26,7 @@ class Component:
         for key, value in settings.items():
             setattr(self, key, value)
 
-class SteadyStateSystem(Component):
+class SteadyStateComponent(Component):
     """ 
     """
     def __init__(self, **settings):
@@ -35,7 +35,7 @@ class SteadyStateSystem(Component):
     def steady_state(
         self, 
         inputs: dict
-        ) -> dict:
+    ) -> dict:
         """
         Used when calculating steady state voltages for SParameterSimulation
         """
@@ -43,7 +43,7 @@ class SteadyStateSystem(Component):
             f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
         )
 
-class OpticalSParameter(SteadyStateSystem):
+class OpticalSParameterComponent(SteadyStateComponent):
     def __init__(self, **settings):
         super().__init__(**settings)
 
@@ -61,7 +61,7 @@ class OpticalSParameter(SteadyStateSystem):
 
 
 def _optical_s_parameter(sax_model: SaxModel):
-    class SParameterSax(OpticalSParameter):
+    class SParameterSax(OpticalSParameterComponent):
         optical_ports = sax.get_ports(sax_model)
         _num_ports = len(optical_ports)
         
