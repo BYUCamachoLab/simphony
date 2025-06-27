@@ -1,6 +1,6 @@
 from typing import Type
 
-from simphony.circuit import SpectralSystem
+from simphony.circuit import SteadyStateSystem
 from simphony.time_domain import BlockModeSystem, SampleModeSystem
 
 
@@ -14,4 +14,4 @@ def star_coupler(num_in: int, num_out: int) -> Type:
 
     attr = {"optical_ports": in_ports + out_ports}
 
-    return type(class_name, (SpectralSystem, SampleModeSystem, BlockModeSystem), attr)
+    return type(class_name, (SteadyStateSystem, SampleModeSystem, BlockModeSystem), attr)

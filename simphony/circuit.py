@@ -8,22 +8,28 @@ from sax.saxtypes import Model as SaxModel
 
 from simphony.utils import add_settings_to_netlist, get_settings_from_netlist, netlist_to_graph
 from copy import deepcopy
+from simphony.signals import optical_signal, complete_steady_state_inputs
+
+import jax
+import jax.numpy as jnp
+
+from simphony.utils import dict_to_matrix
 
 class Component:
     electrical_ports = []
     logic_ports = []
     optical_ports = []
 
-    def __init__(self, **kwargs):
-        self.settings = kwargs
-        for key, value in kwargs.items():
+    def __init__(self, **settings):
+        self.settings = settings
+        for key, value in settings.items():
             setattr(self, key, value)
 
-class SpectralSystem(Component):
+class SteadyStateSystem(Component):
     """ 
     """
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, **settings):
+        super().__init__(**settings)
 
     def steady_state(
         self, 
@@ -36,9 +42,9 @@ class SpectralSystem(Component):
             f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
         )
 
-class OpticalSParameter(SpectralSystem):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+class OpticalSParameter(SteadyStateSystem):
+    def __init__(self, **settings):
+        super().__init__(**settings)
 
     def s_parameters(
         self, 
@@ -66,18 +72,58 @@ class OpticalSParameter(SpectralSystem):
 
 def _optical_s_parameter(sax_model: SaxModel):
     class SParameterSax(OpticalSParameter):
-    # class SParameterSax():
         optical_ports = sax.get_ports(sax_model)
-
+        _num_ports = len(optical_ports)
+        
         def __init__(self, **settings):
             super().__init__(**settings)
 
-        def s_parameters(
-            self, 
-            wl: ArrayLike, 
-            # **kwargs,
+        # @staticmethod
+        # @jax.jit
+        def s_parameters( 
+            self,
+            wl: ArrayLike,
+            **settings,
         ):
             return sax_model(wl, **self.settings)
+        
+        # @staticmethod
+        # @jax.jit 
+        def steady_state(self, inputs: dict, **settings):
+            # Sadly, sax_model is not jit compatible
+            # so instead we just jit what we can.
+            complete_steady_state_inputs(inputs)
+            ports = sax.get_ports(sax_model)
+            wl = inputs[ports[0]].wl
+            s_params = dict_to_matrix(sax_model(wl*1e6, **self.settings))
+            outputs = self._compute_outputs(s_params, wl, inputs)
+            
+            return outputs
+        
+        @staticmethod
+        @jax.jit
+        def _compute_outputs(s_params: ArrayLike, wls, inputs:dict)->dict:
+            ports = sax.get_ports(sax_model)
+            num_ports = len(ports)
+            num_wls = wls.shape[0]
+            input_matrix = jnp.zeros((num_wls, num_ports), dtype=complex)
+            for i, port in enumerate(ports):
+                input_matrix = input_matrix.at[:, i].set(inputs[port].field)
+            
+            output_matrix = jnp.zeros_like(input_matrix)
+            for i, wl in enumerate(wls):
+                _output = s_params[i,:,:] @ input_matrix[i, :]
+                output_matrix = output_matrix.at[i, :].set(_output)
+
+            outputs = {}
+            for i, port in enumerate(ports):
+                outputs[port] = optical_signal(
+                                    field=output_matrix[:, i],
+                                    wl=wls,
+                                    polarization=inputs[port].polarization
+                                )
+            
+            return outputs
 
     return SParameterSax
 

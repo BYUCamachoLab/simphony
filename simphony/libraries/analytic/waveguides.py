@@ -1,10 +1,10 @@
 from jax.typing import ArrayLike
 
-from simphony.circuit import SpectralSystem
+from simphony.circuit import SteadyStateSystem
 from simphony.time_domain import SSFM, BlockModeSystem
 
 
-class Waveguide(SpectralSystem, BlockModeSystem):
+class Waveguide(SteadyStateSystem, BlockModeSystem):
     optical_ports = ["o0", "o1"]
 
     def __init__(self, **settings):
@@ -24,9 +24,9 @@ class Waveguide(SpectralSystem, BlockModeSystem):
         SSFM(input_signal, dt, carrier_freq)
 
 
-class Fiber(SpectralSystem, BlockModeSystem):
+class Fiber(SteadyStateSystem, BlockModeSystem):
     pass
 
 
-class GRINFiber(SpectralSystem, BlockModeSystem):
+class GRINFiber(SteadyStateSystem, BlockModeSystem):
     pass

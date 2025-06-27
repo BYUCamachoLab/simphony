@@ -1,51 +1,10 @@
-"""Simulation module."""
-
-from __future__ import annotations
-
-import inspect
-
-import jax.numpy as jnp
-import networkx as nx
+# from typing import TYPE_CHECKING
+# if TYPE_CHECKING:
+#     from simphony.circuit import Circuit
+from simphony.circuit import Circuit
 from jax.typing import ArrayLike
-from sax.saxtypes import Model
-
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from simphony.circuit import Circuit
-
 from copy import deepcopy
-
-class SimDevice:
-    """Base class for all source or measure devices."""
-
-    # TODO: Add bandwidth option to classical
-    def __init__(self, ports: list) -> None:
-        self.ports = ports
-
-
-class Simulation:
-    """Base class for simphony simulations.
-
-    Parameters
-    ----------
-    ckt : Model
-        A callable SAX model.
-    wl : ArrayLike
-        The wavelengths at which to simulate the circuit.
-    """
-
-    def __init__(self, ckt: Model, wl: ArrayLike) -> None:
-        self.ckt = ckt
-        self.wl = jnp.asarray(wl).reshape(-1)
-
-    def run(self):
-        """Run the simulation."""
-        raise NotImplementedError
-
-
-class SimulationResult:
-    """Base class for simphony simulation results."""
-
+import networkx as nx
 
 class SParameterSimulation:
     def __init__(
@@ -54,7 +13,7 @@ class SParameterSimulation:
             ports=None, 
             # settings: dict = None
         ):
-        """
+        """s_parameter_simulation
         Calculates the S-parameters for a given set of ports in an optical
         circuit. 
         
@@ -202,11 +161,11 @@ class SParameterSimulation:
         graph = self.circuit.graph.copy()
         graph.remove_nodes_from(self.s_parameter_graph.nodes)
         while graph.number_of_nodes() > 0:
-            source_nodes = [n for n in graph.nodes if graph.in_degree(n)==0]
-            if len(source_nodes) == 0:
+            root_nodes = [n for n in graph.nodes if graph.in_degree(n)==0]
+            if len(root_nodes) == 0:
                 break
-            self.steady_state_order += source_nodes
-            graph.remove_nodes_from(source_nodes)
+            self.steady_state_order += root_nodes
+            graph.remove_nodes_from(root_nodes)
 
         if graph.number_of_nodes() > 0:
             raise ValueError(
