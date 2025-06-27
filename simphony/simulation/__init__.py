@@ -17,5 +17,4 @@ __all__ = [
     "Simulation",
     "SimulationResult",
     "SParameterSimulation",
-
 ]
