@@ -9,8 +9,8 @@ from jax.typing import ArrayLike
 
 import simphony.libraries.ideal as fd
 from simphony.time_domain.time_system import (
-    BlockModeSystem,
-    SampleModeSystem,
+    BlockModeComponent,
+    SampleModeComponent,
     TimeSystem,
 )
 from simphony.utils import dict_to_matrix, mul_polar
@@ -123,7 +123,7 @@ class TimeWaveguide(TimeSystem):
             self.backward_wave.put(0 + 0j)
 
 
-class Modulator(SampleModeSystem, BlockModeSystem):
+class Modulator(SampleModeComponent, BlockModeComponent):
     # … your __init__ stays as before (but remove any internal “self.countstep” updates) …
     def __init__(
         self,
@@ -177,7 +177,7 @@ class Modulator(SampleModeSystem, BlockModeSystem):
         }
 
 
-class PhaseModulator(SampleModeSystem, BlockModeSystem):
+class PhaseModulator(SampleModeComponent, BlockModeComponent):
     # … your __init__ stays as before (but remove any internal “self.countstep” updates) …
     def __init__(self, time: ArrayLike, voltage: ArrayLike) -> None:
         super().__init__()

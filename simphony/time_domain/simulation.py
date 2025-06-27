@@ -13,8 +13,8 @@ from jax import config, jit, lax
 from numpy.typing import ArrayLike
 
 from simphony.time_domain.time_system import (
-    BlockModeSystem,
-    SampleModeSystem,
+    BlockModeComponent,
+    SampleModeComponent,
     TimeSystem,
     TimeSystemIIR,
 )
@@ -85,7 +85,7 @@ class TimeResult(SimulationResult):
         plt.show()
 
 
-class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
+class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
     """
     A class for time-domain photonic circuit simulation, allowing for both passive
     and active components.
@@ -1279,17 +1279,17 @@ class TimeSim(SampleModeSystem, BlockModeSystem, Simulation):
         return sub_netlist
 
 
-class SampleModeSimulation(SampleModeSystem, BlockModeSystem):
+class SampleModeSimulation(SampleModeComponent, BlockModeComponent):
     """
     `SampleModeSimulation` runs bidirectional, element-by-element, simulations on circuits
-    composed of s-parameter elements and/or `SampleModeSystem` objects.
+    composed of s-parameter elements and/or `SampleModeComponent` objects.
 
     Should be used when reflections are not neglible and/or there are recursive elements
     within the circuit
 
     `SampleModeSimulation` objects are compatible with block mode simulations
     as well as sample mode simulations, hence a sample mode simulation is of type
-    `BlockModeSystem` and `SampleModeSystem`.
+    `BlockModeComponent` and `SampleModeComponent`.
     """
 
     def __init__(
@@ -1308,10 +1308,10 @@ class SampleModeSimulation(SampleModeSystem, BlockModeSystem):
         pass
 
 
-class BlockModeSimulation(BlockModeSystem):
+class BlockModeSimulation(BlockModeComponent):
     """
     `BlockModeSimulation` runs each unidirectional simulations on circuits
-    composed of s-parameter elements and/or `BlockModeSystem` objects.
+    composed of s-parameter elements and/or `BlockModeComponent` objects.
 
     Should be used when reflections are neglibible and recursive elements are
     abstracted with subnetworks.

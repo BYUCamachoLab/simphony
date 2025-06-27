@@ -13,8 +13,23 @@ from simphony.simulation.s_parameter import (
     SParameterSimulation,
 )
 
+from simphony.simulation.block_mode import (
+    BlockModeSimulation,
+)
+
+from simphony.simulation.sample_mode import (
+    SampleModeSimulation,
+)
+
+from simphony.simulation.steady_state import (
+    SteadyStateSimulation,
+)
+
 __all__ = [
     "Simulation",
     "SimulationResult",
+    "SteadyStateSimulation",
     "SParameterSimulation",
+    "BlockModeSimulation",
+    "SampleModeSimulation",
 ]

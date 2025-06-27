@@ -73,13 +73,12 @@ def _optical_s_parameter(sax_model: SaxModel):
         def s_parameters( 
             self,
             wl: ArrayLike,
-            **settings,
         ):
             return sax_model(wl, **self.settings)
         
         # @staticmethod
         # @jax.jit 
-        def steady_state(self, inputs: dict, **settings):
+        def steady_state(self, inputs: dict):
             # Sadly, sax_model is not jit compatible
             # so instead we just jit what we can.
             complete_steady_state_inputs(inputs)
@@ -116,3 +115,33 @@ def _optical_s_parameter(sax_model: SaxModel):
             return outputs
 
     return SParameterSax
+
+
+class BlockModeComponent(Component):
+    def __init__(
+        self, optical_ports=None, electrical_ports=None, logic_ports=None
+    ) -> None:
+        ...
+        # super().__init__(optical_ports, electrical_ports, logic_ports)
+
+    # IDK the best name for this method! Maybe run, but that is confusing
+    def block(self, input_signal: ArrayLike) -> ArrayLike:
+        """Compute the system response."""
+        raise NotImplementedError
+
+
+class SampleModeComponent(Component):
+    def __init__(self) -> None:
+        ...
+        # super().__init__()
+
+    def initial_state(self):
+        """Returns the initial the state of the system."""
+        raise NotImplementedError
+
+    def step(self, previous_state, inputs: dict) -> jnp.ndarray:
+        """Compute the next state of the system."""
+        raise NotImplementedError
+    
+    def _step(self):
+        pass

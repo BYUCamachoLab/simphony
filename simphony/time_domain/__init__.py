@@ -2,4 +2,4 @@
 
 # from simphony.time_domain.time_circuit import TimeCircuit
 from simphony.time_domain.simulation import TimeSim
-from simphony.time_domain.time_system import BlockModeSystem, SampleModeSystem
+from simphony.time_domain.time_system import BlockModeComponent, SampleModeComponent
