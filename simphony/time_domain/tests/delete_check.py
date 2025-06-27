@@ -12,9 +12,10 @@ from scipy import signal
 
 from simphony.libraries import siepic
 from simphony.time_domain.ideal import Modulator
+from simphony.time_domain.pole_residue_model import BVF_Options, IIRModelBaseband
 from simphony.time_domain.simulation import TimeResult, TimeSim
 from simphony.time_domain.utils import gaussian_pulse, smooth_rectangular_pulse
-
+from simphony.utils import SPEED_OF_LIGHT, dict_to_matrix
 # Simulation parameters
 T = 100e-11
 dt = 1e-14  # Time step (Total time duration is T)
@@ -42,32 +43,31 @@ timePhaseInstantiated = Modulator(mod_signal=gaussian)
 # Define netlist and models
 netlist = {
     "instances": {
-        "wg": "waveguide",
+        "wg1": "waveguide",
         "wg2": "waveguide",
-        "pm": "phase_modulator",
-        # "pm2": "phase_modulator",
-        "y": "y_branch",
-        "y2": "y_branch",
+        "wg3": "waveguide",
+        "wg4": "waveguide",
+        "wg5": "waveguide",
+        "wg6": "waveguide",
+       
     },
     "connections": {
-        "wg,o0": "y,port_2",
-        "wg,o1": "pm,o0",
-        # "pm,o1":"pm2,o0",
-        # "y2,port_2": "pm2,o1",
-        "y2,port_2": "pm,o1",
-        "wg2,o0": "y,port_3",
-        "y2,port_3": "wg2,o1",
+    #    "wg1,o1": " wg2,o0",
+        # "wg2,o1": "wg3,o0",
+        # "wg3,o1": "wg4,o0",
+        # "wg4,o1": "wg5,o0",
+        # "wg5,o1": "wg6,o0",
+        # "wg6,o1": "wg7,o0",
+        # "wg7,o1": "wg8,o0",
     },
     "ports": {
-        "o0": "y,port_1",
-        "o1": "y2,port_1",
+        "o0": "wg1,o0",
+        "o1": "wg1,o1",
     },
 }
 models = {
     "waveguide": siepic.waveguide,
     "y_branch": siepic.y_branch,
-    "bidirectional": siepic.bidirectional_coupler,
-    "phase_modulator": timePhaseInstantiated,
 }
 active_components = {"pm", "pm2"}
 num_measurements = 200
@@ -76,124 +76,92 @@ center_wvl = 1.548
 wvl = np.linspace(1.5, 1.6, num_measurements)
 options = {
     "wl": wvl,
-    "wg": {"length": 10.0, "loss": 100},
-    "wg2": {"length": 10.0, "loss": 100},
+    "wg1": {"length": 10000.0, "loss": 0},
+    
+
 }
 
-# Create and build simulation
-time_sim = TimeSim(
-    netlist=netlist,
-    models=models,
-    model_settings=options,
-)
-# modelResult = time_sim.run(t, {"o0": jnp.ones_like(t), "o1": jnp.zeros_like(t)})
+# # Create and build simulation
+# time_sim = TimeSim(
+#     netlist=netlist,
+#     models=models,
+#     settings=options,
+# )
+# result = time_sim.run(t, {
+#     "o0": smooth_rectangular_pulse(t, 0.0, T+ 20.0e-11)*jnp.sqrt(10),
+#     "o1" : jnp.zeros_like(t),
+# }, carrier_freq=SPEED_OF_LIGHT/(1.55*1e-6), dt=dt)
+# result.plot_sim()
+models = {
+    "waveguide": siepic.waveguide,
+    "y_branch": siepic.y_branch,
+}       
 
-# modelResult.plot_sim()
-new_netlist = {
-    "instances": {
-        "wg": "waveguide",
-        "wg2": "waveguide",
-        "pm": "phase_modulator_time",
-        "y": "y_branch",
-        "y2": "y_branch",
-        "time": "time_system",
-    },
-    "connections": {
-        "wg,o0": "y,port_2",
-        "wg,o1": "pm,o0",
-        "y2,port_2": "pm,o1",
-        "wg2,o0": "y,port_3",
-        "y2,port_3": "wg2,o1",
-        "y2,port_1": "time,o0",
-    },
-    "ports": {
-        "o0": "y,port_1",
-        "o1": "time,o1",
-    },
-}
+circuit, _ = sax.circuit(
+                            netlist=netlist,
+                            models=models,
+                        )
 
-
-f_mod = 0
-m = f_mod * jnp.ones(len(t), dtype=complex)
-f_mod2 = jnp.pi / 4
-# m2 = f_mod2 * jnp.ones(len(t),dtype=complex)
-
-x = jnp.linspace(0, 3.14, len(t))
-mu = 0.5  # center the Gaussian in the middle of the interval
-sigma = 0.15  # adjust sigma for desired width
-
-# Compute the Gaussian function
-gaussian = np.pi * jnp.exp(-0.5 * ((x - mu) / sigma) ** 2)
-
-# Optionally, normalize so the area under the curve is 1
-# gaussian = gaussian / jnp.trapezoid(gaussian, x)
-zero = 0 * x
-timePhaseInstantiated1 = Modulator(mod_signal=gaussian)
-
-
-models["time_system"] = time_sim
-models["phase_modulator_time"] = timePhaseInstantiated1
-time_simmer2 = TimeSim(
-    netlist=new_netlist,
-    models=models,
-    model_settings=options,
+s_params_dict = circuit(**options)
+s_matrix = np.asarray(dict_to_matrix(s_params_dict))
+center_wvl = 1.55
+c_light = 299792458
+center_freq = c_light / (center_wvl * 1e-6)
+freqs = c_light / (wvl * 1e-6) - center_freq
+sampling_freq = -1 / dt
+beta = sampling_freq / (freqs[-1] - freqs[0])
+bvf_options = BVF_Options(beta=beta,max_iterations = 30)
+sorted_ports = sorted(netlist["ports"].keys(), key=lambda p: int(p.lstrip('o')))
+freqs_hz = SPEED_OF_LIGHT / (wvl * 1e-6)    # wvl was in μm → convert to m
+omega = 2 * np.pi * freqs_hz   
+idx         = np.argsort(omega)
+omega_s     = omega[idx]
+group_delay = -np.gradient(np.unwrap(np.angle(s_matrix[:, 0, 1])),omega_s)
+plt.plot(wvl, group_delay*1e12)              # convert s → ps
+plt.xlabel("Angular frequency ω (rad/s)")
+plt.ylabel("Group delay")
+plt.show() 
+iir_model = IIRModelBaseband(
+    wvl, center_wvl, s_matrix,order = 50, options=bvf_options
 )
 
-new_netlist_2 = {
-    "instances": {
-        "wg": "waveguide",
-        "wg2": "waveguide",
-        "pm": "phase_modulator_time2",
-        "y": "y_branch",
-        "y2": "y_branch",
-        "time2": "time_system2",
-        "time": "time_system",
-    },
-    "connections": {
-        "wg,o0": "y,port_2",
-        "wg,o1": "pm,o0",
-        "y2,port_2": "pm,o1",
-        "wg2,o0": "y,port_3",
-        "y2,port_3": "wg2,o1",
-        "y2,port_1": "time2,o0",
-        "time,o0": "time2,o1",
-    },
-    "ports": {
-        "o0": "y,port_1",
-        "o1": "time,o1",
-    },
-}
-f_mod = 0
-m = f_mod * jnp.ones(len(t), dtype=complex)
-f_mod2 = jnp.pi / 4
-# m2 = f_mod2 * jnp.ones(len(t),dtype=complex)
+poles = iir_model.poles
+residues = iir_model.residues
+D = iir_model.D
+Ω = 2*np.pi * freqs / sampling_freq   
 
-x = jnp.linspace(0, 3.14, len(t))
-mu = 2.0  # center the Gaussian in the middle of the interval
-sigma = 0.15  # adjust sigma for desired width
+z = np.exp(1j * Ω)
 
-# Compute the Gaussian function
-gaussian = np.pi * jnp.exp(-0.5 * ((x - mu) / sigma) ** 2)
+S_fit = np.zeros_like(z, dtype=complex)
+for i, p in enumerate(poles):
+    r01    = residues[i,0,1]
+    S_fit += r01 / (z - p)
+S_fit += D[0,1]
+print(residues[:,0,1])
+print(poles)
+plt.plot(wvl, np.angle(s_matrix[:, 0, 1]), label='IIR Model')
+plt.plot(wvl, np.angle(S_fit), label='IIR Model')
+plt.show()
 
-# Optionally, normalize so the area under the curve is 1
-# gaussian = gaussian / jnp.trapezoid(gaussian, x)
-zero = 0 * x
-timePhaseInstantiated2 = Modulator(mod_signal=gaussian)
+plt.plot(wvl, np.abs(s_matrix[:, 0, 1]), label='IIR Model')
+plt.plot(wvl, np.abs(S_fit), label='IIR Model Fit')
+plt.show()
+
+plt.figure(figsize=(5,5))
+# unit circle
+angle = np.linspace(0, 2*np.pi, 400)
+plt.plot(np.cos(angle), np.sin(angle), 'gray', lw=1)
+
+plt.scatter(poles.real, poles.imag, marker='x', s=80, label='Poles')
+
+plt.axhline(0, color='black', lw=1)
+plt.axvline(0, color='black', lw=1)
+plt.xlabel('Re\{z\}')
+plt.ylabel('Im\{z\}')
+plt.title('Pole–Zero Map (z-plane)')
+plt.legend()
+plt.axis('equal')
+plt.grid(True, ls='--', alpha=0.5)
+plt.show()
 
 
-models["time_system2"] = time_simmer2
-models["phase_modulator_time2"] = timePhaseInstantiated2
-time_simmer3 = TimeSim(
-    netlist=new_netlist_2,
-    models=models,
-    model_settings=options,
-)
-num_outputs = 2
-inputs = {
-    f"o{i}": jnp.ones_like(t) if i == 0 else jnp.zeros_like(t)
-    for i in range(num_outputs)
-}
-
-modelResult = time_simmer3.run(t, inputs, carrier_freq=193e12, dt=dt)
-
-modelResult.plot_sim()
