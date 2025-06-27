@@ -2,84 +2,22 @@ import inspect
 
 # from simphony.libraries.analytic.component_types import OpticalComponent, ElectricalComponent, LogicComponent
 import gravis as gv
-import sax
+# import sax
 from jax.typing import ArrayLike
 from sax.saxtypes import Model as SaxModel
 
 from simphony.utils import add_settings_to_netlist, get_settings_from_netlist, netlist_to_graph
 from copy import deepcopy
+# from simphony.signals import optical_signal, complete_steady_state_inputs
 
-class Component:
-    electrical_ports = []
-    logic_ports = []
-    optical_ports = []
+import jax
+import jax.numpy as jnp
 
-    def __init__(self, **kwargs):
-        self.settings = kwargs
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+from .components import Component, _optical_s_parameter
 
-class SpectralSystem(Component):
-    """ 
-    """
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def steady_state(
-        self, 
-        inputs: dict
-        ) -> dict:
-        """
-        Used when calculating steady state voltages for SParameterSimulation
-        """
-        raise NotImplementedError(
-            f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
-        )
-
-class OpticalSParameter(SpectralSystem):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def s_parameters(
-        self, 
-        wl: ArrayLike, 
-        # **kwargs
-    ):
-        """
-        Returns an S-parameter matrix for the optical ports in the system
-        """
-        raise NotImplementedError(
-            f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
-        )
+# from simphony.utils import dict_to_matrix
 
 
-
-
-    # def dc_voltage(self, **kwargs):
-    #     """
-    #     Returns the dc voltage for each electrical port in the system
-    #     """
-    #     raise NotImplementedError(
-    #         f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
-    #     )
-
-
-def _optical_s_parameter(sax_model: SaxModel):
-    class SParameterSax(OpticalSParameter):
-    # class SParameterSax():
-        optical_ports = sax.get_ports(sax_model)
-
-        def __init__(self, **settings):
-            super().__init__(**settings)
-
-        def s_parameters(
-            self, 
-            wl: ArrayLike, 
-            # **kwargs,
-        ):
-            return sax_model(wl, **self.settings)
-
-    return SParameterSax
 
 COMPONENT_COLOR_DEFAULT = "black"
 # COMPONENT_COLOR_SPARAM = "black"
@@ -88,17 +26,6 @@ COMPONENT_COLOR_OPTICAL = "blue"
 COMPONENT_COLOR_ELECTRICAL = "red"
 COMPONENT_COLOR_OPTOELECTRICAL = "purple"
 COMPONENT_COLOR_LOGIC = "gray"
-
-
-# class ElectricalComponent(Component):
-#     pass
-
-# class OpticalComponent(Component):
-#     pass
-
-# class LogicComponent(Component):
-#     pass
-
 
 """
 Todo: Give S-parameter elements proper abstraction

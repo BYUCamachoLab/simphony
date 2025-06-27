@@ -15,6 +15,7 @@ import sax
 import yaml
 from jax import Array
 from jax.typing import ArrayLike
+from jax.scipy.special import factorial
 from sax.utils import get_ports
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import CubicSpline, interp1d
@@ -577,3 +578,16 @@ def netlist_to_graph(netlist: Union[dict, str]):
             graph.add_edge(src_instance.strip(), dst_instance.strip(), src_port=src_port.strip(), dst_port=dst_port.strip())
 
     return graph
+
+def discrete_time_impulse_response(propagation_constants, sampling_freq, length=1e-6, N=20000):
+    freqs = jnp.fft.fftfreq(N, d=1/sampling_freq)
+    omega = 2*jnp.pi*freqs
+    phi = jnp.zeros_like(omega, dtype=jnp.complex64)
+
+    for k, beta_k in propagation_constants.items():
+        phi += (beta_k * length * (omega ** k)) / factorial(k)
+
+    H = jnp.exp(-1j * phi)
+
+    return jnp.fft.ifftshift(jnp.fft.ifft(H))
+

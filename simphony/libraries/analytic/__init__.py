@@ -20,7 +20,7 @@ from simphony.libraries.analytic.couplers import (
 )
 from simphony.libraries.analytic.modulators import (
     MachZehnderModulator,
-    PhaseModulator,
+    OpticalModulator,
 )
 from simphony.libraries.analytic.s_parameters import (
     optical_s_parameter,
@@ -49,7 +49,7 @@ __all__ = [
     "GRINFiber",
     "CWLaser",
     "MachZehnderModulator",
-    "PhaseModulator",
+    "OpticalModulator",
     "VoltageSource",
     "PRNG",
     "VoltageFollower",
