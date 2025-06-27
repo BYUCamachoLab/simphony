@@ -40,7 +40,7 @@ class TimeSystem(ABC):
         raise NotImplementedError
 
 
-class BlockModeSystem(TimeSystem, ABC):
+class BlockModeComponent(TimeSystem, ABC):
     def __init__(
         self, optical_ports=None, electrical_ports=None, logic_ports=None
     ) -> None:
@@ -52,7 +52,7 @@ class BlockModeSystem(TimeSystem, ABC):
         raise NotImplementedError
 
 
-class SampleModeSystem(TimeSystem, ABC):
+class SampleModeComponent(TimeSystem, ABC):
     def __init__(self) -> None:
         super().__init__()
 
@@ -250,7 +250,7 @@ def my_dlsimworks(system, u, t=None, x0=None):
 #         self.state_vector = None
 
 
-class TimeSystemIIR(SampleModeSystem, BlockModeSystem):
+class TimeSystemIIR(SampleModeComponent, BlockModeComponent):
     def __init__(self, pole_model: PoleResidueModel, ports=None):
         super().__init__()
         # Generate the discrete‐time state‐space (A,B,C,D) from your pole‐residue model:

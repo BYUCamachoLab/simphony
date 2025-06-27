@@ -2,19 +2,19 @@ import jax
 from jax.typing import ArrayLike
 
 from simphony.circuit import SteadyStateComponent
-from simphony.time_domain import BlockModeSystem, SampleModeSystem
+from simphony.time_domain import BlockModeComponent, SampleModeComponent
 from simphony.signals import electrical_signal
 
 
-class CWLaser(SteadyStateComponent, SampleModeSystem, BlockModeSystem):
+class CWLaser(SteadyStateComponent, SampleModeComponent, BlockModeComponent):
     def __init__(self):
         pass
 
 
 class VoltageSource(
     SteadyStateComponent, 
-    # SampleModeSystem, 
-    BlockModeSystem,
+    # SampleModeComponent, 
+    BlockModeComponent,
 ):
     electrical_ports = ["e0"]
 
@@ -48,8 +48,8 @@ class VoltageSource(
 
 class PRNG(
     SteadyStateComponent, 
-    # SampleModeSystem, 
-    BlockModeSystem
+    # SampleModeComponent, 
+    BlockModeComponent
 ):
     logic_ports = ["l0"]
 

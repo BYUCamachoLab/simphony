@@ -1,7 +1,7 @@
 # class OpticalAmplitudeModulator():
 #     pass
 from simphony.circuit import SteadyStateComponent
-from simphony.time_domain import BlockModeSystem, SampleModeSystem
+from simphony.time_domain import BlockModeComponent, SampleModeComponent
 from jax.typing import ArrayLike
 import jax
 import jax.numpy as jnp
@@ -11,8 +11,8 @@ from simphony.signals import optical_signal, electrical_signal
 
 class MachZehnderModulator(
     SteadyStateComponent, 
-    # SampleModeSystem, 
-    BlockModeSystem
+    # SampleModeComponent, 
+    BlockModeComponent
 ):
     optical_ports = ["o0", "o1"]
     electrical_ports = ["e0", "e1"]
@@ -22,8 +22,8 @@ class MachZehnderModulator(
 
 class OpticalModulator(
     SteadyStateComponent, 
-    # SampleModeSystem, 
-    # BlockModeSystem
+    # SampleModeComponent, 
+    # BlockModeComponent
 ):
     optical_ports = ["o0", "o1"]
     electrical_ports = ["e0"]
