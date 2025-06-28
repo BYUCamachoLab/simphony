@@ -1,13 +1,13 @@
 # class OpticalAmplitudeModulator():
 #     pass
 from simphony.circuit import SteadyStateComponent
-from simphony.time_domain import BlockModeComponent, SampleModeComponent
+from simphony.circuit import BlockModeComponent, SampleModeComponent
 from jax.typing import ArrayLike
 import jax
 import jax.numpy as jnp
 from typing import Callable
 
-from simphony.signals import optical_signal, electrical_signal
+from simphony.signals import optical_signal, electrical_signal, complete_steady_state_inputs
 
 class MachZehnderModulator(
     SteadyStateComponent, 
@@ -32,22 +32,17 @@ class OpticalModulator(
         self,
         *,
         # n_eff: Callable[[float, complex], float]=None, # Function of wavelength and voltage
-        length: float = 1.0e-3,
-        absorption_coefficients: jnp.ndarray = jnp.asarray([[-0.005, 0.1, -0.5, -0.01], 
-                                                            [-0.002, 0.05, -0.25, -0.005]]),
-        phase_coefficients: jnp.ndarray = jnp.asarray([[-0.1, -0.5, -0.8, 0.0], 
-                                                       [-0.05, -0.2, -0.3, 0.0]]),
-        wl: jnp.ndarray = jnp.asarray([1.55e-6, 1.56e-6]),
+        length: float = 1.0,
+        operating_wl = 1.55e-6,
+        absorption_coefficients: jnp.ndarray = jnp.asarray([0.0, 0.0, 0.0, 0.0]),
+        phase_coefficients: jnp.ndarray = jnp.asarray([0.0, 0.0, 0.0, jnp.pi]),
+        effective_index = 0.0,
     ):
         self.length = length
         self.absorption_coefficients = absorption_coefficients
         self.phase_coefficients = phase_coefficients
-        self.wl = wl
-        pass
-
-    @staticmethod
-    def n_eff(voltage, wls):
-        pass
+        self.operating_wl = operating_wl
+        self.effective_index = effective_index
 
     def s_parameters(
         self,
@@ -57,7 +52,7 @@ class OpticalModulator(
         wls = wl
         num_opt_ports = len(self.optical_ports)
         S = jnp.zeros((len(wls), num_opt_ports, num_opt_ports), dtype=complex)
-        self.n_eff()
+        # self.n_eff()
 
     # @staticmethod
     # @jax.jit
@@ -66,24 +61,38 @@ class OpticalModulator(
         inputs: dict,
         # settings
     ) -> dict:
-        self.s_parameters(inputs, jnp.linspace(1.5e-6, 1.6e-6, 1000))
-        # ouputs = {
-        #     "o0": optical_signal(
-        #         jnp.exp(1j*phase_shift)*inputs["o1"].field,
-        #         inputs["o1"].wl,
-        #         inputs["o1"].polarization,
-        #     ),
-        #     "o1": optical_signal(
-        #         jnp.exp(1j*phase_shift)*inputs["o0"].field,
-        #         inputs["o0"].wl,
-        #         inputs["o0"].polarization,
-        #     ),
-        #     "e0": electrical_signal(
-        #         inputs["e0"].voltage,
-        #         inputs["e0"].wl,
-        #     ),
-        # }
-        return None
+        complete_steady_state_inputs(inputs)
+        # self.s_parameters(inputs, jnp.linspace(1.5e-6, 1.6e-6, 1000))
+        
+        # We only consider DC voltage and assum
+        total_real_voltage = 0
+        for v in inputs["e0"].voltage:
+            total_real_voltage += jnp.real(v)
+        
+        # Assuming they all have the same wl
+        optical_wls = inputs["o0"].wl
+
+        o0_field_out = []
+        o1_field_out = []
+        for i, optical_wl in enumerate(optical_wls):
+            o0_in = inputs["o0"].field[i]
+            o1_in = inputs["o1"].field[i]
+            
+            phase_op = jnp.polyval(self.phase_coefficients, total_real_voltage)
+            absorption_dB = jnp.polyval(self.absorption_coefficients, total_real_voltage)
+            fraction_of_power_remaining = 10**(-absorption_dB*self.length/10)
+            delta_n = self.operating_wl/(2*jnp.pi*self.length) * phase_op
+            phase_shift = 2*jnp.pi/optical_wl * (self.effective_index+delta_n)* self.length
+
+            o0_field_out.append(o1_in*jnp.sqrt(fraction_of_power_remaining)*jnp.exp(1j*phase_shift))
+            o1_field_out.append(o0_in*jnp.sqrt(fraction_of_power_remaining)*jnp.exp(1j*phase_shift))
+
+        outputs = {
+            "o0": optical_signal(field=o0_field_out, wl=optical_wls),
+            "o1": optical_signal(field=o1_field_out, wl=optical_wls),
+            # "e0": electrical_signal(),
+        }
+        return outputs
 
 
 

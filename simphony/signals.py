@@ -50,8 +50,8 @@ def optical_signal(mode=STEADY_STATE,**kwargs):
 
 
 def _steady_state_electrical_signal(
-    voltage: Union[float, complex, list, jnp.ndarray] = 0.0 + 0.0j,
-    wl: Union[float, list, jnp.ndarray] = 0,
+    voltage: Union[float, complex, list, jnp.ndarray] = [0.0 + 0.0j],
+    wl: Union[float, list, jnp.ndarray] = [0],
 ) -> SteadyStateOpticalSignal:
     voltage = jnp.asarray(voltage, dtype=jnp.complex64)
     wl = jnp.asarray(wl, dtype=jnp.float32)
@@ -78,26 +78,32 @@ def logic_signal(mode=STEADY_STATE, **kwargs):
 def complete_steady_state_inputs(
     inputs: dict[str, SteadyStateOpticalSignal|SteadyStateElectricalSignal|SteadyStateLogicSignal]
 ):
-    wls = []
+    optical_wls = [jnp.array([])]
+    electrical_wls = [jnp.array([])]
     num_wls_per_port = {}
     for port, signal in inputs.items():
-        wls.append(signal.wl)
-        num_wls_per_port[port] = signal.wl.shape[0]
+        if isinstance(signal, SteadyStateOpticalSignal):
+            optical_wls.append(signal.wl)
+        elif isinstance(signal, SteadyStateElectricalSignal):
+            electrical_wls.append(signal.wl)
+            # num_wls_per_port[port] = signal.wl.shape[0]
     
-    wls = jnp.unique(jnp.concatenate(wls))
+    optical_wls = jnp.unique(jnp.concatenate(optical_wls))
+    electrical_wls = jnp.unique(jnp.concatenate(electrical_wls))
     for port, signal in inputs.items():
-        inputs[port] = _complete_steady_state_signal(signal, wls)
+        inputs[port] = _complete_steady_state_signal(signal, optical_wls, electrical_wls)
     pass
 
 def _complete_steady_state_signal(
     signal: SteadyStateOpticalSignal|SteadyStateElectricalSignal|SteadyStateLogicSignal,
-    wls,
+    optical_wls,
+    electrical_wls,
 ) -> SteadyStateOpticalSignal|SteadyStateElectricalSignal|SteadyStateLogicSignal:
     if isinstance(signal, SteadyStateLogicSignal):
         return signal
     elif isinstance(signal, SteadyStateOpticalSignal):
-        mask = ~jnp.isin(wls, signal.wl)
-        missing_wls = wls[mask]
+        mask = ~jnp.isin(optical_wls, signal.wl)
+        missing_wls = optical_wls[mask]
         wl = jnp.concatenate([signal.wl, missing_wls])
         field = jnp.concatenate([signal.field, jnp.zeros_like(missing_wls)])
         sort_idx = jnp.argsort(wl)
@@ -106,10 +112,16 @@ def _complete_steady_state_signal(
         field = field[sort_idx]
         return SteadyStateOpticalSignal(field=field, wl=wl, polarization=signal.polarization)
 
-        pass
     elif isinstance(signal, SteadyStateElectricalSignal):
-        mask = ~jnp.isin(wls, signal.wl)
-        pass
+        mask = ~jnp.isin(electrical_wls, signal.wl)
+        missing_wls = electrical_wls[mask]
+        wl = jnp.concatenate([signal.wl, missing_wls])
+        voltage = jnp.concatenate([signal.voltage, jnp.zeros_like(missing_wls)])
+        sort_idx = jnp.argsort(wl)
+
+        wl = wl[sort_idx]
+        voltage = voltage[sort_idx]
+        return SteadyStateElectricalSignal(voltage=voltage, wl=wl)
 
     
 

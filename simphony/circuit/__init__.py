@@ -11,6 +11,8 @@ from simphony.circuit.components import (
     Component,
     SteadyStateComponent,
     OpticalSParameterComponent,
+    BlockModeComponent,
+    SampleModeComponent,
 
     _optical_s_parameter,
 )

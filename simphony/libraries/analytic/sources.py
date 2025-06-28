@@ -2,7 +2,7 @@ import jax
 from jax.typing import ArrayLike
 
 from simphony.circuit import SteadyStateComponent
-from simphony.time_domain import BlockModeComponent, SampleModeComponent
+from simphony.circuit import BlockModeComponent, SampleModeComponent
 from simphony.signals import electrical_signal
 
 
@@ -22,7 +22,7 @@ class VoltageSource(
         self, 
         **settings,
     ):
-        super().__init__(**settings)
+        self.settings = settings
         # optical_ports = None
         # electrical_ports = ['e0']
         # logic_ports = None
@@ -38,7 +38,7 @@ class VoltageSource(
         **settings,
     ):
         outputs = {
-            "e0": electrical_signal(voltage=settings['steady_state_voltage'], wl=settings['wl'])
+            "e0": electrical_signal(voltage=[self.settings['steady_state_voltage']], wl=[self.settings['wl']])
         }
         return outputs
 
@@ -54,7 +54,7 @@ class PRNG(
     logic_ports = ["l0"]
 
     def __init__(self, **settings):
-        super().__init__(**settings)
+        pass
         # optical_ports = None
         # electrical_ports = None
         # logic_ports = ['l0']

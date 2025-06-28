@@ -1,8 +1,7 @@
 from typing import Type
 
 from simphony.circuit import SteadyStateComponent
-from simphony.time_domain import BlockModeComponent, SampleModeComponent
-
+from simphony.circuit import BlockModeComponent, SampleModeComponent
 
 def star_coupler(num_in: int, num_out: int) -> Type:
     """
