@@ -7,8 +7,9 @@ from simphony.time_domain import SSFM, BlockModeComponent
 class Waveguide(SteadyStateComponent, BlockModeComponent):
     optical_ports = ["o0", "o1"]
 
-    def __init__(self, **settings):
-        super().__init__(**settings)
+    def __init__(self, length=0.0):
+        self.length = length
+        # super().__init__(**settings)
         # optical_ports = ["o0","o1"]
         # electrical_ports = None
         # logic_ports = None
@@ -18,10 +19,10 @@ class Waveguide(SteadyStateComponent, BlockModeComponent):
         #     logic_ports=logic_ports
         # )
 
-    def run(self, input_signal: ArrayLike, **kwargs):
-        dt = kwargs.get("dt", None)
-        carrier_freq = kwargs.get("carrier_freq", None)
-        SSFM(input_signal, dt, carrier_freq)
+    def run(self, input_signal: ArrayLike, **simulation_parameters):
+        dt = simulation_parameters.get("dt", None)
+        # carrier_freq = simulation_parameters.get("carrier_freq", None)
+        # SSFM(input_signal, dt, carrier_freq)
 
 
 class Fiber(SteadyStateComponent, BlockModeComponent):

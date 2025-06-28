@@ -21,16 +21,16 @@ class Component:
     logic_ports = []
     optical_ports = []
 
-    def __init__(self, **settings):
-        self.settings = settings
-        for key, value in settings.items():
-            setattr(self, key, value)
+    # def __init__(self, **settings):
+    #     self.settings = settings
+    #     for key, value in settings.items():
+    #         setattr(self, key, value)
 
 class SteadyStateComponent(Component):
     """ 
     """
-    def __init__(self, **settings):
-        super().__init__(**settings)
+    # def __init__(self, **settings):
+    #     super().__init__(**settings)
 
     def steady_state(
         self, 
@@ -44,8 +44,8 @@ class SteadyStateComponent(Component):
         )
 
 class OpticalSParameterComponent(SteadyStateComponent):
-    def __init__(self, **settings):
-        super().__init__(**settings)
+    # def __init__(self, **settings):
+    #     super().__init__(**settings)
 
     def s_parameters(
         self, 
@@ -66,7 +66,8 @@ def _optical_s_parameter(sax_model: SaxModel):
         _num_ports = len(optical_ports)
         
         def __init__(self, **settings):
-            super().__init__(**settings)
+            # super().__init__(**settings)
+            self.settings = settings
 
         # @staticmethod
         # @jax.jit
@@ -119,13 +120,14 @@ def _optical_s_parameter(sax_model: SaxModel):
 
 class BlockModeComponent(Component):
     def __init__(
-        self, optical_ports=None, electrical_ports=None, logic_ports=None
+        self
+        # , optical_ports=None, electrical_ports=None, logic_ports=None
     ) -> None:
         ...
         # super().__init__(optical_ports, electrical_ports, logic_ports)
 
     # IDK the best name for this method! Maybe run, but that is confusing
-    def block(self, input_signal: ArrayLike) -> ArrayLike:
+    def response(self, input_signal: ArrayLike) -> ArrayLike:
         """Compute the system response."""
         raise NotImplementedError
 

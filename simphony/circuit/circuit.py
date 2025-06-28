@@ -47,9 +47,7 @@ class Circuit:
         #     add_settings_to_netlist(netlist, None)
         self.netlist = deepcopy(netlist)
         add_settings_to_netlist(self.netlist, default_settings)
-        self.default_settings = get_settings_from_netlist(self.netlist)
-        
-        
+        self.default_settings = get_settings_from_netlist(self.netlist) 
         self.models = models
         # self.settings = settings
         
@@ -65,6 +63,20 @@ class Circuit:
     def display(self, inline=True):
         fig = gv.d3(self.graph)
         fig.display(inline=inline)
+    
+    def remove_components(self, components):
+        components = list(components)
+        self.graph.remove_nodes_from(components)
+        # Remove from instances
+        for component in components:
+            self.netlist['instances'].pop(component, None)
+        # Remove connections
+        filtered_connections = {
+            k: v for k, v in self.netlist['connections'].items()
+            if not any(s in k or s in v for s in components)
+        }
+        self.netlist['connections'] = filtered_connections
+        pass
 
     # def _add_models_to_graph(self, models: dict):
     #     for _, node_attr in self.graph.nodes(data=True):

@@ -2,6 +2,7 @@
 # if TYPE_CHECKING:
 #     from simphony.circuit import Circuit
 from .simulation import Simulation, SimulationResult
+from .steady_state import SteadyStateSimulation
 from simphony.circuit import Circuit
 from jax.typing import ArrayLike
 from copy import deepcopy
@@ -14,7 +15,7 @@ class SParameterSimulationResult(SimulationResult):
 class SParameterSimulation(Simulation):
     def __init__(
             self, 
-            ckt: Circuit, 
+            circuit: Circuit, 
             ports=None, 
             # settings: dict = None
         ):
@@ -25,7 +26,7 @@ class SParameterSimulation(Simulation):
         By default, the exposed ports and settings are taken from 
         the provided netlist, but may be overwritten with keyword arguments.
         """
-        self.circuit = ckt
+        self.circuit = circuit
         
         if ports is None:
             self.ports = self.circuit.netlist['ports']
@@ -36,7 +37,7 @@ class SParameterSimulation(Simulation):
         self._identify_component_types()
         self._build_s_parameter_graph()
         self._validate_s_parameter_graph()
-        self._determine_steady_state_order()
+        self._initialize_steady_state_simulation()
         self.reset_settings(use_default_settings=True)
 
 
@@ -99,7 +100,7 @@ class SParameterSimulation(Simulation):
 
     def _build_s_parameter_graph(self):
         non_optical_components = self.all_components - self.optical_components
-        optical_only_graph = self.circuit.graph.copy()
+        optical_only_graph = deepcopy(self.circuit.graph)
         optical_only_graph.remove_nodes_from(non_optical_components)
         
         # For now, we only consider the optical connections
@@ -129,7 +130,7 @@ class SParameterSimulation(Simulation):
         if s_parameter_graph_nodes is None:
             raise ValueError("S-parameter graph could not be generated. All exposed ports must be weakly connected through optical components")
 
-        self.s_parameter_graph = optical_only_graph.copy()
+        self.s_parameter_graph = deepcopy(optical_only_graph)
         nodes_to_remove = set(self.s_parameter_graph.nodes) - set(s_parameter_graph_nodes)
         self.s_parameter_graph.remove_nodes_from(nodes_to_remove)
 
@@ -148,39 +149,20 @@ class SParameterSimulation(Simulation):
         # We do not allow any of the s_parameter_nodes to function as
         # signal sources that feed back into the s_parameter_nodes
         # Such simulations should be performed in the time-domain
-        non_s_parameter_graph = self.circuit.graph.copy()
+        non_s_parameter_graph = deepcopy(self.circuit.graph)
         non_s_parameter_graph.remove_edges_from(self.s_parameter_graph.edges())
         for source_node in source_nodes:
             descendants = nx.descendants(non_s_parameter_graph, source_node)
             if len(descendants&s_parameter_graph_nodes) > 0:
                 raise ValueError("Invalid S-parameter SubCircuit: Time-domain Simulation Required")
 
-    def _determine_steady_state_order(self):
-        """
-        Voltage signals at electrical ports are assumed to be constant
-        for SParameterSimulations, but they are not known a priori, unless
-        the voltage source is not dependent on an input signal.
+    def _initialize_steady_state_simulation(self):
+        steady_state_circuit = deepcopy(self.circuit)
+        steady_state_circuit.remove_components(self.s_parameter_graph.nodes)
+        self.steady_state_simulation = SteadyStateSimulation(steady_state_circuit)
+        # steady_state_graph.remove_nodes_from(self.s_parameter_graph.nodes)
+        # self.steady_state_simulation = SteadyStateSimulation(self.steady_state_graph)
 
-        Since steady-state connections are assumemd to be uni-directional, this function is
-        able to find the order in which electrical component voltages must
-        be calculated to find the proper steady state.
-        """
-        self.steady_state_order = []
-        graph = self.circuit.graph.copy()
-        graph.remove_nodes_from(self.s_parameter_graph.nodes)
-        while graph.number_of_nodes() > 0:
-            root_nodes = [n for n in graph.nodes if graph.in_degree(n)==0]
-            if len(root_nodes) == 0:
-                break
-            self.steady_state_order += root_nodes
-            graph.remove_nodes_from(root_nodes)
-
-        if graph.number_of_nodes() > 0:
-            raise ValueError(
-                "Failed to determine steady state order. " \
-                "Hint: Steady state cannot be determined for circular connections."
-            )
-    
     def _instantiate_components(self):
         self.components = {}
         for component_name in self.circuit.graph.nodes:
@@ -189,7 +171,6 @@ class SParameterSimulation(Simulation):
             settings = self.settings[component_name]
             self.components[component_name] = model(**settings)
 
-    
     def _calculate_steady_states(self):
         for component in self.steady_state_order:
             pass

@@ -579,6 +579,10 @@ def netlist_to_graph(netlist: Union[dict, str]):
 
     return graph
 
+def graph_to_netlist(graph: nx.MultiDiGraph):
+    raise NotImplementedError
+
+
 def discrete_time_impulse_response(propagation_constants, sampling_freq, length=1e-6, N=20000):
     freqs = jnp.fft.fftfreq(N, d=1/sampling_freq)
     omega = 2*jnp.pi*freqs
