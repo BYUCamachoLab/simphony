@@ -7,9 +7,13 @@ from simphony.circuit import Circuit
 from jax.typing import ArrayLike
 from copy import deepcopy
 import networkx as nx
+from simphony.utils import graph_to_netlist
+import sax
 
 class SParameterSimulationResult(SimulationResult):
     def __init__(self):
+        ### TODO: This object needs to store at least 
+        ### The Scattering parameter dictionary and the specified ports
         ...
 
 class SParameterSimulation(Simulation):
@@ -97,6 +101,7 @@ class SParameterSimulation(Simulation):
                 self.logic_components.add(node)
             if component.optical_ports:
                 self.optical_components.add(node)
+        
 
     def _build_s_parameter_graph(self):
         non_optical_components = self.all_components - self.optical_components
@@ -134,6 +139,8 @@ class SParameterSimulation(Simulation):
         nodes_to_remove = set(self.s_parameter_graph.nodes) - set(s_parameter_graph_nodes)
         self.s_parameter_graph.remove_nodes_from(nodes_to_remove)
 
+        self.hybrid_components = set(self.s_parameter_graph.nodes)&(self.electrical_components|self.logic_components)
+
     def _validate_s_parameter_graph(self):
         # Signal source nodes are sources of non-optical signals
         source_nodes = set()
@@ -158,7 +165,7 @@ class SParameterSimulation(Simulation):
 
     def _initialize_steady_state_simulation(self):
         steady_state_circuit = deepcopy(self.circuit)
-        steady_state_circuit.remove_components(self.s_parameter_graph.nodes)
+        steady_state_circuit.remove_components(self.s_parameter_graph.nodes-self.hybrid_components)
         self.steady_state_simulation = SteadyStateSimulation(steady_state_circuit)
         # steady_state_graph.remove_nodes_from(self.s_parameter_graph.nodes)
         # self.steady_state_simulation = SteadyStateSimulation(self.steady_state_graph)
@@ -176,7 +183,7 @@ class SParameterSimulation(Simulation):
     #     for component in self.steady_state_order:
     #         pass
     
-    def _calculate_scattering_matrix(self, steady_state_simulation_result):
+    def _calculate_scattering_matrix(self, wl, steady_state_simulation_result):
         """
         """
         # I will assume that the only connections between the s-parameter portion of the circuit
@@ -184,7 +191,32 @@ class SParameterSimulation(Simulation):
         # in the future if more connection types become supported
         
         # These components will need to have their s_parameter methods completed with the steady state inputs
-        incomplete_components = set(self.s_parameter_graph.nodes)&(self.electrical_components|self.logic_components)
+        incomplete_components = self.hybrid_components
+        component_inputs = {component: {} for component in self.s_parameter_graph.nodes}
+        for incomplete_component in incomplete_components:
+            component_inputs[incomplete_component] = steady_state_simulation_result.component_inputs[incomplete_component]
         
-        # We will need to Modify the s_parameters method somehow to be aware of the steady state inputs
+        sax_models = {}
+        for component, inputs in component_inputs.items():
+            sax_models[component] = self.components[component].s_parameters(inputs)
+
+        ### TODO: MATTHEW! Keep in mind that I defined the sax models to use SI units
+        ### and to assume that wl is given in terms of meters, not microns
+        ### To see what I mean, stop here in debug mode and run sax_models['splitter'](1.55e-6)
+        ### Notice that I am using 1.55e-6 instead of 1.55 but that is what it expects
         pass
+        
+        ### TODO: complete the function graph_to_netlist in simphony.utils
+        ### turn self.s_parameter_graph into a netlist
+        ### use the sax_models dictionary above and the netlist you just generated to create
+        ### a sax.circuit and return the resulting scattering dictionary
+        ### Alternatively, it might be more efficient to make an "self.s_parameter_circuit"
+        ### and use the remove_compoenents method from that circuit object
+        ### that might get you the netlist you need for free
+
+        sax_netlist = graph_to_netlist(self.s_parameter_graph) ## You might change this to use the alternative approach
+        circuit = sax.circuit(sax_netlist, sax_models)
+        ### TODO: It is probably possible for the user to keep the s-parameter graph elements parameterized
+        ### and simply return a sax circuit, maybe I will do that later, don't do that yet, 
+        ### For now just return the s-parameter dict
+        return circuit(wl)

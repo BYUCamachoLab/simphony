@@ -6,6 +6,7 @@ from jax.typing import ArrayLike
 import jax
 import jax.numpy as jnp
 from typing import Callable
+from sax.saxtypes import Model as SaxModel
 
 from simphony.signals import optical_signal, electrical_signal, complete_steady_state_inputs
 
@@ -47,12 +48,27 @@ class OpticalModulator(
     def s_parameters(
         self,
         inputs: dict,
-        wl: ArrayLike,
-    ):
-        wls = wl
-        num_opt_ports = len(self.optical_ports)
-        S = jnp.zeros((len(wls), num_opt_ports, num_opt_ports), dtype=complex)
-        # self.n_eff()
+    )->SaxModel:    
+        def sax_model(wavelengths):
+            total_real_voltage = 0
+            for v in inputs["e0"].voltage:
+                total_real_voltage += jnp.real(v)
+            
+            phase_op = jnp.polyval(self.phase_coefficients, total_real_voltage)
+            absorption_dB = jnp.polyval(self.absorption_coefficients, total_real_voltage)
+            fraction_of_power_remaining = 10**(-absorption_dB*self.length/10)
+            delta_n = self.operating_wl/(2*jnp.pi*self.length) * phase_op
+            phase_shift = 2*jnp.pi/wavelengths*(self.effective_index+delta_n)*self.length
+
+            return {
+                ("o0", "o1"): jnp.sqrt(fraction_of_power_remaining)*jnp.exp(1j*phase_shift),
+                ("o1", "o0"): jnp.sqrt(fraction_of_power_remaining)*jnp.exp(1j*phase_shift),
+                ("o0", "o0"): 0,
+                ("o1", "o1"): 0,
+            }
+
+        return sax_model
+        
 
     # @staticmethod
     # @jax.jit
@@ -61,16 +77,23 @@ class OpticalModulator(
         inputs: dict,
         # settings
     ) -> dict:
+        # TODO: Change complete_steady_state_inputs to be a method on the SteadyStateComponent
+        # Base Class and have it give default values to ports with unspecified inputs
+        # For now, I'll just use this work around.
         complete_steady_state_inputs(inputs)
         # self.s_parameters(inputs, jnp.linspace(1.5e-6, 1.6e-6, 1000))
-        
+        optical_wls = []
+        if 'o0' in inputs:
+            # Assuming they all have the same wl
+            optical_wls = inputs["o0"].wl
+        # if not 'o0' in inputs:    
+            # inputs['o0'] = optical_signal(field=0)
+        # if 'o1' not in inputs:
+        #     inputs['o1'] = optical_signal(field=0)
         # We only consider DC voltage and assum
         total_real_voltage = 0
         for v in inputs["e0"].voltage:
-            total_real_voltage += jnp.real(v)
-        
-        # Assuming they all have the same wl
-        optical_wls = inputs["o0"].wl
+            total_real_voltage += jnp.real(v)       
 
         o0_field_out = []
         o1_field_out = []
