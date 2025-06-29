@@ -4,6 +4,7 @@ from jax.typing import ArrayLike
 from simphony.circuit import SteadyStateComponent
 from simphony.circuit import BlockModeComponent, SampleModeComponent
 from simphony.signals import electrical_signal
+import jax.numpy as jnp
 
 
 class CWLaser(SteadyStateComponent, SampleModeComponent, BlockModeComponent):
@@ -20,9 +21,11 @@ class VoltageSource(
 
     def __init__(
         self, 
-        **settings,
+        steady_state_voltage=1.0,
+        steady_state_wl=0,
     ):
-        self.settings = settings
+        self.steady_state_voltage=steady_state_voltage
+        self.steady_state_wl = steady_state_wl
         # optical_ports = None
         # electrical_ports = ['e0']
         # logic_ports = None
@@ -34,11 +37,10 @@ class VoltageSource(
 
     def steady_state(
         self, 
-        inputs: dict, 
-        **settings,
+        inputs: dict,
     ):
         outputs = {
-            "e0": electrical_signal(voltage=[self.settings['steady_state_voltage']], wl=[self.settings['wl']])
+            "e0": electrical_signal(voltage=[self.steady_state_voltage], wl=[self.steady_state_wl])
         }
         return outputs
 

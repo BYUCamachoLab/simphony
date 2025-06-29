@@ -40,6 +40,14 @@ class Simulation:
     def run(self):
         """Run the simulation."""
         raise NotImplementedError
+    
+    def _instantiate_components(self, settings):
+        self.components = {}
+        for component_name in self.circuit.graph.nodes:
+            model_name = self.circuit.netlist['instances'][component_name]['component']
+            model = self.circuit.models[model_name]
+            component_settings = settings[component_name]
+            self.components[component_name] = model(**component_settings)
 
 
 class SimulationResult:

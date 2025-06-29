@@ -51,8 +51,8 @@ class SParameterSimulation(Simulation):
             self.reset_settings(use_default_settings=use_default_settings)
             self.add_settings(settings)
 
-        self._instantiate_components()
-        self._calculate_steady_states()
+        self._instantiate_components(self.settings)
+        steady_state_simulation_result = self.steady_state_simulation.run(self.settings)
         self._calculate_scattering_matrix()
 
         # TODO
@@ -163,13 +163,14 @@ class SParameterSimulation(Simulation):
         # steady_state_graph.remove_nodes_from(self.s_parameter_graph.nodes)
         # self.steady_state_simulation = SteadyStateSimulation(self.steady_state_graph)
 
-    def _instantiate_components(self):
-        self.components = {}
-        for component_name in self.circuit.graph.nodes:
-            model_name = self.circuit.netlist['instances'][component_name]['component']
-            model = self.circuit.models[model_name]
-            settings = self.settings[component_name]
-            self.components[component_name] = model(**settings)
+    ### I am going to put this in the base class
+    # def _instantiate_components(self):
+    #     self.components = {}
+    #     for component_name in self.circuit.graph.nodes:
+    #         model_name = self.circuit.netlist['instances'][component_name]['component']
+    #         model = self.circuit.models[model_name]
+    #         settings = self.settings[component_name]
+    #         self.components[component_name] = model(**settings)
 
     def _calculate_steady_states(self):
         for component in self.steady_state_order:

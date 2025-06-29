@@ -1,9 +1,26 @@
 from .simulation import Simulation, SimulationResult
 from simphony.circuit import Circuit
+import networkx as nx
+from copy import deepcopy
 
 class SteadyStateSimulationResult(SimulationResult):
-    def __init__(self):
-        ...
+    def __init__(self, circuit):
+        self.circuit = deepcopy(circuit)
+        self.component_inputs = {}
+        self.component_outputs = {}
+    
+    def _collect_component_inputs(self, component)->dict:
+        inputs = {}
+        input_components = nx.ancestors(self.circuit.graph, component)
+        for input_component in input_components:
+            input_edges = self.circuit.graph.get_edge_data(input_component, component)
+            for edge_number, edge in input_edges.items():
+                inputs[edge['dst_port']] = self.component_outputs[input_component][edge['src_port']]
+                pass
+        
+        self.component_inputs[component] = inputs
+    # def add_outputs(self, component, outputs):
+    #     self.component_outputs[component]=outputs
 
 class SteadyStateSimulation(Simulation):
     def __init__(self, circuit: Circuit):
@@ -37,5 +54,18 @@ class SteadyStateSimulation(Simulation):
             )
         return steady_state_order
 
-    def run(self)->SteadyStateSimulationResult:
-        ...
+    def run(
+        self, 
+        settings:dict = None
+    ) -> SteadyStateSimulationResult:
+        simulation_result = SteadyStateSimulationResult(self.circuit)
+
+        self._instantiate_components(settings)
+        for component in self.steady_state_order:
+            simulation_result._collect_component_inputs(component)   
+            inputs = simulation_result.component_inputs[component]
+            outputs = self.components[component].steady_state(inputs)
+            simulation_result.component_outputs[component] = outputs
+        
+        return simulation_result
+
