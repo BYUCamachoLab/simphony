@@ -11,10 +11,18 @@ from simphony.utils import graph_to_netlist
 import sax
 
 class SParameterSimulationResult(SimulationResult):
-    def __init__(self):
-        ### TODO: This object needs to store at least 
-        ### The Scattering parameter dictionary and the specified ports
-        ...
+    def __init__(self, circuit: Circuit, ports=None):
+        self.circuit = deepcopy(circuit)
+        self.ports = ports if ports is not None else circuit.netlist['ports']
+        self.s_parameters = {}
+
+    def add_s_parameters(self, s_params: dict):
+        """
+        Add S-parameters to the result object.
+        """
+        self.s_parameters.update(s_params)
+    
+
 
 class SParameterSimulation(Simulation):
     def __init__(
@@ -54,13 +62,14 @@ class SParameterSimulation(Simulation):
         if settings is not None:
             self.reset_settings(use_default_settings=use_default_settings)
             self.add_settings(settings)
+        s_parameter_result = SParameterSimulationResult(self.circuit, self.ports)
 
         self._instantiate_components(self.settings)
         steady_state_simulation_result = self.steady_state_simulation.run(self.settings)
-        self._calculate_scattering_matrix(steady_state_simulation_result)
+        s_params_dict = self._calculate_scattering_matrix(wl,steady_state_simulation_result)
+        s_parameter_result.add_s_parameters(s_params_dict)
 
-        # TODO
-        return SParameterSimulationResult()
+        return s_parameter_result
 
     def _clear_settings(self):
         for instance in self.circuit.graph.nodes:
@@ -83,6 +92,10 @@ class SParameterSimulation(Simulation):
             self.settings[instance].update(instance_settings)
 
     def _identify_component_types(self):
+        """
+        Identify the types of components in the circuit.
+        This method categorizes components into electrical, optical, and logic components
+        """
         self.all_components = set()
         self.electrical_components = set()
         self.optical_components = set()
@@ -185,38 +198,54 @@ class SParameterSimulation(Simulation):
     
     def _calculate_scattering_matrix(self, wl, steady_state_simulation_result):
         """
+        Build a SAX circuit from the s_parameter_graph, pulling in:
+        - each instance's steady-state inputs
+        - each instance's 'settings' block from the netlist
+        - the global wavelength vector `wl` (in microns → convert to meters)
         """
-        # I will assume that the only connections between the s-parameter portion of the circuit
-        # and the steady-state portion of the circuit are electrical or optical (this might change)
-        # in the future if more connection types become supported
+
+        wl_m = wl * 1e-6
+
+        sax_netlist = graph_to_netlist(self.s_parameter_graph)
+        component_inputs = {
+            inst: {} 
+            for inst in sax_netlist["instances"]
+        }
         
-        # These components will need to have their s_parameter methods completed with the steady state inputs
-        incomplete_components = self.hybrid_components
-        component_inputs = {component: {} for component in self.s_parameter_graph.nodes}
-        for incomplete_component in incomplete_components:
-            component_inputs[incomplete_component] = steady_state_simulation_result.component_inputs[incomplete_component]
-        
+        for inst in self.hybrid_components:
+            component_inputs[inst] = (
+                steady_state_simulation_result
+                    .component_inputs[inst]
+            )
+
         sax_models = {}
-        for component, inputs in component_inputs.items():
-            sax_models[component] = self.components[component].s_parameters(inputs)
+        for inst_name, inst_def in sax_netlist["instances"].items():
+            
+            if isinstance(inst_def, str):
+                comp_type = inst_def
+                settings  = {}
+            else:
+                comp_type = inst_def["component"]
+                settings  = inst_def.get("settings", {})
 
-        ### TODO: MATTHEW! Keep in mind that I defined the sax models to use SI units
-        ### and to assume that wl is given in terms of meters, not microns
-        ### To see what I mean, stop here in debug mode and run sax_models['splitter'](1.55e-6)
-        ### Notice that I am using 1.55e-6 instead of 1.55 but that is what it expects
-        pass
-        
-        ### TODO: complete the function graph_to_netlist in simphony.utils
-        ### turn self.s_parameter_graph into a netlist
-        ### use the sax_models dictionary above and the netlist you just generated to create
-        ### a sax.circuit and return the resulting scattering dictionary
-        ### Alternatively, it might be more efficient to make an "self.s_parameter_circuit"
-        ### and use the remove_compoenents method from that circuit object
-        ### that might get you the netlist you need for free
+            inputs = component_inputs[inst_name]
 
-        sax_netlist = graph_to_netlist(self.s_parameter_graph) ## You might change this to use the alternative approach
-        circuit = sax.circuit(sax_netlist, sax_models)
-        ### TODO: It is probably possible for the user to keep the s-parameter graph elements parameterized
-        ### and simply return a sax circuit, maybe I will do that later, don't do that yet, 
-        ### For now just return the s-parameter dict
-        return circuit(wl)
+            # Add settings here once the s_parameters is fixed
+            scat_fn = self.components[inst_name].s_parameters(inputs)
+
+            sax_models[inst_name] = scat_fn
+
+        for inst, model in list(sax_models.items()):
+            if inst in sax_netlist['instances']:
+                comp_name = sax_netlist['instances'][inst]['component']
+                sax_models[comp_name] = model
+                del sax_models[inst]
+
+        wrapped_models = {
+            inst: (lambda f=scat_fn, w=wl_m: f(w))
+            for inst, scat_fn in sax_models.items()
+        }
+
+        circuit, ports = sax.circuit(sax_netlist, wrapped_models)
+
+        return circuit()

@@ -65,10 +65,12 @@ netlist = {
         "o1": "wg1,o1",
     },
 }
+
 models = {
     "waveguide": siepic.waveguide,
     "y_branch": siepic.y_branch,
 }
+
 active_components = {"pm", "pm2"}
 num_measurements = 200
 

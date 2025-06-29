@@ -17,10 +17,7 @@ from .components import Component, _optical_s_parameter
 
 # from simphony.utils import dict_to_matrix
 
-
-
 COMPONENT_COLOR_DEFAULT = "black"
-# COMPONENT_COLOR_SPARAM = "black"
 COMPONENT_COLOR_SPARAM = "blue"
 COMPONENT_COLOR_OPTICAL = "blue"
 COMPONENT_COLOR_ELECTRICAL = "red"
@@ -64,6 +61,12 @@ class Circuit:
         fig = gv.d3(self.graph)
         fig.display(inline=inline)
     
+
+    #Matthew's Suggestions
+    #You don't remove ports with the component name attached. 
+    #Is this on purpose with the understanding that these components don't have ports?
+    #or is this a bug?
+
     def remove_components(self, components):
         components = list(components)
         self.graph.remove_nodes_from(components)
