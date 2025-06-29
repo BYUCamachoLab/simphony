@@ -53,7 +53,7 @@ class SParameterSimulation(Simulation):
 
         self._instantiate_components(self.settings)
         steady_state_simulation_result = self.steady_state_simulation.run(self.settings)
-        self._calculate_scattering_matrix()
+        self._calculate_scattering_matrix(steady_state_simulation_result)
 
         # TODO
         return SParameterSimulationResult()
@@ -172,9 +172,19 @@ class SParameterSimulation(Simulation):
     #         settings = self.settings[component_name]
     #         self.components[component_name] = model(**settings)
 
-    def _calculate_steady_states(self):
-        for component in self.steady_state_order:
-            pass
+    # def _calculate_steady_states(self):
+    #     for component in self.steady_state_order:
+    #         pass
     
-    def _calculate_scattering_matrix(self):
+    def _calculate_scattering_matrix(self, steady_state_simulation_result):
+        """
+        """
+        # I will assume that the only connections between the s-parameter portion of the circuit
+        # and the steady-state portion of the circuit are electrical or optical (this might change)
+        # in the future if more connection types become supported
+        
+        # These components will need to have their s_parameter methods completed with the steady state inputs
+        incomplete_components = set(self.s_parameter_graph.nodes)&(self.electrical_components|self.logic_components)
+        
+        # We will need to Modify the s_parameters method somehow to be aware of the steady state inputs
         pass
