@@ -10,6 +10,8 @@ import networkx as nx
 from simphony.utils import graph_to_netlist
 import sax
 
+from functools import partial
+
 class SParameterSimulationResult(SimulationResult):
     def __init__(self):
         ### TODO: This object needs to store at least 
@@ -51,16 +53,18 @@ class SParameterSimulation(Simulation):
         settings: dict = None, 
         use_default_settings: bool = True
     )->SParameterSimulationResult:
+        s_parameter_simulation_result = SParameterSimulationResult()
         if settings is not None:
             self.reset_settings(use_default_settings=use_default_settings)
             self.add_settings(settings)
 
         self._instantiate_components(self.settings)
         steady_state_simulation_result = self.steady_state_simulation.run(self.settings)
-        self._calculate_scattering_matrix(steady_state_simulation_result)
-
-        # TODO
-        return SParameterSimulationResult()
+        sax_circuit, sax_circuit_info = self._generate_sax_circuit(wl, steady_state_simulation_result)
+        s_parameter_simulation_result.sax_circuit = sax_circuit
+        s_parameter_simulation_result.sax_circuit_info = sax_circuit_info
+        s_parameter_simulation_result.s_parameters = sax_circuit(wl=wl)
+        return s_parameter_simulation_result
 
     def _clear_settings(self):
         for instance in self.circuit.graph.nodes:
@@ -135,16 +139,20 @@ class SParameterSimulation(Simulation):
         if s_parameter_graph_nodes is None:
             raise ValueError("S-parameter graph could not be generated. All exposed ports must be weakly connected through optical components")
 
-        self.s_parameter_graph = deepcopy(optical_only_graph)
-        nodes_to_remove = set(self.s_parameter_graph.nodes) - set(s_parameter_graph_nodes)
-        self.s_parameter_graph.remove_nodes_from(nodes_to_remove)
+        self.s_parameter_circuit = deepcopy(self.circuit)
+        nodes_to_remove = set(self.circuit.graph.nodes) - set(s_parameter_graph_nodes)
+        self.s_parameter_circuit.remove_components(nodes_to_remove)
 
-        self.hybrid_components = set(self.s_parameter_graph.nodes)&(self.electrical_components|self.logic_components)
+        # self.s_parameter_graph = deepcopy(optical_only_graph)
+        # nodes_to_remove = set(self.s_parameter_graph.nodes) - set(s_parameter_graph_nodes)
+        # self.s_parameter_graph.remove_nodes_from(nodes_to_remove)
+
+        self.hybrid_components = set(self.s_parameter_circuit.graph.nodes)&(self.electrical_components|self.logic_components)
 
     def _validate_s_parameter_graph(self):
         # Signal source nodes are sources of non-optical signals
         source_nodes = set()
-        s_parameter_graph_nodes = set(self.s_parameter_graph.nodes)
+        s_parameter_graph_nodes = set(self.s_parameter_circuit.graph.nodes)
         potential_source_nodes = s_parameter_graph_nodes & self.optical_components & (self.electrical_components | self.logic_components)
         for node in potential_source_nodes:
             out_edges = self.circuit.graph.out_edges(node, data=True)
@@ -157,7 +165,7 @@ class SParameterSimulation(Simulation):
         # signal sources that feed back into the s_parameter_nodes
         # Such simulations should be performed in the time-domain
         non_s_parameter_graph = deepcopy(self.circuit.graph)
-        non_s_parameter_graph.remove_edges_from(self.s_parameter_graph.edges())
+        non_s_parameter_graph.remove_edges_from(self.s_parameter_circuit.graph.edges())
         for source_node in source_nodes:
             descendants = nx.descendants(non_s_parameter_graph, source_node)
             if len(descendants&s_parameter_graph_nodes) > 0:
@@ -165,7 +173,7 @@ class SParameterSimulation(Simulation):
 
     def _initialize_steady_state_simulation(self):
         steady_state_circuit = deepcopy(self.circuit)
-        steady_state_circuit.remove_components(self.s_parameter_graph.nodes-self.hybrid_components)
+        steady_state_circuit.remove_components(self.s_parameter_circuit.graph.nodes-self.hybrid_components)
         self.steady_state_simulation = SteadyStateSimulation(steady_state_circuit)
         # steady_state_graph.remove_nodes_from(self.s_parameter_graph.nodes)
         # self.steady_state_simulation = SteadyStateSimulation(self.steady_state_graph)
@@ -183,7 +191,7 @@ class SParameterSimulation(Simulation):
     #     for component in self.steady_state_order:
     #         pass
     
-    def _calculate_scattering_matrix(self, wl, steady_state_simulation_result):
+    def _generate_sax_circuit(self, wl, steady_state_simulation_result):
         """
         """
         # I will assume that the only connections between the s-parameter portion of the circuit
@@ -192,14 +200,24 @@ class SParameterSimulation(Simulation):
         
         # These components will need to have their s_parameter methods completed with the steady state inputs
         incomplete_components = self.hybrid_components
-        component_inputs = {component: {} for component in self.s_parameter_graph.nodes}
+        component_inputs = {component: {} for component in self.s_parameter_circuit.graph.nodes}
         for incomplete_component in incomplete_components:
             component_inputs[incomplete_component] = steady_state_simulation_result.component_inputs[incomplete_component]
         
         sax_models = {}
         for component, inputs in component_inputs.items():
-            sax_models[component] = self.components[component].s_parameters(inputs)
+            # model_name = self.circuit.netlist['instances'][component]['component']
+            sax_models[component] = partial(self.components[component].s_parameters, inputs)
 
+        # Each instance should correspond to a unique model at this point
+        # Since they might have been changed but the steady state inputs
+        # Therefore, we need the netlist to reflect this change
+
+        instances = {key: key for key in self.s_parameter_circuit.netlist['instances']}
+        self.s_parameter_circuit.netlist['instances'] = instances
+
+        return sax.circuit(self.s_parameter_circuit.netlist, sax_models)
+        """
         ### TODO: MATTHEW! Keep in mind that I defined the sax models to use SI units
         ### and to assume that wl is given in terms of meters, not microns
         ### To see what I mean, stop here in debug mode and run sax_models['splitter'](1.55e-6)
@@ -214,9 +232,10 @@ class SParameterSimulation(Simulation):
         ### and use the remove_compoenents method from that circuit object
         ### that might get you the netlist you need for free
 
-        sax_netlist = graph_to_netlist(self.s_parameter_graph) ## You might change this to use the alternative approach
+        sax_netlist = graph_to_netlist(self.s_parameter_circuit.graph) ## You might change this to use the alternative approach
         circuit = sax.circuit(sax_netlist, sax_models)
         ### TODO: It is probably possible for the user to keep the s-parameter graph elements parameterized
         ### and simply return a sax circuit, maybe I will do that later, don't do that yet, 
         ### For now just return the s-parameter dict
         return circuit(wl)
+        """

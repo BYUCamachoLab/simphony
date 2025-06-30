@@ -73,12 +73,12 @@ def _optical_s_parameter(sax_model: SaxModel):
         # @jax.jit
         def s_parameters( 
             self,
-            inputs: dict={},
-            # wl: ArrayLike,
-        ):
+            inputs: dict,
+            wl: ArrayLike=1.55e-6,
+        )->sax.SDict:
             # TODO: (MATTHEW! Don't do this one yet, I need to talk to Sequoia first)
             # Change the simphony models to be in units of meters not microns 
-            return lambda wl: sax_model(wl*1e6, **self.settings)
+            return sax_model(wl*1e6, **self.settings)
         
         # @staticmethod
         # @jax.jit 
