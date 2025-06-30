@@ -53,9 +53,6 @@ class OpticalModulator(
         total_real_voltage = 0
         for v in inputs["e0"].voltage:
             total_real_voltage += jnp.real(v)
-        
-        print(inputs)
-        print(total_real_voltage)
 
         phase_op = jnp.polyval(self.phase_coefficients, total_real_voltage)
         absorption_dB = jnp.polyval(self.absorption_coefficients, total_real_voltage)
