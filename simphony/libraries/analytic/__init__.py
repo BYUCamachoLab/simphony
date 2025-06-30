@@ -28,6 +28,7 @@ from simphony.libraries.analytic.s_parameters import (
 from simphony.libraries.analytic.sources import (
     PRNG,
     CWLaser,
+    OpticalSource,
     VoltageSource,
 )
 from simphony.libraries.analytic.waveguides import (
@@ -48,13 +49,13 @@ __all__ = [
     "Fiber",
     "GRINFiber",
     "CWLaser",
+    "OpticalSource",
     "MachZehnderModulator",
     "OpticalModulator",
     "VoltageSource",
     "PRNG",
     "VoltageFollower",
     "OpAmp",
-
     "star_coupler",
     "optical_s_parameter",
 ]

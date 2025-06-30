@@ -8,7 +8,7 @@ from sax.saxtypes import Model as SaxModel
 
 # from simphony.utils import add_settings_to_netlist, get_settings_from_netlist, netlist_to_graph
 # from copy import deepcopy
-from simphony.signals import optical_signal, complete_steady_state_inputs
+from simphony.signals import steady_state_optical_signal, complete_steady_state_inputs
 
 import jax
 import jax.numpy as jnp
@@ -122,7 +122,7 @@ def _optical_s_parameter(sax_model: SaxModel):
 
             outputs = {}
             for i, port in enumerate(ports):
-                outputs[port] = optical_signal(
+                outputs[port] = steady_state_optical_signal(
                                     field=output_matrix[:, i],
                                     wl=wls,
                                     polarization=inputs[port].polarization
