@@ -31,13 +31,25 @@ class BlockModeSimulation(Simulation):
         self.dt = kwargs["dt"]
         simulation_result = BlockModeSimulationResult(self.circuit)
         self._instantiate_components(kwargs.get("settings", {}))
-        #To implement tomorrow the one difference between this and steady state simulation 
-        # is how we handle the inputs and the time so I'll do that
-        #tomorrow but yeah  think thats everything for now
+
+        # tried something here but haven't tested it yet
+
+        ports = self.circuit.netlist["ports"]
+        input_locations = { name: ports[name] for name in input_signals.keys() }
+        ports_map     = self.circuit.netlist["ports"]
+        external_inputs = {}
+
+        for port_name, sig in input_signals.items():
+            inst, dst = (ports_map[port_name].split(",") 
+                        if isinstance(ports_map[port_name], str)
+                        else ports_map[port_name])
+            external_inputs.setdefault(inst, {})[dst] = sig
+
         for component in self.block_mode_order:
             simulation_result._collect_component_inputs(component)   
             inputs = simulation_result.component_inputs[component]
-            outputs = self.components[component].response(inputs)
+            merged   = {**external_inputs.get(component, {}), **inputs}
+            outputs = self.components[component].response(merged)
             simulation_result.component_outputs[component] = outputs
 
         return simulation_result
