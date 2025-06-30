@@ -2,6 +2,7 @@ from .simulation import Simulation, SimulationResult
 from simphony.circuit import Circuit
 import networkx as nx
 from copy import deepcopy
+from simphony.utils import identify_component_types
 
 class BlockModeSimulationResult(SimulationResult):
     def __init__(self, circuit):
@@ -26,6 +27,11 @@ class BlockModeSimulation(Simulation):
         if ports is None:
             self.ports = self.circuit.netlist['ports']
         self.block_mode_order = self._determine_block_mode_order()
+        
+        # (self.all_components,
+        #  self.electrical_components,
+        #  self.optical_components,
+        #  self.logic_components) = identify_component_types(self.circuit.graph)
 
     def run(self, t, input_signals: dict, **kwargs )->BlockModeSimulationResult:
         self.dt = kwargs["dt"]
@@ -33,23 +39,10 @@ class BlockModeSimulation(Simulation):
         self._instantiate_components(kwargs.get("settings", {}))
 
         # tried something here but haven't tested it yet
-
-        ports = self.circuit.netlist["ports"]
-        input_locations = { name: ports[name] for name in input_signals.keys() }
-        ports_map     = self.circuit.netlist["ports"]
-        external_inputs = {}
-
-        for port_name, sig in input_signals.items():
-            inst, dst = (ports_map[port_name].split(",") 
-                        if isinstance(ports_map[port_name], str)
-                        else ports_map[port_name])
-            external_inputs.setdefault(inst, {})[dst] = sig
-
         for component in self.block_mode_order:
             simulation_result._collect_component_inputs(component)   
             inputs = simulation_result.component_inputs[component]
-            merged   = {**external_inputs.get(component, {}), **inputs}
-            outputs = self.components[component].response(merged)
+            outputs = self.components[component].response(inputs)
             simulation_result.component_outputs[component] = outputs
 
         return simulation_result
@@ -62,5 +55,5 @@ class BlockModeSimulation(Simulation):
         try:
             return list(nx.topological_sort(graph))
         except nx.NetworkXUnfeasible:
-            raise ValueError("Failed to determine steady state order – circular dependencies detected")
+            raise ValueError("Failed to determine block order – circular dependencies detected")
         

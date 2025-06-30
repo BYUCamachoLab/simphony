@@ -3,13 +3,67 @@ from jax.typing import ArrayLike
 
 from simphony.circuit import SteadyStateComponent
 from simphony.circuit import BlockModeComponent, SampleModeComponent
-from simphony.signals import electrical_signal
+from simphony.signals import electrical_signal, optical_signal, logic_signal
 import jax.numpy as jnp
+from typing import Union
 
+class OpticalSource(SteadyStateComponent, SampleModeComponent, BlockModeComponent):
+    optical_ports = ["o0"]
 
-class CWLaser(SteadyStateComponent, SampleModeComponent, BlockModeComponent):
-    def __init__(self):
-        pass
+    def __init__(self, 
+                 steady_state_signal = None, 
+                 block_mode_signal= None, 
+                 sample_mode_signal= None,
+                 wl = 1550e-9, 
+                 polarization = None,
+                 **kwargs):
+        
+        self.steady_state_signal =  steady_state_signal
+        self.block_mode_signal = block_mode_signal
+        self.sample_mode_signal = sample_mode_signal
+        self.wl = wl
+        self.polarization = polarization
+        
+    def steady_state(
+        self, 
+        inputs: dict,
+    ):
+        if self.steady_state_signal is None:
+            raise ValueError("Steady state signal must be provided for OpticalSource.")
+        outputs = {
+            "o0": optical_signal(field = self.steady_state_signal, 
+                                 wl = self.wl, 
+                                 polarization = self.polarization)  
+        }
+        return outputs
+    
+    def response (
+        self, 
+        inputs: dict,
+    ):
+        if self.block_mode_signal is None:
+            raise ValueError("Block mode signal must be provided for OpticalSource.")
+        outputs = {
+            "o0": optical_signal(field = self.block_mode_signal, 
+                                 wl = self.wl, 
+                                 polarization = self.polarization),  
+        }
+        return outputs
+    
+    def step (
+        self, 
+        inputs: dict,
+    ):
+        if self.sample_mode_signal is None:
+            raise ValueError("Sample mode signal must be provided for OpticalSource.")
+        outputs = {
+            "o0": optical_signal(field = self.sample_mode_signal, 
+                                 wl = self.wl, 
+                                 polarization = self.polarization),  
+        }
+        return outputs
+    
+        
 
 
 class VoltageSource(
@@ -44,7 +98,7 @@ class VoltageSource(
         }
         return outputs
 
-    def run(self, input_signal: ArrayLike, **kwargs):
+    def response(self, input_signal: ArrayLike, **kwargs):
         pass
 
 
