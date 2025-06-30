@@ -576,12 +576,41 @@ def netlist_to_graph(netlist: Union[dict, str]):
             src_instance, src_port = src.split(",")
             dst_instance, dst_port = dst.split(",")
             graph.add_edge(src_instance.strip(), dst_instance.strip(), src_port=src_port.strip(), dst_port=dst_port.strip())
+    
+    #Matthew's Changes
+    #Adds the ports as a graph attribute to be used within graph_to_netlist
+    graph.graph["ports"] = netlist.get("ports", {}).copy()
 
     return graph
 
-def graph_to_netlist(graph: nx.MultiDiGraph):
-    raise NotImplementedError
+#Matthew's Changes
+#Completed the graph to netlist to be used however needed to also added
+def graph_to_netlist(graph: nx.MultiDiGraph) -> dict:
+    """
+    Convert a NetworkX MultiDiGraph (with node attrs 'component' and 'settings',
+    edge attrs 'src_port' and 'dst_port', and graph.graph['ports']) back into a netlist:
+    """
+    netlist = {"instances": {}, "connections": {}}
 
+    for node, data in graph.nodes(data=True):
+        netlist["instances"][node] = {
+            "component": data["component"],
+            "settings":  data.get("settings", {}).copy()
+        }
+
+    conn_map = {}
+    for src, dst, attrs in graph.edges(data=True):
+        key  = f"{src},{attrs['src_port']}"
+        pair = f"{dst},{attrs['dst_port']}"
+        conn_map.setdefault(key, []).append(pair)
+
+    for key, dsts in conn_map.items():
+        netlist["connections"][key] = ";".join(dsts)
+
+    ports = graph.graph.get("ports", {})
+    netlist["ports"] = ports.copy()
+
+    return netlist
 
 def discrete_time_impulse_response(propagation_constants, sampling_freq, length=1e-6, N=20000):
     freqs = jnp.fft.fftfreq(N, d=1/sampling_freq)

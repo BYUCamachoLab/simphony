@@ -13,10 +13,18 @@ import sax
 from functools import partial
 
 class SParameterSimulationResult(SimulationResult):
-    def __init__(self):
-        ### TODO: This object needs to store at least 
-        ### The Scattering parameter dictionary and the specified ports
-        ...
+    def __init__(self, circuit: Circuit, ports=None):
+        self.circuit = deepcopy(circuit)
+        self.ports = ports if ports is not None else circuit.netlist['ports']
+        self.s_parameters = {}
+
+    def add_s_parameters(self, s_params: dict):
+        """
+        Add S-parameters to the result object.
+        """
+        self.s_parameters.update(s_params)
+    
+
 
 class SParameterSimulation(Simulation):
     def __init__(
@@ -57,6 +65,7 @@ class SParameterSimulation(Simulation):
         if settings is not None:
             self.reset_settings(use_default_settings=use_default_settings)
             self.add_settings(settings)
+        s_parameter_result = SParameterSimulationResult(self.circuit, self.ports)
 
         self._instantiate_components(self.settings)
         steady_state_simulation_result = self.steady_state_simulation.run(self.settings)
@@ -87,6 +96,10 @@ class SParameterSimulation(Simulation):
             self.settings[instance].update(instance_settings)
 
     def _identify_component_types(self):
+        """
+        Identify the types of components in the circuit.
+        This method categorizes components into electrical, optical, and logic components
+        """
         self.all_components = set()
         self.electrical_components = set()
         self.optical_components = set()

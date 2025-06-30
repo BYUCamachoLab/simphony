@@ -53,6 +53,27 @@ class SteadyStateSimulation(Simulation):
                 "Hint: Steady state cannot be determined for circular connections."
             )
         return steady_state_order
+    
+    #Matthew's Suggestions
+    #Found this method while looking into the determine_steady_state algorithm.
+    #Thought this might look cleaner then the custom implementation above and after a bit of testing
+    #it appears to be exactly the same as the custom implementation. Though this depends
+    #if we need a custom implementation depending on the circuit structure.
+    def _determine_steady_state_order_nx_method(self):
+        """
+        Voltage signals at electrical ports are assumed to be constant
+        for SParameterSimulations, but they are not known a priori, unless
+        the voltage source is not dependent on an input signal.
+
+        Since steady-state connections are assumemd to be uni-directional, this function is
+        able to find the order in which electrical component voltages must
+        be calculated to find the proper steady state.
+        """
+        graph = self.circuit.graph.copy()
+        try:
+            return list(nx.topological_sort(graph))
+        except nx.NetworkXUnfeasible:
+            raise ValueError("Failed to determine steady state order – circular dependencies detected")
 
     def run(
         self, 
