@@ -42,8 +42,20 @@ class SteadyStateComponent(Component):
         raise NotImplementedError(
             f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
         )
+    
+class SParameterComponent(Component):
+    """
+    """
+    def s_parameters(
+        self,
+        inputs: dict,
+        wl: ArrayLike=1.55e-6,
+    ):
+        raise NotImplementedError(
+            f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
+        )
 
-class OpticalSParameterComponent(SteadyStateComponent):
+class OpticalSParameterComponent(SteadyStateComponent, SParameterComponent):
     # def __init__(self, **settings):
     #     super().__init__(**settings)
 
