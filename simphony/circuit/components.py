@@ -42,8 +42,20 @@ class SteadyStateComponent(Component):
         raise NotImplementedError(
             f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
         )
+    
+class SParameterComponent(Component):
+    """
+    """
+    def s_parameters(
+        self,
+        inputs: dict,
+        wl: ArrayLike=1.55e-6,
+    ):
+        raise NotImplementedError(
+            f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
+        )
 
-class OpticalSParameterComponent(SteadyStateComponent):
+class OpticalSParameterComponent(SteadyStateComponent, SParameterComponent):
     # def __init__(self, **settings):
     #     super().__init__(**settings)
 
@@ -73,12 +85,12 @@ def _optical_s_parameter(sax_model: SaxModel):
         # @jax.jit
         def s_parameters( 
             self,
-            inputs: dict={},
-            # wl: ArrayLike,
-        ):
+            inputs: dict,
+            wl: ArrayLike=1.55e-6,
+        )->sax.SDict:
             # TODO: (MATTHEW! Don't do this one yet, I need to talk to Sequoia first)
             # Change the simphony models to be in units of meters not microns 
-            return lambda wl: sax_model(wl*1e6, **self.settings)
+            return sax_model(wl*1e6, **self.settings)
         
         # @staticmethod
         # @jax.jit 

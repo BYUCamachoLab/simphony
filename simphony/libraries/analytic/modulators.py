@@ -6,7 +6,7 @@ from jax.typing import ArrayLike
 import jax
 import jax.numpy as jnp
 from typing import Callable
-from sax.saxtypes import Model as SaxModel
+import sax
 
 from simphony.signals import optical_signal, electrical_signal, complete_steady_state_inputs
 
@@ -36,7 +36,7 @@ class OpticalModulator(
         length: float = 1.0,
         operating_wl = 1.55e-6,
         absorption_coefficients: jnp.ndarray = jnp.asarray([0.0, 0.0, 0.0, 0.0]),
-        phase_coefficients: jnp.ndarray = jnp.asarray([0.0, 0.0, 0.0, jnp.pi]),
+        phase_coefficients: jnp.ndarray = jnp.asarray([0.0, 0.0, jnp.pi, 0.0]),
         effective_index = 0.0,
     ):
         self.length = length
@@ -48,26 +48,24 @@ class OpticalModulator(
     def s_parameters(
         self,
         inputs: dict,
-    )->SaxModel:    
-        def sax_model(wavelengths):
-            total_real_voltage = 0
-            for v in inputs["e0"].voltage:
-                total_real_voltage += jnp.real(v)
-            
-            phase_op = jnp.polyval(self.phase_coefficients, total_real_voltage)
-            absorption_dB = jnp.polyval(self.absorption_coefficients, total_real_voltage)
-            fraction_of_power_remaining = 10**(-absorption_dB*self.length/10)
-            delta_n = self.operating_wl/(2*jnp.pi*self.length) * phase_op
-            phase_shift = 2*jnp.pi/wavelengths*(self.effective_index+delta_n)*self.length
+        wl: ArrayLike=1.55e-6,
+    )->sax.SDict:    
+        total_real_voltage = 0
+        for v in inputs["e0"].voltage:
+            total_real_voltage += jnp.real(v)
 
-            return {
-                ("o0", "o1"): jnp.sqrt(fraction_of_power_remaining)*jnp.exp(1j*phase_shift),
-                ("o1", "o0"): jnp.sqrt(fraction_of_power_remaining)*jnp.exp(1j*phase_shift),
-                ("o0", "o0"): 0,
-                ("o1", "o1"): 0,
-            }
+        phase_op = jnp.polyval(self.phase_coefficients, total_real_voltage)
+        absorption_dB = jnp.polyval(self.absorption_coefficients, total_real_voltage)
+        fraction_of_power_remaining = 10**(-absorption_dB*self.length/10)
+        delta_n = self.operating_wl/(2*jnp.pi*self.length) * phase_op
+        phase_shift = 2*jnp.pi/wl*(self.effective_index+delta_n)*self.length
 
-        return sax_model
+        return {
+            ("o0", "o1"): jnp.sqrt(fraction_of_power_remaining)*jnp.exp(1j*phase_shift),
+            ("o1", "o0"): jnp.sqrt(fraction_of_power_remaining)*jnp.exp(1j*phase_shift),
+            ("o0", "o0"): 0,
+            ("o1", "o1"): 0,
+        }
         
 
     # @staticmethod
