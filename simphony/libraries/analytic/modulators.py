@@ -8,7 +8,7 @@ import jax.numpy as jnp
 from typing import Callable
 import sax
 
-from simphony.signals import optical_signal, electrical_signal, complete_steady_state_inputs
+from simphony.signals import steady_state_optical_signal, steady_state_electrical_signal, complete_steady_state_inputs
 
 class MachZehnderModulator(
     SteadyStateComponent, 
@@ -109,8 +109,8 @@ class OpticalModulator(
             o1_field_out.append(o0_in*jnp.sqrt(fraction_of_power_remaining)*jnp.exp(1j*phase_shift))
 
         outputs = {
-            "o0": optical_signal(field=o0_field_out, wl=optical_wls),
-            "o1": optical_signal(field=o1_field_out, wl=optical_wls),
+            "o0": steady_state_optical_signal(field=o0_field_out, wl=optical_wls),
+            "o1": steady_state_optical_signal(field=o1_field_out, wl=optical_wls),
             # "e0": electrical_signal(),
         }
         return outputs

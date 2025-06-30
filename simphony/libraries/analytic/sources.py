@@ -3,10 +3,15 @@ from jax.typing import ArrayLike
 
 from simphony.circuit import SteadyStateComponent
 from simphony.circuit import BlockModeComponent, SampleModeComponent
-from simphony.signals import electrical_signal, optical_signal, logic_signal
+from simphony.signals import steady_state_electrical_signal, steady_state_optical_signal, steady_state_logic_signal
 import jax.numpy as jnp
 from typing import Union
 
+class CWLaser(SteadyStateComponent, SampleModeComponent, BlockModeComponent):
+    def __init__(self, ):
+        raise NotImplementedError("CWLaser is not implemented yet.")
+        
+        
 class OpticalSource(SteadyStateComponent, SampleModeComponent, BlockModeComponent):
     optical_ports = ["o0"]
 
@@ -31,7 +36,7 @@ class OpticalSource(SteadyStateComponent, SampleModeComponent, BlockModeComponen
         if self.steady_state_signal is None:
             raise ValueError("Steady state signal must be provided for OpticalSource.")
         outputs = {
-            "o0": optical_signal(field = self.steady_state_signal, 
+            "o0": steady_state_optical_signal(field = self.steady_state_signal, 
                                  wl = self.wl, 
                                  polarization = self.polarization)  
         }
@@ -44,7 +49,7 @@ class OpticalSource(SteadyStateComponent, SampleModeComponent, BlockModeComponen
         if self.block_mode_signal is None:
             raise ValueError("Block mode signal must be provided for OpticalSource.")
         outputs = {
-            "o0": optical_signal(field = self.block_mode_signal, 
+            "o0": steady_state_optical_signal(field = self.block_mode_signal, 
                                  wl = self.wl, 
                                  polarization = self.polarization),  
         }
@@ -57,7 +62,7 @@ class OpticalSource(SteadyStateComponent, SampleModeComponent, BlockModeComponen
         if self.sample_mode_signal is None:
             raise ValueError("Sample mode signal must be provided for OpticalSource.")
         outputs = {
-            "o0": optical_signal(field = self.sample_mode_signal, 
+            "o0": steady_state_optical_signal(field = self.sample_mode_signal, 
                                  wl = self.wl, 
                                  polarization = self.polarization),  
         }
@@ -94,7 +99,7 @@ class VoltageSource(
         inputs: dict,
     ):
         outputs = {
-            "e0": electrical_signal(voltage=[self.steady_state_voltage], wl=[self.steady_state_wl])
+            "e0": steady_state_electrical_signal(voltage=[self.steady_state_voltage], wl=[self.steady_state_wl])
         }
         return outputs
 

@@ -2,7 +2,7 @@ from .simulation import Simulation, SimulationResult
 from simphony.circuit import Circuit
 import networkx as nx
 from copy import deepcopy
-from simphony.utils import identify_component_types
+
 
 class BlockModeSimulationResult(SimulationResult):
     def __init__(self, circuit):
@@ -27,7 +27,7 @@ class BlockModeSimulation(Simulation):
         if ports is None:
             self.ports = self.circuit.netlist['ports']
         self.block_mode_order = self._determine_block_mode_order()
-        
+
         # (self.all_components,
         #  self.electrical_components,
         #  self.optical_components,
