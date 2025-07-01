@@ -83,11 +83,12 @@ class Circuit:
         self.netlist['connections'] = filtered_connections
 
         # Remove ports
-        filtered_ports = { 
-            k: v for k, v in self.netlist['ports'].items()
-            if not any(s in v for s in components)
-        }
-        self.netlist['ports'] = filtered_ports
+        if 'ports' in self.netlist:
+            filtered_ports = { 
+                k: v for k, v in self.netlist['ports'].items()
+                if not any(s in v for s in components)
+            }
+            self.netlist['ports'] = filtered_ports
         pass
 
     # def _add_models_to_graph(self, models: dict):

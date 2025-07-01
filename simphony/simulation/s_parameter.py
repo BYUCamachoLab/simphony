@@ -36,13 +36,13 @@ class SParameterSimulation(Simulation):
         self.circuit = circuit
         
         if ports is None:
-            self.ports = self.circuit.netlist['ports']
+            ports = self.circuit.netlist['ports']
         
         # if settings is not None:
         #     self.update_settings(settings)
 
         self._identify_component_types()
-        self._build_s_parameter_graph()
+        self._build_s_parameter_circuit(ports)
         self._validate_s_parameter_graph()
         self._initialize_steady_state_simulation()
         self.reset_settings(use_default_settings=True)
@@ -113,7 +113,7 @@ class SParameterSimulation(Simulation):
                 self.optical_components.add(node)
         
 
-    def _build_s_parameter_graph(self):
+    def _build_s_parameter_circuit(self, ports: dict):
         non_optical_components = self.all_components - self.optical_components
         optical_only_graph = deepcopy(self.circuit.graph)
         optical_only_graph.remove_nodes_from(non_optical_components)
@@ -132,7 +132,7 @@ class SParameterSimulation(Simulation):
 
         # Nodes with an exposed port are considered "entry nodes"
         entry_nodes = set()
-        for attr in self.ports.values():
+        for attr in ports.values():
             node = attr.split(',')[0]
             entry_nodes.add(node)
         
@@ -154,6 +154,7 @@ class SParameterSimulation(Simulation):
         # self.s_parameter_graph.remove_nodes_from(nodes_to_remove)
 
         self.hybrid_components = set(self.s_parameter_circuit.graph.nodes)&(self.electrical_components|self.logic_components)
+        self.s_parameter_circuit.netlist['ports'] = ports
 
     def _validate_s_parameter_graph(self):
         # Signal source nodes are sources of non-optical signals
@@ -221,7 +222,7 @@ class SParameterSimulation(Simulation):
 
         instances = {key: key for key in self.s_parameter_circuit.netlist['instances']}
         self.s_parameter_circuit.netlist['instances'] = instances
-
+        
         return sax.circuit(self.s_parameter_circuit.netlist, sax_models)
         """
         ### TODO: MATTHEW! Keep in mind that I defined the sax models to use SI units
