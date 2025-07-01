@@ -70,15 +70,24 @@ class Circuit:
     def remove_components(self, components):
         components = list(components)
         self.graph.remove_nodes_from(components)
+        
         # Remove from instances
         for component in components:
             self.netlist['instances'].pop(component, None)
+
         # Remove connections
         filtered_connections = {
             k: v for k, v in self.netlist['connections'].items()
             if not any(s in k or s in v for s in components)
         }
         self.netlist['connections'] = filtered_connections
+
+        # Remove ports
+        filtered_ports = { 
+            k: v for k, v in self.netlist['ports'].items()
+            if not any(s in v for s in components)
+        }
+        self.netlist['ports'] = filtered_ports
         pass
 
     # def _add_models_to_graph(self, models: dict):
