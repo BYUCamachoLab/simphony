@@ -12,11 +12,11 @@ class SampleModeOpticalSignal:
 @struct.dataclass
 class SampleModeElectricalSignal:
     voltage: jnp.ndarray
-    wl: jnp.ndarray       # shape: (N,T)
-
+    wl: jnp.ndarray
+    
 @struct.dataclass
 class SampleModeLogicSignal:
-    value: jnp.ndarray    # shape: (N,T) where N is number of samples
+    value: jnp.ndarray
 
 
 def sample_mode_optical_signal(
@@ -24,7 +24,7 @@ def sample_mode_optical_signal(
     wl: Union[float, list, jnp.ndarray] = 1550e-9,
     polarization: Union[list, jnp.ndarray] = None
 ) -> SampleModeOpticalSignal:
-    field = jnp.atleast_2d(jnp.asarray(field, dtype=jnp.complex64))
+    field = jnp.atleast_1d(jnp.asarray(field, dtype=jnp.complex64))
     wl = jnp.atleast_1d(jnp.asarray(wl, dtype=jnp.float32))
 
     # Default polarization
@@ -39,7 +39,7 @@ def sample_mode_electrical_signal(
     voltage: Union[float, complex, list, jnp.ndarray] = 0.0 + 0.0j,
     wl: Union[float, list, jnp.ndarray] = [0],
 ) -> SampleModeElectricalSignal:
-    voltage = jnp.atleast_2d(jnp.asarray(voltage, dtype=jnp.complex64))
+    voltage = jnp.atleast_1d(jnp.asarray(voltage, dtype=jnp.complex64))
     wl = jnp.atleast_1d(jnp.asarray(wl, dtype=jnp.float32))
     return SampleModeElectricalSignal(voltage=voltage, wl=wl)
 
@@ -47,7 +47,7 @@ def sample_mode_logic_signal(
     value: Union[float, complex, jnp.ndarray] = 0.0 + 0.0j
 ) -> SampleModeLogicSignal:
     return SampleModeLogicSignal(
-        value=jnp.atleast_2d(jnp.asarray(value, dtype=jnp.complex64))
+        value=jnp.atleast_1d(jnp.asarray(value, dtype=jnp.complex64))
     )
 
 

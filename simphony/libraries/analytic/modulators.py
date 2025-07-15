@@ -17,13 +17,14 @@ class MachZehnderModulator(
 ):
     optical_ports = ["o0", "o1"]
     electrical_ports = ["e0", "e1"]
+
     
     # def __init__(self, **settings):
     #     super().__init__(**settings)
 
 class OpticalModulator(
     SteadyStateComponent, 
-    # SampleModeComponent, 
+    SampleModeComponent, 
     # BlockModeComponent
 ):
     optical_ports = ["o0", "o1"]
@@ -66,6 +67,12 @@ class OpticalModulator(
             ("o0", "o0"): 0,
             ("o1", "o1"): 0,
         }
+
+    def initial_state(self):
+        return jnp.array([0])
+    def step(self, inputs: dict,  state: jax.Array):
+        # TODO: Complete this to acount for delay and phase shift
+        return inputs, state
         
 
     # @staticmethod

@@ -63,7 +63,7 @@ class BVF_Options:
 
 
 class IIRModelBaseband(PoleResidueModel):
-    def __init__(self, wvl_microns, center_wvl, s_params, order, options=None):
+    def __init__(self, wvl_microns, center_wvl, s_params, sampling_period, order, options=None):
         if options == None:
             self.options = BVF_Options()
         else:
@@ -77,7 +77,8 @@ class IIRModelBaseband(PoleResidueModel):
 
         self.freqs = c / (wvl_microns * 1e-6) - self.center_freq
 
-        self.sampling_freq = self.options.beta * (self.freqs[-1] - self.freqs[0])
+        self.sampling_freq = 1/sampling_period
+        self.options.beta = np.abs(self.sampling_freq / (self.freqs[-1] - self.freqs[0]))
 
         self.poles = np.array([])
         self.residues = np.zeros((order, self.num_ports, self.num_ports), dtype=complex)

@@ -14,7 +14,6 @@ class BlockModeOpticalSignal:
 class BlockModeElectricalSignal:
     field: jnp.ndarray    # shape:(N, T) where N is number of wavelengths and T is time steps
     wl: jnp.ndarray       # shape: (N,) or (N, T)
-    polarization: jnp.ndarray  # shape: (N, 2) or (2,) if fixed polarizat
 
 @struct.dataclass
 class BlockModeLogicSignal:
@@ -31,7 +30,7 @@ def block_mode_optical_signal(
 
     # Default polarization
     if polarization is None:
-        polarization = jnp.tile(jnp.array([1.0 + 0.0j, 0.0 + 0.0j], dtype=jnp.complex64), (wl.shape[0], 1))
+        polarization = jnp.tile(jnp.array([1.0 + 0.0j, 0.0 + 0.0j], dtype=jnp.complex64), (field.shape[0], wl.shape[0], 1))
     else:
         polarization = jnp.asarray(polarization, dtype=jnp.complex64)
 

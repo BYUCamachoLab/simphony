@@ -40,6 +40,13 @@ from simphony.libraries.analytic.integrated_circuits import (
     VoltageFollower,
     OpAmp,
 )
+
+from simphony.libraries.analytic.special import (
+    ElectricalAdvance,
+    LogicAdvance,
+    OpticalAdvance,
+    advance,
+)
 # from simphony.libraries.analytic.photonic_integrated_circuits import (
 
 # )
@@ -56,6 +63,10 @@ __all__ = [
     "PRNG",
     "VoltageFollower",
     "OpAmp",
+    "ElectricalAdvance",
+    "LogicAdvance",
+    "OpticalAdvance",
     "star_coupler",
     "optical_s_parameter",
+    "advance",
 ]

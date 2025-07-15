@@ -9,14 +9,17 @@ from typing import Union
 
 class CWLaser(SteadyStateComponent, SampleModeComponent, BlockModeComponent):
     optical_ports = ["o0"]
-    def __init__(self, steady_state_value = None, 
-                 block_mode_value= None, 
-                 sample_mode_value= None,
-                 wl = 1550e-9,
-                 t = None, 
-                 polarization = None,
-                 noise = False,
-                 **kwargs):
+    def __init__(
+        self, 
+        steady_state_value = None, 
+        block_mode_value= None, 
+        sample_mode_value= None,
+        wl = 1550e-9,
+        t = None, 
+        polarization = None,
+        noise = False,
+        **kwargs
+    ):
 
         tau = kwargs.get("ramp_tau", 2e-12)         
         ramp = 1.0 - jnp.exp(-t / tau)              
@@ -61,11 +64,13 @@ class CWLaser(SteadyStateComponent, SampleModeComponent, BlockModeComponent):
         if self.steady_state_signal is None:
             raise ValueError("Steady state signal must be provided for CWLaser.")
         outputs = {
-            "o0": steady_state_optical_signal(field = self.steady_state_signal, 
-                                 wl = self.wl, 
-                                 polarization = self.polarization)  
+            "o0": steady_state_optical_signal(
+                                field = self.steady_state_signal, 
+                                wl = self.wl, 
+                                polarization = self.polarization)  
         }
         return outputs
+    
     def response (
         self,
         inputs: dict,
@@ -73,11 +78,14 @@ class CWLaser(SteadyStateComponent, SampleModeComponent, BlockModeComponent):
         if self.block_mode_signal is None:
             raise ValueError("Block mode signal must be provided for CWLaser.")
         outputs = {
-            "o0": steady_state_optical_signal(field = self.block_mode_signal, 
-                                 wl = self.wl, 
-                                 polarization = self.polarization),  
+            "o0": steady_state_optical_signal(
+                                field = self.block_mode_signal, 
+                                wl = self.wl, 
+                                polarization = self.polarization
+            ),  
         }
         return outputs
+
     def step (
         self,
         inputs: dict,
@@ -90,11 +98,6 @@ class CWLaser(SteadyStateComponent, SampleModeComponent, BlockModeComponent):
                                  polarization = self.polarization),  
         }
         return outputs
-    
-
-
-        
-        
         
 class OpticalSource(SteadyStateComponent, SampleModeComponent, BlockModeComponent):
     optical_ports = ["o0"]
@@ -157,7 +160,7 @@ class OpticalSource(SteadyStateComponent, SampleModeComponent, BlockModeComponen
 
 class VoltageSource(
     SteadyStateComponent, 
-    # SampleModeComponent, 
+    SampleModeComponent, 
     BlockModeComponent,
 ):
     electrical_ports = ["e0"]
@@ -189,6 +192,13 @@ class VoltageSource(
 
     def response(self, input_signal: ArrayLike, **kwargs):
         pass
+    
+    def step(self, inputs: dict, state: jax.Array):
+        # TODO: Complete this to use the signal defined in settings
+        return inputs, state
+    
+    def initial_state(self):
+        return jnp.array([0])
 
 
 class PRNG(

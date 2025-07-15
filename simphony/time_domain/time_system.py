@@ -9,7 +9,7 @@ from jax.typing import ArrayLike
 from functools import partial
 
 from simphony.time_domain.pole_residue_model import PoleResidueModel
-from simphony.circuit import SampleModeComponent, BlockModeComponent
+# from simphony.circuit import SampleModeComponent, BlockModeComponent
 
 class TimeSystem(ABC):
     def __init__(self, optical_ports, electrical_ports, logic_ports) -> None:
@@ -252,7 +252,7 @@ def my_dlsimworks(system, u, t=None, x0=None):
 #         self.state_vector = None
 
 
-class TimeSystemIIR(SampleModeComponent, BlockModeComponent):
+class TimeSystemIIR():
     def __init__(self, pole_model: PoleResidueModel, ports=None):
         super().__init__()
         # Generate the discrete‐time state‐space (A,B,C,D) from your pole‐residue model:

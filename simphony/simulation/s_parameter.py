@@ -16,9 +16,6 @@ class SParameterSimulationResult(SimulationResult):
     def __init__(self):
         pass
 
-    
-
-
 class SParameterSimulation(Simulation):
     def __init__(
             self, 
@@ -50,15 +47,15 @@ class SParameterSimulation(Simulation):
 
     def run(
         self, 
-        wl: ArrayLike, 
         settings: dict = None, 
-        use_default_settings: bool = True
-    )->SParameterSimulationResult:
+        wl: ArrayLike=1.55e-6, 
+        # use_default_settings: bool = True
+    ) -> SParameterSimulationResult:
         s_parameter_simulation_result = SParameterSimulationResult()
-        if settings is not None:
-            self.reset_settings(use_default_settings=use_default_settings)
-            self.add_settings(settings)
-        s_parameter_result = SParameterSimulationResult()
+        use_default_settings = True
+        self.reset_settings(use_default_settings=use_default_settings)
+        self.add_settings(settings)
+        # s_parameter_result = SParameterSimulationResult()
 
         self._instantiate_components(self.settings)
         steady_state_simulation_result = self.steady_state_simulation.run(self.settings)
@@ -67,26 +64,6 @@ class SParameterSimulation(Simulation):
         s_parameter_simulation_result.sax_circuit_info = sax_circuit_info
         s_parameter_simulation_result.s_parameters = sax_circuit(wl=wl)
         return s_parameter_simulation_result
-
-    def _clear_settings(self):
-        for instance in self.circuit.graph.nodes:
-                self.settings[instance] = {}
-
-    def reset_settings(self, use_default_settings: bool = True):
-        """
-        Reset settings to their defaults (specified in Circuit) or clear all settings
-        """
-        if use_default_settings:
-            self.settings = deepcopy(self.circuit.default_settings)
-        else:
-            self._clear_settings()
-
-    def add_settings(self, settings: dict):
-        """
-        Update the current settings with additional settings.
-        """
-        for instance, instance_settings in settings.items():
-            self.settings[instance].update(instance_settings)
 
     def _identify_component_types(self):
         """

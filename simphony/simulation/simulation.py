@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from simphony.circuit import Circuit
 
+from copy import deepcopy
+
 
 
 class SimDevice:
@@ -48,6 +50,29 @@ class Simulation:
             model = self.circuit.models[model_name]
             component_settings = settings[component_name]
             self.components[component_name] = model(**component_settings)
+    
+    def _clear_settings(self):
+        self.settings = {}
+        for instance in self.circuit.graph.nodes:
+                self.settings[instance] = {}
+
+    def reset_settings(self, use_default_settings: bool = True):
+        """
+        Reset settings to their defaults (specified in Circuit) or clear all settings
+        """
+        if use_default_settings:
+            self._clear_settings()
+            additional_settings = deepcopy(self.circuit.default_settings)
+            self.add_settings(additional_settings)
+        else:
+            self._clear_settings()
+
+    def add_settings(self, settings: dict):
+        """
+        Update the current settings with additional settings.
+        """
+        for instance, instance_settings in settings.items():
+            self.settings[instance].update(instance_settings)
 
 
 class SimulationResult:

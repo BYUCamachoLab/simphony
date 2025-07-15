@@ -173,7 +173,7 @@ class Circuit:
             # if issubclass(component, OpticalComponent):
             #     self.graph.nodes[instance]['optical ports'] = self.models[model].optical_ports
 
-    def _get_port_type(self, instance, port):
+    def get_port_type(self, instance, port):
         optical_ports = self.graph.nodes[instance]["optical ports"]
         electrical_ports = self.graph.nodes[instance]["electrical ports"]
         logic_ports = self.graph.nodes[instance]["logic ports"]
@@ -190,11 +190,11 @@ class Circuit:
         for edge in self.graph.edges:
             src = edge[0]
             src_port = self.graph.edges[edge]["src_port"]
-            src_port_type = self._get_port_type(src, src_port)
+            src_port_type = self.get_port_type(src, src_port)
 
             dst = edge[1]
             dst_port = self.graph.edges[edge]["dst_port"]
-            dst_port_type = self._get_port_type(dst, dst_port)
+            dst_port_type = self.get_port_type(dst, dst_port)
 
             if not src_port_type == dst_port_type:
                 raise ValueError("Port types must match")
