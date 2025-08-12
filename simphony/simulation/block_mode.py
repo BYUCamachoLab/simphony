@@ -1,8 +1,17 @@
-from .simulation import Simulation, SimulationResult
+from .simulation import Simulation, SimulationResult, SimulationParameters
 from simphony.circuit import Circuit
 import networkx as nx
 from copy import deepcopy
+from flax import struct
 
+@struct.dataclass
+class BlockModeSimulationParameters(SimulationParameters):
+    ...
+    # def __init__(
+    #     self,
+    #     **kwargs,
+    # ):
+    #     super().__init__(**kwargs)
 
 class BlockModeSimulationResult(SimulationResult):
     def __init__(self, circuit):

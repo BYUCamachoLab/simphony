@@ -9,6 +9,10 @@ from scipy.signal import StateSpace, dlsim, lsim
 
 from simphony.utils import dict_to_matrix
 
+from scipy.constants import speed_of_light
+
+import jax.numpy as jnp
+
 
 class PoleResidueModel(ABC):
     def __init__(self) -> None:
@@ -77,7 +81,7 @@ class IIRModelBaseband(PoleResidueModel):
 
         self.freqs = c / (wvl_microns * 1e-6) - self.center_freq
 
-        self.sampling_freq = 1/sampling_period
+        self.sampling_freq = -1/sampling_period
         self.options.beta = np.abs(self.sampling_freq / (self.freqs[-1] - self.freqs[0]))
 
         self.poles = np.array([])
@@ -174,6 +178,35 @@ class IIRModelBaseband(PoleResidueModel):
             response[:, b, a] += r / (z - p)
 
         return response[:, b, a]
+    
+    def baseband_transfer_function(self, f):
+        H = jnp.zeros((f.shape[0], self.num_ports, self.num_ports), dtype=complex)
+        H = H + self.D
+        
+        z = jnp.exp(2j*jnp.pi*f/self.sampling_freq)
+        for r, p in zip(self.residues, self.poles):
+            H += r / (z-p)[:, None, None]
+        
+        return H
+    
+    def discrete_time_impulse_response(self, N = 1600):
+        num_ports = self.num_ports
+        h = np.zeros([N, num_ports, num_ports], dtype=complex)
+
+        poles = self.poles
+
+        for a in range(num_ports):
+            for b in range(num_ports):
+                residues = self.residues[:, a, b]
+                dt = np.abs(1 / self.sampling_freq)
+                t = np.linspace(0, dt*N, N)
+
+                h[0, a, b] = self.D[a, b]
+                for n in range(1, t.shape[0]):
+                    for p, r in zip(poles, residues):
+                        h[n, a, b] += r*(p**(n-1))
+
+        return h
 
     def plot(self, modes=None):
         if modes is None or modes == "all":
@@ -183,7 +216,7 @@ class IIRModelBaseband(PoleResidueModel):
                 for j in range(n):
                     ax[i, j].plot(np.abs(self.compute_response(i, j)) ** 2)
                     ax[i, j].plot(np.abs(self.S[:, i, j]) ** 2, "r--")
-
+                    ax[i, j].set_ylim([-1.0, 2.0])
             plt.show()
         else:
             n = len(modes)

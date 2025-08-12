@@ -1,23 +1,50 @@
-from .simulation import Simulation, SimulationResult
+from .simulation import Simulation, SimulationResult, SimulationParameters
 from simphony.circuit import Circuit, SampleModeComponent
-from simphony.libraries.analytic import advance
-from simphony.signals import sample_mode_optical_signal, sample_mode_electrical_signal, sample_mode_logic_signal
+# from simphony.libraries.analytic import advance
+from simphony.simulation.advance import _advance as advance
+from simphony.simulation.termination import _termination as termination
+# from simphony.simulation import SimulationParameters
+from simphony.signals import SampleModeOpticalSignal, SampleModeElectricalSignal, SampleModeLogicSignal, BlockModeOpticalSignal, BlockModeElectricalSignal, BlockModeLogicSignal
+
+from dataclasses import replace
 
 from copy import deepcopy
 import jax
 import jax.numpy as jnp
 from jax import lax
 from simphony.simulation import jax_tools
+from flax import struct
 
 from time import time
+
+from dataclasses import field
+
+# def replace(obj, **updates):
+#     fields = obj.__dict__.copy()
+#     fields.update(updates)
+#     return obj.__class__(**fields)
 
 class SampleModeSimulationResult(SimulationResult):
     def __init__(self):
         pass
 
+@struct.dataclass
+class SampleModeSimulationParameters(SimulationParameters):
+    # def __init__(
+    #     self,
+    optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([1.55e-6]))
+    electrical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([0]))
+    #     **kwargs,
+    # ):
+    #     super().__init__(**kwargs)
+    #     self.optical_baseband_wavelengths = optical_baseband_wavelengths
+    #     self.electrical_baseband_wavelengths = electrical_baseband_wavelengths
+
+
 class SampleModeSimulation(Simulation):
     def __init__(self, circuit: Circuit):
         self._validate_circuit(circuit)
+        circuit = self._insert_terminations(circuit)
         new_circuit = self._insert_advance_blocks(circuit) # Our method of delay compensation
         self.circuit = self._make_all_connections_bidirectional(new_circuit)
         self.reset_settings(use_default_settings=True)
@@ -36,7 +63,7 @@ class SampleModeSimulation(Simulation):
         
         self._predecessors_map, self._successors_map = self.edge_lookup_tables()
         
-            
+    
     def edge_lookup_tables(self):
         successors_map = {}
         predecessors_map = {}
@@ -61,18 +88,47 @@ class SampleModeSimulation(Simulation):
     def run(
         self, 
         settings: dict = None,
-        optical_wavelengths: jax.Array = jnp.asarray([1.55e-6]),
-        electrical_wavelengths: jax.Array = jnp.asarray([0]),
-        sampling_period: float = 1e-15,
-        num_time_steps: int = 10000,
+        tracked_ports: dict = None,
+        simulation_parameters: SampleModeSimulationParameters = SampleModeSimulationParameters(),
+        use_jit: bool = True
+        # optical_wavelengths: jax.Array = jnp.asarray([1.55e-6]),
+        # electrical_wavelengths: jax.Array = jnp.asarray([0]),
+        # sampling_period: float = 1e-15,
+        # num_time_steps: int = 10000,
     ) -> SampleModeSimulationResult:
+        N = simulation_parameters.num_time_steps
+        optical_wavelengths = simulation_parameters.optical_baseband_wavelengths
+        electrical_wavelengths = simulation_parameters.electrical_baseband_wavelengths
+
+        if tracked_ports is None:
+            tracked_ports = self.circuit.netlist['ports']
+        self.tracked_ports = tracked_ports
+        self.tracked_signals = {}
+        
+        for key, value in self.tracked_ports.items():
+            self.tracked_signals[key] = {}
+            # TODO: Determine port type
+            port_type = 'optical'
+            if port_type == 'optical':
+                A_t = jnp.zeros((N), dtype=complex)
+                self.tracked_signals[key]['input'] = BlockModeOpticalSignal(amplitude=A_t.reshape((N, 1, 1)), wavelength=optical_wavelengths)
+                self.tracked_signals[key]['output'] = BlockModeOpticalSignal(amplitude=A_t.reshape((N, 1, 1)), wavelength=optical_wavelengths)
+            elif port_type == 'electrical':
+                A_t = jnp.zeros((N), dtype=complex)
+                self.tracked_signals[key]['input'] = BlockModeElectricalSignal(amplitude=A_t.reshape((N, 1)), wavelength=electrical_wavelengths)
+                self.tracked_signals[key]['output'] = BlockModeElectricalSignal(amplitude=A_t.reshape((N, 1)), wavelength=electrical_wavelengths)
+            elif port_type == 'logic':
+                value = jnp.zeros((N), dtype=int)
+                self.tracked_signals[key]['input'] = BlockModeLogicSignal(value=value, wavelength=electrical_wavelengths)
+                self.tracked_signals[key]['output'] = BlockModeLogicSignal(value=value, wavelength=electrical_wavelengths)
+        
         self.reset_settings(use_default_settings=True)
         self.add_settings(settings)
         optical_wavelengths = jnp.sort(optical_wavelengths)
         electrical_wavelengths = jnp.sort(electrical_wavelengths)
         self._instantiate_components(self.settings)
         
-        use_jit = True
+        # use_jit = True
         if use_jit:
             self._scan = lax.scan
         else:
@@ -86,75 +142,83 @@ class SampleModeSimulation(Simulation):
         
         initial_states = {}
         for instance_name, instance in self.components.items():
-            instance._sample_mode_restart(
-                optical_wavelengths,
-                electrical_wavelengths,
-                sampling_period,
-                num_time_steps,
-                max_delay_compensation
+            initial_states[instance_name] = instance._sample_mode_initial_state(
+                max_delay_compensation,    
+                simulation_parameters,
             )
-            initial_states[instance_name] = instance._initial_state()
+            # initial_states[instance_name] = instance._initial_state()
 
 
         # current_inputs = self._initial_inputs()
         # current_outputs = deepcopy(current_inputs)
         current_outputs = self._initial_outputs(optical_wavelengths, electrical_wavelengths)
-        time_steps = jnp.arange(0, num_time_steps, 1, dtype=int)
+        time_steps = jnp.arange(0, N, 1, dtype=int)
         tic = time()
-        _, system_outputs = self._scan(self._system_step, (current_outputs, initial_states), length=num_time_steps)
+        _, system_outputs = self._scan(self._system_step, (current_outputs, initial_states, simulation_parameters), length=N)
         toc = time()
         elapsed_time = toc - tic
-        pass
+        return system_outputs
 
     def _system_step(self, carry, x):
         time_step = x
-        current_outputs = carry[0]
+        system_outputs = carry[0]
         states = carry[1]
-        
+        simulation_parameters = carry[2]
+        prng_key = simulation_parameters.prng_key
+        # y = self.tracked_signals
+
+        old_system_outputs = system_outputs
+        system_inputs = {}
         for instance_name, instance in self.components.items():
-            inputs = self._get_inputs(instance_name, current_outputs)
+            system_inputs[instance_name] = self._get_inputs(instance_name, system_outputs)
+
+        for instance_name, instance in self.components.items():
+            # Generate a unique key for each time_step/instance
+            prng_key, subkey = jax.random.split(prng_key)
+            simulation_parameters = replace(simulation_parameters,prng_key=subkey)
+
+            inputs = system_inputs[instance_name]
             input_state = states[instance_name]
-            outputs, output_state = instance._step(inputs, input_state)
+            instance_outputs, output_state = instance._sample_mode_step(inputs, input_state, simulation_parameters)
             states[instance_name] = output_state
-            # UPDATE current_outputs
+            system_outputs[instance_name] = system_outputs[instance_name] | instance_outputs
+
             
-        new_carry = (current_outputs,states)
-        y = 0
+        new_carry = (system_outputs, states, simulation_parameters)
+        y = system_outputs
         return new_carry, y
     
     def _get_inputs(self, instance_name, current_outputs):
         inputs = {}
         ports = self.components[instance_name].optical_ports + self.components[instance_name].electrical_ports + self.components[instance_name].logic_ports
+        # OPTICAL_NULL_SRC_NODE = 0
+        # OPTICAL_NULL_SRC_PORT = 0
         for port in ports:
             # Sample mode simulations do not support multiple inputs
             # Assumed list length is 1
             src = self._predecessors_map[(instance_name, port)]
-            if len(src) == 0:
-                continue
-            
             src_node, src_port = src[0]
-            
+            inputs[port] = current_outputs[src_node][src_port]
 
             pass
 
-        return None
+        return inputs
 
     def _initial_outputs(self, optical_wavelengths, electrical_wavelengths):
         initial_outputs = {}
         for inst_name, model in self.components.items():
             initial_outputs[inst_name] = {}
             for o_port in model.optical_ports:
-                field = jnp.zeros_like(optical_wavelengths)
+                amplitude = jnp.zeros((optical_wavelengths.shape[0], 1), dtype=complex)
                 wl = optical_wavelengths
-                polarization = None # Use default
-                initial_outputs[inst_name][o_port] = sample_mode_optical_signal(field, wl, polarization)
+                initial_outputs[inst_name][o_port] = SampleModeOpticalSignal(amplitude, wl)
             for e_port in model.electrical_ports:
-                voltage = jnp.zeros_like(optical_wavelengths)
+                voltage = jnp.zeros((electrical_wavelengths.shape[0]), dtype=complex)
                 wl = electrical_wavelengths
-                initial_outputs[inst_name][e_port] = sample_mode_electrical_signal(voltage, wl)
+                initial_outputs[inst_name][e_port] = SampleModeElectricalSignal(voltage, wl)
             for l_port in model.logic_ports:
                 value = 0
-                initial_outputs[inst_name][l_port] = sample_mode_electrical_signal(value)
+                initial_outputs[inst_name][l_port] = SampleModeLogicSignal(value)
 
         return initial_outputs
 
@@ -180,6 +244,71 @@ class SampleModeSimulation(Simulation):
             'ports': new_ports
         }
 
+        new_circuit = Circuit(new_netlist, new_models)
+        return new_circuit
+    
+    def _insert_terminations(self, circuit):
+        netlist = circuit.netlist
+        new_instances = deepcopy(netlist['instances'])
+        new_connections = deepcopy(netlist['connections'])
+        new_ports = deepcopy(netlist['ports'])
+
+        unterminated_ports = set()
+        for instance_name in netlist['instances'].keys():
+            component = circuit.graph.nodes[instance_name]['component']
+            model = circuit.models[component]
+            all_instance_ports = set(model.optical_ports + model.electrical_ports + model.logic_ports)
+            terminated_instance_ports = set()
+            
+            in_edges = circuit.graph.in_edges(instance_name, data=True)
+            out_edges = circuit.graph.out_edges(instance_name, data=True)
+            for _, dst, data in in_edges:
+                # _ = data['src_port']
+                dst_port = data['dst_port']
+                terminated_instance_ports.add(dst_port)
+            
+            for src, _, data in out_edges:
+                src_port = data['src_port']
+                # dst_port = data['dst_port']
+                terminated_instance_ports.add(src_port)
+                pass
+
+            unterminated_instance_ports = all_instance_ports - terminated_instance_ports
+            for unterminated_port_name in unterminated_instance_ports:
+                unterminated_ports.add((instance_name, unterminated_port_name))
+        
+        termination_numbers = {
+            'optical': 0,
+            'electrical': 0,
+            'logic': 0,
+        }
+        termination_components = set()
+        for instance_name, port_name in unterminated_ports:
+            termination_type = circuit.get_port_type(instance_name, port_name)
+            termination_component = f'_{termination_type}_termination'
+            termination_components.add((termination_component, termination_type))
+            termination_inst = f'{termination_component}{termination_numbers[termination_type]}'
+            new_instances[termination_inst] = {
+                'component': termination_component,
+                'settings': {},
+            }
+
+            ###
+            # TODO: ADD THE CONNECTION
+            ###
+            new_connections[termination_inst+",out"] = instance_name + ',' + port_name
+            termination_numbers[termination_type] += 1
+    
+        new_models = deepcopy(circuit.models)
+        for termination_component, termination_type in termination_components:
+            new_models[termination_component] = termination(termination_type=termination_type)
+        
+        new_netlist = {
+            'instances': new_instances,
+            'connections': new_connections,
+            'ports': new_ports
+        }
+        
         new_circuit = Circuit(new_netlist, new_models)
         return new_circuit
 

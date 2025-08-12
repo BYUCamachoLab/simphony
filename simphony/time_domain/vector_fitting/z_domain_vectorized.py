@@ -1,0 +1,248 @@
+import jax
+import jax.numpy as jnp
+from scipy.constants import speed_of_light
+
+from simphony.simulation.jax_tools import python_based_while_loop
+
+import matplotlib.pyplot as plt
+
+# @jax.jit
+def _initial_poles(model_order, frequency, sampling_frequency, gamma):
+    f = jnp.linspace(jnp.min(frequency), jnp.max(frequency), model_order)
+    poles = gamma*jnp.exp(1j*2*jnp.pi*f/sampling_frequency)
+    return poles
+
+# @jax.jit
+def _phi_matrices(frequency, sampling_frequency, poles):
+    z = jnp.exp(-1j * 2 * jnp.pi * frequency / sampling_frequency)
+    phi1 = 1 / (z[:, None] - poles[None, :])
+
+    unity_column = jnp.ones((len(z), 1))
+    
+    phi0 = jnp.hstack((unity_column, phi1))
+
+    return phi0, phi1
+
+def _lstsq_matrices(model_order, transfer_function, phi0, phi1):
+    """
+    Here we perform the modified gram schmidt orthonalization on the block matrix [A1, A2] described here:
+    https://arxiv.org/pdf/2208.06194
+    This allows us to implement the Fast Vector Fitting algorithm:
+    https://scholar.googleusercontent.com/scholar?q=cache:u4aY-dn1tF8J:scholar.google.com/+piero+triverio+vector+fitting&hl=en&as_sdt=0,45
+
+    """
+    num_ports = transfer_function.shape[1]
+    M = jnp.zeros(((num_ports**2) * model_order, model_order), dtype=complex)
+    B = jnp.zeros(((num_ports**2) * model_order), dtype=complex)
+    
+    A1 = phi0
+    Q1, R11 = jnp.linalg.qr(A1)
+    
+    iter = 0
+    for i in range(num_ports):
+        for j in range(num_ports):
+            D = jnp.diag(transfer_function[:, i, j])
+            A2 = -D @ phi1
+            
+            R12 = Q1.conj().T @ A2
+            Q2, R22 = jnp.linalg.qr(A2 - Q1 @ R12)
+
+            V = transfer_function[:, i, j]
+            M = M.at[(iter) * model_order : (iter + 1) * model_order, :].set(R22)
+            B = B.at[(iter) * model_order : (iter + 1) * model_order].set(Q2.conj().T @ V)
+            iter += 1
+
+    return M, B
+
+# def _lstsq_matrices(model_order, transfer_function, phi0, phi1):
+#     num_ports = transfer_function.shape[1]
+
+#     # Precompute QR of A1 since it’s constant
+#     Q1, R11 = jnp.linalg.qr(phi0)
+
+#     def process_pair(V):
+#         # Avoid jnp.diag by elementwise multiply
+#         A2 = -phi1 * V[:, None]
+#         R12 = Q1.conj().T @ A2
+#         Q2, R22 = jnp.linalg.qr(A2 - Q1 @ R12)
+#         b_row = Q2.conj().T @ V
+#         return R22, b_row
+
+#     # Flatten all (i,j) pairs into a single axis
+#     transfer_pairs = transfer_function.reshape(transfer_function.shape[0], -1)
+#     R_blocks, b_blocks = jax.vmap(process_pair, in_axes=1)(transfer_pairs)
+
+#     # Stack results
+#     M = R_blocks.reshape((-1, model_order))
+#     B = b_blocks.reshape((-1,))
+
+#     return M, B
+
+def _weight_error(frequency, sampling_frequency, poles_prev, weight_coeffs):
+    z = jnp.exp(-1j * 2 * jnp.pi * frequency/sampling_frequency)
+    terms = weight_coeffs / (z[:, None] - poles_prev)
+    weights = 1.0 + jnp.sum(terms, axis=1)
+    return jnp.sqrt(1/weights.shape[0] * jnp.sum(jnp.abs(weights - 1)**2))
+
+# @jax.jit
+def _fit_to_poles(transfer_function, frequency, sampling_frequency, poles):
+    model_order = poles.shape[0]
+    num_ports = transfer_function.shape[1]
+    residues = jnp.zeros((model_order, num_ports, num_ports), dtype=complex)
+    feedthrough = jnp.zeros((num_ports, num_ports), dtype=complex)
+    for i in range(num_ports):
+        for j in range(num_ports):
+            phi0, _ = _phi_matrices(frequency, sampling_frequency, poles)
+            # Q,R = np.linalg.qr(phi0,mode='reduced')
+            # solutions = np.linalg.pinv(R)@Q.conj().T@self.S[:, i, j]
+            solutions, *_ = jnp.linalg.lstsq(phi0, transfer_function[:, i, j], rcond=None)
+            feedthrough = feedthrough.at[i, j].set(jnp.array(solutions[0]))
+            residues = residues.at[:, i, j].set(solutions[1:])
+    
+    return residues, feedthrough
+
+# @jax.jit
+def _pole_residue_response(frequency, center_frequency, sampling_frequency, poles, residues, feedthrough):
+    z = jnp.exp(-1j * 2 * jnp.pi * (frequency-center_frequency)/sampling_frequency)
+    frequency_response = feedthrough[None, :, :] + jnp.sum(
+    residues[None, :, :, :] / (z[:, None, None, None] - poles[None, :, None, None]),
+    axis=1
+)
+    return frequency_response
+
+# @jax.jit
+def _worst_case_error(transfer_function, frequency, center_frequency, sampling_frequency, poles, residues, feedthrough):
+    fit = _pole_residue_response(frequency, center_frequency, sampling_frequency, poles, residues, feedthrough)
+    error = jnp.array([0]) 
+    return error
+
+def vector_fitting_z(
+    model_order,  
+    transfer_function, 
+    frequency,
+    center_frequency,
+    sampling_frequency,
+    max_iterations=10,
+    gamma=0.95,
+    weight_threshold=0.0,
+):
+    baseband_frequency = frequency - center_frequency
+
+    # Initialize poles outside the loop
+    initial_poles = _initial_poles(model_order, baseband_frequency, sampling_frequency, gamma)
+
+    def poles_not_converged(state):
+        _, weight_error, iteration = state
+
+        return (iteration < max_iterations) & (weight_error > weight_threshold)
+
+    def relocate_poles(state):
+        previous_poles, _, iteration = state
+        phi0, phi1 = _phi_matrices(baseband_frequency, sampling_frequency, previous_poles)
+        M, B = _lstsq_matrices(model_order, transfer_function, phi0, phi1)
+        weight_coeffs, *_ = jnp.linalg.lstsq(M, B)
+
+        weight_error = _weight_error(baseband_frequency, sampling_frequency, previous_poles, weight_coeffs)
+
+        A = jnp.diag(previous_poles)
+        current_poles, _ = jnp.linalg.eig(A - jnp.outer(jnp.ones(model_order), weight_coeffs))
+        mask = jnp.abs(current_poles) > 1
+        # current_poles = current_poles.at[mask].set(1 / current_poles[mask])
+        current_poles = jnp.where(mask, 1 / current_poles, current_poles)
+
+        return (current_poles, weight_error, iteration + 1)
+
+    initial_state = (initial_poles, jnp.inf, 0)
+    final_poles, *_ = jax.lax.while_loop(poles_not_converged, relocate_poles, initial_state)
+
+    residues, feedthrough = _fit_to_poles(transfer_function, baseband_frequency, sampling_frequency, final_poles)
+    error = _worst_case_error(transfer_function, frequency, center_frequency, sampling_frequency, final_poles, residues, feedthrough)
+
+    return final_poles, residues, feedthrough, error
+
+# @jax.jit
+# def vector_fitting_z(
+#     model_order,  
+#     transfer_function, 
+#     frequency,
+#     center_frequency,
+#     sampling_frequency,
+#     max_iterations = 15,
+#     gamma = 0.95,
+# ):
+#     baseband_frequency = frequency - center_frequency
+#     poles = _initial_poles(model_order, baseband_frequency, sampling_frequency, gamma)
+#     for _ in range(max_iterations):
+#         phi0, phi1 = _phi_matrices(poles, baseband_frequency)
+#         M, B = _lstsq_matrices(model_order, transfer_function, phi0, phi1)
+#         weights, *_ = jnp.linalg.lstsq(M, B)
+#         # weights_row = weights.reshape((len(weights), 1))
+#         # unity_column = jnp.ones((model_order, 1))
+
+#         A = jnp.diag(poles)
+#         poles, _ = jnp.linalg.eig(A - jnp.outer(jnp.ones(model_order), weights))
+#         mask = jnp.abs(poles) > 1
+#         poles = poles.at[mask].set(1 / (poles[mask]))
+
+#         error = compute_error()
+
+#         if error < tolerable_error:
+#             break
+
+
+
+def main():
+    from simphony.libraries import ideal
+    from simphony.utils import dict_to_matrix
+    import sax
+    from time import time
+
+    netlist = {
+        "instances": {
+            "wg": "waveguide",
+            "hr": "half_ring",
+        },
+        "connections": {
+            "hr,o2": "wg,o0",
+            "hr,o3": "wg,o1",
+        },
+        "ports": {
+            "o0": "hr,o0",
+            "o1": "hr,o1",
+        }
+    }
+
+    circuit, info = sax.circuit(
+        netlist=netlist,
+        models={
+            "waveguide": ideal.waveguide,
+            "half_ring": ideal.coupler,
+        }
+    )
+
+    f_min = speed_of_light / 1.6e-6
+    f_max = speed_of_light / 1.5e-6
+    f_center = 0.5*(f_min+f_max)
+    frequency = jnp.linspace(f_min, f_max, 1000)
+    s_params = dict_to_matrix(circuit(wl=1e6*speed_of_light/frequency, wg={"length": 77.0, "loss": 100}))
+
+    sampling_frequency = 1e14
+    model_order = 50
+
+    tic = time()
+    poles, residues, feedthrough, error = vector_fitting_z(model_order, s_params, frequency, f_center, sampling_frequency)
+    toc = time()
+    elapsed_time = toc - tic
+    print(elapsed_time)
+    tic = time()
+    poles, residues, feedthrough, error = vector_fitting_z(model_order+1, s_params, frequency, f_center, sampling_frequency)
+    toc = time()
+    elapsed_time = toc - tic
+    print(elapsed_time)
+    H =_pole_residue_response(frequency, f_center, sampling_frequency, poles, residues, feedthrough)
+    plt.plot(jnp.abs(H[:, 0, 1])**2)
+    plt.show()
+    pass
+
+if __name__ == "__main__":
+    main()

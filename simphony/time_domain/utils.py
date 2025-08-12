@@ -2,8 +2,8 @@ import jax.numpy as jnp
 from jax.typing import ArrayLike
 
 
-def gaussian_pulse(t, t0, std, a=1.0) -> ArrayLike:
-    return a * jnp.exp(-((t - t0) ** 2) / std**2)
+def gaussian_pulse(t, t0, sigma, a=1.0) -> ArrayLike:
+    return a * jnp.exp(-((t - t0) ** 2) / sigma**2)
 
 
 def smooth_rectangular_pulse(t, t_start, t_end, width=None):

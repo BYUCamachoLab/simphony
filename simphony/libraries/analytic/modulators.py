@@ -8,7 +8,7 @@ import jax.numpy as jnp
 from typing import Callable
 import sax
 
-from simphony.signals import steady_state_optical_signal, steady_state_electrical_signal, complete_steady_state_inputs
+from simphony.signals import SteadyStateOpticalSignal
 
 class MachZehnderModulator(
     SteadyStateComponent, 
@@ -68,13 +68,13 @@ class OpticalModulator(
             ("o1", "o1"): 0,
         }
 
-    def initial_state(self):
+    def sample_mode_initial_state(self, simulation_parameters):
         return jnp.array([0])
-    def step(self, inputs: dict,  state: jax.Array):
+    
+    def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_parameters):
         # TODO: Complete this to acount for delay and phase shift
         return inputs, state
         
-
     # @staticmethod
     # @jax.jit
     def steady_state(
@@ -85,7 +85,7 @@ class OpticalModulator(
         # TODO: Change complete_steady_state_inputs to be a method on the SteadyStateComponent
         # Base Class and have it give default values to ports with unspecified inputs
         # For now, I'll just use this work around.
-        complete_steady_state_inputs(inputs)
+        # complete_steady_state_inputs(inputs)
         # self.s_parameters(inputs, jnp.linspace(1.5e-6, 1.6e-6, 1000))
         optical_wls = []
         if 'o0' in inputs:
@@ -116,8 +116,8 @@ class OpticalModulator(
             o1_field_out.append(o0_in*jnp.sqrt(fraction_of_power_remaining)*jnp.exp(1j*phase_shift))
 
         outputs = {
-            "o0": steady_state_optical_signal(field=o0_field_out, wl=optical_wls),
-            "o1": steady_state_optical_signal(field=o1_field_out, wl=optical_wls),
+            "o0": SteadyStateOpticalSignal(field=o0_field_out, wl=optical_wls),
+            "o1": SteadyStateOpticalSignal(field=o1_field_out, wl=optical_wls),
             # "e0": electrical_signal(),
         }
         return outputs

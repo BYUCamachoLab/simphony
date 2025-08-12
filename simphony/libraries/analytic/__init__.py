@@ -25,12 +25,6 @@ from simphony.libraries.analytic.modulators import (
 from simphony.libraries.analytic.s_parameters import (
     optical_s_parameter,
 )
-from simphony.libraries.analytic.sources import (
-    PRNG,
-    CWLaser,
-    OpticalSource,
-    VoltageSource,
-)
 from simphony.libraries.analytic.waveguides import (
     Fiber,
     GRINFiber,
@@ -46,6 +40,12 @@ from simphony.libraries.analytic.special import (
     LogicAdvance,
     OpticalAdvance,
     advance,
+)
+from simphony.libraries.analytic.sources import (
+    PRNG,
+    CWLaser,
+    OpticalSource,
+    VoltageSource,
 )
 # from simphony.libraries.analytic.photonic_integrated_circuits import (
 

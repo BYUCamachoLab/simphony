@@ -14,3 +14,9 @@ def python_based_scan(f, init, xs=None, length=None):
     carry, y = f(carry, x)
     ys.append(y)
   return carry, jnp.stack(ys)
+
+def python_based_while_loop(cond_fun, body_fun, init_val):
+  val = init_val
+  while cond_fun(val):
+    val = body_fun(val)
+  return val

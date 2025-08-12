@@ -7,14 +7,17 @@ from __future__ import annotations
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 from sax.saxtypes import Model
+from typing import Annotated
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from simphony.circuit import Circuit
+# from typing import TYPE_CHECKING
+# if TYPE_CHECKING:
+#     from simphony.circuit import Circuit
 
 from copy import deepcopy
+import jax 
 
-
+from flax import struct
+from dataclasses import field
 
 class SimDevice:
     """Base class for all source or measure devices."""
@@ -23,6 +26,25 @@ class SimDevice:
     def __init__(self, ports: list) -> None:
         self.ports = ports
 
+@struct.dataclass
+class SimulationParameters:
+    # def __init__(
+    #     self,
+    sampling_period:float=1e-15
+    # sampling_rate:float=1e15,
+    num_time_steps:int =int(1e4)
+    prng_key: Annotated[jax.Array, "shape=(2,), dtype=jax.uint32"]=field(default_factory=lambda: jax.random.PRNGKey(0))
+    num_optical_modes:int = int(1) 
+    # prng_key: Annotated[jax.Array, "shape=(2,), dtype=jax.uint32"]=jax.random.key(0)
+    # ):
+    #     super().__setattr__('_locked', False)
+    #     self.sampling_period = sampling_period
+    #     self.sampling_rate = sampling_rate
+    #     self.num_time_steps = num_time_steps
+    #     self.prng_key=prng_key
+    #     if prng_key is None:
+    #         self.prng_key = jax.random.key(0)
+    #     super().__setattr__('_locked', True)
 
 class Simulation:
     """Base class for simphony simulations.

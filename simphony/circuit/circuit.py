@@ -43,6 +43,8 @@ class Circuit:
         # else:
         #     add_settings_to_netlist(netlist, None)
         self.netlist = deepcopy(netlist)
+        if not 'ports' in self.netlist:
+            self.netlist['ports'] = {}
         add_settings_to_netlist(self.netlist, default_settings)
         self.default_settings = get_settings_from_netlist(self.netlist) 
         self.models = models
