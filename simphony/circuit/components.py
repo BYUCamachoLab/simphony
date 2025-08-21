@@ -49,6 +49,75 @@ import jax
 import jax.numpy as jnp
 
 from simphony.utils import dict_to_matrix
+from jax.scipy.special import i0
+from scipy.special import lambertw
+
+from scipy.signal.windows import kaiser_bessel_derived
+
+def line_of_best_fit_m(x, y):
+    x_mean = jnp.mean(x[:, None, None], axis=0)
+    y_mean = jnp.mean(y, axis=0)
+    cov = jnp.mean((x[:, None, None]-x_mean)*(y - y_mean), axis=0)
+    var = jnp.mean((x[:, None, None]-x_mean)**2, axis=0)
+    slope = cov/var
+    intercept = y_mean - slope * x_mean
+    return slope, intercept
+
+def _extension_up(m, b, x, y_initial, y_final):
+    k = m*(y_final - y_initial)
+    
+    x_ext = x - x[0]
+    y_ext = y_final + (y_initial - y_final)*jnp.exp(-k*x)
+    return y_ext
+
+def extend_down(m, b, y_f=0.0, N=500):
+    pass
+
+def extend(x, y, x_min, x_max, alpha=1e11):
+    dy = y[-1] - y[-2]
+    dx = x[-1] - x[-2]
+    m = dy/dx
+    b = y[-1] - m*x[-1]
+    
+    for i in range(y.shape[1]):
+        for j in range(y.shape[2]):
+            if m[i, j] > 0:
+                y_initial = y[-1, i, j]
+                p = 1 - jnp.exp(-alpha*m[i, j])
+                y_final = y_initial + p*(1-y_initial)
+                x_extension = jnp.arange(x[-1]+dx, x_max, dx)
+                y_extension = _extension_up(m[i, j], b[i, j], x_extension, y_initial, y_final)
+
+                x_extended = jnp.concatenate([x, x_extension])
+                y_extended = jnp.concatenate([y[:, i, j], y_extension])
+                # plt.plot(x_extended, y_extended)
+                # plt.plot(x, y[:, i, j])
+                plt.plot(x_extension, y_extension)
+                # plt.xlim([199e12, 201e12])
+                plt.show()
+                pass
+            elif m[i, j] < 0:
+                y_ext = extend_down(m[i, j], b[i, j])
+            else:
+                pass
+                # y_ext = y[-1, i, j]*jnp.ones(N)
+
+
+
+
+def extend_s_params(s_params, f, f_extended, alpha=1e11):
+    magnitude = jnp.abs(s_params)
+    phase = jnp.unwrap(jnp.angle(s_params), axis=0)
+    phase_slope, phase_intercept = line_of_best_fit_m(f, phase)
+    avg_phase = phase_slope[None, :, :]*f[:, None, None] + phase_intercept[None, :, :]
+    normalized_phase = phase - avg_phase
+    bandwidth = 0.5*jnp.abs(f[-1] - f[0])
+    magnitude_extended = extend(f, magnitude, f_extended[0], f_extended[-1], bandwidth/10)
+    normalized_phase_extended = extend(f, phase)
+    pass
+
+    
+    pass
 
 def tukey_freq_window(freqs, fc, trans_width, alpha=None):
     """
@@ -417,7 +486,12 @@ def _optical_s_parameter(sax_model: SaxModel):
             f_b = f_b_padded[start:start + N]
             f = f_b + f_c
             s_params = dict_to_matrix(self.s_parameters(wl=speed_of_light/f))
+            s_params_extended = extend_s_params(s_params, f, f_padded)
+            
             phase = jnp.unwrap(jnp.angle(s_params), axis=0)
+
+            plt.plot(f, s_params[:, 0, 1])
+            plt.show()
 
             ###
             # Find the average phase velocity
@@ -501,93 +575,55 @@ def _optical_s_parameter(sax_model: SaxModel):
             self, 
             simulation_parameters,
         ):
-            self.state_space_models = []
-
+            N = 1000
             f_min = speed_of_light / self.spectral_range[1]
             f_max = speed_of_light / self.spectral_range[0]
-            center_freq = 0.5*(f_max + f_min)
-            center_wl = speed_of_light / center_freq
-            beta = 100.0
-            N = 1000
-            fs = beta*(f_max-f_min)
-            baseband_frequency = jnp.linspace(f_min-center_freq, f_max-center_freq, N)
-            baseband_frequency_padded = jnp.linspace(-0.5*fs, 0.5*fs, int(beta*N))
-            # wvl = jnp.linspace(self.spectral_range[0], self.spectral_range[1], 1000)
-            s_params = dict_to_matrix(self.s_parameters(wl=speed_of_light/(baseband_frequency + center_freq)))
-            s_params_padded = jnp.zeros((int(beta*N), s_params.shape[1], s_params.shape[2]), dtype=s_params.dtype)
+            
+            # f = jnp.linspace(f_min, f_max, N)
+            f_c = 0.5*(f_max + f_min)
+            f_s = 1 / simulation_parameters.sampling_period
+            beta = f_s / (f_max - f_min)
+            f_b_padded = jnp.linspace(-0.5*f_s, 0.5*f_s, int(beta*N))
+            f_padded = f_b_padded + f_c
+            start = int(beta * N - N) // 2
+            f_b = f_b_padded[start:start + N]
+            f = f_b + f_c
+            s_params = dict_to_matrix(self.s_parameters(wl=speed_of_light/f))
+            
+            s_params_padded = jnp.zeros((f_padded.shape[0], s_params.shape[1], s_params.shape[2]), dtype=complex)
+            
             start = int(beta * N - N) // 2
             s_params_padded = s_params_padded.at[start:start + N].set(s_params)
-
-            # baseband_frequency = speed_of_light/wvl - center_freq
             bandwidth = 0.5*(f_max - f_min)
-            W = tukey_freq_window(baseband_frequency, bandwidth, 1e12)
-            
-            W = jnp.tile(W[:, None, None], (1, 2, 2))
-            plt.plot(baseband_frequency_padded, jnp.abs((s_params_padded)[:, 0, 1])**2)
-            plt.plot(baseband_frequency, jnp.abs((s_params)[:, 0, 1])**2)
+            # W = tukey_freq_window(f_padded - f_c, bandwidth, 50e12)
+            # W = kbd_freq_window(f_padded - f_c, 0.5*bandwidth, 1e12)
+            W = kaiser_bessel_derived(len(s_params), 31.83)
+            W = jnp.tile(W[:, None, None], (1, s_params.shape[1], s_params.shape[2]))
+            plt.plot(f_padded, s_params_padded[:, 0 , 1])
+            plt.plot(f, W[:, 0 , 1])
+            plt.xlim([1.7e14, 2.2e14])
             plt.show()
-            pass
-            # N = s_params.shape[0]
-            # beta = 1
+            # s_params_padded = W
             
-
-            plt.plot(jnp.abs(s_params_padded[:, 0, 1])**2)
+            # s_params_padded *= jnp.mean(jnp.abs(s_params), axis=0)
+            zero_region_step = 1000
+            s_params_reduced = jnp.concatenate((s_params_padded[0:start:zero_region_step], W*s_params_padded[start:start + N], s_params_padded[start + N::zero_region_step]), axis=0)
+            f_reduced = jnp.concatenate((f_padded[0:start:zero_region_step], f_padded[start:start + N], f_padded[start + N::zero_region_step]), axis=0)
+            # zero_region = 20
+            # s_params_reduced = jnp.concatenate((s_params_padded[:zero_region] , s_params_padded[start:start + N], s_params_padded[-zero_region:]), axis=0)
+            # f_reduced = jnp.concatenate((f_padded[:zero_region] , f_padded[start:start + N], f_padded[-zero_region:]), axis=0)
+            poles, residues, feedthrough, _ = vector_fitting_z_optimize_order(2, 80, s_params_reduced, f_reduced, f_c, f_s)
+            A, B, C, D = state_space_z(poles, residues, feedthrough)
+            self.state_space_model = (A, B, C, D)
+            
+            H = pole_residue_response(f, f_c, f_s, poles, residues, feedthrough)
+            H_full = pole_residue_response(jnp.linspace(-f_s/2, f_s/2, 1000)+f_c, f_c, f_s, poles, residues, feedthrough)
+            print(f"NUMBER OF POLES: {len(poles)}")
+            plt.plot(f, jnp.abs(H[:, 0, 1])**2)
             plt.show()
-
-            zero_region = 10
-            s_params_reduced = jnp.concatenate((s_params_padded[:zero_region] , s_params_padded[start:start + N], s_params_padded[-zero_region:]), axis=0)
-            baseband_frequency_reduced = jnp.concatenate((baseband_frequency_padded[:zero_region] , baseband_frequency_padded[start:start + N], baseband_frequency_padded[-zero_region:]), axis=0)
-            
-            # s_params_reduced = s_params_padded[start:start + N]
-            # baseband_frequency_reduced = baseband_frequency_padded[start:start + N]
-
-
-
-
-            plt.plot(baseband_frequency_reduced, s_params_reduced[:, 0, 1])
+            plt.plot(jnp.linspace(-f_s/2, f_s/2, 1000), jnp.abs(H_full[:, 0, 1])**2)
             plt.show()
-
-
-            z_domain_model = IIRModelBaseband(
-                    wvl_microns=jnp.flip(1e6*speed_of_light/(baseband_frequency_reduced+center_freq)),
-                    center_wvl=1e6*center_wl, 
-                    s_params=jnp.flip(s_params_reduced), 
-                    sampling_period=1/fs, 
-                    order=30
-                )
-            
-            # baseband_frequency = jnp.linspace(-0.5*fs, 0.5*fs, 1500)
-            H = z_domain_model.baseband_transfer_function(baseband_frequency_padded)
-            plt.plot(baseband_frequency_padded, jnp.abs(H[:, 0, 1])**2)
-            plt.ylim([0.0, 2.0])
-            plt.show()
-            
-            fs = 1/simulation_parameters.sampling_period
-            baseband_frequency = jnp.linspace(-0.5*fs, 0.5*fs, 1500)
-            H = z_domain_model.baseband_transfer_function(baseband_frequency)
-            
-            
-            plt.plot(baseband_frequency, jnp.abs(H[:, 0, 1])**2)
-            plt.show()
-            
-            # W = tukey_freq_window(baseband_frequency, f_max - center_freq, 1e14)
-            # W = jnp.tile(W[:, None, None], (1, 2, 2))
-            # plt.plot(baseband_frequency, jnp.abs((W*H)[:, 0, 1])**2)
-            # plt.show()
-            # z_domain_model = IIRModelBaseband(
-            #         wvl_microns=1e6*(speed_of_light / baseband_frequency + center_wl),
-            #         center_wvl=1e6*center_wl, 
-            #         s_params=W*H, 
-            #         sampling_period=simulation_parameters.sampling_period, 
-            #         order=40
-            #     )
-
-            
-            # z_domain_model.plot()
-            # plt.show()
-            self.state_space_model = z_domain_model.generate_sys_discrete()
-
-            return jnp.zeros((self.state_space_model.A.shape[0],), dtype=complex)
+            return jnp.zeros((A.shape[0],), dtype=complex)
         
         def sample_mode_step_ss_windowed(
             self,
@@ -596,10 +632,7 @@ def _optical_s_parameter(sax_model: SaxModel):
             simulation_parameters,
         ):
             x = state
-            A = self.state_space_model.A
-            B = self.state_space_model.B
-            C = self.state_space_model.C
-            D = self.state_space_model.D
+            A, B, C, D = self.state_space_model
             
             u = jnp.zeros((len(self.optical_ports),),dtype=complex)
             TE_MODE = 0
@@ -621,7 +654,133 @@ def _optical_s_parameter(sax_model: SaxModel):
                     wavelength = jnp.array([inputs[port].wavelength[0]])
                 )
 
-            return outputs, new_x
+            return outputs, new_x 
+
+        # def sample_mode_initial_state_ss_windowed(
+        #     self, 
+        #     simulation_parameters,
+        # ):
+        #     self.state_space_models = []
+
+        #     f_min = speed_of_light / self.spectral_range[1]
+        #     f_max = speed_of_light / self.spectral_range[0]
+        #     center_freq = 0.5*(f_max + f_min)
+        #     center_wl = speed_of_light / center_freq
+        #     beta = 100.0
+        #     N = 1000
+        #     fs = beta*(f_max-f_min)
+        #     baseband_frequency = jnp.linspace(f_min-center_freq, f_max-center_freq, N)
+        #     baseband_frequency_padded = jnp.linspace(-0.5*fs, 0.5*fs, int(beta*N))
+        #     # wvl = jnp.linspace(self.spectral_range[0], self.spectral_range[1], 1000)
+        #     s_params = dict_to_matrix(self.s_parameters(wl=speed_of_light/(baseband_frequency + center_freq)))
+        #     s_params_padded = jnp.zeros((int(beta*N), s_params.shape[1], s_params.shape[2]), dtype=s_params.dtype)
+        #     start = int(beta * N - N) // 2
+        #     s_params_padded = s_params_padded.at[start:start + N].set(s_params)
+
+        #     # baseband_frequency = speed_of_light/wvl - center_freq
+        #     bandwidth = 0.5*(f_max - f_min)
+        #     W = tukey_freq_window(baseband_frequency, bandwidth, 1e12)
+            
+        #     W = jnp.tile(W[:, None, None], (1, 2, 2))
+        #     plt.plot(baseband_frequency_padded, jnp.abs((s_params_padded)[:, 0, 1])**2)
+        #     plt.plot(baseband_frequency, jnp.abs((s_params)[:, 0, 1])**2)
+        #     plt.show()
+        #     pass
+        #     # N = s_params.shape[0]
+        #     # beta = 1
+            
+
+        #     plt.plot(jnp.abs(s_params_padded[:, 0, 1])**2)
+        #     plt.show()
+
+        #     zero_region = 10
+        #     s_params_reduced = jnp.concatenate((s_params_padded[:zero_region] , s_params_padded[start:start + N], s_params_padded[-zero_region:]), axis=0)
+        #     baseband_frequency_reduced = jnp.concatenate((baseband_frequency_padded[:zero_region] , baseband_frequency_padded[start:start + N], baseband_frequency_padded[-zero_region:]), axis=0)
+            
+        #     # s_params_reduced = s_params_padded[start:start + N]
+        #     # baseband_frequency_reduced = baseband_frequency_padded[start:start + N]
+
+
+
+
+        #     plt.plot(baseband_frequency_reduced, s_params_reduced[:, 0, 1])
+        #     plt.show()
+
+
+        #     z_domain_model = IIRModelBaseband(
+        #             wvl_microns=jnp.flip(1e6*speed_of_light/(baseband_frequency_reduced+center_freq)),
+        #             center_wvl=1e6*center_wl, 
+        #             s_params=jnp.flip(s_params_reduced), 
+        #             sampling_period=1/fs, 
+        #             order=30
+        #         )
+            
+        #     # baseband_frequency = jnp.linspace(-0.5*fs, 0.5*fs, 1500)
+        #     H = z_domain_model.baseband_transfer_function(baseband_frequency_padded)
+        #     plt.plot(baseband_frequency_padded, jnp.abs(H[:, 0, 1])**2)
+        #     plt.ylim([0.0, 2.0])
+        #     plt.show()
+            
+        #     fs = 1/simulation_parameters.sampling_period
+        #     baseband_frequency = jnp.linspace(-0.5*fs, 0.5*fs, 1500)
+        #     H = z_domain_model.baseband_transfer_function(baseband_frequency)
+            
+            
+        #     plt.plot(baseband_frequency, jnp.abs(H[:, 0, 1])**2)
+        #     plt.show()
+            
+        #     # W = tukey_freq_window(baseband_frequency, f_max - center_freq, 1e14)
+        #     # W = jnp.tile(W[:, None, None], (1, 2, 2))
+        #     # plt.plot(baseband_frequency, jnp.abs((W*H)[:, 0, 1])**2)
+        #     # plt.show()
+        #     # z_domain_model = IIRModelBaseband(
+        #     #         wvl_microns=1e6*(speed_of_light / baseband_frequency + center_wl),
+        #     #         center_wvl=1e6*center_wl, 
+        #     #         s_params=W*H, 
+        #     #         sampling_period=simulation_parameters.sampling_period, 
+        #     #         order=40
+        #     #     )
+
+            
+        #     # z_domain_model.plot()
+        #     # plt.show()
+        #     self.state_space_model = z_domain_model.generate_sys_discrete()
+
+        #     return jnp.zeros((self.state_space_model.A.shape[0],), dtype=complex)
+        
+        # def sample_mode_step_ss_windowed(
+        #     self,
+        #     inputs: dict,
+        #     state: jax.Array,
+        #     simulation_parameters,
+        # ):
+        #     x = state
+        #     A = self.state_space_model.A
+        #     B = self.state_space_model.B
+        #     C = self.state_space_model.C
+        #     D = self.state_space_model.D
+            
+        #     u = jnp.zeros((len(self.optical_ports),),dtype=complex)
+        #     TE_MODE = 0
+        #     for port, signal in inputs.items():
+        #         port_idx = self.port_order[port]
+        #         wavelength = inputs[port].wavelength[0]
+        #         u = u.at[port_idx].set(signal.amplitude[0, TE_MODE])
+            
+        #     new_x = A@x + B@u
+        #     y = C@x + D@u
+
+        #     outputs = {}
+        #     for port in self.optical_ports:
+        #         A_t = y[self.port_order[port]]
+        #         outputs[port] = SampleModeOpticalSignal(
+        #             ### TODO: FIX THIS FOR MULTIPLE FREQUENCIES
+        #             ### TODO: FIX THIS FOR MULTIPLE POLARIZATIONS/MODES
+        #             amplitude = A_t.reshape((1, 1)),
+        #             wavelength = jnp.array([inputs[port].wavelength[0]])
+        #         )
+
+        #     return outputs, new_x
             
 
         # def sample_mode_initial_state_fir(
