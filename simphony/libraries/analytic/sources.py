@@ -56,11 +56,67 @@ def cubic_interp_1d(x: jnp.ndarray, new_len: int) -> jnp.ndarray:
     return catmull_rom(p0, p1, p2, p3, t)
 
 
+class OpticalCombSource(SampleModeComponent, BlockModeComponent):
+    optical_ports = ["o0"]
+    def __init__(
+        self,
+        wavelength=jnp.array([1.53e-6, 1.54e-6, 1.55e-6, 1.56e-6, 1.57e-7]),
+        linewidth=0.0,
+    ):
+        self.wavelength = wavelength
+        self.linewidth = linewidth
+
+    def block_mode_response (
+        self,
+        inputs: dict={},
+        simulation_parameters: SimulationParameters = SimulationParameters(),
+    ):
+        N = simulation_parameters.num_time_steps
+        num_wls = self.wavelength.shape[0]
+        sampling_period = simulation_parameters.sampling_period
+        t = jnp.arange(N) * sampling_period
+        linewidth = self.linewidth
+        
+        key = simulation_parameters.prng_key
+        delta_phi_std = jnp.sqrt(2*jnp.pi*self.linewidth*simulation_parameters.sampling_period)
+        dphi = jax.random.normal(key, (simulation_parameters.num_time_steps, num_wls))*delta_phi_std
+        phi = jnp.cumsum(dphi, axis=0)
+
+        # Compute complex envelope
+        A_t = jnp.exp(1j*phi)[:, :, None]
+
+        outputs = {
+            "o0": BlockModeOpticalSignal(
+                amplitude=A_t,
+                wavelength=self.wavelength
+            ),
+        }
+        
+        return outputs
+    
+    def sample_mode_initial_state(self, simulation_parameters):
+        time_step = 0
+        output_signal = self.block_mode_response(simulation_parameters=simulation_parameters)['o0']
+        return time_step, output_signal
+
+    def sample_mode_step(self, inputs, state, simulation_parameters):
+        time_step, full_output_signal = state
+
+        outputs = {
+            "o0": SampleModeOpticalSignal(
+                amplitude=full_output_signal.amplitude[time_step],
+                wavelength=full_output_signal.wavelength
+            ),
+        }
+
+        return outputs, (time_step+1, full_output_signal)
+
+
 class CWLaser(SampleModeComponent, BlockModeComponent):
     """
     The CW Laser is meant to be used in time-domain simulations.
     """
-    delay_compensation = 0
+    # delay_compensation = 0
     optical_ports = ["o0"]
     def __init__(
         self,
@@ -109,6 +165,7 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
                 wavelength=jnp.array([self.wavelength])
             ),
         }
+
         return outputs, phi
     
     def gaussian_phase_noise(self, simulation_parameters):
@@ -147,21 +204,7 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
         t = jnp.arange(N) * sampling_period
         linewidth = self.linewidth
         
-        # Generate Noisy Phase
-        
         phi = self.phase_noise(simulation_parameters)
-        # if self.lineshape.lower() == "lorentzian":
-        #     delta_phi_std = jnp.sqrt(2*jnp.pi*linewidth*sampling_period)
-        #     dphi = jax.random.normal(simulation_parameters.key, (N,))*delta_phi_std
-        #     phi = jnp.cumsum(dphi)
-        # elif self.lineshape.lower() == "gaussian":
-        #     # gaussian_noise = jax.random.normal(key, shape=(N,))
-        #     gaussian_noise = jax.random.normal(simulation_parameters.key, shape=(N,))
-        #     f_instantaneous = 2 * gaussian_filter1d_jax(gaussian_noise, sigma=250)
-        #     f_instantaneous *= (self.linewidth/2.355)/jnp.std(f_instantaneous)
-        #     phi = 2*np.pi*np.cumsum(f_instantaneous) * (t[1] - t[0])
-        # else:
-        #     raise ValueError(f"Unrecognized name for lineshape parameter: {self.lineshape}")
 
         # Compute complex envelope
         A_t = jnp.exp(1j*phi)
@@ -172,6 +215,7 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
                 wavelength=self.wavelength
             ),
         }
+
         return outputs
     
     def sample_mode_initial_state_gaussian(self, simulation_parameters):
@@ -186,23 +230,6 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
     def sample_mode_initial_state_lorentzian(self, simulation_parameters):
         phi_prev = 0
         return phi_prev
-    # def sample_mode_initial_state(self):
-    #     self.temporal_response = self.block_mode_response(inputs={})
-    #     return jnp.array(0)
-
-    # def sample_mode_step (
-    #     self,
-    #     inputs: dict,
-    # ):
-        
-    #     outputs = {
-    #         "o0": SampleModeOpticalSignal(
-    #             field=...,
-    #             wl=self.wavelength,
-    #             polarization=None,
-    #         )
-    #     }
-    #     return outputs
 
         
 class OpticalSource(SampleModeComponent, BlockModeComponent):

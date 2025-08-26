@@ -32,7 +32,7 @@ class SampleModeSimulationResult(SimulationResult):
 class SampleModeSimulationParameters(SimulationParameters):
     # def __init__(
     #     self,
-    optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([1.55e-6]))
+    optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([1.51e-6, 1.52e-6, 1.53e-6, 1.54e-6, 1.55e-6, 1.56e-6, 1.57e-6, 1.58e-6, 1.59e-6]))
     electrical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([0]))
     #     **kwargs,
     # ):
@@ -45,8 +45,8 @@ class SampleModeSimulation(Simulation):
     def __init__(self, circuit: Circuit):
         self._validate_circuit(circuit)
         circuit = self._insert_terminations(circuit)
-        new_circuit = self._insert_advance_blocks(circuit) # Our method of delay compensation
-        self.circuit = self._make_all_connections_bidirectional(new_circuit)
+        # circuit = self._insert_advance_blocks(circuit) # Our method of delay compensation
+        self.circuit = self._make_all_connections_bidirectional(circuit)
         self.reset_settings(use_default_settings=True)
 
         self._instance_names = list(self.circuit.graph.nodes)
@@ -143,7 +143,6 @@ class SampleModeSimulation(Simulation):
         initial_states = {}
         for instance_name, instance in self.components.items():
             initial_states[instance_name] = instance._sample_mode_initial_state(
-                max_delay_compensation,    
                 simulation_parameters,
             )
             # initial_states[instance_name] = instance._initial_state()
