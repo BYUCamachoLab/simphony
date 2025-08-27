@@ -302,10 +302,12 @@ def _optical_s_parameter(sax_model: SaxModel):
         def __init__(
             self, 
             spectral_range=(1.5e-6,1.6e-6),
+            delay_compensation=0,
             method = 'optimal_order',
             **sax_settings
         ):
             # super().__init__(**settings)
+            self.delay_compensation = delay_compensation
             self.settings = sax_settings
             self.spectral_range = spectral_range
             self.port_order = {name: idx for idx, name in enumerate(self.optical_ports)}
@@ -318,6 +320,7 @@ def _optical_s_parameter(sax_model: SaxModel):
             self,
             simulation_parameters,
         ):
+            
             N = 1000
             f_min = speed_of_light / self.spectral_range[1]
             f_max = speed_of_light / self.spectral_range[0]
@@ -326,7 +329,15 @@ def _optical_s_parameter(sax_model: SaxModel):
             f_c = 0.5*(f_max + f_min)
             f_s = 1 / simulation_parameters.sampling_period
             s_params = dict_to_matrix(self.s_parameters(wl=speed_of_light/f))
-            
+            # s_params = jnp.exp(-1000*1j*self.delay_compensation*2*jnp.pi*(f)*simulation_parameters.sampling_period)[:, None, None] * s_params
+            phase1 = jnp.unwrap(jnp.angle(s_params), axis=0)
+            plt.plot(f, phase1[:,0,1])
+            s_params = jnp.exp(-1j*2*jnp.pi*(f-f_c)*self.delay_compensation*simulation_parameters.sampling_period)[:, None, None] * s_params
+            phase2 = jnp.unwrap(jnp.angle(s_params), axis=0)
+            plt.plot(f, phase2[:,0,1])
+            plt.show()
+            pass
+
             poles, residues, feedthrough, _ = optimize_order_vector_fitting_discrete(40, 80, s_params, f, f_c, f_s)
             A, B, C, D = state_space_discrete(poles, residues, feedthrough)
             self.state_space_model = (A, B, C, D)
@@ -367,7 +378,8 @@ def _optical_s_parameter(sax_model: SaxModel):
                 detuning = 2*jnp.pi*(f-self.center_frequency)
                 t = simulation_parameters.sampling_period * time_step
                 new_x = new_x.at[i].set(jnp.exp(1j*detuning*simulation_parameters.sampling_period)*(A@x[i] + B@u[i]))
-                y = y.at[i].set(C@x[i] + D@u[i])
+                y = y.at[i].set(jnp.exp(1j*detuning*self.delay_compensation*simulation_parameters.sampling_period)*(C@x[i] + D@u[i]))
+                # y = jnp.exp(-1j*detuning*self.delay_compensation*simulation_parameters.sampling_period)*y
 
             outputs = {}
             for port in self.optical_ports:

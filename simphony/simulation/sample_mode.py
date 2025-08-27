@@ -90,7 +90,8 @@ class SampleModeSimulation(Simulation):
         settings: dict = None,
         tracked_ports: dict = None,
         simulation_parameters: SampleModeSimulationParameters = SampleModeSimulationParameters(),
-        use_jit: bool = True
+        use_jit: bool = True,
+        
         # optical_wavelengths: jax.Array = jnp.asarray([1.55e-6]),
         # electrical_wavelengths: jax.Array = jnp.asarray([0]),
         # sampling_period: float = 1e-15,
@@ -156,6 +157,7 @@ class SampleModeSimulation(Simulation):
         _, system_outputs = self._scan(self._system_step, (current_outputs, initial_states, simulation_parameters), length=N)
         toc = time()
         elapsed_time = toc - tic
+        print(elapsed_time)
         return system_outputs
 
     def _system_step(self, carry, x):
