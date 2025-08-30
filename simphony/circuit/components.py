@@ -303,10 +303,16 @@ def _optical_s_parameter(sax_model: SaxModel):
             self, 
             spectral_range=(1.5e-6,1.6e-6),
             delay_compensation=0,
+            max_error=1e-6,
+            min_model_order=10,
+            max_model_order=80,
             method = 'optimal_order',
             **sax_settings
         ):
             # super().__init__(**settings)
+            self.max_error = max_error
+            self.min_model_order = min_model_order
+            self.max_model_order = max_model_order
             self.delay_compensation = delay_compensation
             self.settings = sax_settings
             self.spectral_range = spectral_range
@@ -320,7 +326,7 @@ def _optical_s_parameter(sax_model: SaxModel):
             self,
             simulation_parameters,
         ):
-            
+            max_group_delay = 10e-12
             N = 1000
             f_min = speed_of_light / self.spectral_range[1]
             f_max = speed_of_light / self.spectral_range[0]
@@ -331,24 +337,39 @@ def _optical_s_parameter(sax_model: SaxModel):
             s_params = dict_to_matrix(self.s_parameters(wl=speed_of_light/f))
             # s_params = jnp.exp(-1000*1j*self.delay_compensation*2*jnp.pi*(f)*simulation_parameters.sampling_period)[:, None, None] * s_params
             phase1 = jnp.unwrap(jnp.angle(s_params), axis=0)
-            plt.plot(f, phase1[:,0,1])
+            plt.plot(f, phase1[:,0,0])
             s_params = jnp.exp(-1j*2*jnp.pi*(f-f_c)*self.delay_compensation*simulation_parameters.sampling_period)[:, None, None] * s_params
             phase2 = jnp.unwrap(jnp.angle(s_params), axis=0)
-            plt.plot(f, phase2[:,0,1])
+            plt.plot(f, phase2[:,0,0])
+            plt.show()
+
+            plt.plot(f, jnp.abs(s_params[:,0,0]))
             plt.show()
             pass
-
-            poles, residues, feedthrough, _ = optimize_order_vector_fitting_discrete(40, 80, s_params, f, f_c, f_s)
+            
+            bandwidth = f_max - f_min
+            phase = jnp.unwrap(jnp.angle(s_params), axis=0)
+            group_delay = jnp.gradient(phase, 2*jnp.pi*f, axis=0)
+            avg_group_delay = jnp.abs(group_delay).mean(axis=0)
+            max_group_delay = jnp.max(avg_group_delay)
+            
+            min_model_order_estimate = int(jnp.maximum(self.min_model_order, 2*bandwidth*max_group_delay))
+            min_model_order_estimate = int(jnp.minimum(min_model_order_estimate, self.max_model_order))
+            poles, residues, feedthrough, error = optimize_order_vector_fitting_discrete(min_model_order_estimate, self.max_model_order, s_params, f, f_c, f_s)
+            
+            if error > self.max_error:
+                raise ValueError(f"Max Error Exceeded. Consider a different modeling strategy for {sax_model}")
+            
             A, B, C, D = state_space_discrete(poles, residues, feedthrough)
             self.state_space_model = (A, B, C, D)
             self.center_frequency = f_c
             
-            # H = pole_residue_response_discrete(f, f_c, f_s, poles, residues, feedthrough)
+            H = pole_residue_response_discrete(f, f_c, f_s, poles, residues, feedthrough)
             # H_full = pole_residue_response_discrete(jnp.linspace(-f_s/2, f_s/2, 1000)+f_c, f_c, f_s, poles, residues, feedthrough)
             # print(f"NUMBER OF POLES: {len(poles)}")
-            # plt.plot(f, jnp.abs(H[:, 0, 1])**2)
+            plt.plot(f, jnp.abs(H[:, 0, 1])**2)
             # plt.plot(f, jnp.abs(s_params[:, 0, 1])**2)
-            # plt.show()
+            plt.show()
             # plt.plot(jnp.linspace(-f_s/2, f_s/2, 1000), jnp.abs(H_full[:, 0, 1])**2)
             # plt.show()
             time_step = 0

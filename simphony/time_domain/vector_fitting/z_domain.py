@@ -149,7 +149,7 @@ def vector_fitting_discrete(
     center_frequency,
     sampling_frequency,
     sign_convention=PHYSICIST,
-    max_iterations=10,
+    max_iterations=40,
     gamma=0.95,
     weight_threshold=0.0,
 ):
