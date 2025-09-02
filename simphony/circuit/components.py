@@ -296,7 +296,7 @@ class OpticalSParameterComponent(SParameterComponent):
 
 def _optical_s_parameter(sax_model: SaxModel):
     class SParameterSax(OpticalSParameterComponent, SteadyStateComponent, BlockModeComponent, SampleModeComponent):
-        optical_ports = list(sax.get_ports(sax_model))
+        optical_ports = list(sax.get_ports(sax_model()))
         _num_ports = len(optical_ports)
         
         def __init__(

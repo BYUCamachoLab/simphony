@@ -147,9 +147,6 @@ class SampleModeSimulation(Simulation):
             )
             # initial_states[instance_name] = instance._initial_state()
 
-
-        # current_inputs = self._initial_inputs()
-        # current_outputs = deepcopy(current_inputs)
         current_outputs = self._initial_outputs(optical_wavelengths, electrical_wavelengths)
         time_steps = jnp.arange(0, N, 1, dtype=int)
         tic = time()
