@@ -65,15 +65,15 @@ build:
 
 major:
 	bumpversion major
-	VERSION=$(shell python3 -c "import simphony; print(simphony.__version__)") && \
+	VERSION=$(shell python3 -c "import simphony; print(simphony.__version__)")
 
 minor:
 	bumpversion minor
-	VERSION=$(shell python3 -c "import simphony; print(simphony.__version__)") && \
+	VERSION=$(shell python3 -c "import simphony; print(simphony.__version__)")
 
 patch:
 	bumpversion patch
-	VERSION=$(shell python3 -c "import simphony; print(simphony.__version__)") && \
+	VERSION=$(shell python3 -c "import simphony; print(simphony.__version__)")
 
 rc:
 	bumpversion build
