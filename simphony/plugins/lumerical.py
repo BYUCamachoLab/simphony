@@ -91,7 +91,7 @@ class _SparamsTransformer(Transformer):
         columns = sweepparams + ["freq", "mag", "phase"]
         df = pd.DataFrame(values, columns=columns)
         rows, cols = shape
-        if ports["groupdelay"] != None:
+        if ports["groupdelay"] is not None:
             # Calculated with 2 * pi * groupdelay * (f_i - f_c)
             # Possible improvement: If you resample this with fine spectral sampling on large structures, you may lose some precision. See https://optics.ansys.com/hc/en-us/articles/360036618553-Group-Delay-Specification-in-S-Parameter-Elements
             groupshift = (
