@@ -14,6 +14,10 @@ Minor bug fixes.
 
 ### Fixed
 - Bug with sax 15.0.0 and later where simphony fails to import get_ports.
+- Bug in SiPANN integration in which parameters passed to `angled_half_ring` were overwritten and `theta` parameter was missing.
+- Missing dependency for parsimonious.
+- Several pytest issues.
+- Syntax errors preventing `make patch`, `make minor`, and `make major` from running.
 - Bug with group delay that was ignored in lumerical file parser. Lumerical output files calculated with "include group delay" in the s-parameter matrix sweep dialogue were imported with incorrect phases due to ignoring group delay.
 
 ### Changed
