@@ -398,6 +398,7 @@ def angled_half_ring(
     thickness: float = 220.0,
     radius: float = 10e3,
     gap: float = 100.0,
+    theta: float = 0.0,
     sw_angle: float = 90.0,
 ) -> sax.SDict:
     r"""A halfring resonator, except what was the straight waveguide is now
@@ -436,12 +437,6 @@ def angled_half_ring(
     -----
     Writing to GDS is not supported for this component.
     """
-    width: float = (500.0,)
-    thickness: float = (220.0,)
-    radius: float = (10e3,)
-    gap: float = (100.0,)
-    theta: float = (0.0,)
-    sw_angle: float = (90,)
     if width < 400 or width > 600:
         raise ValueError("Width must be between 400 and 600 nm")
     if thickness < 180 or thickness > 240:
