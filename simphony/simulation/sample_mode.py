@@ -1,3 +1,4 @@
+from functools import partial
 from .simulation import Simulation, SimulationResult, SimulationParameters
 from simphony.circuit import Circuit, SampleModeComponent
 # from simphony.libraries.analytic import advance
@@ -10,14 +11,16 @@ from dataclasses import replace
 
 from copy import deepcopy
 import jax
+
 import jax.numpy as jnp
 from jax import lax
 from simphony.simulation import jax_tools
 from flax import struct
-
+import numpy as np
 from time import time
 
 from dataclasses import field
+
 
 # def replace(obj, **updates):
 #     fields = obj.__dict__.copy()
@@ -42,6 +45,7 @@ class SampleModeSimulationParameters(SimulationParameters):
 
 
 class SampleModeSimulation(Simulation):
+    CHUNK_SIZE = 100000
     def __init__(self, circuit: Circuit):
         self._validate_circuit(circuit)
         circuit = self._insert_terminations(circuit)
@@ -53,6 +57,7 @@ class SampleModeSimulation(Simulation):
         
         self._instance_ports = []
         for inst_name in self._instance_names:
+            
             component = self.circuit.netlist['instances'][inst_name]['component']
             self.circuit.models[component]
             model = self.circuit.models[component]
@@ -91,99 +96,103 @@ class SampleModeSimulation(Simulation):
         tracked_ports: dict = None,
         simulation_parameters: SampleModeSimulationParameters = SampleModeSimulationParameters(),
         use_jit: bool = True
-        # optical_wavelengths: jax.Array = jnp.asarray([1.55e-6]),
-        # electrical_wavelengths: jax.Array = jnp.asarray([0]),
-        # sampling_period: float = 1e-15,
-        # num_time_steps: int = 10000,
     ) -> SampleModeSimulationResult:
+        self.CHUNK = self.CHUNK_SIZE
         N = simulation_parameters.num_time_steps
         optical_wavelengths = simulation_parameters.optical_baseband_wavelengths
         electrical_wavelengths = simulation_parameters.electrical_baseband_wavelengths
-
+        self.simulation_parameters = simulation_parameters
         if tracked_ports is None:
             tracked_ports = self.circuit.netlist['ports']
         self.tracked_ports = tracked_ports
-        self.tracked_signals = {}
-        
-        for key, value in self.tracked_ports.items():
-            self.tracked_signals[key] = {}
-            # TODO: Determine port type
-            port_type = 'optical'
-            if port_type == 'optical':
-                A_t = jnp.zeros((N), dtype=complex)
-                self.tracked_signals[key]['input'] = BlockModeOpticalSignal(amplitude=A_t.reshape((N, 1, 1)), wavelength=optical_wavelengths)
-                self.tracked_signals[key]['output'] = BlockModeOpticalSignal(amplitude=A_t.reshape((N, 1, 1)), wavelength=optical_wavelengths)
-            elif port_type == 'electrical':
-                A_t = jnp.zeros((N), dtype=complex)
-                self.tracked_signals[key]['input'] = BlockModeElectricalSignal(amplitude=A_t.reshape((N, 1)), wavelength=electrical_wavelengths)
-                self.tracked_signals[key]['output'] = BlockModeElectricalSignal(amplitude=A_t.reshape((N, 1)), wavelength=electrical_wavelengths)
-            elif port_type == 'logic':
-                value = jnp.zeros((N), dtype=int)
-                self.tracked_signals[key]['input'] = BlockModeLogicSignal(value=value, wavelength=electrical_wavelengths)
-                self.tracked_signals[key]['output'] = BlockModeLogicSignal(value=value, wavelength=electrical_wavelengths)
-        
         self.reset_settings(use_default_settings=True)
         self.add_settings(settings)
         optical_wavelengths = jnp.sort(optical_wavelengths)
         electrical_wavelengths = jnp.sort(electrical_wavelengths)
         self._instantiate_components(self.settings)
-        
-        # use_jit = True
+        self.initial_states = {}
+        for instance_name, instance in self.components.items():
+            self.initial_states[instance_name] = instance._sample_mode_initial_state(simulation_parameters)
+            print(f"Initial state for {instance_name} computed")
+        self.current_outputs = self._initial_outputs(optical_wavelengths, electrical_wavelengths)
+        self._tracked_aliases = tuple(self.tracked_ports.keys())
+        self._tracked_pairs = tuple(tuple(x.strip() for x in self.tracked_ports[a].split(",")) for a in self._tracked_aliases)
+        self._L = int(optical_wavelengths.shape[0])
+ 
         if use_jit:
             self._scan = lax.scan
+            self._run = jax.jit(self._run_chunk, static_argnums=(4))
         else:
             self._scan = jax_tools.python_based_scan
-
-        # Determine the maximum delay compensation
-        max_delay_compensation = 0
-        for _, instance in self.components.items():
-            if instance.delay_compensation > max_delay_compensation:
-                max_delay_compensation = instance.delay_compensation
+            self._run = self._run_chunk
+        i = jnp.int32(0)
+        n_full = N // self.CHUNK
+        tail = int(N - n_full * self.CHUNK)
+        pieces_in = [[] for _ in self._tracked_aliases]
+        pieces_out = [[] for _ in self._tracked_aliases]
+        jax.block_until_ready(self.current_outputs)
+        print("Starting simulation...")
+        tick = time()
+        for _ in range(n_full):
+                ticker = time()
+                self.current_outputs, self.initial_states, self.simulation_parameters, i, ys = self._run(self.current_outputs, self.initial_states, self.simulation_parameters, i, self.CHUNK)
+                y = jax.device_get(ys)
+                for a in range(len(self._tracked_aliases)):
+                    pieces_in[a].append(np.asarray(y[:, a, 0, :, :]))
+                    pieces_out[a].append(np.asarray(y[:, a, 1, :, :]))
+                tocker = time()
+                time_remaining = (tocker-ticker) * (n_full - _)
+                print(f"Completed {_+1} / {n_full} chunks Estimated time remaining: {time_remaining}")  
+        if tail:
+            self.current_outputs, self.initial_states, self.simulation_parameters, i, ys = self._run(self.current_outputs, self.initial_states, self.simulation_parameters, i, tail)
+            y = jax.device_get(ys)
+            for a in range(len(self._tracked_aliases)):
+                pieces_in[a].append(np.asarray(y[:, a, 0, :, :]))
+                pieces_out[a].append(np.asarray(y[:, a, 1, :, :]))
         
-        initial_states = {}
-        for instance_name, instance in self.components.items():
-            initial_states[instance_name] = instance._sample_mode_initial_state(
-                simulation_parameters,
-            )
-            # initial_states[instance_name] = instance._initial_state()
+        tracked = {}
+        for a, alias in enumerate(self._tracked_aliases):
+            if pieces_in[a]:
+                ain = np.concatenate(pieces_in[a], axis=0)
+                aout = np.concatenate(pieces_out[a], axis=0)
+            else:
+                ain = np.zeros((0, self._L, 1), dtype=np.complex128)
+                aout = np.zeros((0, self._L, 1), dtype=np.complex128)
+            tracked[alias] = {}
+            tracked[alias]['input'] = SampleModeOpticalSignal(amplitude=jnp.asarray(ain), wavelength=optical_wavelengths)
+            tracked[alias]['output'] = SampleModeOpticalSignal(amplitude=jnp.asarray(aout), wavelength=optical_wavelengths)
+        jax.block_until_ready(tracked)
+        tock = time()
+        print(f"Simulation time: {tock - tick:.3f} s")
+        return tracked
 
-        current_outputs = self._initial_outputs(optical_wavelengths, electrical_wavelengths)
-        time_steps = jnp.arange(0, N, 1, dtype=int)
-        tic = time()
-        _, system_outputs = self._scan(self._system_step, (current_outputs, initial_states, simulation_parameters), length=N)
-        toc = time()
-        elapsed_time = toc - tic
-        return system_outputs
+    def _run_chunk(self, system_outputs, states, simulation_parameters, i0, steps):
+        def step(carry, _):
+            system_outputs, states, simulation_parameters, i = carry
+            system_inputs = {name: self._get_inputs(name, system_outputs) for name in self.components.keys()}
+            new_outputs = {}
+            for instance_name, instance in self.components.items():
+                subkey = jax.random.fold_in(simulation_parameters.prng_key, i)
+                sim_i = replace(simulation_parameters, prng_key=subkey)
+                inputs_i = system_inputs[instance_name]
+                state_i = states[instance_name]
+                outs_i, state_o = instance._sample_mode_step(inputs_i, state_i, sim_i)
+                states[instance_name] = state_o
+                merged = dict(system_outputs[instance_name])
+                merged.update(outs_i)
+                new_outputs[instance_name] = merged
+            meas = []
 
-    def _system_step(self, carry, x):
-        time_step = x
-        system_outputs = carry[0]
-        states = carry[1]
-        simulation_parameters = carry[2]
-        prng_key = simulation_parameters.prng_key
-        # y = self.tracked_signals
+            for inst, port in self._tracked_pairs:
+                amp_in = system_inputs[inst][port].amplitude[:, 0]
+                amp_out = new_outputs[inst][port].amplitude[:, 0]
+                meas.append(jnp.stack([amp_in.reshape((self._L, 1)), amp_out.reshape((self._L, 1))], axis=0))
 
-        old_system_outputs = system_outputs
-        system_inputs = {}
-        for instance_name, instance in self.components.items():
-            system_inputs[instance_name] = self._get_inputs(instance_name, system_outputs)
-
-        for instance_name, instance in self.components.items():
-            # Generate a unique key for each time_step/instance
-            prng_key, subkey = jax.random.split(prng_key)
-            simulation_parameters = replace(simulation_parameters,prng_key=subkey)
-
-            inputs = system_inputs[instance_name]
-            input_state = states[instance_name]
-            instance_outputs, output_state = instance._sample_mode_step(inputs, input_state, simulation_parameters)
-            states[instance_name] = output_state
-            system_outputs[instance_name] = system_outputs[instance_name] | instance_outputs
-
-            
-        new_carry = (system_outputs, states, simulation_parameters)
-        y = system_outputs
-        return new_carry, y
-    
+            meas = jnp.stack(meas, axis=0)
+            return (new_outputs, states, simulation_parameters, i + jnp.int32(1)), meas
+        (system_outputs_f, states_f, simulation_parameters_f, i_f), ys = self._scan(step, (system_outputs, states, simulation_parameters, i0), xs=None, length=steps)
+        return system_outputs_f, states_f, simulation_parameters_f, i_f, ys
+        
     def _get_inputs(self, instance_name, current_outputs):
         inputs = {}
         ports = self.components[instance_name].optical_ports + self.components[instance_name].electrical_ports + self.components[instance_name].logic_ports

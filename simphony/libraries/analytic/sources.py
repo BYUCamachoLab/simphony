@@ -60,7 +60,7 @@ class OpticalCombSource(SampleModeComponent, BlockModeComponent):
     optical_ports = ["o0"]
     def __init__(
         self,
-        wavelength=jnp.array([1.53e-6, 1.54e-6, 1.55e-6, 1.56e-6, 1.57e-7]),
+        wavelength=jnp.array([1.53e-6, 1.54e-6, 1.55e-6, 1.56e-6, 1.57e-6]),
         linewidth=0.0,
     ):
         self.wavelength = wavelength

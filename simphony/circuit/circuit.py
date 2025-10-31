@@ -53,7 +53,7 @@ class Circuit:
         self.graph = netlist_to_graph(self.netlist)
         
         self._convert_sax_models()
-        # self._add_models_to_graph(self.models)
+        #self._add_models_to_graph(self.models)
         self._mark_component_types()
         self._add_ports_to_graph()
         self._validate_connections()
@@ -63,11 +63,6 @@ class Circuit:
         fig = gv.d3(self.graph)
         fig.display(inline=inline)
     
-
-    #Matthew's Suggestions
-    #You don't remove ports with the component name attached. 
-    #Is this on purpose with the understanding that these components don't have ports?
-    #or is this a bug?
 
     def remove_components(self, components):
         components = list(components)
@@ -199,6 +194,7 @@ class Circuit:
             dst_port_type = self.get_port_type(dst, dst_port)
 
             if not src_port_type == dst_port_type:
+                print(src,dst,src_port_type,dst_port_type)
                 raise ValueError("Port types must match")
 
     def _color_nodes(self):

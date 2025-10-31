@@ -136,15 +136,9 @@ def MultiModeInterferometer(
     r: int = 2,
     s: int = 2,
 ) -> sax.SDict:
-    """
-    Return the S-dictionary for an r×s Multimode Interference coupler,
-    at reduced self-imaging length, with optional uniform loss.
-    """
-
-    # total ports
+    
     N_size = r + s
 
-    # 1) Build the phase matrix (quadratic law)
     phases = jnp.zeros((N_size, N_size))
     for i in range(1, r + 1):
         for j in range(1, s + 1):
@@ -152,18 +146,15 @@ def MultiModeInterferometer(
                 phi = -(jnp.pi / (4 * r)) * (j - i) * (2 * r + i - j)
             else:
                 phi = -(jnp.pi / (4 * r)) * (i + j - 1) * (2 * r - i - j + 1)
-            # fill both symmetric entries
             out_idx = r + (j - 1)
             phases = phases.at[i - 1, out_idx].set(phi)
             phases = phases.at[out_idx, i - 1].set(phi)
 
-    # 2) Compute amplitude attenuation (same for all couplings)
     loss_mag = loss / (10 * jnp.log10(jnp.exp(1)))
     alpha = loss_mag * 1e-4
     amp = jnp.exp(-alpha * length / 2)  # scalar real
     ones = jnp.ones_like(wl, dtype=complex)
 
-    # 3) Build the forward S-dictionary (only inputs 0…r-1 → outputs r…r+s-1)
     s_dict = {}
     for inp in range(r):
         for out in range(r, r + s):
@@ -171,7 +162,6 @@ def MultiModeInterferometer(
             gain = amp / jnp.sqrt(s) * jnp.exp(1j * φ)
             s_dict[(f"o{inp}", f"o{out}")] = gain * ones
 
-    # 4) Mirror it back to get a fully reciprocal device
     return sax.reciprocal(s_dict)
 
 
@@ -183,9 +173,6 @@ def make_mmi_model(
     default_length: float = 10.0,
     default_loss: float = 0.0,
 ):
-    """
-    Factory that returns an MMI_model(recipient of no-args or wl/length/loss).
-    """
 
     def MMI_model(
         *,

@@ -16,7 +16,7 @@ import yaml
 from jax import Array
 from jax.typing import ArrayLike
 from jax.scipy.special import factorial
-from sax.s import get_ports
+from sax.utils import get_ports
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import CubicSpline, interp1d
 

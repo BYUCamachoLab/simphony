@@ -45,6 +45,7 @@ from simphony.libraries.analytic.sources import (
     PRNG,
     CWLaser,
     OpticalSource,
+    OpticalCombSource,
     VoltageSource,
 )
 # from simphony.libraries.analytic.photonic_integrated_circuits import (

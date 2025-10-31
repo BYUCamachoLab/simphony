@@ -309,6 +309,8 @@ def _optical_s_parameter(sax_model: SaxModel):
             self.settings = sax_settings
             self.spectral_range = spectral_range
             self.port_order = {name: idx for idx, name in enumerate(self.optical_ports)}
+            self.max_order = 70
+            
 
             if method == 'optimal_order':
                 self.sample_mode_initial_state = self.sample_mode_initial_state_optimal_order
@@ -318,6 +320,10 @@ def _optical_s_parameter(sax_model: SaxModel):
             self,
             simulation_parameters,
         ):
+            if "max_order" in self.settings:
+                self.max_order = self.settings["max_order"]
+                self.settings.pop("max_order")
+            
             N = 1000
             f_min = speed_of_light / self.spectral_range[1]
             f_max = speed_of_light / self.spectral_range[0]
@@ -327,7 +333,8 @@ def _optical_s_parameter(sax_model: SaxModel):
             f_s = 1 / simulation_parameters.sampling_period
             s_params = dict_to_matrix(self.s_parameters(wl=speed_of_light/f))
             
-            poles, residues, feedthrough, _ = optimize_order_vector_fitting_discrete(40, 80, s_params, f, f_c, f_s)
+            poles, residues, feedthrough, _ = optimize_order_vector_fitting_discrete(40, self.max_order, s_params, f, f_c, f_s)
+
             A, B, C, D = state_space_discrete(poles, residues, feedthrough)
             self.state_space_model = (A, B, C, D)
             self.center_frequency = f_c
