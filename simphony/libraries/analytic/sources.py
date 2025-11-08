@@ -3,10 +3,11 @@ from jax.typing import ArrayLike
 
 from simphony.circuit import SteadyStateComponent
 from simphony.circuit import BlockModeComponent, SampleModeComponent
-from simphony.signals import    BlockModeOpticalSignal, SteadyStateOpticalSignal, SampleModeOpticalSignal
+from simphony.signals import BlockModeOpticalSignal, SteadyStateOpticalSignal, SampleModeOpticalSignal
 import jax.numpy as jnp
 import numpy as np # Used to avoid caching issues when generating random numbers
 from typing import Union
+from jaxtyping import Array, Float
 from simphony.simulation import SimulationParameters, SampleModeSimulationParameters, BlockModeSimulationParameters
 
 from scipy.ndimage import gaussian_filter1d
@@ -233,31 +234,75 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
 
         
 class OpticalSource(SampleModeComponent, BlockModeComponent):
+    """
+    A complex evelope for each wavelength may be specified. 
+    This envelope is a discrete time array of optical signals,
+    and will be assumed to be at the sampling_period of the simulation parameters.
+
+    If the user wishes to create a source that is agnostic of the simulation
+    parameters, then envelope_fn may be specified instead. 
+    
+    Only evelope or envelope_fn should be initialized, not both. 
+    If both are initiated, an error will be thrown.
+    If envelope is None, then envelope_fn must be specified and vice versa.
+    """
     optical_ports = ["o0"]
 
     def __init__(
         self, 
-        wavelength = 1.55e-6,
-        envelope_fn:Callable[[float], complex] = None 
+        # wavelength = 1.55e-6,
+        envelope: BlockModeOpticalSignal = None,
+        envelope_fn: Callable[[Float[Array, "n"]], BlockModeOpticalSignal] = None 
     ):    
-        self.wavelength = wavelength
+        if envelope is not None and envelope_fn is not None:
+            raise ValueError("Specify either evelope or envelope_fn, NOT both")
+        if envelope is None and envelope_fn is None:
+            raise ValueError("Parameter `envelope` or `envelope_fn` must be specified")
+        
+        # self.wavelength = wavelength
+        self.envelope = envelope
         self.envelope_fn = envelope_fn
+    
+    def _calculate_envelope(self, simulation_parameters):
+        N = simulation_parameters.num_time_steps
+        dt = simulation_parameters.sampling_period
+        t = jnp.arange(0, N, 1)*dt
+
+        if self.envelope_fn:
+            self.envelope = self.envelope_fn(t)
+        
+        # Make envelope match the number of time steps, by truncating or appending zeros
+        amplitude = self.envelope.amplitude
+        T, L, M = amplitude.shape
+        if amplitude.shape[0] < N:
+            amplitude = jnp.concatenate([amplitude, jnp.zeros((N-T, L, M), dtype=complex)], axis=0)
+        elif amplitude.shape[0] > N:
+            amplitude = amplitude[:N, :, :]
+
+        self.envelope = BlockModeOpticalSignal(
+            amplitude=amplitude,
+            wavelength=self.envelope.wavelength
+        )
     
     def block_mode_response (
         self, 
         inputs: dict,
         simulation_parameters: BlockModeSimulationParameters,
     ):
-        N = simulation_parameters.num_time_steps
-        return ...
+        self._calculate_envelope(simulation_parameters)
+
+        outputs = {
+            "o0": BlockModeOpticalSignal(
+                amplitude=self.envelope.amplitude,
+                wavelength=self.envelope.wavelength,
+            )
+        }
+        return outputs
     
     def sample_mode_initial_state(self, simulation_parameters: SampleModeSimulationParameters):
-        N = simulation_parameters.num_time_steps
-        dt = simulation_parameters.sampling_period
-        t = jnp.arange(0, N, 1)*dt
-        self.envelope = self.envelope_fn(t)
-        time_step = 0
+        self._calculate_envelope(simulation_parameters)
 
+        time_step = 0
         return jnp.array(time_step, dtype=int)
 
     def sample_mode_step (
@@ -269,8 +314,8 @@ class OpticalSource(SampleModeComponent, BlockModeComponent):
         current_time_step = state
         outputs = {
             "o0": SampleModeOpticalSignal(
-                amplitude=jnp.array([[self.envelope[current_time_step]]], dtype=complex),
-                wavelength=jnp.array([self.wavelength]),
+                amplitude=self.envelope.amplitude[current_time_step],
+                wavelength=self.envelope.wavelength,
             )
         }
         return outputs, state+1

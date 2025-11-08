@@ -2,6 +2,7 @@
 # Licensed under the terms of the MIT License
 # (see simphony/__init__.py for details)
 """SiEPIC models compatible with SAX."""
+import types
 
 import importlib.resources
 import re
@@ -1028,6 +1029,8 @@ def waveguide(
     return sdict
 
 
+
+
 def _generate_parameter_sets_waveguide() -> pd.DataFrame:
     """Generate a dataframe of all valid parameter sets by parsing the
     filenames of the data files in the source directory."""
@@ -1038,6 +1041,16 @@ def _generate_parameter_sets_waveguide() -> pd.DataFrame:
         columns=["width", "height"],
     )
 
+def _impulse_response_discrete_waveguide(self, simulation_parameters, spectral_range, delay_compensation,  sax_settings: dict):
+    fs = 1/simulation_parameters.sampling_period
+    fc = spectral_range
+    f = fc + jnp.linspace(-fs/2, fs/2, 10000)
+    sax_settings['wl'] = SPEED_OF_LIGHT / (f)
+    S = waveguide(**sax_settings)
+    h = None
+    return h
+
+waveguide.impulse_response_discrete = types.MethodType(_impulse_response_discrete_waveguide, waveguide)
 
 def y_branch(
     wl: Union[float, Array] = 1.55,

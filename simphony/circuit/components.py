@@ -304,8 +304,8 @@ def _optical_s_parameter(sax_model: SaxModel):
             spectral_range=(1.5e-6,1.6e-6),
             delay_compensation=0,
             max_error=1e-6,
-            min_model_order=10,
-            max_model_order=80,
+            min_model_order=45,
+            max_model_order=50,
             method = 'optimal_order',
             **sax_settings
         ):
@@ -335,17 +335,32 @@ def _optical_s_parameter(sax_model: SaxModel):
             f_c = 0.5*(f_max + f_min)
             f_s = 1 / simulation_parameters.sampling_period
             s_params = dict_to_matrix(self.s_parameters(wl=speed_of_light/f))
-            # s_params = jnp.exp(-1000*1j*self.delay_compensation*2*jnp.pi*(f)*simulation_parameters.sampling_period)[:, None, None] * s_params
-            phase1 = jnp.unwrap(jnp.angle(s_params), axis=0)
-            plt.plot(f, phase1[:,0,0])
-            s_params = jnp.exp(-1j*2*jnp.pi*(f-f_c)*self.delay_compensation*simulation_parameters.sampling_period)[:, None, None] * s_params
-            phase2 = jnp.unwrap(jnp.angle(s_params), axis=0)
-            plt.plot(f, phase2[:,0,0])
-            plt.show()
+            
+            M = 10000
+            f_partial = jnp.linspace(f_min, f_max, M)
+            s_params_partial = dict_to_matrix(self.s_parameters(wl=speed_of_light/f_partial))
+            df = jnp.abs(f_partial[1] - f_partial[0])
+            t = jnp.arange(-M//2, M//2) * 1/(M*df)
+            h = jnp.fft.ifft(jnp.fft.ifftshift(jnp.conj(s_params_partial)), axis=0)
+            h = jnp.fft.fftshift(h)
 
-            plt.plot(f, jnp.abs(s_params[:,0,0]))
+            h = h[M//2:, :, :]
+            t = t[M//2:]
+            
+            
+            max_energy_loss_percentage = 0.0001
+            signal_energy_density = jnp.abs(h)**2
+            signal_energy = jnp.sum(signal_energy_density, axis=(0))
+            cumulative_signal_energy = jnp.cumsum(signal_energy_density, axis=0)
+            mask = cumulative_signal_energy >= max_energy_loss_percentage*signal_energy
+            delay_indices = jnp.argmax(mask, axis=0)
+            delay = delay_indices*(t[1]-t[0])
+            plt.plot(t, jnp.abs(h)[:, 0, 1])
+            plt.axvline(delay[0, 1], color='r')
+            plt.xlim(0, 20e-12)
+            plt.xlabel("Time (s)")
+            plt.ylabel("e-field amplitude")
             plt.show()
-            pass
             
             bandwidth = f_max - f_min
             phase = jnp.unwrap(jnp.angle(s_params), axis=0)
@@ -358,7 +373,7 @@ def _optical_s_parameter(sax_model: SaxModel):
             poles, residues, feedthrough, error = optimize_order_vector_fitting_discrete(min_model_order_estimate, self.max_model_order, s_params, f, f_c, f_s)
             
             if error > self.max_error:
-                raise ValueError(f"Max Error Exceeded. Consider a different modeling strategy for {sax_model}")
+                raise ValueError(f"Max Error Exceeded. Increase the model order or consider a different modeling strategy for {sax_model}")
             
             A, B, C, D = state_space_discrete(poles, residues, feedthrough)
             self.state_space_model = (A, B, C, D)
@@ -367,9 +382,9 @@ def _optical_s_parameter(sax_model: SaxModel):
             H = pole_residue_response_discrete(f, f_c, f_s, poles, residues, feedthrough)
             # H_full = pole_residue_response_discrete(jnp.linspace(-f_s/2, f_s/2, 1000)+f_c, f_c, f_s, poles, residues, feedthrough)
             # print(f"NUMBER OF POLES: {len(poles)}")
-            plt.plot(f, jnp.abs(H[:, 0, 1])**2)
+            # plt.plot(f, jnp.abs(H[:, 0, 1])**2)
             # plt.plot(f, jnp.abs(s_params[:, 0, 1])**2)
-            plt.show()
+            # plt.show()
             # plt.plot(jnp.linspace(-f_s/2, f_s/2, 1000), jnp.abs(H_full[:, 0, 1])**2)
             # plt.show()
             time_step = 0
