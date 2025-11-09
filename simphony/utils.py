@@ -559,11 +559,11 @@ def netlist_to_graph(netlist: Union[dict, str]):
     # graph = nx.MultiGraph()
     graph = nx.MultiDiGraph()
     # Add nodes for each instance
-    for instance_name, instance_data in netlist["instances"].items():
+    for instance_name, instance in netlist["instances"].items():
         graph.add_node(
             instance_name,
-            component=instance_data["component"],
-            settings=instance_data["settings"],
+            component=instance["component"],
+            settings=instance["settings"],
         )
         # graph.add_node(instance_name, label="test", click="Test: $label", **instance_data)
         # graph.add_node(instance_name, weight=netlist['instances'][instance_name]["weight"])

@@ -15,6 +15,8 @@ from scipy.signal import iirdesign, freqz
 from scipy.signal import butter, lfilter, cheby1
 from typing import Callable
 
+from simphony.circuit.port import Port
+
 def gaussian_kernel1d(sigma, truncate=4.0):
     radius = int(truncate * sigma + 0.5)
     x = jnp.arange(-radius, radius + 1)
@@ -325,7 +327,13 @@ class VoltageSource(
     SampleModeComponent, 
     BlockModeComponent,
 ):
-    electrical_ports = ["e0"]
+    ports = [
+        Port(
+            name="e0",
+            type="electrical",
+            directionality="bidirectional",
+        )
+    ]
 
     def __init__(
         self, 

@@ -9,6 +9,7 @@ from typing import Callable
 import sax
 
 from simphony.signals import SteadyStateOpticalSignal
+from simphony.circuit.port import Port
 
 class MachZehnderModulator(
     SteadyStateComponent, 
@@ -27,8 +28,23 @@ class OpticalModulator(
     SampleModeComponent, 
     # BlockModeComponent
 ):
-    optical_ports = ["o0", "o1"]
-    electrical_ports = ["e0"]
+    ports = [
+        Port(
+            name = "o0",
+            type = "optical",
+            directionality = "bidirectional",
+        ),
+        Port(
+            name = "o1",
+            type = "optical",
+            directionality = "bidirectional",
+        ),
+        Port(
+            name = "e0",
+            type = "electrical",
+            directionality = "unidirectional",
+        )
+    ]
     
     def __init__(
         self,

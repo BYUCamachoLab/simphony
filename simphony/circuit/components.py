@@ -10,6 +10,8 @@ import inspect
 from typing import Tuple
 from dataclasses import replace
 
+from simphony.circuit.port import Port
+
 
 # from simphony.libraries.analytic.component_types import OpticalComponent, ElectricalComponent, LogicComponent
 # import gravis as gv
@@ -185,16 +187,18 @@ class Signal: ## TODO: Make an actual base class
     ...
 
 class Component:
+    pass
     # simulation_parameters={}
-    delay_compensation = 0 # Used especially in time-domain simulations
+     # Used especially in time-domain simulations
     
-    electrical_ports = []
-    logic_ports = []
-    optical_ports = []
+    # electrical_ports = []
+    # logic_ports = []
+    # optical_ports = []
 
 class SteadyStateComponent(Component):
     """ 
     """
+    delay_compensation = 0
 
     def steady_state(
         self, 
@@ -296,8 +300,11 @@ class OpticalSParameterComponent(SParameterComponent):
 
 def _optical_s_parameter(sax_model: SaxModel):
     class SParameterSax(OpticalSParameterComponent, SteadyStateComponent, BlockModeComponent, SampleModeComponent):
-        optical_ports = list(sax.get_ports(sax_model))
-        _num_ports = len(optical_ports)
+        # optical_port_names = 
+        ports = [
+            Port(name=port_name, type="optical", directionality="bidirectional") for port_name in list(sax.get_ports(sax_model))
+        ]
+        _num_ports = len(ports)
         
         def __init__(
             self, 

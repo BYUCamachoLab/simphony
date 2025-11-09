@@ -93,10 +93,6 @@ class Circuit:
             self.netlist['ports'] = filtered_ports
         pass
 
-    # def _add_models_to_graph(self, models: dict):
-    #     for _, node_attr in self.graph.nodes(data=True):
-    #         node_attr['model'] = models[node_attr['component']]
-
     def _convert_sax_models(self):
         for model in self.models:
             component = self.models[model]
@@ -105,75 +101,68 @@ class Circuit:
                 self.models[model] = s_parameter
 
     def _mark_component_types(self):
-        """ """
-        for instance, attr in self.graph.nodes.items():
-            model = attr["component"]
-            component = self.models[model]
-
-            # if not inspect.isclass(component):
-            #     self.graph.nodes[instance]["type"] = "s-parameter: optical"
-            #     continue
+        """ 
+        """
+        for instance_name, attr in self.graph.nodes.items():
+            component_name = attr["component"]
+            component = self.models[component_name]
 
             tags = set()
-            if component.electrical_ports:
-                tags.add("electrical")
-            if component.logic_ports:
-                tags.add("logic")
-            if component.optical_ports:
-                tags.add("optical")
-            # if issubclass(component, ElectricalComponent):
-            #     tags.add('electrical')
-            # if issubclass(component, LogicComponent):
-            #     tags.add('logic')
-            # if issubclass(component, OpticalComponent):
-            #     tags.add('optical')
+            for port in component.ports:
+                if port.type == "electrical":
+                    tags.add("electrical")
+                elif port.type == "optical":
+                    tags.add("optical")
+                elif port.type == "logic":
+                    tags.add("logic")
 
-            self.graph.nodes[instance]["type"] = "/".join(sorted(tags))
-            # if isinstance(component, ElectricalComponent):
-            #     tags.add('electrical')
-            # if isinstance(component, LogicComponent):
-            #     tags.add('logic')
-            # if isinstance(component, OpticalComponent):
-            #     tags.add('optical')
+            # tags = set()
+            # if component.electrical_port_names:
+            #     tags.add("electrical")
+            # if component.logic_port_names:
+            #     tags.add("logic")
+            # if component.optical_port_names:
+            #     tags.add("optical")
 
-            # if len(tags) == 0:
-            #     self.graph.nodes[instance]['type'] = 's-parameter'
-            # else:
-            #     self.graph.nodes[instance]['type'] = '/'.join(sorted(tags))
+            self.graph.nodes[instance_name]["type"] = "/".join(sorted(tags))
 
     def _add_ports_to_graph(self):
-        for instance, attr in self.graph.nodes.items():
-            self.graph.nodes[instance]["electrical ports"] = []
-            self.graph.nodes[instance]["logic ports"] = []
-            self.graph.nodes[instance]["optical ports"] = []
+        for instance_name, attr in self.graph.nodes.items():
+            self.graph.nodes[instance_name]["electrical ports"] = []
+            self.graph.nodes[instance_name]["logic ports"] = []
+            self.graph.nodes[instance_name]["optical ports"] = []
 
             model = attr["component"]
             component = self.models[model]
 
-            # if self.graph.nodes[instance]["type"] == "s-parameter: optical":
-            #     self.graph.nodes[instance]["optical ports"] = sax.get_ports(component)
-            #     self.graph.nodes[instance]["electrical ports"] = []
-            #     self.graph.nodes[instance]["logic ports"] = []
-            #     continue
+            electrical_ports = []
+            optical_ports = []
+            logic_ports = []
 
-            if component.electrical_ports:
-                self.graph.nodes[instance]["electrical ports"] = self.models[
-                    model
-                ].electrical_ports
-            if component.logic_ports:
-                self.graph.nodes[instance]["logic ports"] = self.models[
-                    model
-                ].logic_ports
-            if component.optical_ports:
-                self.graph.nodes[instance]["optical ports"] = self.models[
-                    model
-                ].optical_ports
-            # if issubclass(component, ElectricalComponent):
-            #     self.graph.nodes[instance]['electrical ports'] = self.models[model].electrical_ports
-            # if issubclass(component, LogicComponent):
-            #     self.graph.nodes[instance]['logic ports'] = self.models[model].logic_ports
-            # if issubclass(component, OpticalComponent):
-            #     self.graph.nodes[instance]['optical ports'] = self.models[model].optical_ports
+            for port in component.ports:
+                if port.type == "electrical":
+                    electrical_ports.append(port.name)
+                elif port.type == "optical":
+                    optical_ports.append(port.name)
+                elif port.type == "logic":
+                    logic_ports.append(port.name)
+            
+            self.graph.nodes[instance_name]["electrical ports"] = electrical_ports
+            self.graph.nodes[instance_name]["optical ports"] = optical_ports
+            self.graph.nodes[instance_name]["logic ports"] = logic_ports
+
+            # if component.electrical_ports:
+            #     self.graph.nodes[instance]["electrical ports"] = self.models[
+            #         model
+            #     ].electrical_ports
+            # if component.logic_ports:
+            #     self.graph.nodes[instance]["logic ports"] = self.models[
+            #         model
+            #     ].logic_ports
+            # if component.optical_ports:
+            #     self.graph.nodes[instance]["optical ports"] = self.models[
+            #         model
+            #     ].optical_ports
 
     def get_port_type(self, instance, port):
         optical_ports = self.graph.nodes[instance]["optical ports"]
@@ -190,16 +179,18 @@ class Circuit:
     def _validate_connections(self):
         # Verify optical-to-optical, electrical-to-electrical, logic-to-logic
         for edge in self.graph.edges:
-            src = edge[0]
+            src, dst, _ = edge
+            
             src_port = self.graph.edges[edge]["src_port"]
             src_port_type = self.get_port_type(src, src_port)
 
-            dst = edge[1]
             dst_port = self.graph.edges[edge]["dst_port"]
             dst_port_type = self.get_port_type(dst, dst_port)
 
             if not src_port_type == dst_port_type:
                 raise ValueError("Port types must match")
+        
+        # TODO: Verify out to in or out to bidirectional connections
 
     def _color_nodes(self):
         color = COMPONENT_COLOR_DEFAULT
