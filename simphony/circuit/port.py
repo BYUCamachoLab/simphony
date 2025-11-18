@@ -4,9 +4,9 @@ class Port:
 
     Attributes:
         name (str): The name of the port.
-        type (str): The type of signal carried by the port, "Electrical", "Optical", or "Logic"
-        directionality (str): Either "Input", "Output", or "Bidirectional".
-        position (str): The side of the component where the port is displayed ("Left", "Right", "Up", or "Down").
+        type (str): The type of signal carried by the port, "electrical", "optical", or "logic"
+        directionality (str): Either "input", "output", or "bidirectional".
+        position (str): The side of the component where the port is displayed ("left", "right", "Up", or "Down").
         location (float): Position along the specified side, ranging from 0 to 1.
     """
 

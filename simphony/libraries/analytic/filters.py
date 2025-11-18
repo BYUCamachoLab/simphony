@@ -1,6 +1,7 @@
 from simphony.circuit import BlockModeComponent, SampleModeComponent
 from simphony.signals.block_mode import BlockModeOpticalSignal
 from simphony.signals.sample_mode import SampleModeOpticalSignal
+from simphony.circuit.port import Port
 import jax.numpy as jnp
 from scipy.signal import lfilter
 from scipy.constants import speed_of_light as SPEED_OF_LIGHT
@@ -11,7 +12,18 @@ class OpticalDiscreteFilter(
     SampleModeComponent,
     BlockModeComponent,
 ):
-    optical_ports = ["in", "out"]
+    ports = [
+        Port(
+            name="in",
+            type="optical",
+            directionality="input",
+        ),
+        Port(
+            name="out",
+            type="optical",
+            directionality="output",
+        )
+    ]
     
     def __init__(
         self,
@@ -21,13 +33,28 @@ class OpticalDiscreteFilter(
         center_wl = 1.55e-6,
         delay_compensation = 0,
     ):
+        """
+        b: of shape (num_modes, len_b)
+        a: of shape (num_modes, len_a)
+
+        If for each mode, the a coefficients are of length 1, 
+        then the filter will be optimized as a fir filter
+        """
         # We need at least 1 filter for each mode
         b, a = jnp.atleast_2d(b), jnp.atleast_2d(a)
         self.filter_coefficients = b/a[:, 0], a/a[:, 0]
+        
+        if a.shape[1] == 1:
+            self.sample_mode_step = self._sample_mode_initial_state_fir
+            self.sample_mode_step = self._sample_mode_step_fir
+        else:
+            self.sample_mode_step = self._sample_mode_initial_state_iir
+            self.sample_mode_step = self._sample_mode_step_iir
+
         self.center_wl = center_wl
         self.delay_compensation = 0
 
-    def sample_mode_initial_state(self, simulation_parameters):
+    def _sample_mode_initial_state_iir(self, simulation_parameters):
         b, a = self.filter_coefficients
         M, L = simulation_parameters.num_optical_modes, simulation_parameters.optical_baseband_wavelengths.shape[0]
         # weight_x = jnp.zeros((M, L), dtype=complex)
@@ -37,7 +64,7 @@ class OpticalDiscreteFilter(
         state = (x_hist, y_hist)
         return state
     
-    def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_parameters):
+    def _sample_mode_step_iir(self, inputs: dict,  state: jax.Array, simulation_parameters):
         delay_compensation = self.delay_compensation
         
         x_hist, y_hist = state

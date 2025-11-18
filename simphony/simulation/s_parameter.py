@@ -3,7 +3,7 @@
 #     from simphony.circuit import Circuit
 from .simulation import Simulation, SimulationResult
 from .steady_state import SteadyStateSimulation
-from simphony.circuit import Circuit
+from simphony.circuit.circuit import Circuit
 from jax.typing import ArrayLike
 from copy import deepcopy
 import networkx as nx
@@ -82,12 +82,22 @@ class SParameterSimulation(Simulation):
             component = models[model]
             
             self.all_components.add(node)
-            if component.electrical_ports:
+
+            component_types = attr['type'].lower().split('/')
+            if "electrical" in component_types:
                 self.electrical_components.add(node)
-            if component.logic_ports:
-                self.logic_components.add(node)
-            if component.optical_ports:
+            if "optical" in component_types:
                 self.optical_components.add(node)
+            if "logic" in component_types:
+                self.logic_components.add(node)
+
+        
+            # if component.electrical_ports:
+            #     self.electrical_components.add(node)
+            # if component.logic_ports:
+            #     self.logic_components.add(node)
+            # if component.optical_ports:
+            #     self.optical_components.add(node)
         
 
     def _build_s_parameter_circuit(self, ports: dict):

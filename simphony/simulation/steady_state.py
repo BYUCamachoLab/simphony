@@ -1,5 +1,5 @@
 from .simulation import Simulation, SimulationResult
-from simphony.circuit import Circuit
+from simphony.circuit.circuit import Circuit
 import networkx as nx
 from copy import deepcopy
 
@@ -82,11 +82,11 @@ class SteadyStateSimulation(Simulation):
         simulation_result = SteadyStateSimulationResult(self.circuit)
 
         self._instantiate_components(settings)
-        for component in self.steady_state_order:
-            simulation_result._collect_component_inputs(component)   
-            inputs = simulation_result.component_inputs[component]
-            outputs = self.components[component].steady_state(inputs)
-            simulation_result.component_outputs[component] = outputs
+        for instance_name in self.steady_state_order:
+            simulation_result._collect_component_inputs(instance_name)   
+            inputs = simulation_result.component_inputs[instance_name]
+            outputs = self.components[instance_name].steady_state(inputs)
+            simulation_result.component_outputs[instance_name] = outputs
         
         return simulation_result
 

@@ -1,10 +1,12 @@
 from .simulation import Simulation, SimulationResult, SimulationParameters
-from simphony.circuit import Circuit, SampleModeComponent
+from simphony.circuit.circuit import Circuit
+from simphony.circuit.components import SampleModeComponent
 # from simphony.libraries.analytic import advance
-from simphony.simulation.advance import _advance as advance
+# from simphony.simulation.advance import _advance as advance
 from simphony.simulation.termination import _termination as termination
 # from simphony.simulation import SimulationParameters
-from simphony.signals import SampleModeOpticalSignal, SampleModeElectricalSignal, SampleModeLogicSignal, BlockModeOpticalSignal, BlockModeElectricalSignal, BlockModeLogicSignal
+from simphony.signals.sample_mode import SampleModeOpticalSignal, SampleModeElectricalSignal, SampleModeLogicSignal
+from simphony.signals.block_mode import BlockModeOpticalSignal, BlockModeElectricalSignal, BlockModeLogicSignal
 
 from dataclasses import replace
 

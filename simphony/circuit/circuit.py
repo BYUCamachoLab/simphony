@@ -13,7 +13,9 @@ from copy import deepcopy
 import jax
 import jax.numpy as jnp
 
-from .components import Component, _optical_s_parameter
+from .components import Component
+
+from simphony.libraries.analytic.s_parameters import optical_s_parameter
 
 # from simphony.utils import dict_to_matrix
 
@@ -97,7 +99,7 @@ class Circuit:
         for model in self.models:
             component = self.models[model]
             if not inspect.isclass(component):
-                s_parameter = _optical_s_parameter(component)
+                s_parameter = optical_s_parameter(component)
                 self.models[model] = s_parameter
 
     def _mark_component_types(self):

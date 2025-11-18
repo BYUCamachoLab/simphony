@@ -67,11 +67,11 @@ class Simulation:
     
     def _instantiate_components(self, settings):
         self.components = {}
-        for component_name in self.circuit.graph.nodes:
-            model_name = self.circuit.netlist['instances'][component_name]['component']
+        for instance_name in self.circuit.graph.nodes:
+            model_name = self.circuit.netlist['instances'][instance_name]['component']
             model = self.circuit.models[model_name]
-            component_settings = settings[component_name]
-            self.components[component_name] = model(**component_settings)
+            component_settings = settings[instance_name]
+            self.components[instance_name] = model(**component_settings)
     
     def _clear_settings(self):
         self.settings = {}

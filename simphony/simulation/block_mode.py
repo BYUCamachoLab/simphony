@@ -1,5 +1,5 @@
-from .simulation import Simulation, SimulationResult, SimulationParameters
-from simphony.circuit import Circuit
+from simphony.simulation.simulation import Simulation, SimulationResult, SimulationParameters
+from simphony.circuit.circuit import Circuit
 import networkx as nx
 from copy import deepcopy
 from flax import struct
