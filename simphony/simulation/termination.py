@@ -1,6 +1,6 @@
 import jax.numpy as jnp
-from simphony.circuit.components import SampleModeComponent
-from simphony.signals.sample_mode import SampleModeLogicSignal, SampleModeElectricalSignal, SampleModeOpticalSignal
+from simphony.component.component import SampleModeComponent
+from simphony.signal.sample_mode import SampleModeLogicSignal, SampleModeElectricalSignal, SampleModeOpticalSignal
 
 class ElectricalTermination(SampleModeComponent):
     delay_compensation = 0

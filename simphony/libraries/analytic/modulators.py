@@ -1,14 +1,14 @@
 # class OpticalAmplitudeModulator():
 #     pass
-from simphony.circuit.components import SteadyStateComponent, BlockModeComponent, SampleModeComponent
+from simphony.component.component import SteadyStateComponent, BlockModeComponent, SampleModeComponent
 from jax.typing import ArrayLike
 import jax
 import jax.numpy as jnp
 from typing import Callable
 import sax
 
-from simphony.signals.steady_state import SteadyStateOpticalSignal
-from simphony.circuit.port import Port
+from simphony.signal.steady_state import SteadyStateOpticalSignal
+from simphony.component.port import Port
 
 class MachZehnderModulator(
     SteadyStateComponent, 

@@ -8,12 +8,12 @@ from sax.saxtypes import Model as SaxModel
 
 from simphony.utils import add_settings_to_netlist, get_settings_from_netlist, netlist_to_graph
 from copy import deepcopy
-# from simphony.signals import optical_signal, complete_steady_state_inputs
+# from simphony.signal import optical_signal, complete_steady_state_inputs
 
 import jax
 import jax.numpy as jnp
 
-from .components import Component
+from simphony.component.component import Component
 
 from simphony.libraries.analytic.s_parameters import optical_s_parameter
 

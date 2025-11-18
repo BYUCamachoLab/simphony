@@ -11,13 +11,13 @@ from sax.saxtypes import Model as SaxModel
 
 import matplotlib.pyplot as plt
 from simphony.time_domain.vector_fitting.z_domain import optimize_order_vector_fitting_discrete, pole_residue_response_discrete, state_space_discrete
-from simphony.signals.sample_mode import SampleModeOpticalSignal, SampleModeElectricalSignal, SampleModeLogicSignal
-from simphony.signals.steady_state import SteadyStateOpticalSignal
+from simphony.signal.sample_mode import SampleModeOpticalSignal, SampleModeElectricalSignal, SampleModeLogicSignal
+from simphony.signal.steady_state import SteadyStateOpticalSignal
 
 from scipy.constants import speed_of_light
 
-from simphony.circuit.port import Port
-from simphony.circuit.components import OpticalSParameterComponent, SteadyStateComponent, BlockModeComponent, SampleModeComponent
+from simphony.component.port import Port
+from simphony.component.component import OpticalSParameterComponent, SteadyStateComponent, BlockModeComponent, SampleModeComponent
 from simphony.utils import dict_to_matrix
 
 # optical_s_parameter is defined in simphony.circuit in order to maintain backwards compatability with

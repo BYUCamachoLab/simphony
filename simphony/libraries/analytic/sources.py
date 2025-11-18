@@ -1,11 +1,11 @@
 import jax
 from jax.typing import ArrayLike
 
-from simphony.circuit.components import SteadyStateComponent
-from simphony.circuit.components import BlockModeComponent, SampleModeComponent
-from simphony.signals.block_mode import BlockModeOpticalSignal
-from simphony.signals.steady_state import SteadyStateOpticalSignal 
-from simphony.signals.sample_mode import SampleModeOpticalSignal
+from simphony.component.component import SteadyStateComponent
+from simphony.component.component import BlockModeComponent, SampleModeComponent
+from simphony.signal.block_mode import BlockModeOpticalSignal
+from simphony.signal.steady_state import SteadyStateOpticalSignal 
+from simphony.signal.sample_mode import SampleModeOpticalSignal
 import jax.numpy as jnp
 import numpy as np # Used to avoid caching issues when generating random numbers
 from typing import Union
@@ -19,7 +19,7 @@ from simphony.simulation.block_mode import BlockModeSimulationParameters
 # from scipy.signal import butter, lfilter, cheby1
 from typing import Callable
 
-from simphony.circuit.port import Port
+from simphony.component.port import Port
 
 # def gaussian_kernel1d(sigma, truncate=4.0):
 #     radius = int(truncate * sigma + 0.5)

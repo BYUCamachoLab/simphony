@@ -1,7 +1,7 @@
 from simphony.circuit import BlockModeComponent, SampleModeComponent
-from simphony.signals.block_mode import BlockModeOpticalSignal
-from simphony.signals.sample_mode import SampleModeOpticalSignal
-from simphony.circuit.port import Port
+from simphony.signal.block_mode import BlockModeOpticalSignal
+from simphony.signal.sample_mode import SampleModeOpticalSignal
+from simphony.component.port import Port
 import jax.numpy as jnp
 from scipy.signal import lfilter
 from scipy.constants import speed_of_light as SPEED_OF_LIGHT
