@@ -40,10 +40,6 @@ class Circuit:
         models: dict,
         default_settings: dict = None
     ) -> None:
-        # if settings is not None:
-        #     add_settings_to_netlist(netlist, settings)
-        # else:
-        #     add_settings_to_netlist(netlist, None)
         self.netlist = deepcopy(netlist)
         if not 'ports' in self.netlist:
             self.netlist['ports'] = {}
@@ -62,6 +58,9 @@ class Circuit:
         self._color_nodes()
 
     def display(self, inline=True):
+        """
+        
+        """
         fig = gv.d3(self.graph)
         fig.display(inline=inline)
     
