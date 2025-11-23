@@ -26,9 +26,12 @@ from simphony.utils import dict_to_matrix
 
 
 def optical_s_parameter(sax_model: SaxModel):
-    optical_ports = list(sax.get_ports(sax_model))
+    optical_ports = list(sax.get_ports(sax_model()))
     class SParameterSax(OpticalSParameterComponent, SteadyStateComponent, BlockModeComponent, SampleModeComponent):
         # optical_port_names = 
+        # ports = {
+        #     port_name: Port(name=port_name, type="optical", directionality="bidirectional") for port_name in optical_ports
+        # }
         ports = [
             Port(name=port_name, type="optical", directionality="bidirectional") for port_name in optical_ports
         ]

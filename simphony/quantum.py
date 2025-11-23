@@ -8,7 +8,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 from jax.typing import ArrayLike
 from sax.saxtypes import Model
-from sax.utils import get_ports
+from sax import get_ports
 from scipy.stats import multivariate_normal
 
 from simphony.exceptions import ShapeMismatchError
