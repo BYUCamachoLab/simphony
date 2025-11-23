@@ -106,7 +106,7 @@ class Circuit:
         models: dict,
         # default_settings: dict = None
     ) -> None:
-        self.netlist = deepcopy(netlist)
+        self.netlist = sax.netlist(deepcopy(netlist))
         
         # if 'instances' in netlist.keys():        
         for subnetlist_name, subnetlist in self.netlist.items():
@@ -137,10 +137,15 @@ class Circuit:
         
         """
         recursive_netlist = {}
-        if subcircuit is not None:
-            recursive_netlist = self.get_subnetlist(subcircuit)
-        else:
-            recursive_netlist = deepcopy(self.recursive_netlist)
+        # if subcircuit is not None:
+        #     recursive_netlist = self.get_subnetlist(subcircuit)
+        # else:
+        #     recursive_netlist = deepcopy(self.recursive_netlist)
+
+        if subcircuit is None:
+            subcircuit = _find_root(self.subcircuit_hierarchy)[0]
+        
+        recursive_netlist = self.get_subnetlist(subcircuit)
 
         if flatten:
             netlist = sax.flatten_netlist(recursive_netlist)
