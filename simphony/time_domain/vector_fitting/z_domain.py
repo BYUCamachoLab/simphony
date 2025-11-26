@@ -120,7 +120,6 @@ def pole_residue_response_discrete(frequency, center_frequency, sampling_frequen
 def _mean_squared_error(transfer_function, frequency, center_frequency, sampling_frequency, poles, residues, feedthrough, sign_convention):
     fit = pole_residue_response_discrete(frequency, center_frequency, sampling_frequency, poles, residues, feedthrough, sign_convention=PHYSICIST)
     error = jnp.mean(jnp.abs(transfer_function - fit) ** 2)
-
     return error
 
 # def state_space_discrete(poles, residues, feedthrough):
@@ -189,7 +188,7 @@ def vector_fitting_discrete(
     # residues = -residues * final_poles[:, None, None]
     
     error = _mean_squared_error(transfer_function, frequency, center_frequency, sampling_frequency, final_poles, residues, feedthrough, sign_convention)
-    
+
     
     return final_poles, residues, feedthrough, error
 

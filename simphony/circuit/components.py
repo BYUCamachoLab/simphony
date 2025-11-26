@@ -1,3 +1,5 @@
+"""Base component abstractions shared across Simphony simulations."""
+
 ###### Necessary ######
 from __future__ import annotations
 from typing import TYPE_CHECKING
@@ -55,6 +57,7 @@ from scipy.special import lambertw
 from scipy.signal.windows import kaiser_bessel_derived
 
 def line_of_best_fit_m(x, y):
+    """Return slope/intercept arrays for a least-squares line fit."""
     x_mean = jnp.mean(x[:, None, None], axis=0)
     y_mean = jnp.mean(y, axis=0)
     cov = jnp.mean((x[:, None, None]-x_mean)*(y - y_mean), axis=0)
@@ -64,6 +67,7 @@ def line_of_best_fit_m(x, y):
     return slope, intercept
 
 def _extension_up(m, b, x, y_initial, y_final):
+    """Extrapolate monotonically increasing data toward ``y_final``."""
     k = m*(y_final - y_initial)
     
     x_ext = x - x[0]
@@ -74,6 +78,7 @@ def extend_down(m, b, y_f=0.0, N=500):
     pass
 
 def extend(x, y, x_min, x_max, alpha=1e11):
+    """Extend magnitude/phase traces so vector fitting has more support."""
     dy = y[-1] - y[-2]
     dx = x[-1] - x[-2]
     m = dy/dx
@@ -106,6 +111,7 @@ def extend(x, y, x_min, x_max, alpha=1e11):
 
 
 def extend_s_params(s_params, f, f_extended, alpha=1e11):
+    """Pad S-parameter responses in frequency to control aliasing."""
     magnitude = jnp.abs(s_params)
     phase = jnp.unwrap(jnp.angle(s_params), axis=0)
     phase_slope, phase_intercept = line_of_best_fit_m(f, phase)
@@ -144,7 +150,7 @@ def tukey_freq_window(freqs, fc, trans_width, alpha=None):
     return W
 
 def expand_filter_to_mimo(A_f, B_f, C_f, D_f, num_ports):
-    """Creates a block-diagonal MIMO filter from a single SISO filter."""
+    """Create a block-diagonal MIMO filter from a single SISO filter."""
     A = jax.scipy.linalg.block_diag(*[A_f] * num_ports)
     B = jnp.zeros((A.shape[0], num_ports))
     C = jnp.zeros((num_ports, A.shape[0]))
@@ -158,6 +164,7 @@ def expand_filter_to_mimo(A_f, B_f, C_f, D_f, num_ports):
     return A, B, C, D
 
 def cascade_state_space(A1, B1, C1, D1, A2, B2, C2, D2):
+    """Cascade two state-space systems and return the combined matrices."""
     n1 = A1.shape[0]
     n2 = A2.shape[0]
 
@@ -185,6 +192,8 @@ class Signal: ## TODO: Make an actual base class
     ...
 
 class Component:
+    """Lightweight base class shared by all simulation component flavors."""
+
     # simulation_parameters={}
     delay_compensation = 0 # Used especially in time-domain simulations
     
@@ -193,8 +202,7 @@ class Component:
     optical_ports = []
 
 class SteadyStateComponent(Component):
-    """ 
-    """
+    """Mixin for components that expose a steady-state (DC) solution."""
 
     def steady_state(
         self, 
@@ -209,6 +217,8 @@ class SteadyStateComponent(Component):
 
 
 class BlockModeComponent(Component):
+    """Components that process signals as entire blocks (vectorized)."""
+
     def __init__(
         self
         # , optical_ports=None, electrical_ports=None, logic_ports=None
@@ -218,11 +228,13 @@ class BlockModeComponent(Component):
 
     # IDK the best name for this method! Maybe run, but that is confusing
     def block_mode_response(self, input_signal: ArrayLike, simulation_parameters: BlockModeSimulationParameters):
-        """Compute the system response."""
+        """Compute the block response for the provided input signal."""
         raise NotImplementedError
 
 
 class SampleModeComponent(Component):
+    """Discrete-time components executed inside :class:`SampleModeSimulation`."""
+
     def sample_mode_initial_state(self, simulation_parameters: SampleModeSimulationParameters):
         """
         May be overwritten by user.
@@ -232,15 +244,17 @@ class SampleModeComponent(Component):
         return 0
 
     def _sample_mode_initial_state(self, simulation_parameters: SampleModeSimulationParameters):
+        """Internal helper that prepends the time index to user state."""
         _initial_state = (0, self.sample_mode_initial_state(simulation_parameters=simulation_parameters))
         return _initial_state
 
     def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_parameters: SampleModeSimulationParameters) -> Tuple[jax.Array, dict[str, Signal]]:
-        """Compute the next state of the system."""
+        """Compute the next state/output for the concrete component."""
         raise NotImplementedError
     
     # @partial(jax.jit, static_argnums=(0,))
     def _sample_mode_step(self, inputs: dict, state: jax.Array, simulation_parameters: SampleModeSimulationParameters):
+        """JAX-friendly wrapper around :meth:`sample_mode_step`."""
         time_step = state[0]
         internal_state = state[1]
         
@@ -266,8 +280,7 @@ class SampleModeComponent(Component):
         return outputs, (time_step+1, output_state)
 
 class SParameterComponent(Component):
-    """
-    """
+    """Base class for components that return scattering parameters."""
     def s_parameters(
         self,
         inputs: dict,
@@ -295,7 +308,9 @@ class OpticalSParameterComponent(SParameterComponent):
 
 
 def _optical_s_parameter(sax_model: SaxModel):
+    """Wrap a SAX callable with Simphony mixins for multi-simulator support."""
     class SParameterSax(OpticalSParameterComponent, SteadyStateComponent, BlockModeComponent, SampleModeComponent):
+        """Adapter that turns a SAX model into a Simphony component class."""
         optical_ports = list(sax.get_ports(sax_model()))
         _num_ports = len(optical_ports)
         
@@ -320,6 +335,7 @@ def _optical_s_parameter(sax_model: SaxModel):
             self,
             simulation_parameters,
         ):
+            """Build a state-space approximation via pole-residue fit."""
             if "max_order" in self.settings:
                 self.max_order = self.settings["max_order"]
                 self.settings.pop("max_order")
@@ -340,12 +356,13 @@ def _optical_s_parameter(sax_model: SaxModel):
             self.center_frequency = f_c
             
             # H = pole_residue_response_discrete(f, f_c, f_s, poles, residues, feedthrough)
-            # H_full = pole_residue_response_discrete(jnp.linspace(-f_s/2, f_s/2, 1000)+f_c, f_c, f_s, poles, residues, feedthrough)
+            # H_full = pole_residue_response_discrete(jnp.linspace(-f_s/2, f_s/2, N)+f_c, f_c, f_s, poles, residues, feedthrough)
             # print(f"NUMBER OF POLES: {len(poles)}")
-            # plt.plot(f, jnp.abs(H[:, 0, 1])**2)
-            # plt.plot(f, jnp.abs(s_params[:, 0, 1])**2)
+            # plt.plot(f, jnp.angle(H[:, 0, 1]))
+            # plt.plot(f, jnp.angle(s_params[:, 0, 1]))   
             # plt.show()
-            # plt.plot(jnp.linspace(-f_s/2, f_s/2, 1000), jnp.abs(H_full[:, 0, 1])**2)
+            # plt.plot(f, jnp.abs(H[:, 0, 1]))
+            # plt.plot(f, jnp.abs(s_params[:, 0, 1]))     
             # plt.show()
             time_step = 0
             x = jnp.zeros((len(simulation_parameters.optical_baseband_wavelengths), A.shape[0]), dtype=complex)
@@ -357,6 +374,7 @@ def _optical_s_parameter(sax_model: SaxModel):
             state: jax.Array,
             simulation_parameters,
         ):
+            """Propagate the discrete-time state-space model one step."""
             time_step, x = state
             A, B, C, D = self.state_space_model
             
@@ -394,6 +412,7 @@ def _optical_s_parameter(sax_model: SaxModel):
             inputs: dict=None,
             wl: ArrayLike=1.55e-6,
         )->sax.SDict:
+            """Expose the underlying SAX callable for frequency sweeps."""
             # TODO: (MATTHEW! Don't do this one yet, I need to talk to Sequoia first)
             # Change the simphony models to be in units of meters not microns 
             return sax_model(wl*1e6, **self.settings)
@@ -401,6 +420,7 @@ def _optical_s_parameter(sax_model: SaxModel):
         # @staticmethod
         # @jax.jit 
         def steady_state(self, inputs: dict):
+            """Solve the frequency-domain response for a steady-state call."""
             # Sadly, sax_model is not jit compatible
             # so instead we just jit what we can.
             # complete_steady_state_inputs(inputs)
@@ -414,6 +434,7 @@ def _optical_s_parameter(sax_model: SaxModel):
         @staticmethod
         @jax.jit
         def _compute_outputs(s_params: ArrayLike, wls, inputs:dict)->dict:
+            """Apply the scattering matrix to port inputs and repackage signals."""
             ports = sax.get_ports(sax_model)
             num_ports = len(ports)
             num_wls = wls.shape[0]

@@ -1,3 +1,12 @@
+"""Core :class:`Circuit` representation and helpers.
+
+The :mod:`simphony.circuit.circuit` module defines the high-level data
+structure that wraps a netlist together with concrete component
+classes.  It is responsible for validating connectivity, augmenting the graph
+with metadata (ports, colors), and providing amenities such as visualization
+and component removal.
+"""
+
 import inspect
 
 # from simphony.libraries.analytic.component_types import OpticalComponent, ElectricalComponent, LogicComponent
@@ -32,12 +41,27 @@ Todo: Give S-parameter elements proper abstraction
 
 
 class Circuit:
+    """Graph-backed abstraction over a photonic circuit netlist."""
+
     def __init__(
         self,
         netlist: dict,
         models: dict,
         default_settings: dict = None
     ) -> None:
+        """Instantiate a :class:`Circuit` from a raw netlist and model map.
+
+        Parameters
+        ----------
+        netlist:
+            Dictionary with ``instances``, ``connections``, and
+            ``ports`` entries that mirrors the YAML/JSON representation users
+            edit by hand.
+        models:
+            Mapping from model key → component class or callable SAX model.
+        default_settings:
+            Optional defaults merged into each instance's ``settings`` block.
+        """
         # if settings is not None:
         #     add_settings_to_netlist(netlist, settings)
         # else:
@@ -60,11 +84,13 @@ class Circuit:
         self._color_nodes()
 
     def display(self, inline=True):
+        """Render an interactive graphviz widget (requires gravis)."""
         fig = gv.d3(self.graph)
         fig.display(inline=inline)
     
 
     def remove_components(self, components):
+        """Remove components (and their edges/ports) from the circuit."""
         components = list(components)
         self.graph.remove_nodes_from(components)
         
@@ -93,6 +119,7 @@ class Circuit:
     #         node_attr['model'] = models[node_attr['component']]
 
     def _convert_sax_models(self):
+        """Wrap plain SAX callables so they behave like components."""
         for model in self.models:
             component = self.models[model]
             if not inspect.isclass(component):
@@ -100,7 +127,7 @@ class Circuit:
                 self.models[model] = s_parameter
 
     def _mark_component_types(self):
-        """ """
+        """Annotate each graph node with the union of its port roles."""
         for instance, attr in self.graph.nodes.items():
             model = attr["component"]
             component = self.models[model]
@@ -137,6 +164,7 @@ class Circuit:
             #     self.graph.nodes[instance]['type'] = '/'.join(sorted(tags))
 
     def _add_ports_to_graph(self):
+        """Expose electrical/logic/optical port lists on each node."""
         for instance, attr in self.graph.nodes.items():
             self.graph.nodes[instance]["electrical ports"] = []
             self.graph.nodes[instance]["logic ports"] = []
@@ -171,6 +199,7 @@ class Circuit:
             #     self.graph.nodes[instance]['optical ports'] = self.models[model].optical_ports
 
     def get_port_type(self, instance, port):
+        """Return ``"optical"``, ``"electrical"``, or ``"logic"`` for a port."""
         optical_ports = self.graph.nodes[instance]["optical ports"]
         electrical_ports = self.graph.nodes[instance]["electrical ports"]
         logic_ports = self.graph.nodes[instance]["logic ports"]
@@ -183,6 +212,7 @@ class Circuit:
             return "logic"
 
     def _validate_connections(self):
+        """Ensure every edge connects same-kind ports."""
         # Verify optical-to-optical, electrical-to-electrical, logic-to-logic
         for edge in self.graph.edges:
             src = edge[0]
@@ -198,6 +228,7 @@ class Circuit:
                 raise ValueError("Port types must match")
 
     def _color_nodes(self):
+        """Assign a color per node type to help visualization tools."""
         color = COMPONENT_COLOR_DEFAULT
 
         # Assumes tags in alphabetical order

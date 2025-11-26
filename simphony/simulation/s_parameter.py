@@ -1,3 +1,10 @@
+"""Frequency-domain (S-parameter) simulation utilities.
+
+This module trims user circuits down to their optical subgraphs, stitches in
+steady-state operating points for hybrid components, and produces callable SAX
+models that can be evaluated over wavelength grids.
+"""
+
 # from typing import TYPE_CHECKING
 # if TYPE_CHECKING:
 #     from simphony.circuit import Circuit
@@ -13,22 +20,44 @@ import sax
 from functools import partial
 
 class SParameterSimulationResult(SimulationResult):
+    """Return object for :meth:`SParameterSimulation.run`.
+
+    Attributes
+    ----------
+    sax_circuit:
+        Callable SAX circuit that can be re-evaluated at arbitrary
+        wavelengths after ``run`` completes.
+    sax_circuit_info:
+        Metadata describing port ordering and symbol mapping as produced by
+        :func:`sax.circuit`.
+    s_parameters:
+        Convenience scattering dictionary evaluated at the wavelength(s)
+        supplied to ``run``.
+    """
+
     def __init__(self):
         pass
 
 class SParameterSimulation(Simulation):
+    """Build scattering-parameter models for optical subcircuits."""
+
     def __init__(
             self, 
             circuit: Circuit, 
             ports=None, 
             # settings: dict = None
         ):
-        """s_parameter_simulation
-        Calculates the S-parameters for a given set of ports in an optical
-        circuit. 
-        
-        By default, the exposed ports and settings are taken from 
-        the provided netlist, but may be overwritten with keyword arguments.
+        """Prepare the simulation harness.
+
+        Parameters
+        ----------
+        circuit:
+            :class:`Circuit` containing optical, electrical, and logic
+            components.  Only the optical subgraph connected to the exposed
+            ports will be retained for the S-parameter solve.
+        ports:
+            Optional mapping of exposed port aliases.  Defaults to the ports
+            declared in the input netlist.
         """
         self.circuit = circuit
         
@@ -51,6 +80,7 @@ class SParameterSimulation(Simulation):
         wl: ArrayLike=1.55e-6, 
         # use_default_settings: bool = True
     ) -> SParameterSimulationResult:
+        """Compute scattering parameters at the supplied wavelength(s)."""
         s_parameter_simulation_result = SParameterSimulationResult()
         use_default_settings = True
         self.reset_settings(use_default_settings=use_default_settings)
@@ -66,10 +96,7 @@ class SParameterSimulation(Simulation):
         return s_parameter_simulation_result
 
     def _identify_component_types(self):
-        """
-        Identify the types of components in the circuit.
-        This method categorizes components into electrical, optical, and logic components
-        """
+        """Classify circuit nodes by their available port types."""
         self.all_components = set()
         self.electrical_components = set()
         self.optical_components = set()
@@ -91,6 +118,7 @@ class SParameterSimulation(Simulation):
         
 
     def _build_s_parameter_circuit(self, ports: dict):
+        """Carve out an optical-only subnetwork reachable from ``ports``."""
         non_optical_components = self.all_components - self.optical_components
         optical_only_graph = deepcopy(self.circuit.graph)
         optical_only_graph.remove_nodes_from(non_optical_components)
@@ -134,6 +162,7 @@ class SParameterSimulation(Simulation):
         self.s_parameter_circuit.netlist['ports'] = ports
 
     def _validate_s_parameter_graph(self):
+        """Ensure the extracted optical subgraph has no hidden drive sources."""
         # Signal source nodes are sources of non-optical signals
         source_nodes = set()
         s_parameter_graph_nodes = set(self.s_parameter_circuit.graph.nodes)
@@ -156,6 +185,7 @@ class SParameterSimulation(Simulation):
                 raise ValueError("Invalid S-parameter SubCircuit: Time-domain Simulation Required")
 
     def _initialize_steady_state_simulation(self):
+        """Instantiate a steady-state solver for hybrid components."""
         steady_state_circuit = deepcopy(self.circuit)
         steady_state_circuit.remove_components(self.s_parameter_circuit.graph.nodes-self.hybrid_components)
         self.steady_state_simulation = SteadyStateSimulation(steady_state_circuit)
@@ -176,8 +206,7 @@ class SParameterSimulation(Simulation):
     #         pass
     
     def _generate_sax_circuit(self, wl, steady_state_simulation_result):
-        """
-        """
+        """Convert the prepared subcircuit into a callable SAX model."""
         # I will assume that the only connections between the s-parameter portion of the circuit
         # and the steady-state portion of the circuit are electrical or optical (this might change)
         # in the future if more connection types become supported
@@ -199,27 +228,11 @@ class SParameterSimulation(Simulation):
 
         instances = {key: key for key in self.s_parameter_circuit.netlist['instances']}
         self.s_parameter_circuit.netlist['instances'] = instances
-        
-        return sax.circuit(self.s_parameter_circuit.netlist, sax_models)
-        """
-        ### TODO: MATTHEW! Keep in mind that I defined the sax models to use SI units
-        ### and to assume that wl is given in terms of meters, not microns
-        ### To see what I mean, stop here in debug mode and run sax_models['splitter'](1.55e-6)
-        ### Notice that I am using 1.55e-6 instead of 1.55 but that is what it expects
-        pass
-        
-        ### TODO: complete the function graph_to_netlist in simphony.utils
-        ### turn self.s_parameter_graph into a netlist
-        ### use the sax_models dictionary above and the netlist you just generated to create
-        ### a sax.circuit and return the resulting scattering dictionary
-        ### Alternatively, it might be more efficient to make an "self.s_parameter_circuit"
-        ### and use the remove_compoenents method from that circuit object
-        ### that might get you the netlist you need for free
 
-        sax_netlist = graph_to_netlist(self.s_parameter_circuit.graph) ## You might change this to use the alternative approach
-        circuit = sax.circuit(sax_netlist, sax_models)
-        ### TODO: It is probably possible for the user to keep the s-parameter graph elements parameterized
-        ### and simply return a sax circuit, maybe I will do that later, don't do that yet, 
-        ### For now just return the s-parameter dict
-        return circuit(wl)
-        """
+        return sax.circuit(self.s_parameter_circuit.netlist, sax_models)
+
+        # Legacy notes retained for future work:
+        # - SAX models expect wavelengths in meters, not microns.
+        # - ``simphony.utils.graph_to_netlist`` can be used to regenerate a
+        #   netlist from the optical graph directly if we want to keep the
+        #   network parameterized instead of instantiating per-instance models.

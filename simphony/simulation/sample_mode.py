@@ -1,3 +1,12 @@
+"""Sample-mode time-domain simulation infrastructure.
+
+This module implements :class:`SampleModeSimulation`, the JAX-backed engine that
+propagates optical/electrical/logic signals through a photonic circuit on a per
+time-step basis.  It augments user-provided netlists by inserting
+terminations/delay compensators, validates component compatibility, and
+collects tracked signals throughout the run.
+"""
+
 from functools import partial
 from .simulation import Simulation, SimulationResult, SimulationParameters
 from simphony.circuit import Circuit, SampleModeComponent
@@ -28,24 +37,58 @@ from dataclasses import field
 #     return obj.__class__(**fields)
 
 class SampleModeSimulationResult(SimulationResult):
+    """Container returned by :meth:`SampleModeSimulation.run`.
+
+    Currently this is a thin subclass that simply mirrors the tracked-port
+    signal dictionary emitted at the end of the simulation.  The class exists
+    so we can extend it later with metadata (chunk timings, convergence stats,
+    etc.) without breaking the API.
+    """
+
     def __init__(self):
-        pass
+        super().__init__()
 
 @struct.dataclass
 class SampleModeSimulationParameters(SimulationParameters):
-    # def __init__(
-    #     self,
-    optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([1.51e-6, 1.52e-6, 1.53e-6, 1.54e-6, 1.55e-6, 1.56e-6, 1.57e-6, 1.58e-6, 1.59e-6]))
-    electrical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([0]))
-    #     **kwargs,
-    # ):
-    #     super().__init__(**kwargs)
-    #     self.optical_baseband_wavelengths = optical_baseband_wavelengths
-    #     self.electrical_baseband_wavelengths = electrical_baseband_wavelengths
+    """JAX-friendly configuration describing the spectral/time grid.
+
+    Parameters are represented as a :class:`flax.struct.dataclass` so they can
+    be traced by JAX transformations.  Users most commonly override the
+    baseband wavelength grids before passing the parameters into
+    :meth:`SampleModeSimulation.run`.
+    """
+
+    optical_baseband_wavelengths: jax.Array = field(
+        default_factory=lambda: jnp.array([
+            1.51e-6,
+            1.52e-6,
+            1.53e-6,
+            1.54e-6,
+            1.55e-6,
+            1.56e-6,
+            1.57e-6,
+            1.58e-6,
+            1.59e-6,
+        ])
+    )
+    electrical_baseband_wavelengths: jax.Array = field(
+        default_factory=lambda: jnp.array([0])
+    )
 
 
 class SampleModeSimulation(Simulation):
+    """Time-domain executor for :class:`SampleModeComponent` circuits.
+
+    The constructor performs a series of netlist hygiene steps (port
+    termination, bidirectional edge mirroring, settings reset) so the resulting
+    ``self.circuit`` is immediately ready for stepping.  Users rarely
+    instantiate this class directly—``simphony.simulation.sample_mode`` exposes
+    helpers—but doing so gives full control over chunk sizes, tracked ports, and
+    per-instance settings.
+    """
+
     CHUNK_SIZE = 100000
+
     def __init__(self, circuit: Circuit):
         self._validate_circuit(circuit)
         circuit = self._insert_terminations(circuit)
@@ -54,22 +97,28 @@ class SampleModeSimulation(Simulation):
         self.reset_settings(use_default_settings=True)
 
         self._instance_names = list(self.circuit.graph.nodes)
-        
+
         self._instance_ports = []
         for inst_name in self._instance_names:
-            
+
             component = self.circuit.netlist['instances'][inst_name]['component']
             self.circuit.models[component]
             model = self.circuit.models[component]
             ports = model.optical_ports + model.electrical_ports + model.logic_ports
             ports.sort()
-            
+
             self._instance_ports += [(inst_name, port) for port in ports]
-        
+
         self._predecessors_map, self._successors_map = self.edge_lookup_tables()
-        
-    
+
     def edge_lookup_tables(self):
+        """Pre-compute adjacency lookups for fast signal routing.
+
+        The simulator repeatedly needs to map each port to its fan-in/fan-out.
+        Building two dictionaries ahead of time keeps the per-step loop small
+        and JIT-friendly.
+        """
+
         successors_map = {}
         predecessors_map = {}
         for inst_name, port in self._instance_ports:
@@ -82,7 +131,7 @@ class SampleModeSimulation(Simulation):
                 src_port = data['src_port']
                 dst_port = data['dst_port']
                 predecessors_map[(dst_node, dst_port)].append((src_node, src_port))
-            
+
             out_edges = self.circuit.graph.out_edges(inst_name, data=True)
             for src_node, dst_node, data in out_edges:
                 src_port = data['src_port']
@@ -91,12 +140,31 @@ class SampleModeSimulation(Simulation):
         return predecessors_map, successors_map
 
     def run(
-        self, 
+        self,
         settings: dict = None,
         tracked_ports: dict = None,
         simulation_parameters: SampleModeSimulationParameters = SampleModeSimulationParameters(),
         use_jit: bool = True
     ) -> SampleModeSimulationResult:
+        """Execute the sample-mode simulation loop.
+
+        Parameters
+        ----------
+        settings:
+            Optional dictionary keyed by instance name → settings dict.  When
+            provided, these override the defaults baked into the netlist.
+        tracked_ports:
+            Mapping from human-friendly alias → ``"instance,port"`` string.
+            If omitted, all exposed netlist ports are recorded.
+        simulation_parameters:
+            :class:`SampleModeSimulationParameters` controlling time-grid,
+            wavelengths, PRNG keys, etc.
+        use_jit:
+            If ``True`` (default) the inner chunk is JIT-compiled for improved
+            throughput.  Disable when debugging or when using Python-only
+            components.
+        """
+
         self.CHUNK = self.CHUNK_SIZE
         N = simulation_parameters.num_time_steps
         optical_wavelengths = simulation_parameters.optical_baseband_wavelengths
@@ -167,6 +235,13 @@ class SampleModeSimulation(Simulation):
         return tracked
 
     def _run_chunk(self, system_outputs, states, simulation_parameters, i0, steps):
+        """Advance the simulation by ``steps`` time samples.
+
+        This function is intentionally side-effect free so it can be traced by
+        :func:`jax.jit` and :func:`jax.lax.scan`.  State dictionaries contain
+        per-instance component data structures.
+        """
+
         def step(carry, _):
             system_outputs, states, simulation_parameters, i = carry
             system_inputs = {name: self._get_inputs(name, system_outputs) for name in self.components.keys()}
@@ -194,6 +269,13 @@ class SampleModeSimulation(Simulation):
         return system_outputs_f, states_f, simulation_parameters_f, i_f, ys
         
     def _get_inputs(self, instance_name, current_outputs):
+        """Assemble the input signal dictionary for ``instance_name``.
+
+        Sample-mode components currently support only one upstream source per
+        port, so the predecessors map is expected to contain exactly one entry
+        for each port.  This assumption is validated when building the circuit.
+        """
+
         inputs = {}
         ports = self.components[instance_name].optical_ports + self.components[instance_name].electrical_ports + self.components[instance_name].logic_ports
         # OPTICAL_NULL_SRC_NODE = 0
@@ -210,6 +292,8 @@ class SampleModeSimulation(Simulation):
         return inputs
 
     def _initial_outputs(self, optical_wavelengths, electrical_wavelengths):
+        """Create zero-valued :mod:`simphony.signals` objects for every port."""
+
         initial_outputs = {}
         for inst_name, model in self.components.items():
             initial_outputs[inst_name] = {}
@@ -228,6 +312,13 @@ class SampleModeSimulation(Simulation):
         return initial_outputs
 
     def _make_all_connections_bidirectional(self, circuit):
+        """Mirror every connection so signals can flow both ways.
+
+        Sample-mode simulations treat each connection as bidirectional when
+        routing inputs/outputs.  This helper rewrites the netlist to include the
+        mirrored edges so downstream logic can simply look up predecessors.
+        """
+
         new_models = circuit.models
         netlist = circuit.netlist
         new_instances = deepcopy(netlist['instances'])
@@ -253,6 +344,14 @@ class SampleModeSimulation(Simulation):
         return new_circuit
     
     def _insert_terminations(self, circuit):
+        """Attach default terminations to every dangling port.
+
+        The simulator requires a well-defined source for each port; otherwise
+        ``_get_inputs`` would fail.  This method scans for unterminated ports,
+        injects synthetic termination components, and returns an augmented
+        :class:`Circuit` instance.
+        """
+
         netlist = circuit.netlist
         new_instances = deepcopy(netlist['instances'])
         new_connections = deepcopy(netlist['connections'])
@@ -318,6 +417,7 @@ class SampleModeSimulation(Simulation):
         return new_circuit
 
     def _insert_advance_blocks(self, circuit):
+        """(Unused) infrastructure for delay-compensation blocks."""
         netlist = circuit.netlist
         new_instances = deepcopy(netlist['instances'])
         new_connections = {}
@@ -361,6 +461,7 @@ class SampleModeSimulation(Simulation):
         return new_circuit
         
     def _validate_circuit(self, circuit: Circuit):
+        """Ensure every instance inherits :class:`SampleModeComponent`."""
         for component_name in circuit.graph.nodes:
             model_name = circuit.netlist['instances'][component_name]['component']
             model = circuit.models[model_name]

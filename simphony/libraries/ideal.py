@@ -52,8 +52,8 @@ def coupler(
 
 
 def waveguide(
-    *,
     wl: ArrayLike | float = 1.55,
+    *,
     wl0: float = 1.55,
     neff: float = 2.34,
     ng: float = 3.4,
