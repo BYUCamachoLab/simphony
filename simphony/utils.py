@@ -520,6 +520,20 @@ def resample(x: ArrayLike, xp: ArrayLike, sdict: sax.SDict) -> sax.SDict:
         new_sdict[k] = cs(x)
     return new_sdict
 
+def complete_netlist(netlist):
+    """
+    Netlists may not have ports, or connections specified. 
+    This function adds empty dictionaries to flat netlists
+    without these specified.
+
+    """
+    if 'instances' not in netlist:
+        netlist['instances'] = {}
+    if 'connections' not in netlist:
+        netlist['connections'] = {}
+    if 'ports' not in netlist:
+        netlist['ports'] = {}
+
 
 def add_settings_to_netlist(netlist, settings=None):
     if settings is None:

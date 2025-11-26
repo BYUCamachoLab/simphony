@@ -8,7 +8,7 @@ import gravis as gv
 from jax.typing import ArrayLike
 from sax.saxtypes import Model as SaxModel
 
-from simphony.utils import add_settings_to_netlist, get_settings_from_netlist, netlist_to_graph
+from simphony.utils import add_settings_to_netlist, complete_netlist, get_settings_from_netlist, netlist_to_graph
 from copy import deepcopy
 # from simphony.signal import optical_signal, complete_steady_state_inputs
 
@@ -21,6 +21,7 @@ from simphony.libraries.analytic.s_parameters import optical_s_parameter
 import sax
 
 from sax.circuits import _create_dag
+from sax.netlists import convert_nets_to_connections
 # from simphony.utils import dict_to_matrix
 
 COMPONENT_COLOR_DEFAULT = "black"
@@ -107,10 +108,11 @@ class Circuit:
         # default_settings: dict = None
     ) -> None:
         self.netlist = sax.netlist(deepcopy(netlist))
-        
-        # if 'instances' in netlist.keys():        
+        self.netlist = convert_nets_to_connections(self.netlist) # Makes gdsfactory netlists compatible
+        # if 'instances' in netlist.keys():
         for subnetlist_name, subnetlist in self.netlist.items():
             add_settings_to_netlist(subnetlist)
+            # complete_netlist(subnetlist)
 
         self.recursive_netlist = sax.netlist(self.netlist)
         self.flattened_netlist = sax.flatten_netlist(self.recursive_netlist)
@@ -235,11 +237,21 @@ class Circuit:
             # component = self.models[component_name]
             # ports = component.ports
 
-            if instance in self.subcircuit_hierarchy.nodes:
-                ports = self._get_ports_from_subcircuit(instance)
-            else:
+            # if instance in self.subcircuit_hierarchy.nodes:
+            
+            component_name = self.recursive_netlist[subcircuit]['instances'][instance]['component']
+            if component_name in self.models:
                 component_name = self.recursive_netlist[subcircuit]['instances'][instance]['component']
                 ports = self.models[component_name].ports
+            elif component_name in self.subcircuit_hierarchy.nodes:
+                ports = self._get_ports_from_subcircuit(component_name)
+
+
+            # if instance in self.subcircuit_hierarchy.nodes:
+            #     ports = self._get_ports_from_subcircuit(instance)
+            # else:
+            #     component_name = self.recursive_netlist[subcircuit]['instances'][instance]['component']
+            #     ports = self.models[component_name].ports
 
             tags = set()
             for port in ports:
