@@ -20,18 +20,9 @@ from simphony.component.port import Port
 from simphony.component.component import OpticalSParameterComponent, SteadyStateComponent, BlockModeComponent, SampleModeComponent
 from simphony.utils import dict_to_matrix
 
-# optical_s_parameter is defined in simphony.circuit in order to maintain backwards compatability with
-# sax models
-# from simphony.circuit import _optical_s_parameter as optical_s_parameter
-
-
 def optical_s_parameter(sax_model: SaxModel):
     optical_ports = list(sax.get_ports(sax_model()))
     class SParameterSax(OpticalSParameterComponent, SteadyStateComponent, BlockModeComponent, SampleModeComponent):
-        # optical_port_names = 
-        # ports = {
-        #     port_name: Port(name=port_name, type="optical", directionality="bidirectional") for port_name in optical_ports
-        # }
         ports = [
             Port(name=port_name, type="optical", directionality="bidirectional") for port_name in optical_ports
         ]
@@ -118,13 +109,6 @@ def optical_s_parameter(sax_model: SaxModel):
             self.center_frequency = f_c
             
             H = pole_residue_response_discrete(f, f_c, f_s, poles, residues, feedthrough)
-            # H_full = pole_residue_response_discrete(jnp.linspace(-f_s/2, f_s/2, 1000)+f_c, f_c, f_s, poles, residues, feedthrough)
-            # print(f"NUMBER OF POLES: {len(poles)}")
-            # plt.plot(f, jnp.abs(H[:, 0, 1])**2)
-            # plt.plot(f, jnp.abs(s_params[:, 0, 1])**2)
-            # plt.show()
-            # plt.plot(jnp.linspace(-f_s/2, f_s/2, 1000), jnp.abs(H_full[:, 0, 1])**2)
-            # plt.show()
             time_step = 0
             x = jnp.zeros((len(simulation_parameters.optical_baseband_wavelengths), A.shape[0]), dtype=complex)
             return time_step, x
@@ -216,3 +200,5 @@ def optical_s_parameter(sax_model: SaxModel):
             return outputs
 
     return SParameterSax
+
+
