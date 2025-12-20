@@ -344,7 +344,7 @@ def state_space_response_discrete(A, B, C, D, u, x=None):
     return yout, xout
 
 def main():
-    from simphony.libraries import ideal
+    from simphony.ideal import ideal
     from simphony.utils import dict_to_matrix
     import sax
     from time import time

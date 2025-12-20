@@ -6,7 +6,7 @@ from jax import config
 config.update("jax_enable_x64", True)
 
 
-from simphony.libraries import ideal
+from simphony.ideal import ideal
 from simphony.utils import dict_to_matrix
 
 from simphony.baseband_vector_fitting import Baseband_Model, BVF_Options

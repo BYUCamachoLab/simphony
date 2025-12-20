@@ -216,13 +216,6 @@ class SteadyStateComponent(Component):
 
 
 class BlockModeComponent(Component):
-    def __init__(
-        self
-        # , optical_ports=None, electrical_ports=None, logic_ports=None
-    ) -> None:
-        ...
-        # super().__init__(optical_ports, electrical_ports, logic_ports)
-
     # IDK the best name for this method! Maybe run, but that is confusing
     def block_mode_response(self, input_signal: ArrayLike, simulation_parameters: BlockModeSimulationParameters):
         """Compute the system response."""

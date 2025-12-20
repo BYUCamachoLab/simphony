@@ -20,6 +20,8 @@ from simphony.component.port import Port
 from simphony.component.component import OpticalSParameterComponent, SteadyStateComponent, BlockModeComponent, SampleModeComponent
 from simphony.utils import dict_to_matrix
 
+from simphony.component.pcell import PCell
+
 def optical_s_parameter(sax_model: SaxModel):
     optical_ports = list(sax.get_ports(sax_model()))
     class SParameterSax(OpticalSParameterComponent, SteadyStateComponent, BlockModeComponent, SampleModeComponent):

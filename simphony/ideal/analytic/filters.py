@@ -1,4 +1,4 @@
-from simphony.circuit import BlockModeComponent, SampleModeComponent
+from simphony.component.component import BlockModeComponent, SampleModeComponent
 from simphony.signal.block_mode import BlockModeOpticalSignal
 from simphony.signal.sample_mode import SampleModeOpticalSignal
 from simphony.component.port import Port

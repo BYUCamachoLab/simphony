@@ -343,7 +343,7 @@ def vector_fitting_z_optimize_order(
 
 
 def main():
-    from simphony.libraries import ideal
+    from simphony.ideal import ideal
     from simphony.utils import dict_to_matrix
     import sax
     from time import time

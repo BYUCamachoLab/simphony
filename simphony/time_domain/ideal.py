@@ -7,7 +7,7 @@ import numpy as np
 import sax
 from jax.typing import ArrayLike
 
-import simphony.libraries.ideal as fd
+import simphony.ideal.ideal as fd
 from simphony.time_domain.time_system import (
     BlockModeComponent,
     SampleModeComponent,

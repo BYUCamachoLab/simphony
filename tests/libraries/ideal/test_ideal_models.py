@@ -1,4 +1,4 @@
-from simphony.libraries.ideal import coupler, waveguide
+from simphony.ideal.ideal import coupler, waveguide
 
 
 class TestCoupler:

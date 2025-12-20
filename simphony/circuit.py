@@ -16,8 +16,9 @@ import jax
 import jax.numpy as jnp
 
 from simphony.component.component import Component
+from simphony.component.pcell import PCell
 
-from simphony.libraries.analytic.s_parameters import optical_s_parameter
+from simphony.ideal.analytic.s_parameters import optical_s_parameter
 import sax
 
 from sax.circuits import _create_dag
@@ -99,20 +100,16 @@ def _find_leaves(g: nx.DiGraph) -> list[str]:
 # End of functions taken from sax.circuits from sax 0.15.10
 # -----------------------------------------------------------------
 
-
 class Circuit:
     def __init__(
         self,
         netlist: dict,
         models: dict,
-        # default_settings: dict = None
     ) -> None:
         self.netlist = sax.netlist(deepcopy(netlist))
-        self.netlist = convert_nets_to_connections(self.netlist) # Makes gdsfactory netlists compatible
-        # if 'instances' in netlist.keys():
+        self.netlist = convert_nets_to_connections(self.netlist) 
         for subnetlist_name, subnetlist in self.netlist.items():
             add_settings_to_netlist(subnetlist)
-            # complete_netlist(subnetlist)
 
         self.recursive_netlist = sax.netlist(self.netlist)
         self.flattened_netlist = sax.flatten_netlist(self.recursive_netlist)
@@ -139,10 +136,6 @@ class Circuit:
         
         """
         recursive_netlist = {}
-        # if subcircuit is not None:
-        #     recursive_netlist = self.get_subnetlist(subcircuit)
-        # else:
-        #     recursive_netlist = deepcopy(self.recursive_netlist)
 
         if subcircuit is None:
             subcircuit = _find_root(self.subcircuit_hierarchy)[0]
@@ -164,49 +157,18 @@ class Circuit:
         fig = gv.d3(graph)
         fig.display(inline=inline)
     
+    def flatten(self):
+        return FlatCircuit(self.recursive_netlist, self.models)
+    
     def get_subnetlist(self, subcircuit: str):
         original_netlist = deepcopy(self.recursive_netlist)
         if not subcircuit in self.subcircuit_hierarchy.nodes:
                 return ValueError(f"{subcircuit} not in circuit. Did you mean {list(self.subcircuit_hierarchy.nodes)}?")
         descendants = nx.descendants(self.subcircuit_hierarchy, subcircuit)
         subcircuits_to_keep = set([subcircuit] + list(descendants)) - set(_find_leaves(self.subcircuit_hierarchy))
-        # if key in original_netlist.keys()
+        
         return sax.netlist({key: original_netlist[key] for key in subcircuits_to_keep})
 
-    #Matthew's Suggestions
-    #You don't remove ports with the component name attached. 
-    #Is this on purpose with the understanding that these components don't have ports?
-    #or is this a bug?
-
-    def remove_components(self, components):
-        components = list(components)
-        self.graph.remove_nodes_from(components)
-        
-        # Remove from instances
-        for component in components:
-            self.netlist['instances'].pop(component, None)
-
-        # Remove connections
-        filtered_connections = {
-            k: v for k, v in self.netlist['connections'].items()
-            if not any(s in k or s in v for s in components)
-        }
-        self.netlist['connections'] = filtered_connections
-
-        # Remove ports
-        if 'ports' in self.netlist:
-            filtered_ports = { 
-                k: v for k, v in self.netlist['ports'].items()
-                if not any(s in v for s in components)
-            }
-            self.netlist['ports'] = filtered_ports
-        pass
-
-    # def _add_data_to_flattened_graph(self, graph):
-    #     self._mark_component_types(graph)
-    #     # self._add_ports_to_graph(graph)
-    #     # self._validate_connections(graph)
-    #     self._color_nodes(graph)
 
     def _convert_sax_models(self):
         for model in self.models:
@@ -232,12 +194,6 @@ class Circuit:
         """ 
         """
         for instance, attr in graph.nodes.items():
-            # component_name = self.flattened_netlist['instances'][subcircuit]
-            # component_name = attr["component"]
-            # component = self.models[component_name]
-            # ports = component.ports
-
-            # if instance in self.subcircuit_hierarchy.nodes:
             
             component_name = self.recursive_netlist[subcircuit]['instances'][instance]['component']
             if component_name in self.models:
@@ -245,13 +201,6 @@ class Circuit:
                 ports = self.models[component_name].ports
             elif component_name in self.subcircuit_hierarchy.nodes:
                 ports = self._get_ports_from_subcircuit(component_name)
-
-
-            # if instance in self.subcircuit_hierarchy.nodes:
-            #     ports = self._get_ports_from_subcircuit(instance)
-            # else:
-            #     component_name = self.recursive_netlist[subcircuit]['instances'][instance]['component']
-            #     ports = self.models[component_name].ports
 
             tags = set()
             for port in ports:
@@ -261,14 +210,6 @@ class Circuit:
                     tags.add("optical")
                 elif port.type == "logic":
                     tags.add("logic")
-
-            # tags = set()
-            # if component.electrical_port_names:
-            #     tags.add("electrical")
-            # if component.logic_port_names:
-            #     tags.add("logic")
-            # if component.optical_port_names:
-            #     tags.add("optical")
 
             graph.nodes[instance]["type"] = "/".join(sorted(tags))
 
@@ -297,19 +238,6 @@ class Circuit:
             graph.nodes[subcircuit]["electrical ports"] = electrical_ports
             graph.nodes[subcircuit]["optical ports"] = optical_ports
             graph.nodes[subcircuit]["logic ports"] = logic_ports
-
-            # if component.electrical_ports:
-            #     self.graph.nodes[instance]["electrical ports"] = self.models[
-            #         model
-            #     ].electrical_ports
-            # if component.logic_ports:
-            #     self.graph.nodes[instance]["logic ports"] = self.models[
-            #         model
-            #     ].logic_ports
-            # if component.optical_ports:
-            #     self.graph.nodes[instance]["optical ports"] = self.models[
-            #         model
-            #     ].optical_ports
 
     def get_port_type(self, graph, instance, port):
         optical_ports = graph.nodes[instance]["optical ports"]
@@ -362,3 +290,42 @@ class Circuit:
                 color = COMPONENT_COLOR_OPTOELECTRICAL
 
             graph.nodes[instance]["color"] = color
+
+class FlatCircuit:
+    def __init__(
+        self,
+        netlist: dict,
+        models: dict,
+    ) -> None:
+        # Normalize netlist
+        self.netlist = sax.netlist(deepcopy(netlist))
+        self.netlist = convert_nets_to_connections(self.netlist)
+        add_settings_to_netlist(self.netlist)
+        self.netlist = sax.flatten_netlist(self.recursive_netlist)
+        
+        # Create Flat Graph
+        self.graph = netlist_to_graph(self.flattened_netlist)
+        
+        # Normalize Models 
+        # (All components should be of Class Component or PCell)
+        self.models = models
+        self._convert_sax_models()
+        for instance_name, component in self.models.items():
+            component._create_port_lookup_table()
+
+        self._add_ports_to_graph(self.flattened_graph)
+        self._validate_connections(self.flattened_graph)
+        pass
+
+
+class InstantiatedCircuit:
+    """
+    Similar to the Circuit, but composed of the models, themselves, not abstract component classes
+
+    Will always be flattened 
+    1. no recursively defined netlists 
+    2. PCells have been flattened into base components
+    """
+    pass
+
+

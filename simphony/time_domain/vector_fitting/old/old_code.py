@@ -5,7 +5,7 @@ from scipy.sparse import diags
 from scipy.linalg import block_diag
 import pandas as pd
 
-from simphony.libraries import siepic
+from simphony.ideal import siepic
 from simphony.utils import dict_to_matrix
 from scipy.signal import StateSpace, bilinear_zpk
 
@@ -519,7 +519,7 @@ def main1():
     pass
 
 def main2():
-    from simphony.libraries import ideal, siepic
+    from simphony.ideal import ideal, siepic
     from simphony.utils import dict_to_matrix
     import sax
     from scipy.constants import speed_of_light

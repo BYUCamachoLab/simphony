@@ -102,7 +102,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from simphony.connect import connect_s, innerconnect_s
-from simphony.libraries import siepic, sipann
+from simphony.ideal import siepic, sipann
 from simphony.tools import wl2freq
 
 # First, we'll set up the frequency range we wish to perform the simulation on.

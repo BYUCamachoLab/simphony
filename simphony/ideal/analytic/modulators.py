@@ -1,6 +1,8 @@
 # class OpticalAmplitudeModulator():
 #     pass
 from simphony.component.component import SteadyStateComponent, BlockModeComponent, SampleModeComponent
+from simphony.component.pcell import PCell
+
 from jax.typing import ArrayLike
 import jax
 import jax.numpy as jnp
@@ -10,13 +12,37 @@ import sax
 from simphony.signal.steady_state import SteadyStateOpticalSignal
 from simphony.component.port import Port
 
-class MachZehnderModulator(
-    SteadyStateComponent, 
-    # SampleModeComponent, 
-    BlockModeComponent
-):
-    optical_ports = ["o0", "o1"]
-    electrical_ports = ["e0", "e1"]
+
+class MachZehnderModulator(PCell):
+    ports = [
+        Port(
+            name = "o0",
+            type = "optical",
+            directionality = "bidirectional",
+        ),
+        Port(
+            name = "o1",
+            type = "optical",
+            directionality = "bidirectional",
+        ),
+        Port(
+            name = "e0",
+            type = "electrical",
+            directionality = "unidirectional",
+        ),
+        Port(
+            name = "e1",
+            type = "electrical",
+            directionality = "unidirectional",
+        )
+    ]
+    def __init__(
+        self, 
+        NOT_IMPLEMENTED,         
+    ):
+        # IMPLEMENT ME
+        pass
+    
 
     
     # def __init__(self, **settings):
