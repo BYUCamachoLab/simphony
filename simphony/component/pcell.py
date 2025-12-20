@@ -1,4 +1,6 @@
-class PCell:
+from simphony.component.component import Component
+
+class PCell(Component):
     """
     Some circuit components will not have a well defined, internal structure 
     until after they are parameterized. For this case, we use parameterized 
@@ -15,7 +17,16 @@ class PCell:
 
     The PCell designer should simply inherit from the PCell baseclass and overwrite the 
     appropriate class fields and methods. 
-    
+
+    Models may be modified or left alone before the conclusion of 
+    the __init__() function
     """
+    netlist = None
+    models = None
+    ports = None
+
     def __init__():
+        """
+
+        """
         pass
