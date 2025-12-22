@@ -19,7 +19,7 @@ Usage:
     wg = siepic.waveguide()
 """
 
-from simphony.ideal.siepic.models import (
+from simphony.libraries.siepic.models import (
     bidirectional_coupler,
     directional_coupler,
     grating_coupler,

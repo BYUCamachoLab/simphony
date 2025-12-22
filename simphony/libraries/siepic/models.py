@@ -19,7 +19,7 @@ from jax.typing import ArrayLike
 from scipy.constants import c as SPEED_OF_LIGHT
 from tabulate import tabulate
 
-import simphony.ideal
+import simphony.libraries
 from simphony.plugins.lumerical import df_to_sdict, load_sparams
 from simphony.utils import freq2wl, resample, wl2freq
 
@@ -41,7 +41,7 @@ def _resolve_source_filepath(filename: str) -> Path:
     """
     filepath = Path(SOURCE_DATA_PATH) / filename
     try:  # python >= 3.9
-        return importlib.resources.files(simphony.ideal) / filepath
+        return importlib.resources.files(simphony.libraries) / filepath
     except AttributeError:  # fall back to method deprecated in 3.11.
         ctx = importlib.resources.path(simphony, "libraries")
         with ctx as path:

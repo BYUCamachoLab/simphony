@@ -416,7 +416,7 @@ def vector_fitting_optimize_order(
 
 
 def main():
-    from simphony.ideal import ideal, siepic
+    from simphony.libraries import ideal, siepic
     from simphony.utils import dict_to_matrix
     import sax
     from time import time

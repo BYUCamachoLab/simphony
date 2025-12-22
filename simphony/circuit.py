@@ -18,11 +18,15 @@ import jax.numpy as jnp
 from simphony.component.component import Component
 from simphony.component.pcell import PCell
 
-from simphony.ideal.analytic.s_parameters import optical_s_parameter
+from simphony.libraries.ideal.s_parameters import optical_s_parameter
 import sax
 
 from sax.circuits import _create_dag
 from sax.netlists import convert_nets_to_connections
+
+from typing import Tuple
+
+import re
 # from simphony.utils import dict_to_matrix
 
 COMPONENT_COLOR_DEFAULT = "black"
@@ -106,13 +110,23 @@ class Circuit:
         netlist: dict,
         models: dict,
     ) -> None:
+        # Validate the netlist
+        # for key in netlist['instances'].keys():
+        #     if not key.isidentifier():
+        #         raise ValueError("All instance names must be valid python identifiers")
+
+        
         self.netlist = sax.netlist(deepcopy(netlist))
+        
+        # Sanitize the names to make netlist valid
         self.netlist = convert_nets_to_connections(self.netlist) 
+        # Replace the original names
+        
         for subnetlist_name, subnetlist in self.netlist.items():
             add_settings_to_netlist(subnetlist)
 
         self.recursive_netlist = sax.netlist(self.netlist)
-        self.flattened_netlist = sax.flatten_netlist(self.recursive_netlist)
+        # self.flattened_netlist = sax.flatten_netlist(self.recursive_netlist)
         self.subcircuit_hierarchy = _create_dag(self.recursive_netlist)
         
         self.models = models
@@ -120,20 +134,26 @@ class Circuit:
         for instance_name, component in self.models.items():
             component._create_port_lookup_table()
 
-        self.flattened_graph = netlist_to_graph(self.flattened_netlist)
+        # self.flattened_graph = netlist_to_graph(self.flattened_netlist)
         pass
-        self._add_ports_to_graph(self.flattened_graph)
-        self._validate_connections(self.flattened_graph)
+        # self._add_ports_to_graph(self.flattened_graph)
+        # self._validate_connections(self.flattened_graph)
 
 
     def display(
         self, 
         subcircuit: str = None, 
-        flatten: bool = False, 
+        # flatten: bool = False, 
         inline: bool = True,
+        node_labels: dict = {},
     ):
         """
-        
+        The true instance name is often not desirable for a node label.
+        When an abbreviated or modified instance name is required, it 
+        can be specified in the "node_labels" field.
+
+        Any instance name that is not a key in the dict, will be used
+        as the default node label.        
         """
         recursive_netlist = {}
 
@@ -142,19 +162,24 @@ class Circuit:
         
         recursive_netlist = self.get_subnetlist(subcircuit)
 
-        if flatten:
-            netlist = sax.flatten_netlist(recursive_netlist)
-            graph = netlist_to_graph(netlist)
-            self._mark_component_types(subcircuit, graph)
-            self._color_nodes(graph)
-        else:
-            netlist = recursive_netlist[subcircuit]
-            graph = netlist_to_graph(netlist)
-            self._mark_component_types(subcircuit, graph)
-            self._color_nodes(graph)
-            # self._add_data_to_graph(graph)
+        # if flatten:
+        #     netlist = sax.flatten_netlist(recursive_netlist)
+        #     graph = netlist_to_graph(netlist)
+        #     self._mark_component_types(subcircuit, graph)
+        #     self._color_nodes(graph)
+        # else:
+        netlist = recursive_netlist[subcircuit]
+        graph = netlist_to_graph(netlist)
+        self._mark_component_types(subcircuit, graph)
+        self._color_nodes(graph)
+        # self._add_data_to_graph(graph)
         
-        fig = gv.d3(graph)
+        relabeled_graph = nx.relabel_nodes(graph, node_labels)
+
+
+
+
+        fig = gv.d3(relabeled_graph)
         fig.display(inline=inline)
     
     def flatten(self):
@@ -296,26 +321,86 @@ class FlatCircuit:
         self,
         netlist: dict,
         models: dict,
+        separator: str = "~"
     ) -> None:
-        # Normalize netlist
-        self.netlist = sax.netlist(deepcopy(netlist))
-        self.netlist = convert_nets_to_connections(self.netlist)
-        add_settings_to_netlist(self.netlist)
-        self.netlist = sax.flatten_netlist(self.recursive_netlist)
-        
-        # Create Flat Graph
-        self.graph = netlist_to_graph(self.flattened_netlist)
-        
-        # Normalize Models 
-        # (All components should be of Class Component or PCell)
-        self.models = models
-        self._convert_sax_models()
-        for instance_name, component in self.models.items():
-            component._create_port_lookup_table()
+        # To avoid rewriting code, FlatCircuit mostly a wrapper for Circuit
+        self._recursive_circuit = Circuit(netlist, models)
+        self.netlist = sax.flatten_netlist(self._recursive_circuit.recursive_netlist, sep=separator)
+        self._sanitized_netlist, self._sanitized_netlist_lut = self._sanitize_netlist(self.netlist, separator)
+        self._circuit = Circuit(self._sanitized_netlist, models)
+        self.models = self._circuit.models
 
-        self._add_ports_to_graph(self.flattened_graph)
-        self._validate_connections(self.flattened_graph)
-        pass
+    def display(
+        self, 
+        inline: bool = True,
+        node_labels: dict = {},
+    ):
+        
+        sanitized_node_labels = {v:k for k, v in self._sanitized_netlist_lut.items()}
+        sanitized_node_labels_to_modify = {self._sanitized_netlist_lut[k]:v for k, v in node_labels.items()}
+        for k, v in sanitized_node_labels_to_modify.items():
+            sanitized_node_labels[k] = v
+        
+        self._circuit.display(node_labels=sanitized_node_labels)
+
+    def _sanitize_netlist(
+        self, 
+        netlist, 
+        separator
+    ) -> Tuple[dict, dict]:
+        """
+        This function replaces all non-valid characters (characters not allowed
+        in a valid python identifier, i.e. "~", "|", et cetera) in a flattened
+        netlist with a valid, unique substring.
+
+        Returns the sanitized flat netlist dict and 
+        
+        Since sax recursive netlists require instance names to be
+        valid python identifiers, and since the separator argument
+        in sax.flatten_netlist needs to be a non-valid character in 
+        a python identifier in order to preserve uniqueness. We need 
+        to be able to replace the separator, with a substring not found
+        in any of the instance names before passing to the Circuit class 
+        __init__ funciton, which assumes all instance names are valid
+        python identifiers.
+        
+        The method for creating a unique separator is simple:
+        1. Determine the largest number, M, of consecutive "_"'s in the instances
+        2. Prepend and append M "_"'s to the string "SEPARATOR"
+        """
+        unique_str = "_"
+        for key in netlist['instances'].keys():
+            while unique_str in key:
+                unique_str += "_"
+        new_separator = unique_str + "SEPARATOR" + unique_str
+        lut = {}
+        for key in netlist['instances'].keys():
+            lut[key] = key.replace(separator, new_separator)
+        
+        sanitized_netlist = {
+            "instances": {},
+            "connections": {},
+            "ports": {},
+        }
+        
+        for instance_name, instance_data in netlist["instances"].items():
+            sanitized_instance_name = lut[instance_name]
+            sanitized_netlist['instances'][sanitized_instance_name] = instance_data
+        
+        for src, dst in netlist["connections"].items():
+            src_name, src_port = src.split(",")
+            dst_name, dst_port = dst.split(",")
+            
+            sanitized_src = lut[src_name] + "," + src_port
+            sanitized_dst = lut[dst_name] + "," + dst_port
+
+            sanitized_netlist['connections'][sanitized_src] = sanitized_dst
+
+        for external_port, internal_port_data in netlist['ports'].items():
+            instance_name, internal_port = internal_port_data.split(",")
+            sanitized_netlist['ports'][external_port] = lut[instance_name] + "," + internal_port
+        
+        return sanitized_netlist, lut
 
 
 class InstantiatedCircuit:

@@ -10,7 +10,7 @@ import time
 
 from scipy import signal
 
-from simphony.ideal import siepic
+from simphony.libraries import siepic
 from simphony.time_domain.ideal import Modulator
 from simphony.time_domain.pole_residue_model import BVF_Options, IIRModelBaseband
 from simphony.time_domain.simulation import TimeResult, TimeSim

@@ -28,7 +28,7 @@ For more information, see: https://camacholab.byu.edu/research/quantum-photonics
 import matplotlib.pyplot as plt
 import numpy as np
 
-from simphony.ideal import siepic, sipann
+from simphony.libraries import siepic, sipann
 from simphony.simulators import SweepSimulator
 from simphony.tools import freq2wl, wl2freq
 

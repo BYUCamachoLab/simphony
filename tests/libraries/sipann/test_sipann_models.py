@@ -1,7 +1,7 @@
 import pytest
 
 try:
-    from simphony.ideal import sipann
+    from simphony.libraries import sipann
 except ImportError:
     SIPANN_AVAILABLE = False
 

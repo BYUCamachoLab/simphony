@@ -192,7 +192,7 @@ def vector_fitting_z(
 
 
 def main():
-    from simphony.ideal import ideal
+    from simphony.libraries import ideal
     from simphony.utils import dict_to_matrix
     import sax
     from time import time

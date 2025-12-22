@@ -6,7 +6,7 @@ from jax import config
 
 config.update("jax_enable_x64", True)
 
-from simphony.ideal import ideal, siepic
+from simphony.libraries import ideal, siepic
 from simphony.time_domain.pole_residue_model import IIRModelBaseband
 from simphony.time_domain.utils import gaussian_pulse, pole_residue_to_time_system
 

@@ -1,8 +1,8 @@
 from matplotlib import pyplot as plt
 import numpy as np
 # from utils import add_settings_to_netlist, get_settings_from_netlist, netlist_to_graph, graph_to_netlist
-import simphony.ideal.siepic as siepic
-import simphony.ideal.analytic as analytic
+import simphony.libraries.siepic as siepic
+import simphony.libraries.ideal as analytic
 from copy import deepcopy
 from simphony.circuit import Circuit
 from simphony.simulation import SParameterSimulation

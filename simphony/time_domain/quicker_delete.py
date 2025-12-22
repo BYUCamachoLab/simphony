@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "simp
 import simphony
 from simphony.time_domain import TimeSim
 from simphony.time_domain.utils import gaussian_pulse, smooth_rectangular_pulse 
-from simphony.ideal import siepic, ideal
+from simphony.libraries import siepic, ideal
 from simphony.time_domain.ideal import Modulator,MMI
 import sax
 import jax.numpy as jnp

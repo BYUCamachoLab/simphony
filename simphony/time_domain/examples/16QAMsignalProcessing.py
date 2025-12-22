@@ -10,7 +10,7 @@ import platform
 import time
 from math import log2
 
-from simphony.ideal import siepic
+from simphony.libraries import siepic
 from simphony.time_domain.ideal import Modulator
 from simphony.time_domain.TimeSim import TimeResult, TimeSim
 from simphony.time_domain.utils import gaussian_pulse, smooth_rectangular_pulse

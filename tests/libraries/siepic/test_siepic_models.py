@@ -1,6 +1,6 @@
 import pytest
 
-from simphony.ideal import siepic
+from simphony.libraries import siepic
 
 
 class TestBidirectional_coupler:

@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from scipy.interpolate import interp1d
 
 from simphony.exceptions import UndefinedActiveComponent
-from simphony.ideal import ideal, siepic
+from simphony.libraries import ideal, siepic
 from simphony.simulation import SimDevice, Simulation, SimulationResult
 from simphony.time_domain.pole_residue_model import BVF_Options, IIRModelBaseband
 from simphony.utils import dict_to_matrix
