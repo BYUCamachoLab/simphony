@@ -35,7 +35,7 @@ class SampleModeSimulationParameters(SimulationParameters):
     # def __init__(
     #     self,
     optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([1.54e-6, 1.55e-6, 1.56e-6]))
-    electrical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([0]))
+    # electrical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([0]))
     #     **kwargs,
     # ):
     #     super().__init__(**kwargs)

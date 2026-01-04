@@ -19,6 +19,8 @@ import jax
 from flax import struct
 from dataclasses import field
 
+from sax import DEFAULT_MODES
+
 class SimDevice:
     """Base class for all source or measure devices."""
 
@@ -34,7 +36,7 @@ class SimulationParameters:
     # sampling_rate:float=1e15,
     num_time_steps:int =int(1e4)
     prng_key: Annotated[jax.Array, "shape=(2,), dtype=jax.uint32"]=field(default_factory=lambda: jax.random.PRNGKey(0))
-    num_optical_modes:int = int(1) 
+    mode_identifiers: list = field(default_factory= lambda: DEFAULT_MODES)
     # prng_key: Annotated[jax.Array, "shape=(2,), dtype=jax.uint32"]=jax.random.key(0)
     # ):
     #     super().__setattr__('_locked', False)

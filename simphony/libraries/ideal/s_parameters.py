@@ -25,6 +25,13 @@ from simphony.component.pcell import PCell
 from simphony.libraries.ideal.filters import OpticalDiscreteFilter
 from simphony.libraries.ideal.modulators import OpticalModulator
 
+from typing import Type
+
+from simphony.libraries.ideal.filters import discrete_state_space
+from simphony.libraries.ideal.multimode import ModeConverter, mode_multiplexer, mode_demultiplexer
+
+from sax import DEFAULT_MODES
+
 _s_parameter_netlist = {
 
 }
@@ -33,13 +40,150 @@ _s_parameter_models = {
 
 }
 
-def optical_s_parameter(sax_model: SaxModel, directed=False):
-    optical_ports = list(sax.get_ports(sax_model()))
+def optical_s_parameter(
+    sax_model: SaxModel, 
+    port_directionality = None,
+    default_modes: list|tuple|str = DEFAULT_MODES,
+)-> type[PCell]:
+    """
+    The directionality of each port defaults to 'bidirectional', 
+    but individual ports may be set to 'bidirectional', 'input', or 'output
+    by supplying a dictionary with port name keys.
+
+    default_mode_identifier: since sax circuits do not require the user
+    to specify the mode by default, we assign each relationship to the TE/TM mode by default (replicating behavior across the two different modes),
+    if unspecified. Refer to sax.multimode for more details
+    """
+    
+    ### TODO: Implement Multimodal Collapse ###
+    # 1) Determining all of the surviving modes (which modes are contained in the s-parameter matrix)
+    # 2) Create a MIMO system with all of the mode relationships
+    # 3) Shift all modes to the same mode
+    ###########################################
+
+    if port_directionality is None:
+        port_directionality = {}
+    
+    if isinstance(default_modes, str):
+        default_modes = [default_modes]
+    default_modes = tuple(default_modes)
+
+    input_ports_to_remove = {port_name for port_name, direction in port_directionality.items() if direction=='output'}
+    output_ports_to_remove = {port_name for port_name, direction in port_directionality.items() if direction=='input'}
+
+    def filtered_sax_model(**kwargs):
+        """
+        The port_directionality field allows us to ignore data
+        in the sdict and select only the relationships necessary
+        for the specified directionality
+        """
+        sdict = sax_model(**kwargs)
+        sdict = sax.multimode(sdict, modes=default_modes)
+
+        def is_allowed(key):
+            dst, src = key
+            src_port, _ = src.split("@")
+            dst_port, _ = dst.split("@")
+            src_valid = not src_port in input_ports_to_remove
+            dst_valid = not dst_port in output_ports_to_remove
+            return src_valid and dst_valid
+
+        sdict = {k:v for k, v in sdict.items() if is_allowed(k)}
+
+        return sdict
+
+
+    # As of sax 0.15.10, get_modes does not necessarily return a tuple of UNIQUE values
+    # modes = tuple(set(sax.get_modes(sax_model())))
+
+    # Sax does not require every mode relation specified (I think that the port
+    # to port relations default to 0 in that case)
+    # port_modes = {}
+    # for p in sax.get_ports(sax_model()):
+    #     port, mode = p.split("@")
+    #     port_modes.setdefault(port, set()).add(mode)
+    
+    input_port_modes = {}
+    output_port_modes = {}
+    for i, o in filtered_sax_model().keys():
+        in_port, in_mode = i.split('@')
+        out_port, out_mode = o.split('@')
+        input_port_modes.setdefault(in_port, set()).add(in_mode)
+        output_port_modes.setdefault(out_port, set()).add(out_mode)
+    
+    pcell_port_names = list(set(input_port_modes.keys()) | set(output_port_modes.keys()))
+
     class SParameterSax(PCell):
         ports = [
-            Port(name=port_name, type="optical", directionality="bidirectional") for port_name in optical_ports
+            Port(
+                name=port_name, 
+                type="optical", 
+                directionality = port_directionality.get(port_name, 'bidirectional')
+            ) 
+            for port_name in pcell_port_names
         ]
-        _num_ports = len(ports)
+        
+
+        def __init__(
+            self,
+            spectral_range: tuple = (1.5e-6, 1.6e-6),
+            delay_compensation: int = 0,
+            sax_settings: dict = {},
+        ):
+            mode_demultiplexers = {}
+            num_filter_inputs = 0
+            for input_port, modes in input_port_modes.items():
+                mode_demultiplexers[input_port] = mode_demultiplexer(modes)
+                num_filter_inputs += len(modes)
+
+            mode_multiplexers = {}
+            num_filter_outputs = 0
+            for output_port, modes in output_port_modes.items():
+                mode_multiplexers[output_port] = mode_multiplexer(modes)
+                num_filter_outputs += len(modes)
+            
+            FIRFilter = discrete_state_space(
+                num_filter_inputs, 
+                num_filter_outputs,
+                [],
+                [],
+            )
+
+            models = {}
+            models["converter"] = ModeConverter
+            models["fir_filter"] = FIRFilter
+            models["phase_shifter"] = OpticalModulator
+            
+            # TODO: Connect Phase Shifters to muxes
+            for port_name, mux in mode_multiplexers.items():
+                mux_name = f"{port_name}_{mux}"
+                mux_instance_name = mux_name
+                models[mux_name] = mux
+                instances[mux_instance_name] = mux_name
+                new_connections = {
+                    f"{},{}":f"{mux_instance_name},{mode}"
+                } 
+
+            for port_name, demux in mode_demultiplexers.items():
+                models[f"{port_name}_{demux}"] = demux
+
+
+            instances = {}
+            connections = {}
+            
+            input_ports = {port_name:f"{1},{2}" for port_name in pcell_port_names}
+            ports = {}
+
+            netlist = {
+                "instances": instances,
+                "connections": connections,
+                "ports": ports,
+            }
+            
+
+            self.netlist = netlist
+            self.models = models
+
     
     return SParameterSax
 

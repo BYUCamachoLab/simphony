@@ -125,9 +125,9 @@ class Circuit:
         for subnetlist_name, subnetlist in self.netlist.items():
             add_settings_to_netlist(subnetlist)
 
-        self.recursive_netlist = sax.netlist(self.netlist)
-        # self.flattened_netlist = sax.flatten_netlist(self.recursive_netlist)
-        self.subcircuit_hierarchy = _create_dag(self.recursive_netlist)
+        self.netlist = sax.netlist(self.netlist)
+        # self.flattened_netlist = sax.flatten_netlist(self.netlist)
+        self.subcircuit_hierarchy = _create_dag(self.netlist)
         
         self.models = models
         self._convert_sax_models()
@@ -142,8 +142,7 @@ class Circuit:
 
     def display(
         self, 
-        subcircuit: str = None, 
-        # flatten: bool = False, 
+        subcircuit: str = None,
         inline: bool = True,
         node_labels: dict = {},
     ):
@@ -176,17 +175,25 @@ class Circuit:
         
         relabeled_graph = nx.relabel_nodes(graph, node_labels)
 
-
-
-
         fig = gv.d3(relabeled_graph)
         fig.display(inline=inline)
     
-    def flatten(self):
-        return FlatCircuit(self.recursive_netlist, self.models)
+    def flatten(
+        self,
+        separator = "~",
+    ):
+        return FlatCircuit(self.netlist, self.models, separator=separator)
     
+    def instantiate(
+        self,
+        settings,
+        separator = "~",
+    ):
+        flat_circuit = self.flatten(separator)
+        return InstantiatedCircuit(self, settings)
+
     def get_subnetlist(self, subcircuit: str):
-        original_netlist = deepcopy(self.recursive_netlist)
+        original_netlist = deepcopy(self.netlist)
         if not subcircuit in self.subcircuit_hierarchy.nodes:
                 return ValueError(f"{subcircuit} not in circuit. Did you mean {list(self.subcircuit_hierarchy.nodes)}?")
         descendants = nx.descendants(self.subcircuit_hierarchy, subcircuit)
@@ -220,9 +227,9 @@ class Circuit:
         """
         for instance, attr in graph.nodes.items():
             
-            component_name = self.recursive_netlist[subcircuit]['instances'][instance]['component']
+            component_name = self.netlist[subcircuit]['instances'][instance]['component']
             if component_name in self.models:
-                component_name = self.recursive_netlist[subcircuit]['instances'][instance]['component']
+                component_name = self.netlist[subcircuit]['instances'][instance]['component']
                 ports = self.models[component_name].ports
             elif component_name in self.subcircuit_hierarchy.nodes:
                 ports = self._get_ports_from_subcircuit(component_name)
@@ -324,8 +331,9 @@ class FlatCircuit:
         separator: str = "~"
     ) -> None:
         # To avoid rewriting code, FlatCircuit mostly a wrapper for Circuit
+        self.separator = "~"
         self._recursive_circuit = Circuit(netlist, models)
-        self.netlist = sax.flatten_netlist(self._recursive_circuit.recursive_netlist, sep=separator)
+        self.netlist = sax.flatten_netlist(self._recursive_circuit.netlist, sep=separator)
         self._sanitized_netlist, self._sanitized_netlist_lut = self._sanitize_netlist(self.netlist, separator)
         self._circuit = Circuit(self._sanitized_netlist, models)
         self.models = self._circuit.models
@@ -342,6 +350,12 @@ class FlatCircuit:
             sanitized_node_labels[k] = v
         
         self._circuit.display(node_labels=sanitized_node_labels)
+    
+    def instantiate(
+        self,
+        settings,
+    ):
+        return InstantiatedCircuit(self, settings)
 
     def _sanitize_netlist(
         self, 
@@ -405,12 +419,47 @@ class FlatCircuit:
 
 class InstantiatedCircuit:
     """
-    Similar to the Circuit, but composed of the models, themselves, not abstract component classes
+    Similar to the Circuit, but composed of the instantiated models, themselves, not Component classes
 
     Will always be flattened 
     1. no recursively defined netlists 
     2. PCells have been flattened into base components
+
+    Ultimately, the core identity of this class is a wrapper around the FlatCircuit Class, 
+    except that each instance in the netlist has an extra field "simphony_model", which 
+    is an instantiated component object.
+
+    Additional utility methods are added here for use in Simulator classes
+
     """
-    pass
+    def __init__(
+        self, 
+        circuit: Circuit | FlatCircuit,
+        settings,    
+    ):
+        if isinstance(circuit, Circuit):
+            self.circuit = circuit.flatten()
+        elif isinstance(circuit, FlatCircuit):
+            self.circuit = circuit
+        
+        netlist = self.circuit.netlist
+        models = self.circuit.models
+        instantiated_netlist = deepcopy(netlist)
+
+        # Just a test, to prove that putting a model in the instance field doesn't break the display backend
+        instantiated_netlist['instances']['splitter']['simphony_model'] = {"This is mine": models['ybranch']}
+        Circuit(instantiated_netlist, models).display()
+        
+
+        # We recursively expand each PCell into a netlist
+        # and individually stitch those netlists back into the overall netlist
+        for instance_name, instance_data in netlist['instances'].items():
+            component_name = instance_data['component']
+            
+
+            pass
+        
+        pass
+
 
 

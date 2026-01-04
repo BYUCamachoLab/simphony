@@ -14,3 +14,4 @@ def star_coupler(num_in: int, num_out: int) -> Type:
     attr = {"optical_ports": in_ports + out_ports}
 
     return type(class_name, (SteadyStateComponent, SampleModeComponent, BlockModeComponent), attr)
+

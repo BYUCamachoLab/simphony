@@ -1,4 +1,4 @@
-from simphony.component.component import BlockModeComponent, SampleModeComponent
+from simphony.component.component import BlockModeComponent, SampleModeComponent, Component
 from simphony.signal.block_mode import BlockModeOpticalSignal
 from simphony.signal.sample_mode import SampleModeOpticalSignal
 from simphony.component.port import Port
@@ -147,29 +147,143 @@ class OpticalDiscreteFilter(
 
         return outputs
     
-class OpticalStateSpace( 
-    SampleModeComponent,
-):
-    optical_ports = ["in", "out"]
+def bidirectional_discrete_state_space(
+    num_inputs,
+    num_outputs
+)->type[Component]:
+    """
+    A is nxn, where n is the number of model poles
+    B is nxm, where m is the number of ports
+    C is mxn, and D is mxm
+    """
     
-    def __init__(
-        self,
-        *,
-        A,
-        B,
-        C,
-        D,
-        center_wl = 1.55e-6,
-        delay_compensation = 0,
-    ):
-        self.state_space_matrices = A, B, C, D
-        self.center_wl = center_wl
-        self.delay_compensation = delay_compensation
+    if not num_inputs == num_outputs:
+        raise ValueError("number of inputs and outputs must match for bidirectional state space models")
+    raise NotImplementedError("bidirectional state space model not implemented")
 
-    def sample_mode_initial_state(self, simulation_parameters):
-        state = ...
-        return state
-    
-    def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_parameters):
+def discrete_state_space(
+    num_inputs,
+    num_outputs,
+    input_port_names = None,
+    output_port_names = None,
+) -> type[Component]:
+    """
+    Constructor for creating state space models of arbitrary dimension
+    """
+
+    _input_port_names = [f"port{i}_in" for i in range(num_inputs)]
+    _output_port_names = [f"port{i}_out" for i in range(num_outputs)]
+
+    # if not input_port_names is None:
+    #     if True:
+    #         pass
+
+    class DiscreteStateSpace( 
+        SampleModeComponent,
+    ):
+        """
+        A is nxn, where n is the number of poles
+        B is nxm, where m is the number of inputs
+        C is pxn, where p is the number of outputs
+        and D is pxm
+
+        Port names are assigned dynamically starting at 'port0_in' / 'port0_out' 
+        and ending in 'p{m-1}_in' / 'p{p-1}_out'
+
+        All input signals should be located in mode 0 (usually called the TE MODE), 
+        otherwise they will be ignored
+
+        """
+        ports = [
+            Port(
+                name=port_name, 
+                type="optical", 
+                directionality = 'input'
+            ) 
+            for port_name in input_port_names
+        ] + [
+            Port(
+                name=port_name,
+                type="optical",
+                directionality="output"
+            )
+            for port_name in output_port_names
+        ]
         
-        return inputs, state
+        def __init__(
+            self,
+            A,
+            B,
+            C,
+            D,
+            center_wl = 1.55e-6,
+            sampling_period = None,
+            delay_compensation = 0,
+            mode = 0,
+        ):
+            self.state_space_matrices = A, B, C, D
+            self.center_wl = center_wl
+            self.center_frequency = SPEED_OF_LIGHT / center_wl
+            self.delay_compensation = delay_compensation
+            self.mode = mode
+
+        def sample_mode_initial_state(self, simulation_parameters):
+            A, B, C, D = self.state_space_matrices
+            x = jnp.zeros((len(simulation_parameters.optical_baseband_wavelengths), A.shape[0]), dtype=complex)
+            return x
+        
+        def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_parameters):
+            x = state
+            A, B, C, D = self.state_space_matrices
+            u = jnp.zeros(
+                (len(simulation_parameters.optical_baseband_wavelengths), len(input_port_names)),
+                dtype=complex
+            )
+
+            for port, signal in inputs.items():
+                port_idx = self.port_order[port]
+                wavelength = inputs[port].wavelength
+                u = u.at[:, port_idx].set(signal.amplitude[:, self.mode])
+            
+            new_x = jnp.zeros_like(x)
+            y = jnp.zeros((len(simulation_parameters.optical_baseband_wavelengths), len(output_port_names)),dtype=complex)
+
+            for i, f in enumerate(SPEED_OF_LIGHT/simulation_parameters.optical_baseband_wavelengths):
+                new_x = new_x.at[i].set(A@x[i] + B@u[i])
+                y = y.at[i].set(C@x[i] + D@u[i])
+
+            outputs = {}
+            for i, port in enumerate(output_port_names):
+                A_t = y[:, i]
+                outputs[port] = SampleModeOpticalSignal(
+                    amplitude = A_t.reshape((len(simulation_parameters.optical_baseband_wavelengths), 1)),
+                    wavelength = simulation_parameters.optical_baseband_wavelengths
+                )
+
+            return outputs, new_x
+        
+        def to_fir_filter(
+            self,
+        ) -> Component:
+            
+            ### TODO: Actually return a fir filter
+            return  None
+    
+    return DiscreteStateSpace
+    
+
+def mimo_fir_filter(
+    impulse_response: jax.Array = jnp.array([[[]]]),
+    center_wl = 1.55e-6,
+    sampling_period = None,        
+) -> type[Component]:
+    """
+    """
+    
+    class MIMOFIRFilter(
+        SampleModeComponent,
+    ):
+        """
+        If a 
+        """
+        ports = ...
