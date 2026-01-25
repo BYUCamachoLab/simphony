@@ -171,8 +171,11 @@ def discrete_state_space(
     Constructor for creating state space models of arbitrary dimension
     """
 
-    _input_port_names = [f"port{i}_in" for i in range(num_inputs)]
-    _output_port_names = [f"port{i}_out" for i in range(num_outputs)]
+    if input_port_names is None:
+        input_port_names = [f"port{i}_in" for i in range(num_inputs)]
+    if output_port_names is None:
+        output_port_names = [f"port{i}_out" for i in range(num_outputs)]
+
 
     # if not input_port_names is None:
     #     if True:

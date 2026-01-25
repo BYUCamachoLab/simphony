@@ -32,7 +32,7 @@ from simphony.time_domain.pole_residue_model import BVF_Options, IIRModelBaseban
 from simphony.utils import dict_to_matrix
 
 if TYPE_CHECKING:
-    from simphony.circuit import Circuit
+    from simphony.circuit.circuit import Circuit
 
 
 @dataclass

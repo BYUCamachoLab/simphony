@@ -8,7 +8,7 @@ import gravis as gv
 from jax.typing import ArrayLike
 from sax.saxtypes import Model as SaxModel
 
-from simphony.utils import add_settings_to_netlist, complete_netlist, get_settings_from_netlist, netlist_to_graph
+from simphony.circuit.netlist import add_settings_to_netlist, complete_netlist, get_settings_from_netlist, netlist_to_graph
 from copy import deepcopy
 # from simphony.signal import optical_signal, complete_steady_state_inputs
 
@@ -17,6 +17,8 @@ import jax.numpy as jnp
 
 from simphony.component.component import Component
 from simphony.component.pcell import PCell
+from simphony.simulation.simulation import SimulationMode
+
 
 from simphony.libraries.ideal.s_parameters import optical_s_parameter
 import sax
@@ -119,10 +121,10 @@ class Circuit:
         self.netlist = sax.netlist(deepcopy(netlist))
         
         # Sanitize the names to make netlist valid
-        self.netlist = convert_nets_to_connections(self.netlist) 
+        self.netlist = convert_nets_to_connections(self.netlist) # necessary for gdsfactory netlists
         # Replace the original names
         
-        for subnetlist_name, subnetlist in self.netlist.items():
+        for _, subnetlist in self.netlist.items():
             add_settings_to_netlist(subnetlist)
 
         self.netlist = sax.netlist(self.netlist)
@@ -186,11 +188,12 @@ class Circuit:
     
     def instantiate(
         self,
-        settings,
-        separator = "~",
+        simulation_mode: SimulationMode,
+        settings: dict,
+        directed: bool,
+        default_modes,
     ):
-        flat_circuit = self.flatten(separator)
-        return InstantiatedCircuit(self, settings)
+        return InstantiatedCircuit(self, simulation_mode, settings, directed, default_modes)
 
     def get_subnetlist(self, subcircuit: str):
         original_netlist = deepcopy(self.netlist)
@@ -338,6 +341,7 @@ class FlatCircuit:
         self._circuit = Circuit(self._sanitized_netlist, models)
         self.models = self._circuit.models
 
+
     def display(
         self, 
         inline: bool = True,
@@ -354,8 +358,10 @@ class FlatCircuit:
     def instantiate(
         self,
         settings,
+        directed: bool,
+        default_modes,
     ):
-        return InstantiatedCircuit(self, settings)
+        return InstantiatedCircuit(self, settings, directed, default_modes)
 
     def _sanitize_netlist(
         self, 
@@ -433,31 +439,48 @@ class InstantiatedCircuit:
 
     """
     def __init__(
-        self, 
+        self,
         circuit: Circuit | FlatCircuit,
-        settings,    
+        simulation_mode: SimulationMode,
+        settings: dict,
+        directed: bool,
+        default_modes,
     ):
-        if isinstance(circuit, Circuit):
-            self.circuit = circuit.flatten()
-        elif isinstance(circuit, FlatCircuit):
+        if isinstance(circuit, FlatCircuit):
             self.circuit = circuit
-        
+        elif isinstance(circuit, Circuit):
+            self.circuit = circuit.flatten()  
+
         netlist = self.circuit.netlist
         models = self.circuit.models
         instantiated_netlist = deepcopy(netlist)
 
-        # Just a test, to prove that putting a model in the instance field doesn't break the display backend
-        instantiated_netlist['instances']['splitter']['simphony_model'] = {"This is mine": models['ybranch']}
-        Circuit(instantiated_netlist, models).display()
+        # # Just a test, to prove that putting a model in the instance field doesn't break the display backend
+        # instantiated_netlist['instances']['splitter']['simphony_model'] = {"This is mine": models['ybranch']}
+        # Circuit(instantiated_netlist, models).display()
         
+
+        ### TODO: Wrap up the following code with one called to instantiate_netlist
 
         # We recursively expand each PCell into a netlist
         # and individually stitch those netlists back into the overall netlist
         for instance_name, instance_data in netlist['instances'].items():
             component_name = instance_data['component']
+            instance_settings = settings[instance_name]
             
+            ### TODO: MAKE SURE CAN APPROPRIATELY RETURN INSTANTIATED NETLIST
+            
+            uninstantiated_model = models[component_name]
+            if issubclass(uninstantiated_model, PCell):
+                model = uninstantiated_model(simulation_mode, **instance_settings)
+                pcell_instantiated_netlist = model._instantiated_netlist(simulation_mode, directed=directed, default_modes=default_modes)
+            elif issubclass(uninstantiated_model, Component):
+                model = uninstantiated_model(**instance_settings)
+            else: # Sax Model
+                ### TODO: Determine whether this branch is necessary
+                pass
 
-            pass
+            # pass
         
         pass
 

@@ -22,27 +22,42 @@ from simphony.utils import dict_to_matrix
 
 from simphony.component.pcell import PCell
 
-from simphony.libraries.ideal.filters import OpticalDiscreteFilter
+from simphony.libraries.ideal.digital_filters import OpticalDiscreteFilter
 from simphony.libraries.ideal.modulators import OpticalModulator
 
 from typing import Type
 
-from simphony.libraries.ideal.filters import discrete_state_space
+from simphony.libraries.ideal.digital_filters import discrete_state_space
 from simphony.libraries.ideal.multimode import ModeConverter, mode_multiplexer, mode_demultiplexer
 
+from simphony.simulation.simulation import SimulationMode
+# from simphony.simulation.s_parameter import SParameterSimulation
+# from simphony.simulation.sample_mode import SampleModeSimulation
+# from simphony.simulation.block_mode import BlockModeSimulation
+
 from sax import DEFAULT_MODES
+from copy import deepcopy
+# from simphony.circuit.netlist import InstantiatedFlatNetlist, instantiate_netlist
+from simphony.circuit._netlist import InstantiatedFlatNetlist
+from simphony.circuit._netlist import _instantiate_netlist
+import warnings
 
-_s_parameter_netlist = {
-
-}
-
-_s_parameter_models = {
-
-}
+INPUT_SUFFIX = "in"
+OUTPUT_SUFFIX = "out"
+MULTIPLEXER_SUFFIX = "_mux"
+DEMULTIPLEXER_SUFFIX = "_demux"
+DEMULTIPLEXER_IN_PORT_NAME = "in_port"
+DEMULTIPLEXER_OUT_PORT_SUFFIX = "_port"
+MULTIPLEXER_IN_PORT_SUFFIX = "_port"
+MULTIPLEXER_OUT_PORT_NAME = "out_port"
+MODE_CONVERTER_MODEL_NAME = "mode_converter"
+MODE_CONVERTER_INSTANCE_SUFFIX = "_converter"
+FIR_FILTER_MODEL_NAME = "fir_filter"
+FIR_FILTER_INSTANCE_NAME = FIR_FILTER_MODEL_NAME
 
 def optical_s_parameter(
-    sax_model: SaxModel, 
-    port_directionality = None,
+    sax_model: sax.Model, 
+    port_directionality: dict = None,
     default_modes: list|tuple|str = DEFAULT_MODES,
 )-> type[PCell]:
     """
@@ -50,24 +65,252 @@ def optical_s_parameter(
     but individual ports may be set to 'bidirectional', 'input', or 'output
     by supplying a dictionary with port name keys.
 
+    It is necessary for any directional simulators, such as the BlockModeSimulation class to specify the directionality of each port
+
     default_mode_identifier: since sax circuits do not require the user
     to specify the mode by default, we assign each relationship to the TE/TM mode by default (replicating behavior across the two different modes),
     if unspecified. Refer to sax.multimode for more details
     """
-    
-    ### TODO: Implement Multimodal Collapse ###
-    # 1) Determining all of the surviving modes (which modes are contained in the s-parameter matrix)
-    # 2) Create a MIMO system with all of the mode relationships
-    # 3) Shift all modes to the same mode
-    ###########################################
+    pcell_port_names = _get_port_names_without_mode(sax_model)
 
+    port_directionality = deepcopy(port_directionality)
     if port_directionality is None:
         port_directionality = {}
+
+    for port_name in pcell_port_names:
+        port_directionality.setdefault(port_name, "bidirectional")
     
     if isinstance(default_modes, str):
         default_modes = [default_modes]
     default_modes = tuple(default_modes)
+    
+    class SParameterSax(PCell):
+        ports = [
+            Port(
+                name=port_name,
+                type="optical",
+                directionality = port_directionality[port_name]
+            ) 
+            for port_name in pcell_port_names
+        ]
+        
 
+        def __init__(
+            self,
+            simulation_mode: SimulationMode,
+            sax_settings: dict = None,
+            spectral_range: tuple = (1.5e-6, 1.6e-6),
+            delay_compensation: int = 0,
+        ):
+            if sax_settings is None:
+                sax_settings = {}
+
+            designs = {
+                SimulationMode.SPARAMETER: _s_parameter_design,
+                SimulationMode.BLOCK_MODE: _block_mode_design,
+                SimulationMode.SAMPLE_MODE: _sample_mode_design,
+            }
+
+            self.instantiated_netlist = designs[simulation_mode](sax_model, sax_settings, spectral_range, delay_compensation, port_directionality, default_modes)
+    
+    return SParameterSax
+
+def _s_parameter_design(
+    sax_model: sax.Model, 
+    sax_settings, 
+    spectral_range, 
+    delay_compensation, 
+    port_directionality, 
+    default_modes
+):
+    if not delay_compensation == 0:
+        warnings.warn(f"A nonzero delay compensation is invalid in S-Parameter simulations. Will be ignored.")
+
+
+def _sample_mode_design(
+    sax_model: sax.Model, 
+    sax_settings, 
+    spectral_range, 
+    delay_compensation, 
+    port_directionality, 
+    default_modes
+):
+    """
+    The sample mode design is an alteration of the block mode design
+    """
+    block_mode_sax_model, block_mode_port_directionality, in_suffix, out_suffix = _bidirectional_ports_to_unidirectional_ports(sax_model, port_directionality)
+    block_mode_netlist, block_mode_models = _block_mode_netlist_and_models(block_mode_sax_model, block_mode_port_directionality, default_modes)
+    
+    netlist = ...
+    # TODO: Write a function that takes in settings and models and returns instantiated models
+    instantiated_models = ...
+
+    return netlist, instantiated_models 
+
+def _block_mode_design(
+    sax_model: sax.ModelMM, 
+    sax_settings, 
+    spectral_range, 
+    delay_compensation, 
+    port_directionality, 
+    default_modes
+)->InstantiatedFlatNetlist:
+    """
+    Creates a directed, non recursive circuit design for a multimodal,
+    transient block mode simulation of an s-parameter circuit.
+    """
+    for port_name, directionality in port_directionality.items():
+        if directionality == "bidirectional":
+            raise ValueError(f"Port {port_name} must be directed in block mode simulation")
+    
+    if not delay_compensation == 0:
+        warnings.warn(f"A nonzero delay compensation is invalid in block mode simulations. Will be ignored.")
+    
+    filtered_sax_model = _get_filtered_sax_model(sax_model, port_directionality, default_modes)
+    netlist, models = _block_mode_netlist_and_models(filtered_sax_model)
+
+    input_port_modes, output_port_modes = _get_port_mode_luts(filtered_sax_model)
+
+
+    A, B, C, D = None, None, None, None
+
+
+    ### TODO: Fill in empty settings..s
+    settings = {}
+    settings.update({FIR_FILTER_INSTANCE_NAME:{"A":A, "B":B, "C":C, "D":D}})
+    settings.update({_mode_converter_instance_name(port, mode, INPUT_SUFFIX):{} for port, modes in input_port_modes.items() for mode in modes})
+    settings.update({_mode_converter_instance_name(port, mode, OUTPUT_SUFFIX):{} for port, modes in output_port_modes.items() for mode in modes})
+    settings.update({_demultiplexer_instance_name(port):{} for port in input_port_modes.keys()})
+    settings.update({_multiplexer_instance_name(port):{} for port in output_port_modes.keys()})
+    
+    instantiated_flat_netlist = _instantiate_netlist(netlist, models, settings=settings)
+
+    return instantiated_flat_netlist
+
+def _block_mode_netlist_and_models(
+    filtered_sax_model: sax.Model
+):
+    """
+    Returns a dicts defining the instances, connections, and ports of the subcircuit
+    as well as a dict of uninstantiated models
+    """
+    connections = {}
+    instances = {}
+    ports = {}
+    models = {}
+
+    input_port_modes, output_port_modes = _get_port_mode_luts(filtered_sax_model)
+
+    mode_demultiplexers = {}
+    fir_filter_input_port_names = []
+    for input_port, modes in input_port_modes.items():        
+        mode_demultiplexers[input_port] = mode_demultiplexer(modes, input_port_name=DEMULTIPLEXER_IN_PORT_NAME,output_port_suffix=DEMULTIPLEXER_OUT_PORT_SUFFIX)
+        fir_filter_input_port_names += [_fir_filter_port_name(input_port, mode) for mode in modes]
+
+    mode_multiplexers = {}
+    fir_filter_output_port_names = []
+    for output_port, modes in output_port_modes.items():
+        mode_multiplexers[output_port] = mode_multiplexer(modes, output_port_name=MULTIPLEXER_OUT_PORT_NAME, input_port_suffix=MULTIPLEXER_IN_PORT_SUFFIX)
+        fir_filter_output_port_names +=[_fir_filter_port_name(output_port, mode) for mode in modes]
+
+    FIRFilter = discrete_state_space(
+        len(fir_filter_input_port_names), 
+        len(fir_filter_output_port_names),
+        fir_filter_input_port_names,
+        fir_filter_output_port_names,
+    )
+
+    models[MODE_CONVERTER_MODEL_NAME] = ModeConverter
+    models[FIR_FILTER_MODEL_NAME] = FIRFilter
+    instances[FIR_FILTER_INSTANCE_NAME] = FIR_FILTER_MODEL_NAME 
+
+    # Input Side Demultiplexers and Mode Converters
+    for port, demux in mode_demultiplexers.items():
+        demux_model_name = _demultiplexer_model_name(port)
+        models[demux_model_name] = demux
+        demux_instance_name = _demultiplexer_instance_name(port)
+        instances[demux_instance_name] = demux_model_name
+
+        modes = input_port_modes[port]
+        for mode in modes:
+            mode_converter_instance_name = _mode_converter_instance_name(port, mode, INPUT_SUFFIX)
+            instances[mode_converter_instance_name] = MODE_CONVERTER_MODEL_NAME
+            demux_output = demux_instance_name + "," + mode + DEMULTIPLEXER_OUT_PORT_SUFFIX
+            converter_input = mode_converter_instance_name + ',' + 'in'
+            converter_output = mode_converter_instance_name + ',' + 'out'
+            fir_filter_input = FIR_FILTER_INSTANCE_NAME + ',' + _fir_filter_port_name(port, mode)
+            connections[demux_output] = converter_input
+            connections[converter_output] = fir_filter_input
+        
+        ports[port] = demux_instance_name + "," + DEMULTIPLEXER_IN_PORT_NAME
+    
+    # Output Side Multiplexers and Mode Converters
+    for port, mux in mode_multiplexers.items():
+        mux_model_name = _multiplexer_model_name(port)
+        models[mux_model_name] = mux
+        mux_instance_name = _multiplexer_instance_name(port)
+        instances[mux_instance_name] = mux_model_name
+
+        modes = output_port_modes[port]
+        for mode in modes:
+            mode_converter_instance_name = _mode_converter_instance_name(port, mode, OUTPUT_SUFFIX)
+            instances[mode_converter_instance_name] = MODE_CONVERTER_MODEL_NAME
+            mux_input = mux_instance_name + "," + mode + MULTIPLEXER_IN_PORT_SUFFIX
+            converter_input = mode_converter_instance_name + ',' + 'in'
+            converter_output = mode_converter_instance_name + ',' + 'out'
+            fir_filter_output = FIR_FILTER_INSTANCE_NAME + ',' + _fir_filter_port_name(port, mode)
+            
+            connections[fir_filter_output] = converter_input
+            connections[converter_output] = mux_input
+
+        ports[port] = mux_instance_name + "," + MULTIPLEXER_OUT_PORT_NAME
+
+    netlist = {
+        "instances": instances,
+        "connections": connections,
+        "ports": ports,
+    }
+    
+    return netlist, models
+
+def _mode_converter_instance_name(
+    port,
+    mode,
+    direction
+)->str:
+    return port + '_' + mode + MODE_CONVERTER_INSTANCE_SUFFIX + '_' + direction
+
+def _demultiplexer_model_name(
+    port,
+):
+    return port + DEMULTIPLEXER_SUFFIX
+
+def _demultiplexer_instance_name(
+    port,
+):
+    return _demultiplexer_model_name(port)
+
+def _multiplexer_model_name(
+    port,
+):
+    return port + MULTIPLEXER_SUFFIX
+
+def _multiplexer_instance_name(
+    port,
+):
+    return _multiplexer_model_name(port)
+
+def _fir_filter_port_name(
+    port,
+    mode,
+):
+    return port + "_" + mode
+
+def _get_filtered_sax_model(
+    sax_model: sax.Model,
+    port_directionality,
+    default_modes,
+):
     input_ports_to_remove = {port_name for port_name, direction in port_directionality.items() if direction=='output'}
     output_ports_to_remove = {port_name for port_name, direction in port_directionality.items() if direction=='input'}
 
@@ -92,101 +335,86 @@ def optical_s_parameter(
 
         return sdict
 
+    return filtered_sax_model
 
-    # As of sax 0.15.10, get_modes does not necessarily return a tuple of UNIQUE values
-    # modes = tuple(set(sax.get_modes(sax_model())))
-
-    # Sax does not require every mode relation specified (I think that the port
-    # to port relations default to 0 in that case)
-    # port_modes = {}
-    # for p in sax.get_ports(sax_model()):
-    #     port, mode = p.split("@")
-    #     port_modes.setdefault(port, set()).add(mode)
-    
+def _get_port_mode_luts(
+    sax_model: sax.Model,
+):
     input_port_modes = {}
     output_port_modes = {}
-    for i, o in filtered_sax_model().keys():
+    for o, i in sax_model().keys():
         in_port, in_mode = i.split('@')
         out_port, out_mode = o.split('@')
         input_port_modes.setdefault(in_port, set()).add(in_mode)
         output_port_modes.setdefault(out_port, set()).add(out_mode)
+
+    return input_port_modes, output_port_modes
+
+def _bidirectional_ports_to_unidirectional_ports(
+    sax_model: sax.ModelMM, 
+    port_directionality
+):
+    """
+    The resulting port names are the orginal port names appended 
+    with a string unique to all substrings in the original port names.
+
+    In order to find the original port name, just remove the 
+    out_suffix and in_suffix substrings from the dict keys.
+    """
+    port_names = port_directionality.keys()
+    unique_word = "_"
+
+    for port_name in port_names:
+        while(unique_word in port_name):
+            unique_word += "_"
     
-    pcell_port_names = list(set(input_port_modes.keys()) | set(output_port_modes.keys()))
-
-    class SParameterSax(PCell):
-        ports = [
-            Port(
-                name=port_name, 
-                type="optical", 
-                directionality = port_directionality.get(port_name, 'bidirectional')
-            ) 
-            for port_name in pcell_port_names
-        ]
-        
-
-        def __init__(
-            self,
-            spectral_range: tuple = (1.5e-6, 1.6e-6),
-            delay_compensation: int = 0,
-            sax_settings: dict = {},
-        ):
-            mode_demultiplexers = {}
-            num_filter_inputs = 0
-            for input_port, modes in input_port_modes.items():
-                mode_demultiplexers[input_port] = mode_demultiplexer(modes)
-                num_filter_inputs += len(modes)
-
-            mode_multiplexers = {}
-            num_filter_outputs = 0
-            for output_port, modes in output_port_modes.items():
-                mode_multiplexers[output_port] = mode_multiplexer(modes)
-                num_filter_outputs += len(modes)
-            
-            FIRFilter = discrete_state_space(
-                num_filter_inputs, 
-                num_filter_outputs,
-                [],
-                [],
-            )
-
-            models = {}
-            models["converter"] = ModeConverter
-            models["fir_filter"] = FIRFilter
-            models["phase_shifter"] = OpticalModulator
-            
-            # TODO: Connect Phase Shifters to muxes
-            for port_name, mux in mode_multiplexers.items():
-                mux_name = f"{port_name}_{mux}"
-                mux_instance_name = mux_name
-                models[mux_name] = mux
-                instances[mux_instance_name] = mux_name
-                new_connections = {
-                    f"{},{}":f"{mux_instance_name},{mode}"
-                } 
-
-            for port_name, demux in mode_demultiplexers.items():
-                models[f"{port_name}_{demux}"] = demux
-
-
-            instances = {}
-            connections = {}
-            
-            input_ports = {port_name:f"{1},{2}" for port_name in pcell_port_names}
-            ports = {}
-
-            netlist = {
-                "instances": instances,
-                "connections": connections,
-                "ports": ports,
-            }
-            
-
-            self.netlist = netlist
-            self.models = models
-
+    in_suffix = unique_word + INPUT_SUFFIX
+    out_suffix = unique_word + OUTPUT_SUFFIX
     
-    return SParameterSax
 
+    unidirectional_port_directionality = {}
+    valid_input_ports = set()
+    valid_output_ports = set()
+    for port_name, directionality in port_directionality.items():
+        in_port_name = port_name + in_suffix
+        out_port_name = port_name + out_suffix
+        if directionality == "bidirectional":
+            unidirectional_port_directionality[in_port_name] = "input"
+            unidirectional_port_directionality[out_port_name] = "output"
+            valid_input_ports.add(in_port_name)
+            valid_output_ports.add(out_port_name)
+        elif directionality == "input":
+            # in_port_name = port_name + f"{unique_word}in"
+            unidirectional_port_directionality[in_port_name] = "input"
+            valid_input_ports.add(in_port_name)
+        elif directionality == "output":
+            # out_port_name = port_name + f"{unique_word}out"
+            unidirectional_port_directionality[out_port_name] = "output"
+            valid_output_ports.add(out_port_name)
+
+    def unidirectional_sax_model(**kwargs):
+        valid_input_ports
+        valid_output_ports
+        in_suffix
+        out_suffix
+        sdict = sax_model(**kwargs)
+        new_sdict = {(src+out_suffix, dst+in_suffix): v for (src, dst), v in sdict.items()}
+
+        return new_sdict
+
+    return unidirectional_sax_model, unidirectional_port_directionality, in_suffix, out_suffix 
+    
+
+def _get_port_names_without_mode(sax_model):
+    sdict = sax.multimode(sax_model())
+    port_names = set()
+    for in_portmode, out_portmode in sdict.keys():
+        in_port, _ = in_portmode.split('@')
+        out_port, _ = out_portmode.split('@')
+        port_names.add(in_port)
+        port_names.add(out_port)
+    
+    return port_names
 
 # def optical_s_parameter(sax_model: SaxModel):
 #     optical_ports = list(sax.get_ports(sax_model()))

@@ -21,6 +21,22 @@ from dataclasses import field
 
 from sax import DEFAULT_MODES
 
+from enum import StrEnum
+
+class SimulationMode(StrEnum):
+    """
+    Some classes, such as PCells, need access to the type of simulation being performed.
+    This enum provides a way to consistently identify supported simulation types, while
+    avoiding circular imports
+    """
+    SPARAMETER = "s_parameter"
+    SAMPLE_MODE = "sample_mode"
+    BLOCK_MODE = "block_mode"
+    STEADY_STATE = "steady_state"
+    #### TODO: Fix naming conventions for all simulation modes
+    # TRANSIENT_SAMPLE = "transient_sample"
+    # TRANSIENT_BLOCK = "transient_block"
+
 class SimDevice:
     """Base class for all source or measure devices."""
 

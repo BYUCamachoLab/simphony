@@ -1,6 +1,6 @@
 from jax.typing import ArrayLike
 
-from simphony.circuit import SteadyStateComponent, BlockModeComponent
+from simphony.circuit.circuit import SteadyStateComponent, BlockModeComponent
 from simphony.time_domain import SSFM
 
 

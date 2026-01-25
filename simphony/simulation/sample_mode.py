@@ -1,5 +1,5 @@
 from .simulation import Simulation, SimulationResult, SimulationParameters
-from simphony.circuit import Circuit
+from simphony.circuit.circuit import Circuit
 from simphony.component.component import SampleModeComponent
 # from simphony.libraries.analytic import advance
 # from simphony.simulation.advance import _advance as advance

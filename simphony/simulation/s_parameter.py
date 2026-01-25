@@ -3,7 +3,7 @@
 #     from simphony.circuit import Circuit
 from .simulation import Simulation, SimulationResult
 from .steady_state import SteadyStateSimulation
-from simphony.circuit import Circuit
+from simphony.circuit.circuit import Circuit
 from jax.typing import ArrayLike
 from copy import deepcopy
 import networkx as nx

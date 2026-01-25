@@ -188,9 +188,12 @@ class Signal: ## TODO: Make an actual base class
     ...
 
 class Component:
+    def __repr__(self):
+        return f"<{type(self).__name__} (Component obj)>"
     @classmethod
     def _create_port_lookup_table(cls):
         cls._port_lookup_table = {p.name: p for p in cls.ports}
+    
     # simulation_parameters={}
      # Used especially in time-domain simulations
     

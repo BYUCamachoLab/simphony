@@ -1,5 +1,8 @@
 from simphony.component.component import Component
+from simphony.simulation.simulation import SimulationMode
+from sax import DEFAULT_MODES
 
+### TODO: Decide whether PCells are Components or not, gotta love OOP
 class PCell(Component):
     """
     Some circuit components will not have a well defined, internal structure 
@@ -21,12 +24,61 @@ class PCell(Component):
     Models may be modified or left alone before the conclusion of 
     the __init__() function
     """
+    ports = None
+    
     netlist = None
     models = None
-    ports = None
+    settings = None
 
-    def __init__():
-        """
+    def __repr__(self):
+        return f"<{type(self).__name__} (PCell obj)>"
 
-        """
-        pass
+    def __init__(
+        self,
+        simulation_mode: SimulationMode,
+        **kwargs,
+    ):
+        ...
+    
+    ### TODO: Make the method here convert to simphony Components firts, instead of instantiate_netlist function
+    def _instantiated_netlist(
+        self,
+        simulation_mode: SimulationMode,
+        directed: bool = False,
+        default_modes: tuple = DEFAULT_MODES,
+    ):
+        if self.netlist is None:
+            raise NotImplementedError(
+                f"{self.__class__.__name__} must define `netlist` before instantiation"
+            )
+
+        if self.models is None:
+            raise NotImplementedError(
+                f"{self.__class__.__name__} must define `models` before instantiation"
+            )
+
+        from simphony.circuit.netlist import instantiate_netlist
+
+        return instantiate_netlist(
+            self.netlist,
+            self.models,
+            self.settings,
+            simulation_mode,
+            directed=directed,
+            default_modes=default_modes,
+        )
+    # def _instantiated_netlist(
+    #     self,
+    #     directed: bool = False,
+    #     default_modes: tuple = DEFAULT_MODES,
+    #     settings: dict = None,
+    #     ):
+    #     from simphony.circuit.netlist import instantiate_netlist
+
+    #     return instantiate_netlist(
+    #         self.netlist, 
+    #         self.models,
+    #         directed = directed,
+    #         default_modes = default_modes,
+    #         settings = settings
+    #     )

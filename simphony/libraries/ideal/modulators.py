@@ -12,42 +12,6 @@ import sax
 from simphony.signal.steady_state import SteadyStateOpticalSignal
 from simphony.component.port import Port
 
-
-class MachZehnderModulator(PCell):
-    ports = [
-        Port(
-            name = "o0",
-            type = "optical",
-            directionality = "bidirectional",
-        ),
-        Port(
-            name = "o1",
-            type = "optical",
-            directionality = "bidirectional",
-        ),
-        Port(
-            name = "e0",
-            type = "electrical",
-            directionality = "unidirectional",
-        ),
-        Port(
-            name = "e1",
-            type = "electrical",
-            directionality = "unidirectional",
-        )
-    ]
-    def __init__(
-        self, 
-        NOT_IMPLEMENTED,         
-    ):
-        # IMPLEMENT ME
-        pass
-    
-
-    
-    # def __init__(self, **settings):
-    #     super().__init__(**settings)
-
 class OpticalModulator(
     SteadyStateComponent, 
     SampleModeComponent, 
@@ -67,7 +31,7 @@ class OpticalModulator(
         Port(
             name = "e0",
             type = "electrical",
-            directionality = "unidirectional",
+            directionality = "input",
         )
     ]
     
@@ -165,5 +129,32 @@ class OpticalModulator(
 
 
 
-# class AmplitudeModulator():
-#     pass
+# class MachZehnderModulator(PCell):
+#     ports = [
+#         Port(
+#             name = "o0",
+#             type = "optical",
+#             directionality = "bidirectional",
+#         ),
+#         Port(
+#             name = "o1",
+#             type = "optical",
+#             directionality = "bidirectional",
+#         ),
+#         Port(
+#             name = "e0",
+#             type = "electrical",
+#             directionality = "unidirectional",
+#         ),
+#         Port(
+#             name = "e1",
+#             type = "electrical",
+#             directionality = "unidirectional",
+#         )
+#     ]
+#     def __init__(
+#         self, 
+#         NOT_IMPLEMENTED,         
+#     ):
+#         # IMPLEMENT ME
+#         pass

@@ -4,7 +4,7 @@ import numpy as np
 import simphony.libraries.siepic as siepic
 import simphony.libraries.ideal as analytic
 from copy import deepcopy
-from simphony.circuit import Circuit
+from simphony.circuit.circuit import Circuit
 from simphony.simulation import SParameterSimulation
 import sax
 # netlist={

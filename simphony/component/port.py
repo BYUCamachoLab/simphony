@@ -23,3 +23,6 @@ class Port:
         self.directionality = directionality
         self.position = position
         self.location = location
+    
+    def __repr__(self):
+        return f"<Port {self.name!r} ({self.type}, {self.directionality})>"

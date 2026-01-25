@@ -1,5 +1,5 @@
 from .simulation import Simulation, SimulationResult
-from simphony.circuit import Circuit
+from simphony.circuit.circuit import Circuit
 import networkx as nx
 from copy import deepcopy
 
