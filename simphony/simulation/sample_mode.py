@@ -20,6 +20,7 @@ from flax import struct
 from time import time
 
 from dataclasses import field
+from simphony.simulation.simulation import SimulationMode
 
 # def replace(obj, **updates):
 #     fields = obj.__dict__.copy()
@@ -30,18 +31,12 @@ class SampleModeSimulationResult(SimulationResult):
     def __init__(self):
         pass
 
+
 @struct.dataclass
 class SampleModeSimulationParameters(SimulationParameters):
-    # def __init__(
-    #     self,
+    simulation_mode: SimulationMode = field(default_factory=lambda:SimulationMode.SAMPLE_MODE)
     optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([1.54e-6, 1.55e-6, 1.56e-6]))
-    # electrical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([0]))
-    #     **kwargs,
-    # ):
-    #     super().__init__(**kwargs)
-    #     self.optical_baseband_wavelengths = optical_baseband_wavelengths
-    #     self.electrical_baseband_wavelengths = electrical_baseband_wavelengths
-
+    directed: bool = False
 
 class SampleModeSimulation(Simulation):
     def __init__(self, circuit: Circuit):

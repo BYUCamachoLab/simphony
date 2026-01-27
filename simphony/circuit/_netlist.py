@@ -13,7 +13,7 @@ import jax.numpy as jnp
 import yaml
 from copy import deepcopy
 from simphony.component.pcell import PCell
-from simphony.simulation.simulation import SimulationMode
+from simphony.simulation.simulation import SimulationParameters
 
 # TODO: modify so that the Component field may be a dict (for specifying the groups)
 ElaboratedInstances: TypeAlias = dict[InstanceName, Component]
@@ -35,12 +35,17 @@ def _instantiate_netlist(
     netlist,
     models,
     settings,
-    simulation_mode: SimulationMode,
-    directed: bool,
-    default_modes: tuple,
+    simulation_parameters: SimulationParameters,
+    # directed: bool,
+    # default_modes: tuple,
+    # external_connections: dict = None
 )->InstantiatedFlatNetlist:
     """
     Generated instantiated netlist from netlist which does not contain sax models
+
+    TODO: if directed is true, implement simple rules to convert bidirectional components to directional ones
+    Raise an error if the netlist is cyclic
+    More details here: https://camacholab.ee.byu.edu/CamachoLab/6977d6e48cbec722a8ec21ae/page
     """
     instantiated_recursive_netlist = sax.netlist(deepcopy(netlist))
     for _, subnetlist in instantiated_recursive_netlist.items():
@@ -57,9 +62,9 @@ def _instantiate_netlist(
         uninstantiated_model = models[component_name]
 
         if issubclass(uninstantiated_model, PCell):
-            instance_data["model"] = uninstantiated_model(simulation_mode, **instance_settings)
+            instance_data["model"] = uninstantiated_model(simulation_parameters, **instance_settings)
         elif issubclass(uninstantiated_model, Component):
-            instance_data["model"] = uninstantiated_model(simulation_mode, **instance_settings)
+            instance_data["model"] = uninstantiated_model(simulation_parameters, **instance_settings)
     
     ## Get instantiated flat nelist from any pcells and splice them into instatiated_netlist issubclass(models['mzi'], PCell)
     ## When splicing in, make sure that there are no conflicts with model names
@@ -69,9 +74,9 @@ def _instantiate_netlist(
         instantiated_model = instance_data['model']
         if isinstance(instantiated_model, PCell):
             ### TODO: Give _instantiated_netlist the proper arguments
-            instantiated_model._instantiated_netlist(simulation_mode, directed=directed, default_modes=default_modes)
+            # instantiated_model._instantiated_netlist(simulation_parameters.simulation_mode)
             ### TODO: Stitch the netlist
-            pcell_netlist = ...
+            pcell_netlist = instantiated_model._instantiated_netlist(simulation_parameters)
 
 
     ## Return a new, flat instantiated netlist with no pcells

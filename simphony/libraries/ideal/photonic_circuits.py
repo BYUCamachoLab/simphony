@@ -1,13 +1,14 @@
 from simphony.component.component import SteadyStateComponent
 from simphony.component.pcell import PCell
-from simphony.simulation.simulation import SimulationMode
+from simphony.simulation.simulation import SimulationParameters
 from simphony.component.port import Port
 
-from simphony.libraries.ideal.modulators import OpticalModulator
+from simphony.libraries.ideal.modulators import OpticalModulator, DirectedOpticalModulator
 from simphony.circuit.netlist import instantiate_netlist
 
 ### TODO: Find a better way to deal with old sax libraries
 from simphony.libraries.old_ideal import waveguide, coupler
+from simphony.libraries.ideal.s_parameters import optical_s_parameter
 
 class MZI(PCell):
     r"""
@@ -58,7 +59,7 @@ class MZI(PCell):
     ]
     def __init__(
         self,
-        simulation_mode: SimulationMode,
+        simulation_parameters: SimulationParameters,
         splitter_settings: dict = None,
         combiner_settings: dict = None,
         top_wg_settings: dict = None,
@@ -137,12 +138,6 @@ class MZI(PCell):
                     "e1": "bot_mod,e0",
                 },
             }
-        
-        self.models = {
-            "coupler": coupler,
-            "waveguide": waveguide,
-            "modulator": OpticalModulator,
-        }
 
         self.settings = {
             "top_wg": top_wg_settings,
@@ -152,6 +147,34 @@ class MZI(PCell):
             "top_mod": top_phase_shifter_settings,
             "bot_mod": bot_phase_shifter_settings,
         }
+        from simphony.simulation.simulation import SimulationMode
+        if simulation_parameters.simulation_mode == SimulationMode.SAMPLE_MODE:
+            self.models = {
+                "coupler": coupler,
+                "waveguide": waveguide,
+                "modulator": OpticalModulator,
+            }
+        elif simulation_parameters.simulation_mode == SimulationMode.BLOCK_MODE:
+            coupler_directionality = {
+                "o0": "input",
+                "o2": "input",
+                "o1": "output",
+                "o3": "output",
+            }
+            waveguide_directionality = {
+                "o0": "input",
+                "o1": "output",
+            }
+
+            self.models = {
+                "coupler": optical_s_parameter(coupler, coupler_directionality, simulation_parameters.mode_identifiers),
+                "waveguide": optical_s_parameter(waveguide, waveguide_directionality, simulation_parameters.mode_identifiers),
+                "modulator": DirectedOpticalModulator,
+            }
+            self.settings['top_wg'] = {"sax_settings": self.settings['top_wg']}
+            self.settings['bot_wg'] = {"sax_settings": self.settings['bot_wg']}
+            self.settings['splitter'] = {"sax_settings": self.settings['splitter']}
+            self.settings['combiner'] = {"sax_settings": self.settings['combiner']}
 
 def mzi_lattice_filter(
     order: int = 3,
@@ -181,7 +204,7 @@ def mzi_lattice_filter(
 
         def __init__(
             self,
-            simulation_mode: SimulationMode,
+            simulation_parameters: SimulationParameters,
             *,
             delay_lengths: dict = None,
             coupling_coeffs: list = None,

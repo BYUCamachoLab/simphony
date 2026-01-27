@@ -12,7 +12,7 @@ from copy import deepcopy
 from simphony.component.pcell import PCell
 from simphony.circuit._netlist import _instantiate_netlist, _add_settings_to_netlist, InstantiatedFlatNetlist, ElaboratedInstances
 from simphony.libraries.ideal.s_parameters import optical_s_parameter
-from simphony.simulation.simulation import SimulationMode
+from simphony.simulation.simulation import SimulationParameters
 from sax import DEFAULT_MODES
 import inspect
 
@@ -20,10 +20,9 @@ def instantiate_netlist(
     netlist: dict,
     models: dict,
     settings: dict,
-    simulation_mode: SimulationMode,
-    directed: bool = False,
-    default_modes: tuple = DEFAULT_MODES,
-    
+    simulation_parameters: SimulationParameters,
+    # directed: bool = False,
+    # default_modes: tuple = DEFAULT_MODES,
 )->InstantiatedFlatNetlist:
     """
     parameters
@@ -31,38 +30,10 @@ def instantiate_netlist(
     default_modes: default_modes for sax models
     Will automatically walk down the tree to flatten PCell structures. 
     """
-    # TODO: Wrap up the complete netlist code in _instantiate_netlist into function and use it here
-    
-    new_netlist, new_models = _convert_sax_models(netlist, models, directed, default_modes)
 
-    return _instantiate_netlist(new_netlist, new_models, settings, simulation_mode, directed, default_modes)
+    return _instantiate_netlist(netlist, models, settings, simulation_parameters)
 
-def _convert_sax_models(netlist, models, directed, default_modes):
-    new_netlist = netlist
-    new_models = {}
     
-    for model_name, model in models.items():
-        if inspect.isclass(model):
-            new_models[model_name] = model
-        elif not directed:
-            directionality = "bidirectional"
-            new_models[model_name] = optical_s_parameter(model, directionality, default_modes)
-        elif directed:
-            ### TODO: Find Directionality
-            directionality = ""
-            new_models[model_name] = optical_s_parameter(model, directionality, default_modes)
-        
-        # if issubclass(model, Component) or issubclass(model, PCell):
-        #     new_models[model_name] = model
-        # elif not directed:
-        #     directionality = "bidirectional"
-        #     model = optical_s_parameter(model, directionality, default_modes)
-        # elif directed:
-        #     ### TODO: Find Directionality
-        #     directionality = ""
-        #     model = optical_s_parameter(model, directionality, default_modes)
-    
-    return new_netlist, new_models    
     
     # for instance_name, instance_data in netlist['instances'].items():
     #     model = models[instance_data['component']]

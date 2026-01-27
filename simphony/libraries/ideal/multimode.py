@@ -1,6 +1,7 @@
 from simphony.component.component import BlockModeComponent, SampleModeComponent, Component
 from simphony.component.port import Port
 from sax import DEFAULT_MODES
+from simphony.simulation.simulation import SimulationParameters
 
 ### TODO: Implement ModeConvert
 class ModeConverter(
@@ -21,11 +22,17 @@ class ModeConverter(
             )
         ]
     
-    def __init__(**kwargs):
+    def __init__(
+        self,
+        simulation_parameters: SimulationParameters,
+        **kwargs,
+    ):
         pass
 
 ### TODO: Implement ModeMultiplexer
 def mode_multiplexer(
+    simulation_parameters: SimulationParameters,
+    *,
     input_modes: tuple|list = DEFAULT_MODES,
     output_port_name: str = "out_port",
     input_port_suffix: str = "_port",
@@ -52,13 +59,19 @@ def mode_multiplexer(
             )
         ]
 
-        def __init__(**kwargs):
+        def __init__(
+            self,
+            simulation_parameters: SimulationParameters,
+            **kwargs,
+        ):
             pass
 
     return ModeMultiplexer
 
 ### TODO: Implement ModeDemultiplexer
 def mode_demultiplexer(
+    simulation_parameters: SimulationParameters,
+    *,
     output_modes: tuple|list = DEFAULT_MODES,
     input_port_name: str = "in_port",
     output_port_suffix: str = "_port",
@@ -84,7 +97,11 @@ def mode_demultiplexer(
             for port_name in output_port_names
         ]
 
-        def __init__(**kwargs):
+        def __init__(
+            self,
+            simulation_parameters: SimulationParameters,
+            **kwargs,
+        ):
             pass
         
     return ModeDemultiplexer

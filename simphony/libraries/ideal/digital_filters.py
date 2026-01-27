@@ -7,6 +7,7 @@ from scipy.signal import lfilter
 from scipy.constants import speed_of_light as SPEED_OF_LIGHT
 import jax
 from dataclasses import replace
+from simphony.simulation.simulation import SimulationParameters
 
 class OpticalDiscreteFilter( 
     SampleModeComponent,
@@ -27,6 +28,7 @@ class OpticalDiscreteFilter(
     
     def __init__(
         self,
+        simulation_parameters: SimulationParameters,
         *,
         b: jnp.ndarray = jnp.asarray([0.0, 1.0]),
         a: jnp.ndarray = jnp.asarray([1.0]),
@@ -215,10 +217,12 @@ def discrete_state_space(
         
         def __init__(
             self,
-            A,
-            B,
-            C,
-            D,
+            simulation_parameters: SimulationParameters,
+            *,
+            A = None,
+            B = None,
+            C = None,
+            D = None,
             center_wl = 1.55e-6,
             sampling_period = None,
             delay_compensation = 0,

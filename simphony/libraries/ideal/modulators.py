@@ -11,6 +11,50 @@ import sax
 
 from simphony.signal.steady_state import SteadyStateOpticalSignal
 from simphony.component.port import Port
+from simphony.simulation.simulation import SimulationParameters
+
+class DirectedOpticalModulator(
+    BlockModeComponent
+):
+    ports = [
+        Port(
+            name = "o0",
+            type = "optical",
+            directionality = "input",
+        ),
+        Port(
+            name = "o1",
+            type = "optical",
+            directionality = "output",
+        ),
+        Port(
+            name = "e0",
+            type = "electrical",
+            directionality = "input",
+        )
+    ]
+    
+    def __init__(
+        self,
+        simulation_parameters: SimulationParameters,
+        *,
+        # n_eff: Callable[[float, complex], float]=None, # Function of wavelength and voltage
+        length: float = 1.0,
+        operating_wl = 1.55e-6,
+        absorption_coefficients: jnp.ndarray = jnp.asarray([0.0, 0.0, 0.0, 0.0]),
+        phase_coefficients: jnp.ndarray = jnp.asarray([0.0, 0.0, jnp.pi, 0.0]),
+        effective_index = 0.0,
+    ):
+        self.length = length
+        self.absorption_coefficients = absorption_coefficients
+        self.phase_coefficients = phase_coefficients
+        self.operating_wl = operating_wl
+        self.effective_index = effective_index
+    
+    def block_mode_response(self, input_signal: ArrayLike, simulation_parameters):
+        """Compute the system response."""
+        raise NotImplementedError
+
 
 class OpticalModulator(
     SteadyStateComponent, 
@@ -37,6 +81,7 @@ class OpticalModulator(
     
     def __init__(
         self,
+        simulation_parameters: SimulationParameters,
         *,
         # n_eff: Callable[[float, complex], float]=None, # Function of wavelength and voltage
         length: float = 1.0,

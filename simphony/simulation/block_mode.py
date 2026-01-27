@@ -1,12 +1,14 @@
-from simphony.simulation.simulation import Simulation, SimulationResult, SimulationParameters
+from simphony.simulation.simulation import Simulation, SimulationResult, SimulationParameters, SimulationMode
 from simphony.circuit.circuit import Circuit
 import networkx as nx
 from copy import deepcopy
 from flax import struct
+from dataclasses import field
 
 @struct.dataclass
 class BlockModeSimulationParameters(SimulationParameters):
-    ...
+    simulation_mode: SimulationMode = field(default_factory=lambda:SimulationMode.BLOCK_MODE)    
+    directed: bool = True
     # def __init__(
     #     self,
     #     **kwargs,

@@ -30,7 +30,7 @@ from typing import Type
 from simphony.libraries.ideal.digital_filters import discrete_state_space
 from simphony.libraries.ideal.multimode import ModeConverter, mode_multiplexer, mode_demultiplexer
 
-from simphony.simulation.simulation import SimulationMode
+from simphony.simulation.simulation import SimulationMode, SimulationParameters
 # from simphony.simulation.s_parameter import SParameterSimulation
 # from simphony.simulation.sample_mode import SampleModeSimulation
 # from simphony.simulation.block_mode import BlockModeSimulation
@@ -97,7 +97,7 @@ def optical_s_parameter(
 
         def __init__(
             self,
-            simulation_mode: SimulationMode,
+            simulation_parameters: SimulationParameters,
             sax_settings: dict = None,
             spectral_range: tuple = (1.5e-6, 1.6e-6),
             delay_compensation: int = 0,
@@ -111,7 +111,7 @@ def optical_s_parameter(
                 SimulationMode.SAMPLE_MODE: _sample_mode_design,
             }
 
-            self.instantiated_netlist = designs[simulation_mode](sax_model, sax_settings, spectral_range, delay_compensation, port_directionality, default_modes)
+            self.netlist, self.models, self.settings = designs[simulation_parameters.simulation_mode](sax_model, sax_settings, spectral_range, delay_compensation, port_directionality, default_modes)
     
     return SParameterSax
 
@@ -183,9 +183,9 @@ def _block_mode_design(
     settings.update({_demultiplexer_instance_name(port):{} for port in input_port_modes.keys()})
     settings.update({_multiplexer_instance_name(port):{} for port in output_port_modes.keys()})
     
-    instantiated_flat_netlist = _instantiate_netlist(netlist, models, settings=settings)
+    # instantiated_flat_netlist = _instantiate_netlist(netlist, models, settings)
 
-    return instantiated_flat_netlist
+    return netlist, models, settings
 
 def _block_mode_netlist_and_models(
     filtered_sax_model: sax.Model

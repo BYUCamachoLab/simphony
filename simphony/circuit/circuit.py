@@ -17,7 +17,7 @@ import jax.numpy as jnp
 
 from simphony.component.component import Component
 from simphony.component.pcell import PCell
-from simphony.simulation.simulation import SimulationMode
+from simphony.simulation.simulation import SimulationParameters
 
 
 from simphony.libraries.ideal.s_parameters import optical_s_parameter
@@ -188,12 +188,18 @@ class Circuit:
     
     def instantiate(
         self,
-        simulation_mode: SimulationMode,
+        simulation_parameters: SimulationParameters,
         settings: dict,
-        directed: bool,
-        default_modes,
+        # directed: bool,
+        # default_modes,
     ):
-        return InstantiatedCircuit(self, simulation_mode, settings, directed, default_modes)
+        return InstantiatedCircuit(
+            self, 
+            simulation_parameters, 
+            settings, 
+            # directed, 
+            # default_modes
+        )
 
     def get_subnetlist(self, subcircuit: str):
         original_netlist = deepcopy(self.netlist)
@@ -441,10 +447,10 @@ class InstantiatedCircuit:
     def __init__(
         self,
         circuit: Circuit | FlatCircuit,
-        simulation_mode: SimulationMode,
+        simulation_parameters: SimulationParameters,
         settings: dict,
-        directed: bool,
-        default_modes,
+        # directed: bool,
+        # default_modes,
     ):
         if isinstance(circuit, FlatCircuit):
             self.circuit = circuit
@@ -472,8 +478,12 @@ class InstantiatedCircuit:
             
             uninstantiated_model = models[component_name]
             if issubclass(uninstantiated_model, PCell):
-                model = uninstantiated_model(simulation_mode, **instance_settings)
-                pcell_instantiated_netlist = model._instantiated_netlist(simulation_mode, directed=directed, default_modes=default_modes)
+                model = uninstantiated_model(simulation_parameters, **instance_settings)
+                pcell_instantiated_netlist = model._instantiated_netlist(
+                    simulation_parameters, 
+                    # directed=directed, 
+                    # default_modes=default_modes
+                )
             elif issubclass(uninstantiated_model, Component):
                 model = uninstantiated_model(**instance_settings)
             else: # Sax Model
