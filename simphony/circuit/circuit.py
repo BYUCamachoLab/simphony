@@ -182,7 +182,7 @@ class Circuit:
             # component=instance["component"],
             # settings=instance["settings"],
             shape="rectangle",
-            opacity=0.1,
+            opacity=1.0,
             border_color="blue",
             color="white",
             size=20,
