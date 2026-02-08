@@ -29,7 +29,7 @@ class SimulationMode(StrEnum):
     This enum provides a way to consistently identify supported simulation types, while
     avoiding circular imports
     """
-    SPARAMETER = "s_parameter"
+    S_PARAMETER = "s_parameter"
     SAMPLE_MODE = "sample_mode"
     BLOCK_MODE = "block_mode"
     STEADY_STATE = "steady_state"

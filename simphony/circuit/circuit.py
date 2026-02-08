@@ -8,7 +8,7 @@ import gravis as gv
 from jax.typing import ArrayLike
 from sax.saxtypes import Model as SaxModel
 
-from simphony.circuit.netlist import add_settings_to_netlist, complete_netlist, get_settings_from_netlist, netlist_to_graph
+from simphony.circuit.netlist import add_settings_to_netlist, complete_netlist, get_settings_from_netlist, netlist_to_graph, instantiated_flat_netlist_to_graph
 from copy import deepcopy
 # from simphony.signal import optical_signal, complete_steady_state_inputs
 
@@ -170,14 +170,29 @@ class Circuit:
         #     self._color_nodes(graph)
         # else:
         netlist = recursive_netlist[subcircuit]
-        graph = netlist_to_graph(netlist)
+        graph = netlist_to_graph(netlist, self.models)
         self._mark_component_types(subcircuit, graph)
         self._color_nodes(graph)
         # self._add_data_to_graph(graph)
         
         relabeled_graph = nx.relabel_nodes(graph, node_labels)
 
-        fig = gv.d3(relabeled_graph)
+        relabeled_graph.add_node(
+            f"Kablooey",
+            # component=instance["component"],
+            # settings=instance["settings"],
+            shape="rectangle",
+            opacity=0.1,
+            border_color="blue",
+            color="white",
+            size=20,
+            border_size=1,
+            # image="image.png",
+            # opacity=0.5,
+            # size=5,
+        )
+
+        fig = gv.d3(relabeled_graph.to_undirected(), edge_hover_tooltip=True)
         fig.display(inline=inline)
     
     def flatten(
@@ -459,40 +474,32 @@ class InstantiatedCircuit:
 
         netlist = self.circuit.netlist
         models = self.circuit.models
-        instantiated_netlist = deepcopy(netlist)
 
-        # # Just a test, to prove that putting a model in the instance field doesn't break the display backend
-        # instantiated_netlist['instances']['splitter']['simphony_model'] = {"This is mine": models['ybranch']}
-        # Circuit(instantiated_netlist, models).display()
-        
-
-        ### TODO: Wrap up the following code with one called to instantiate_netlist
-
-        # We recursively expand each PCell into a netlist
-        # and individually stitch those netlists back into the overall netlist
-        for instance_name, instance_data in netlist['instances'].items():
-            component_name = instance_data['component']
-            instance_settings = settings[instance_name]
-            
-            ### TODO: MAKE SURE CAN APPROPRIATELY RETURN INSTANTIATED NETLIST
-            
-            uninstantiated_model = models[component_name]
-            if issubclass(uninstantiated_model, PCell):
-                model = uninstantiated_model(simulation_parameters, **instance_settings)
-                pcell_instantiated_netlist = model._instantiated_netlist(
-                    simulation_parameters, 
-                    # directed=directed, 
-                    # default_modes=default_modes
-                )
-            elif issubclass(uninstantiated_model, Component):
-                model = uninstantiated_model(**instance_settings)
-            else: # Sax Model
-                ### TODO: Determine whether this branch is necessary
+        from simphony.libraries.ideal.s_parameters import SParameterSax
+        # Reinterpret Sax Settings to optical_s_parameter Component settings
+        # for instance_name, instance_settings in settings.items():
+        for instance_name in netlist['instances'].keys():
+            model_name = netlist['instances'][instance_name]['component']
+            if issubclass(models[model_name], SParameterSax) and not "sax_settings" in settings[instance_name].keys():
+                settings[instance_name] = {"sax_settings": settings[instance_name]}
                 pass
+            pass
 
-            # pass
+        from simphony.circuit.netlist import instantiate_netlist
+        # Convert Sax Models First
+        self.instantiated_flat_netlist = instantiate_netlist(netlist, models, settings, simulation_parameters)
+        self.graph = instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist)
+
+    def display(self, inline=True):
         
-        pass
+        # graph.add_edge("lf1~mzi1~bot_mod", "lf1~mzi2~bot_mod", directed=True, color="red", hover="Hi!", tooltip="delay = 12 ps")
+        # graph.add_edge("lf1~mzi2~bot_mod", "lf1~mzi1~bot_mod", directed=True, color="red", hover="Hi!", tooltip="delay = 12 ps")
+        
+        fig = gv.d3(self.graph, edge_hover_tooltip=True)
 
 
+        fig.display(inline=True)
+
+        # fig = gv.d3(self.graph.to_undirected())
+        # fig.display(inline=True)
 

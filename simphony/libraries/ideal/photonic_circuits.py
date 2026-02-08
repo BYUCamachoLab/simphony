@@ -147,13 +147,14 @@ class MZI(PCell):
             "top_mod": top_phase_shifter_settings,
             "bot_mod": bot_phase_shifter_settings,
         }
-        from simphony.simulation.simulation import SimulationMode
-        if simulation_parameters.simulation_mode == SimulationMode.SAMPLE_MODE:
-            self.models = {
+        self.models = {
                 "coupler": coupler,
                 "waveguide": waveguide,
                 "modulator": OpticalModulator,
             }
+        from simphony.simulation.simulation import SimulationMode
+        if simulation_parameters.simulation_mode == SimulationMode.SAMPLE_MODE:
+            pass
         elif simulation_parameters.simulation_mode == SimulationMode.BLOCK_MODE:
             coupler_directionality = {
                 "o0": "input",
@@ -175,6 +176,11 @@ class MZI(PCell):
             self.settings['bot_wg'] = {"sax_settings": self.settings['bot_wg']}
             self.settings['splitter'] = {"sax_settings": self.settings['splitter']}
             self.settings['combiner'] = {"sax_settings": self.settings['combiner']}
+        elif simulation_parameters.simulation_mode == SimulationMode.S_PARAMETER:
+            pass
+        else:
+            raise ValueError(f"{self} has does not support the simulation type {simulation_parameters.simulation_mode}")
+
 
 def mzi_lattice_filter(
     order: int = 3,

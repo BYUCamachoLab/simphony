@@ -17,7 +17,7 @@ from simphony.signal.steady_state import SteadyStateOpticalSignal
 from scipy.constants import speed_of_light
 
 from simphony.component.port import Port
-from simphony.component.component import OpticalSParameterComponent, SteadyStateComponent, BlockModeComponent, SampleModeComponent
+from simphony.component.component import SParameterComponent, SteadyStateComponent, BlockModeComponent, SampleModeComponent
 from simphony.utils import dict_to_matrix
 
 from simphony.component.pcell import PCell
@@ -55,6 +55,11 @@ MODE_CONVERTER_INSTANCE_SUFFIX = "_converter"
 FIR_FILTER_MODEL_NAME = "fir_filter"
 FIR_FILTER_INSTANCE_NAME = FIR_FILTER_MODEL_NAME
 
+class SParameterSax(PCell):
+    """
+    Using the Component Factory Below
+    """
+
 def optical_s_parameter(
     sax_model: sax.Model, 
     port_directionality: dict = None,
@@ -84,7 +89,8 @@ def optical_s_parameter(
         default_modes = [default_modes]
     default_modes = tuple(default_modes)
     
-    class SParameterSax(PCell):
+    BaseSParameterSax = SParameterSax # Freeze the reference
+    class SpecificSParameterSax(BaseSParameterSax):
         ports = [
             Port(
                 name=port_name,
@@ -106,14 +112,14 @@ def optical_s_parameter(
                 sax_settings = {}
 
             designs = {
-                SimulationMode.SPARAMETER: _s_parameter_design,
+                SimulationMode.S_PARAMETER: _s_parameter_design,
                 SimulationMode.BLOCK_MODE: _block_mode_design,
                 SimulationMode.SAMPLE_MODE: _sample_mode_design,
             }
 
             self.netlist, self.models, self.settings = designs[simulation_parameters.simulation_mode](sax_model, sax_settings, spectral_range, delay_compensation, port_directionality, default_modes)
     
-    return SParameterSax
+    return SpecificSParameterSax
 
 def _s_parameter_design(
     sax_model: sax.Model, 
@@ -125,6 +131,47 @@ def _s_parameter_design(
 ):
     if not delay_compensation == 0:
         warnings.warn(f"A nonzero delay compensation is invalid in S-Parameter simulations. Will be ignored.")
+    
+    class SaxModelComponent(SParameterComponent):
+        ports = [
+                Port(
+                    name=port_name,
+                    type="optical",
+                    directionality = "bidirectional"
+                ) 
+                for port_name in sax.get_ports(sax_model())
+            ]
+
+        def __init__(
+            self,
+            simulation_mode: SimulationMode,
+            **kwargs,
+        ):
+            self.sax_settings = kwargs
+
+    
+    # Create a class that will be the base component
+    # Extend s-paraemeters to all of the default_modes using sax
+    instances = {
+        "sax_model": "sax_model",
+    }
+    connections = {}
+    ports = {port.name:f"sax_model,{port.name}" for port in SaxModelComponent.ports}
+    models = {
+        "sax_model": SaxModelComponent,
+    }
+
+    netlist = {
+        "instances": instances,
+        "connections": connections,
+        "ports": ports,
+    }
+
+    settings = {
+        "sax_model": {**sax_settings}
+    }
+    
+    return netlist, models, settings
 
 
 def _sample_mode_design(

@@ -1,16 +1,26 @@
 # from typing import TYPE_CHECKING
 # if TYPE_CHECKING:
 #     from simphony.circuit import Circuit
-from .simulation import Simulation, SimulationResult
+from .simulation import Simulation, SimulationResult, SimulationParameters, SimulationMode
+import jax
 from .steady_state import SteadyStateSimulation
 from simphony.circuit.circuit import Circuit
 from jax.typing import ArrayLike
 from copy import deepcopy
 import networkx as nx
-from simphony.utils import graph_to_netlist
+# from simphony.utils import graph_to_netlist
 import sax
+from dataclasses import field
+from flax import struct
+import jax.numpy as jnp
 
 from functools import partial
+
+@struct.dataclass
+class SParameterSimulationParameters(SimulationParameters):
+    simulation_mode: SimulationMode = field(default_factory=lambda:SimulationMode.S_PARAMETER)
+    optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([1.54e-6, 1.55e-6, 1.56e-6]))
+    directed: bool = False
 
 class SParameterSimulationResult(SimulationResult):
     def __init__(self):

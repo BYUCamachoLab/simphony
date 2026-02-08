@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from simulation.block_mode import BlockModeSimulationParameters  # Only imported for type checking
     from simulation.sample_mode import SampleModeSimulationParameters 
+    from simulation.simulation import SimulationParameters, SimulationMode
+
 #### Include First ####
 
 import inspect
@@ -194,6 +196,13 @@ class Component:
     def _create_port_lookup_table(cls):
         cls._port_lookup_table = {p.name: p for p in cls.ports}
     
+    def __init__(
+        self,
+        simulation_mode: SimulationMode,
+        **kwargs,
+    ):
+        raise ValueError("Component is a base class")
+    
     # simulation_parameters={}
      # Used especially in time-domain simulations
     
@@ -268,6 +277,7 @@ class SampleModeComponent(Component):
 
         return outputs, (time_step+1, output_state)
 
+# TODO: Get rid of this
 class SParameterComponent(Component):
     """
     """
@@ -280,6 +290,7 @@ class SParameterComponent(Component):
             f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
         )
 
+# TODO: Get rid of this
 class OpticalSParameterComponent(SParameterComponent):
     # def __init__(self, **settings):
     #     super().__init__(**settings)

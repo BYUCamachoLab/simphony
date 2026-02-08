@@ -82,7 +82,7 @@ def get_settings_from_netlist(netlist):
     return settings
 
 
-def netlist_to_graph(netlist: Union[dict, str]):
+def netlist_to_graph(netlist: Union[dict, str], models):
     if isinstance(netlist, dict):
         pass
     elif isinstance(netlist, str):
@@ -103,9 +103,28 @@ def netlist_to_graph(netlist: Union[dict, str]):
             instance_name,
             component=instance["component"],
             settings=instance["settings"],
+            # image="image.png",
+            # opacity=0.5,
+            # size=5,
         )
+        models[netlist['instances'][instance_name]['component']]._create_port_lookup_table()
         # graph.add_node(instance_name, label="test", click="Test: $label", **instance_data)
         # graph.add_node(instance_name, weight=netlist['instances'][instance_name]["weight"])
+    
+    # for port_name, port_data in netlist["ports"].items():
+    #     instance_name, instance_port_name = port_data.split(",")
+    #     graph.add_node(
+    #         f"Kablooey-{port_name}",
+    #         # component=instance["component"],
+    #         # settings=instance["settings"],
+    #         shape="rectangle",
+    #         opacity=0.1,
+    #         border_color="black",
+    #         border_size=5,
+    #         # image="image.png",
+    #         # opacity=0.5,
+    #         # size=5,
+    #     )
 
     # Add edges based on connections
     for src, dsts in netlist["connections"].items():
@@ -114,11 +133,65 @@ def netlist_to_graph(netlist: Union[dict, str]):
                 continue
             src_instance, src_port = src.split(",")
             dst_instance, dst_port = dst.split(",")
-            graph.add_edge(src_instance.strip(), dst_instance.strip(), src_port=src_port.strip(), dst_port=dst_port.strip())
+            src_port_directionality = models[netlist['instances'][instance_name]['component']]._port_lookup_table[src_port].directionality
+            dst_port_directionality = models[netlist['instances'][instance_name]['component']]._port_lookup_table[dst_port].directionality
+            add_edge_to_graph(graph, src_instance.strip(), dst_instance.strip(), src_port.strip(), dst_port.strip(), src_port_directionality, dst_port_directionality)
+            # graph.add_edge(src_instance.strip(), dst_instance.strip(), src_port=src_port.strip(), dst_port=dst_port.strip())
+            
     
     #Matthew's Changes
     #Adds the ports as a graph attribute to be used within graph_to_netlist
     graph.graph["ports"] = netlist.get("ports", {}).copy()
+
+    return graph
+
+def add_edge_to_graph(graph, src_node, dst_node, src_port, dst_port, src_directionality, dst_directionality):
+    if (src_directionality == "bidirectional" and dst_directionality == "bidirectional"):
+        graph.add_edge(src_node, dst_node, src_port=src_port, dst_port=dst_port, hover=f"{src_node},{src_port}↔{dst_node},{dst_port}")
+        graph.add_edge(dst_node, src_node, src_port=dst_port, dst_port=src_port, hover=f"{src_node},{src_port}↔{dst_node},{dst_port}")
+    elif (src_directionality == "bidirectional" and dst_directionality == "input") or (src_directionality == "output" and dst_directionality == "bidirectional") or (src_directionality == "output" and dst_directionality == "input"):
+        graph.add_edge(src_node, dst_node, src_port=src_port, dst_port=dst_port, hover=f"{src_node},{src_port}→{dst_node},{dst_port}")
+    elif (src_directionality == "bidirectional" and dst_directionality == "output") or (src_directionality == "input" and dst_directionality == "bidirectional") or (src_directionality == "input" and dst_directionality == "output"):
+        graph.add_edge(dst_node, src_node, src_port=dst_port, dst_port=src_port, hover=f"{src_node},{src_port}←{dst_node},{dst_port}")
+    elif (src_directionality == "unknown" and dst_directionality== "input") or (src_directionality == "output" and dst_directionality== "unknown"):
+        graph.add_edge(src_node, dst_node, src_port=src_port, dst_port=dst_port, hover=f"{src_node},{src_port}→{dst_node},{dst_port}")
+    elif (src_directionality == "unknown" and dst_directionality== "output") or (src_directionality == "input" and dst_directionality== "unknown"):
+        graph.add_edge(dst_node, src_node, src_port=dst_port, dst_port=src_port, hover=f"{src_node},{src_port}←{dst_node},{dst_port}")
+    elif (src_directionality == "unknown" or dst_directionality== "unknown"):
+        graph.add_edge(src_node, dst_node, src_port=src_port, dst_port=dst_port, hover=f"{src_node},{src_port}?⎯?{dst_node},{dst_port}", color="red")
+    else:
+        raise ValueError(f"Cannot connect {src_directionality} to {dst_directionality}")
+
+def instantiated_flat_netlist_to_graph(instantiated_flat_netlist):
+    graph = nx.MultiDiGraph()
+    # Add nodes for each instance
+    for instance_name, instance in instantiated_flat_netlist["instances"].items():
+        instantiated_flat_netlist['instances'][instance_name]['model']._create_port_lookup_table()
+        graph.add_node(
+            instance_name,
+            component=instance["component"],
+            settings=instance["settings"],
+        )
+        # graph.add_node(instance_name, label="test", click="Test: $label", **instance_data)
+        # graph.add_node(instance_name, weight=netlist['instances'][instance_name]["weight"])
+
+    # Add edges based on connections
+    for src, dsts in instantiated_flat_netlist["connections"].items():
+        for dst in dsts.split(";"):
+            if dst =='':
+                continue
+            src_instance, src_port = src.split(",")
+            dst_instance, dst_port = dst.split(",")
+            
+            src_port_directionality = instantiated_flat_netlist['instances'][src_instance]['model']._port_lookup_table[src_port].directionality
+            dst_port_directionality = instantiated_flat_netlist['instances'][dst_instance]['model']._port_lookup_table[dst_port].directionality
+            
+            add_edge_to_graph(graph, src_instance.strip(), dst_instance.strip(), src_port.strip(), dst_port.strip(), src_port_directionality, dst_port_directionality)
+            
+    
+    #Matthew's Changes
+    #Adds the ports as a graph attribute to be used within graph_to_netlist
+    graph.graph["ports"] = instantiated_flat_netlist.get("ports", {}).copy()
 
     return graph
 

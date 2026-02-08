@@ -67,10 +67,11 @@ class PCell(Component):
 
         port_directionality = {port.name:port.directionality for port in self.ports}
 
-        new_netlist, new_models = _convert_sax_models(
+        new_netlist, new_models, new_settings = _convert_sax_models(
             simulation_parameters,
             self.netlist, 
             self.models, 
+            self.settings,
             # directed, 
             # default_modes, 
             # port_directionality
@@ -79,7 +80,7 @@ class PCell(Component):
         return instantiate_netlist(
             new_netlist,
             new_models,
-            self.settings,
+            new_settings,
             simulation_parameters,
             # directed=directed,
             # default_modes=default_modes,
@@ -104,6 +105,7 @@ def _convert_sax_models(
     simulation_parameters,
     netlist, 
     models,  
+    settings,
     # directed,
     # default_modes,
     # port_directionality,    
@@ -116,6 +118,7 @@ def _convert_sax_models(
         add_settings_to_netlist(subnetlist) # Just to normalize, we will use the settings the user provided later
     netlist = sax.flatten_netlist(sax.netlist(netlist))
     new_netlist = deepcopy(netlist)
+    new_settings = deepcopy(settings)
     # new_netlist = netlist
     new_models = {}
     unique_str = "_X_"
@@ -169,4 +172,15 @@ def _convert_sax_models(
         #     directionality = ""
         #     model = optical_s_parameter(model, directionality, default_modes)
     
-    return new_netlist, new_models
+    new_settings
+    
+    # TODO: Remove duplicate code. This is taken from InstantiatedCircuit __init__
+    from simphony.libraries.ideal.s_parameters import SParameterSax
+    # Reinterpret Sax Settings to optical_s_parameter Component settings
+    # for instance_name, instance_settings in settings.items():
+    for instance_name in new_netlist['instances'].keys():
+        model_name = new_netlist['instances'][instance_name]['component']
+        if issubclass(new_models[model_name], SParameterSax) and not "sax_settings" in settings[instance_name].keys():
+            new_settings[instance_name] = {"sax_settings": settings[instance_name]}
+
+    return new_netlist, new_models, new_settings

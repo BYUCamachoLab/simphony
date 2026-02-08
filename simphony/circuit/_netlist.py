@@ -31,6 +31,7 @@ InstantiatedFlatNetlist = TypedDict(
         },
     )
 
+# TODO: Fix the order of arguments so that SimulationParameters is first
 def _instantiate_netlist(
     netlist,
     models,
@@ -66,21 +67,23 @@ def _instantiate_netlist(
         elif issubclass(uninstantiated_model, Component):
             instance_data["model"] = uninstantiated_model(simulation_parameters, **instance_settings)
     
+    TOP_LEVEL_NAME = "top_level"
     ## Get instantiated flat nelist from any pcells and splice them into instatiated_netlist issubclass(models['mzi'], PCell)
     ## When splicing in, make sure that there are no conflicts with model names
-    instantiated_flat_netlist_no_pcells = deepcopy(instantiated_flat_netlist)
+    instantiated_recursive_netlist_no_pcells = sax.netlist(deepcopy(instantiated_flat_netlist), top_level_name=TOP_LEVEL_NAME)
 
     for instance_name, instance_data in instantiated_flat_netlist['instances'].items():
         instantiated_model = instance_data['model']
         if isinstance(instantiated_model, PCell):
-            ### TODO: Give _instantiated_netlist the proper arguments
-            # instantiated_model._instantiated_netlist(simulation_parameters.simulation_mode)
             ### TODO: Stitch the netlist
             pcell_netlist = instantiated_model._instantiated_netlist(simulation_parameters)
+            
+            instantiated_recursive_netlist_no_pcells[instance_name] = pcell_netlist
+            instantiated_recursive_netlist_no_pcells[TOP_LEVEL_NAME]['instances'][instance_name] = {"component": instance_name}
 
 
-    ## Return a new, flat instantiated netlist with no pcells
-    return {}
+    ### TODO: Return a new, flat instantiated netlist with no pcells
+    return sax.flatten_netlist(instantiated_recursive_netlist_no_pcells)
 
 def _add_settings_to_netlist(netlist, settings=None):
     if settings is None:
