@@ -123,11 +123,11 @@ class MZI(PCell):
                 },
                 "connections": {
                     # "splitter,o1": "bot_mod,o0",
-                    "bot_mod,o1": "bot_wg,o0",
-                    "bot_wg,o1": "combiner,o0",
+                    "bot_wg,o1": "bot_mod,o0",
+                    "bot_mod,o1": "combiner,o0",
                     # "splitter,o3": "top_mod,o0",
-                    "top_mod,o1": "top_wg,o0",
-                    "top_wg,o1": "combiner,o2",
+                    "top_wg,o1": "top_mod,o0",
+                    "top_mod,o1": "combiner,o2",
                 },
                 "ports": {
                     "o0": "bot_wg,o0",

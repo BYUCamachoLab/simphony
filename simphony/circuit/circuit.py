@@ -171,28 +171,30 @@ class Circuit:
         # else:
         netlist = recursive_netlist[subcircuit]
         graph = netlist_to_graph(netlist, self.models)
-        self._mark_component_types(subcircuit, graph)
-        self._color_nodes(graph)
-        # self._add_data_to_graph(graph)
+        # self._mark_component_types(subcircuit, graph)
+        # self._color_nodes(graph)
+
+        # # self._add_data_to_graph(graph)
         
         relabeled_graph = nx.relabel_nodes(graph, node_labels)
 
-        relabeled_graph.add_node(
-            f"Kablooey",
-            # component=instance["component"],
-            # settings=instance["settings"],
-            shape="rectangle",
-            opacity=1.0,
-            border_color="blue",
-            color="white",
-            size=20,
-            border_size=1,
-            # image="image.png",
-            # opacity=0.5,
-            # size=5,
-        )
+        # relabeled_graph.add_node(
+        #     f"Kablooey",
+        #     # component=instance["component"],
+        #     # settings=instance["settings"],
+        #     shape="rectangle",
+        #     opacity=1.0,
+        #     border_color="blue",
+        #     color="white",
+        #     size=20,
+        #     border_size=1,
+        #     # image="image.png",
+        #     # opacity=0.5,
+        #     # size=5,
+        # )
 
-        fig = gv.d3(relabeled_graph.to_undirected(), edge_hover_tooltip=True)
+        # fig = gv.d3(relabeled_graph.to_undirected(), edge_hover_tooltip=True)
+        fig = gv.d3(relabeled_graph, edge_hover_tooltip=True)
         fig.display(inline=inline)
     
     def flatten(

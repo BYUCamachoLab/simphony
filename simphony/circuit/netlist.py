@@ -98,6 +98,7 @@ def netlist_to_graph(netlist: Union[dict, str], models):
     # graph = nx.MultiGraph()
     graph = nx.MultiDiGraph()
     # Add nodes for each instance
+
     for instance_name, instance in netlist["instances"].items():
         graph.add_node(
             instance_name,
@@ -111,6 +112,25 @@ def netlist_to_graph(netlist: Union[dict, str], models):
         # graph.add_node(instance_name, label="test", click="Test: $label", **instance_data)
         # graph.add_node(instance_name, weight=netlist['instances'][instance_name]["weight"])
     
+    for external_port_name, internal_port_data in netlist["ports"].items():
+        instance_name, internal_port_name = internal_port_data.split(",")
+        node_name = f".{external_port_name}" # . Symbol Ensures Uniqueness of node_name
+        directionality = models[netlist['instances'][instance_name]['component']]._port_lookup_table[internal_port_name].directionality
+        add_port_to_graph(graph, instance_name, internal_port_name, directionality, external=True, external_port_name=external_port_name)
+        
+        # graph.add_node(
+        #     node_name, 
+        #     shape="rectangle",
+        #     opacity=1.0,
+        #     border_color="black",
+        #     border_size=1,
+        #     size=15,
+        #     color="white"
+        # )
+        # directionality = models[netlist['instances'][instance_name]['component']]._port_lookup_table[internal_port_name].directionality
+        # add_connection_to_graph(graph, node_name, instance_name.strip(), None, None, "bidirectional", directionality)
+
+
     # for port_name, port_data in netlist["ports"].items():
     #     instance_name, instance_port_name = port_data.split(",")
     #     graph.add_node(
@@ -135,9 +155,15 @@ def netlist_to_graph(netlist: Union[dict, str], models):
             dst_instance, dst_port = dst.split(",")
             src_port_directionality = models[netlist['instances'][instance_name]['component']]._port_lookup_table[src_port].directionality
             dst_port_directionality = models[netlist['instances'][instance_name]['component']]._port_lookup_table[dst_port].directionality
-            add_edge_to_graph(graph, src_instance.strip(), dst_instance.strip(), src_port.strip(), dst_port.strip(), src_port_directionality, dst_port_directionality)
+            add_connection_to_graph(graph, src_instance.strip(), dst_instance.strip(), src_port.strip(), dst_port.strip(), src_port_directionality, dst_port_directionality)
             # graph.add_edge(src_instance.strip(), dst_instance.strip(), src_port=src_port.strip(), dst_port=dst_port.strip())
-            
+
+    unconnected_ports = set()
+    connected_ports = {connection for connection in list(netlist['connections'].keys()) + list(netlist['connections'].values())}
+    for instance_name, instance_data in netlist['instances'].items():
+        for port in models[netlist['instances'][instance_name]['component']].ports:
+            if not f"{instance_name},{port.name}" in connected_ports:
+                unconnected_ports.add(f"{instance_name},{port.name}")
     
     #Matthew's Changes
     #Adds the ports as a graph attribute to be used within graph_to_netlist
@@ -145,7 +171,7 @@ def netlist_to_graph(netlist: Union[dict, str], models):
 
     return graph
 
-def add_edge_to_graph(graph, src_node, dst_node, src_port, dst_port, src_directionality, dst_directionality):
+def add_connection_to_graph(graph, src_node, dst_node, src_port, dst_port, src_directionality, dst_directionality):
     if (src_directionality == "bidirectional" and dst_directionality == "bidirectional"):
         graph.add_edge(src_node, dst_node, src_port=src_port, dst_port=dst_port, hover=f"{src_node},{src_port}↔{dst_node},{dst_port}")
         graph.add_edge(dst_node, src_node, src_port=dst_port, dst_port=src_port, hover=f"{src_node},{src_port}↔{dst_node},{dst_port}")
@@ -162,6 +188,28 @@ def add_edge_to_graph(graph, src_node, dst_node, src_port, dst_port, src_directi
     else:
         raise ValueError(f"Cannot connect {src_directionality} to {dst_directionality}")
 
+def add_port_to_graph(graph, instance_name, internal_port_name, directionality, external: bool, external_port_name=None):
+    if external:
+        node_name = f".{external_port_name}" # '.' enforces uniqueness
+        shape="hexagon",
+        size = 20
+    else:
+        node_name = f"{instance_name},{internal_port_name}" # ',' enforces uniqueness
+        size = 5,
+        shape="rectangle"
+
+    graph.add_node(
+            node_name, 
+            shape=shape,
+            opacity=1.0,
+            border_color="black",
+            border_size=1,
+            size=size,
+            color="white"
+        )
+    
+    add_connection_to_graph(graph, node_name, instance_name.strip(), None, None, "bidirectional", directionality)
+
 def instantiated_flat_netlist_to_graph(instantiated_flat_netlist):
     graph = nx.MultiDiGraph()
     # Add nodes for each instance
@@ -175,6 +223,14 @@ def instantiated_flat_netlist_to_graph(instantiated_flat_netlist):
         # graph.add_node(instance_name, label="test", click="Test: $label", **instance_data)
         # graph.add_node(instance_name, weight=netlist['instances'][instance_name]["weight"])
 
+    for external_port_name, internal_port_data in instantiated_flat_netlist["ports"].items():
+        instance_name, internal_port_name = internal_port_data.split(",")
+        node_name = f".{external_port_name}" # . Symbol Ensures Uniqueness of node_name
+        model = instantiated_flat_netlist['instances'][instance_name]['model']
+        directionality = model._port_lookup_table[internal_port_name].directionality
+        add_port_to_graph(graph, instance_name, internal_port_name, directionality, external=True, external_port_name=external_port_name)
+
+
     # Add edges based on connections
     for src, dsts in instantiated_flat_netlist["connections"].items():
         for dst in dsts.split(";"):
@@ -186,8 +242,26 @@ def instantiated_flat_netlist_to_graph(instantiated_flat_netlist):
             src_port_directionality = instantiated_flat_netlist['instances'][src_instance]['model']._port_lookup_table[src_port].directionality
             dst_port_directionality = instantiated_flat_netlist['instances'][dst_instance]['model']._port_lookup_table[dst_port].directionality
             
-            add_edge_to_graph(graph, src_instance.strip(), dst_instance.strip(), src_port.strip(), dst_port.strip(), src_port_directionality, dst_port_directionality)
-            
+            add_connection_to_graph(graph, src_instance.strip(), dst_instance.strip(), src_port.strip(), dst_port.strip(), src_port_directionality, dst_port_directionality)
+
+    unconnected_ports = set()
+    connected_ports = {connection for connection in list(instantiated_flat_netlist['connections'].keys()) + list(instantiated_flat_netlist['connections'].values())}
+    
+    for instance_name, instance_data in instantiated_flat_netlist['instances'].items():
+        for port in instantiated_flat_netlist['instances'][instance_name]['model'].ports:
+            if not f"{instance_name},{port.name}" in connected_ports and not f"{instance_name},{port.name}" in instantiated_flat_netlist['instances'].values():
+                unconnected_ports.add(f"{instance_name},{port.name}")
+                add_port_to_graph(graph, instance_name, port.name, directionality, external=False)
+                # graph.add_node(
+                #     "FIX ME", 
+                #     shape="rectangle",
+                #     opacity=1.0,
+                #     border_color="black",
+                #     border_size=1,
+                #     size=15,
+                #     color="white"
+                # )
+    pass
     
     #Matthew's Changes
     #Adds the ports as a graph attribute to be used within graph_to_netlist

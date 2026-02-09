@@ -65,14 +65,16 @@ class OpticalModulator(
         Port(
             name = "o0",
             type = "optical",
-            # directionality = "bidirectional",
-            directionality = "unknown",
+            directionality = "bidirectional",
+            # directionality = "input",
+            # directionality = "unknown",
         ),
         Port(
             name = "o1",
             type = "optical",
-            # directionality = "bidirectional",
-            directionality = "unknown",
+            directionality = "bidirectional",
+            # directionality = "output",
+            # directionality = "unknown",
         ),
         Port(
             name = "e0",
