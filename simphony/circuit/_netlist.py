@@ -57,7 +57,7 @@ def _instantiate_netlist(
 
     ## Make unique, instantiated models for each instance. Put the instantiated models in the netlist metadata
     for instance_name, instance_data in instantiated_flat_netlist["instances"].items():
-        print(instance_name)
+        # print(instance_name)
         component_name = instance_data["component"]
         instance_settings = settings.get(instance_name, {})
         uninstantiated_model = models[component_name]

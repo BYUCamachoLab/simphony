@@ -2,6 +2,7 @@ from sax import AnyNetlist, InstanceName, Ports, Connections, Models
 import sax
 from typing import TypeAlias, TypedDict
 from simphony.component.component import Component
+from simphony.component.pcell import PCell
 from typing_extensions import NotRequired
 import networkx as nx
 import jax.numpy as jnp
@@ -94,57 +95,31 @@ def netlist_to_graph(netlist: Union[dict, str], models):
         except yaml.YAMLError as e:
             raise yaml.YAMLError(f"Error parsing YAML file: {e}")
 
-    # graph = nx.Graph()
-    # graph = nx.MultiGraph()
     graph = nx.MultiDiGraph()
-    # Add nodes for each instance
 
     for instance_name, instance in netlist["instances"].items():
+        model = models[instance['component']]
+        shape="rectangle"
+        if issubclass(model, PCell):
+            shape = "hexagon"
+
         graph.add_node(
             instance_name,
             component=instance["component"],
             settings=instance["settings"],
-            # image="image.png",
-            # opacity=0.5,
-            # size=5,
+            size=25,
+            color="white",
+            border_color="black",
+            border_size=1,
+            shape=shape,
         )
         models[netlist['instances'][instance_name]['component']]._create_port_lookup_table()
-        # graph.add_node(instance_name, label="test", click="Test: $label", **instance_data)
-        # graph.add_node(instance_name, weight=netlist['instances'][instance_name]["weight"])
     
     for external_port_name, internal_port_data in netlist["ports"].items():
         instance_name, internal_port_name = internal_port_data.split(",")
         node_name = f".{external_port_name}" # . Symbol Ensures Uniqueness of node_name
         directionality = models[netlist['instances'][instance_name]['component']]._port_lookup_table[internal_port_name].directionality
         add_port_to_graph(graph, instance_name, internal_port_name, directionality, external=True, external_port_name=external_port_name)
-        
-        # graph.add_node(
-        #     node_name, 
-        #     shape="rectangle",
-        #     opacity=1.0,
-        #     border_color="black",
-        #     border_size=1,
-        #     size=15,
-        #     color="white"
-        # )
-        # directionality = models[netlist['instances'][instance_name]['component']]._port_lookup_table[internal_port_name].directionality
-        # add_connection_to_graph(graph, node_name, instance_name.strip(), None, None, "bidirectional", directionality)
-
-
-    # for port_name, port_data in netlist["ports"].items():
-    #     instance_name, instance_port_name = port_data.split(",")
-    #     graph.add_node(
-    #         f"Kablooey-{port_name}",
-    #         # component=instance["component"],
-    #         # settings=instance["settings"],
-    #         shape="rectangle",
-    #         opacity=0.1,
-    #         border_color="black",
-    #         border_size=5,
-    #         # image="image.png",
-    #         # opacity=0.5,
-    #         # size=5,
-    #     )
 
     # Add edges based on connections
     for src, dsts in netlist["connections"].items():
@@ -191,12 +166,12 @@ def add_connection_to_graph(graph, src_node, dst_node, src_port, dst_port, src_d
 def add_port_to_graph(graph, instance_name, internal_port_name, directionality, external: bool, external_port_name=None):
     if external:
         node_name = f".{external_port_name}" # '.' enforces uniqueness
-        shape="hexagon",
-        size = 20
+        shape="circle",
+        size = 8
     else:
         node_name = f"{instance_name},{internal_port_name}" # ',' enforces uniqueness
-        size = 5,
-        shape="rectangle"
+        size = 8,
+        shape="circle"
 
     graph.add_node(
             node_name, 
@@ -219,6 +194,11 @@ def instantiated_flat_netlist_to_graph(instantiated_flat_netlist):
             instance_name,
             component=instance["component"],
             settings=instance["settings"],
+            shape="rectangle",
+            size=25,
+            border_size=1,
+            border_color="black",
+            color="white"
         )
         # graph.add_node(instance_name, label="test", click="Test: $label", **instance_data)
         # graph.add_node(instance_name, weight=netlist['instances'][instance_name]["weight"])
