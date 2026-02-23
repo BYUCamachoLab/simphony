@@ -128,8 +128,8 @@ def netlist_to_graph(netlist: Union[dict, str], models):
                 continue
             src_instance, src_port = src.split(",")
             dst_instance, dst_port = dst.split(",")
-            src_port_directionality = models[netlist['instances'][instance_name]['component']]._port_lookup_table[src_port].directionality
-            dst_port_directionality = models[netlist['instances'][instance_name]['component']]._port_lookup_table[dst_port].directionality
+            src_port_directionality = models[netlist['instances'][src_instance]['component']]._port_lookup_table[src_port].directionality
+            dst_port_directionality = models[netlist['instances'][dst_instance]['component']]._port_lookup_table[dst_port].directionality
             add_connection_to_graph(graph, src_instance.strip(), dst_instance.strip(), src_port.strip(), dst_port.strip(), src_port_directionality, dst_port_directionality)
             # graph.add_edge(src_instance.strip(), dst_instance.strip(), src_port=src_port.strip(), dst_port=dst_port.strip())
 

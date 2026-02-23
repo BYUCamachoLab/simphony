@@ -30,6 +30,8 @@ class SParameterSimulation(Simulation):
     def __init__(
             self, 
             circuit: Circuit, 
+            settings,
+            simulation_parameters,
             ports=None, 
             # settings: dict = None
         ):
@@ -41,33 +43,34 @@ class SParameterSimulation(Simulation):
         the provided netlist, but may be overwritten with keyword arguments.
         """
         self.circuit = circuit
+        self.flat_circuit = circuit.flatten()
+        self.settings = settings
+        self.simulation_parameters = simulation_parameters
         
         if ports is None:
-            ports = self.circuit.netlist['ports']
+            ports = self.flat_circuit.netlist['ports']
         
-        # if settings is not None:
-        #     self.update_settings(settings)
+        self.ports = ports
 
+    def run(
+        self, 
+        wl: ArrayLike=1.55e-6, 
+        # use_default_settings: bool = True
+    ) -> SParameterSimulationResult:
+        self.instantiated_circuit = self.flat_circuit.instantiate(self.settings, self.simulation_parameters)
         self._identify_component_types()
-        self._build_s_parameter_circuit(ports)
+        self._build_s_parameter_circuit(self.ports)
         self._validate_s_parameter_graph()
         self._initialize_steady_state_simulation()
         self.reset_settings(use_default_settings=True)
 
-
-    def run(
-        self, 
-        settings: dict = None, 
-        wl: ArrayLike=1.55e-6, 
-        # use_default_settings: bool = True
-    ) -> SParameterSimulationResult:
         s_parameter_simulation_result = SParameterSimulationResult()
         use_default_settings = True
-        self.reset_settings(use_default_settings=use_default_settings)
-        self.add_settings(settings)
+        # self.reset_settings(use_default_settings=use_default_settings)
+        # self.add_settings(settings)
         # s_parameter_result = SParameterSimulationResult()
 
-        self._instantiate_components(self.settings)
+        # self._instantiate_components(self.settings)
         steady_state_simulation_result = self.steady_state_simulation.run(self.settings)
         sax_circuit, sax_circuit_info = self._generate_sax_circuit(wl, steady_state_simulation_result)
         s_parameter_simulation_result.sax_circuit = sax_circuit
@@ -85,21 +88,25 @@ class SParameterSimulation(Simulation):
         self.optical_components = set()
         self.logic_components = set()
         
-        graph = self.circuit.graph
-        models = self.circuit.models
+        graph = self.instantiated_circuit.graph
+        
         for node, attr in graph.nodes(data=True):
-            model = attr["component"]
-            component = models[model]
+            component = self.instantiated_circuit.instantiated_flat_netlist['instances'][node]['model']
             
-            self.all_components.add(node)
+        # models = self.instantiated_circuit.models
+        # for node, attr in graph.nodes(data=True):
+        #     model = attr["component"]
+        #     component = models[model]
+            
+        #     self.all_components.add(node)
 
-            component_types = attr['type'].lower().split('/')
-            if "electrical" in component_types:
-                self.electrical_components.add(node)
-            if "optical" in component_types:
-                self.optical_components.add(node)
-            if "logic" in component_types:
-                self.logic_components.add(node)
+        #     component_types = attr['type'].lower().split('/')
+        #     if "electrical" in component_types:
+        #         self.electrical_components.add(node)
+        #     if "optical" in component_types:
+        #         self.optical_components.add(node)
+        #     if "logic" in component_types:
+        #         self.logic_components.add(node)
 
         
             # if component.electrical_ports:

@@ -205,15 +205,16 @@ class Circuit:
     
     def instantiate(
         self,
-        simulation_parameters: SimulationParameters,
         settings: dict,
+        simulation_parameters: SimulationParameters,
         # directed: bool,
         # default_modes,
     ):
         return InstantiatedCircuit(
             self, 
+            settings,
             simulation_parameters, 
-            settings, 
+             
             # directed, 
             # default_modes
         )
@@ -381,10 +382,9 @@ class FlatCircuit:
     def instantiate(
         self,
         settings,
-        directed: bool,
-        default_modes,
+        simulation_parameters,
     ):
-        return InstantiatedCircuit(self, settings, directed, default_modes)
+        return InstantiatedCircuit(self, settings, simulation_parameters)
 
     def _sanitize_netlist(
         self, 
@@ -464,8 +464,8 @@ class InstantiatedCircuit:
     def __init__(
         self,
         circuit: Circuit | FlatCircuit,
-        simulation_parameters: SimulationParameters,
         settings: dict,
+        simulation_parameters: SimulationParameters,
         # directed: bool,
         # default_modes,
     ):
