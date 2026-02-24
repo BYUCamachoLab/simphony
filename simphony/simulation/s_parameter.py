@@ -58,7 +58,7 @@ class SParameterSimulation(Simulation):
         # use_default_settings: bool = True
     ) -> SParameterSimulationResult:
         self.instantiated_circuit = self.flat_circuit.instantiate(self.settings, self.simulation_parameters)
-        self._identify_component_types()
+        # self._identify_component_types()
         self._build_s_parameter_circuit(self.ports)
         self._validate_s_parameter_graph()
         self._initialize_steady_state_simulation()
@@ -92,6 +92,7 @@ class SParameterSimulation(Simulation):
         
         for node, attr in graph.nodes(data=True):
             component = self.instantiated_circuit.instantiated_flat_netlist['instances'][node]['model']
+
             
         # models = self.instantiated_circuit.models
         # for node, attr in graph.nodes(data=True):
@@ -118,47 +119,19 @@ class SParameterSimulation(Simulation):
         
 
     def _build_s_parameter_circuit(self, ports: dict):
-        non_optical_components = self.all_components - self.optical_components
-        optical_only_graph = deepcopy(self.circuit.graph)
-        optical_only_graph.remove_nodes_from(non_optical_components)
-        
-        # For now, we only consider the optical connections
-        # While admittedly an edge case, if one optical section were
-        # connected to a photodiode that was connected to a phase modulator
-        # of another optical section, that connection would not be considered.
-        edges_to_remove = []
-        for edge in optical_only_graph.edges:
-            src = edge[0]
-            src_port = optical_only_graph.edges[edge]["src_port"]
-            if not src_port in optical_only_graph.nodes[src]['optical ports']:
-                edges_to_remove.append(edge)
-        optical_only_graph.remove_edges_from(edges_to_remove)
+        # Step 1: Create a new graph with only optical connections
+        all_optical_graph = deepcopy(self.instantiated_circuit.graph)
+        for src_node, dst_node, key, data in self.instantiated_circuit.graph.edges(keys=True, data=True):
+            if not data['port_type'] == 'optical':
+                all_optical_graph.remove_edge(src_node, dst_node, key)
+            
 
-        # Nodes with an exposed port are considered "entry nodes"
-        entry_nodes = set()
-        for attr in ports.values():
-            node = attr.split(',')[0]
-            entry_nodes.add(node)
-        
-        weakly_connected_components = nx.weakly_connected_components(optical_only_graph)
-        s_parameter_graph_nodes = None
-        for subnetwork in weakly_connected_components:
-            if entry_nodes.issubset(subnetwork):
-                s_parameter_graph_nodes = subnetwork
-        
-        if s_parameter_graph_nodes is None:
-            raise ValueError("S-parameter graph could not be generated. All exposed ports must be weakly connected through optical components")
-
-        self.s_parameter_circuit = deepcopy(self.circuit)
-        nodes_to_remove = set(self.circuit.graph.nodes) - set(s_parameter_graph_nodes)
-        self.s_parameter_circuit.remove_components(nodes_to_remove)
-
-        # self.s_parameter_graph = deepcopy(optical_only_graph)
-        # nodes_to_remove = set(self.s_parameter_graph.nodes) - set(s_parameter_graph_nodes)
-        # self.s_parameter_graph.remove_nodes_from(nodes_to_remove)
-
-        self.hybrid_components = set(self.s_parameter_circuit.graph.nodes)&(self.electrical_components|self.logic_components)
-        self.s_parameter_circuit.netlist['ports'] = ports
+        reachable = set()
+        for ext_port, (instance_port) in ports.items():
+            port_designator = self.instantiated_circuit.ext_port_lookup_table[ext_port]
+            print(nx.descendants(all_optical_graph, port_designator))
+            print(nx.ancestors(all_optical_graph, port_designator))
+            reachable |= None
 
     def _validate_s_parameter_graph(self):
         # Signal source nodes are sources of non-optical signals

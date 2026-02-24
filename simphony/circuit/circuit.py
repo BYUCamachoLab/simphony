@@ -29,6 +29,9 @@ from sax.netlists import convert_nets_to_connections
 from typing import Tuple
 
 import re
+
+
+from simphony.libraries._internal.placeholder import ExternalPortPlaceholder
 # from simphony.utils import dict_to_matrix
 
 COMPONENT_COLOR_DEFAULT = "black"
@@ -486,11 +489,28 @@ class InstantiatedCircuit:
                 settings[instance_name] = {"sax_settings": settings[instance_name]}
                 pass
             pass
+        
+        # Add Placeholders to netlist to keep track of external ports
+        # TODO: Prevent chance of naming conflict
+        # We can assume that netlist is already flattened, ie, not recursize
+        for ext_port in netlist['ports'].keys():
+            netlist['instances'][f'|EXTPORT_{ext_port}_PLACEHOLDER|'] = f'|EXTPORT_{ext_port}_PLACEHOLDER|'
+            models[f'|EXTPORT_{ext_port}_PLACEHOLDER|'] = ExternalPortPlaceholder
+            netlist['connections'][f'|EXTPORT_{ext_port}_PLACEHOLDER|,_0'] = netlist['ports'][ext_port]
+
 
         from simphony.circuit.netlist import instantiate_netlist
-        # Convert Sax Models First
         self.instantiated_flat_netlist = instantiate_netlist(netlist, models, settings, simulation_parameters)
+        
+        # Remove Placeholders
+        self.ext_port_lookup_table = {}
+        for ext_port in netlist['ports'].keys():
+            self.ext_port_lookup_table[ext_port] = self.instantiated_flat_netlist['connections'][f'|EXTPORT_{ext_port}_PLACEHOLDER|,_0']
+            self.instantiated_flat_netlist['connections'].pop(f'|EXTPORT_{ext_port}_PLACEHOLDER|,_0')
+            self.instantiated_flat_netlist['instances'].pop(f'|EXTPORT_{ext_port}_PLACEHOLDER|')
+
         self.graph = instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist)
+        pass
 
     def display(self, inline=True):
         
@@ -504,4 +524,3 @@ class InstantiatedCircuit:
 
         # fig = gv.d3(self.graph.to_undirected())
         # fig.display(inline=True)
-

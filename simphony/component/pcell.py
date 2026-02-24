@@ -77,7 +77,7 @@ class PCell(Component):
             # port_directionality
             )
 
-        return instantiate_netlist(
+        instantiated_netlist = instantiate_netlist(
             new_netlist,
             new_models,
             new_settings,
@@ -85,6 +85,10 @@ class PCell(Component):
             # directed=directed,
             # default_modes=default_modes,
         )
+
+        # self.external_port_aliases = instantiated_netlist['ports']
+
+        return instantiated_netlist
     # def _instantiated_netlist(
     #     self,
     #     directed: bool = False,
