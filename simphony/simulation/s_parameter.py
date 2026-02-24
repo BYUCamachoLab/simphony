@@ -129,9 +129,13 @@ class SParameterSimulation(Simulation):
         reachable = set()
         for ext_port, (instance_port) in ports.items():
             port_designator = self.instantiated_circuit.ext_port_lookup_table[ext_port]
-            print(nx.descendants(all_optical_graph, port_designator))
-            print(nx.ancestors(all_optical_graph, port_designator))
-            reachable |= None
+            instance_name = port_designator.split(',')[0]
+            # print(nx.descendants(all_optical_graph, port_designator))
+            # print(nx.ancestors(all_optical_graph, port_designator))
+            reachable |= nx.descendants(all_optical_graph, instance_name)
+            reachable |= nx.ancestors(all_optical_graph, instance_name)
+        
+        pass
 
     def _validate_s_parameter_graph(self):
         # Signal source nodes are sources of non-optical signals

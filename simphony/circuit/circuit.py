@@ -8,7 +8,7 @@ import gravis as gv
 from jax.typing import ArrayLike
 from sax.saxtypes import Model as SaxModel
 
-from simphony.circuit.netlist import add_settings_to_netlist, complete_netlist, get_settings_from_netlist, netlist_to_graph, instantiated_flat_netlist_to_graph
+from simphony.circuit.netlist import add_settings_to_netlist, complete_netlist, get_settings_from_netlist, netlist_to_graph, instantiated_flat_netlist_to_graph, add_ports_to_graph
 from copy import deepcopy
 # from simphony.signal import optical_signal, complete_steady_state_inputs
 
@@ -173,7 +173,8 @@ class Circuit:
         #     self._color_nodes(graph)
         # else:
         netlist = recursive_netlist[subcircuit]
-        graph = netlist_to_graph(netlist, self.models)
+        graph = netlist_to_graph(netlist, self.models, include_ports=True)
+        # add_ports_to_graph(graph, netlist, self.models)
         # self._mark_component_types(subcircuit, graph)
         # self._color_nodes(graph)
 
@@ -509,15 +510,15 @@ class InstantiatedCircuit:
             self.instantiated_flat_netlist['connections'].pop(f'|EXTPORT_{ext_port}_PLACEHOLDER|,_0')
             self.instantiated_flat_netlist['instances'].pop(f'|EXTPORT_{ext_port}_PLACEHOLDER|')
 
-        self.graph = instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist)
+        self.graph = instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist, include_ports=False)
         pass
 
     def display(self, inline=True):
         
         # graph.add_edge("lf1~mzi1~bot_mod", "lf1~mzi2~bot_mod", directed=True, color="red", hover="Hi!", tooltip="delay = 12 ps")
         # graph.add_edge("lf1~mzi2~bot_mod", "lf1~mzi1~bot_mod", directed=True, color="red", hover="Hi!", tooltip="delay = 12 ps")
-        
-        fig = gv.d3(self.graph, edge_hover_tooltip=True)
+        graph = instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist, include_ports=True)
+        fig = gv.d3(graph, edge_hover_tooltip=True)
 
 
         fig.display(inline=True)

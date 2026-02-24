@@ -290,21 +290,21 @@ class SParameterComponent(Component):
             f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
         )
 
-# TODO: Get rid of this
-class OpticalSParameterComponent(SParameterComponent):
-    # def __init__(self, **settings):
-    #     super().__init__(**settings)
+# # TODO: Get rid of this
+# class OpticalSParameterComponent(SParameterComponent):
+#     # def __init__(self, **settings):
+#     #     super().__init__(**settings)
 
-    def s_parameters(
-        self, 
-        wl: ArrayLike, 
-        # **kwargs
-    ):
-        """
-        Returns an S-parameter matrix for the optical ports in the system
-        """
-        raise NotImplementedError(
-            f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
-        )
+#     def s_parameters(
+#         self, 
+#         wl: ArrayLike, 
+#         # **kwargs
+#     ):
+#         """
+#         Returns an S-parameter matrix for the optical ports in the system
+#         """
+#         raise NotImplementedError(
+#             f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
+#         )
 
 
