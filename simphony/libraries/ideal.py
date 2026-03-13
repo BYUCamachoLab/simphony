@@ -97,3 +97,37 @@ def waveguide(
         }
     )
     return sdict
+
+def mirror(
+    *,
+    reflectivity: float = 0.5,
+    loss: float = 0.0,
+) -> sax.SDict:
+    """A simple ideal mirror model.
+
+    Port is arranged as follows::
+
+        o0 ---|--- o1
+
+    Parameters
+    ----------
+    reflectivity : float
+        Power coupling coefficient (default 0.5).
+    loss : float
+        Loss in dB (default 0.0). Positive values indicate loss.
+
+    Returns
+    -------
+    sdict : sax.SDict
+        A dictionary of scattering matrices.
+    """
+
+    refl = -reflectivity**0.5 * 10 ** (-loss / 20)
+    trans = (1 - reflectivity) ** 0.5 * 10 ** (-loss / 20)
+    sdict = sax.reciprocal(
+        {
+            ("o0", "o0"): refl,
+            ("o0", "o1"): trans,
+        }
+    )
+    return sdict
