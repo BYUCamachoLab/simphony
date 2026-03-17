@@ -51,7 +51,7 @@ def _instantiate_netlist(
     instantiated_recursive_netlist = sax.netlist(deepcopy(netlist))
     for _, subnetlist in instantiated_recursive_netlist.items():
         ## TODO: Actually add the settings to the netlist if desired
-        _add_settings_to_netlist(subnetlist) # Just to normalize, we will use the settings the user provided later
+        _add_settings_to_netlist(subnetlist, settings=settings) # Just to normalize, we will use the settings the user provided later
     instantiated_recursive_netlist = sax.netlist(instantiated_recursive_netlist)
     instantiated_flat_netlist = sax.flatten_netlist(instantiated_recursive_netlist)
 

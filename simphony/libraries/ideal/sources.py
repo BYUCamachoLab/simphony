@@ -4,7 +4,7 @@ from jax.typing import ArrayLike
 from simphony.component.component import SteadyStateComponent
 from simphony.component.component import BlockModeComponent, SampleModeComponent
 from simphony.signal.block_mode import BlockModeOpticalSignal
-from simphony.signal.steady_state import SteadyStateOpticalSignal 
+from simphony.signal.steady_state import SteadyStateOpticalSignal, SteadyStateElectricalSignal
 from simphony.signal.sample_mode import SampleModeOpticalSignal
 import jax.numpy as jnp
 import numpy as np # Used to avoid caching issues when generating random numbers
@@ -20,6 +20,7 @@ from simphony.simulation.block_mode import BlockModeSimulationParameters
 from typing import Callable
 
 from simphony.component.port import Port
+from simphony.simulation.simulation import SimulationParameters
 
 # def gaussian_kernel1d(sigma, truncate=4.0):
 #     radius = int(truncate * sigma + 0.5)
@@ -67,6 +68,8 @@ class OpticalCombSource(SampleModeComponent, BlockModeComponent):
     optical_ports = ["o0"]
     def __init__(
         self,
+        simulation_parameters: SimulationParameters,
+        *,
         wavelength=jnp.array([1.53e-6, 1.54e-6, 1.55e-6, 1.56e-6, 1.57e-7]),
         linewidth=0.0,
     ):
@@ -124,7 +127,14 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
     The CW Laser is meant to be used in time-domain simulations.
     """
     # delay_compensation = 0
-    optical_ports = ["o0"]
+    # optical_ports = ["o0"]
+    ports = [
+        Port(
+            name = "o0",
+            type = "optical",
+            directionality = "output",
+        ),
+    ]
     def __init__(
         self,
         wavelength=1.55e-6,
@@ -342,6 +352,8 @@ class VoltageSource(
 
     def __init__(
         self, 
+        simulation_parameters: SimulationParameters,
+        *,
         steady_state_voltage=1.0,
         steady_state_wl=0,
     ):
@@ -359,9 +371,10 @@ class VoltageSource(
     def steady_state(
         self, 
         inputs: dict,
+        simulation_parameters: SimulationParameters,
     ):
         outputs = {
-            "e0": SteadyStateOpticalSignal(voltage=[self.steady_state_voltage], wl=[self.steady_state_wl])
+            "e0": SteadyStateElectricalSignal(amplitude=[self.steady_state_voltage], wavelength=[self.steady_state_wl])
         }
         return outputs
 

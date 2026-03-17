@@ -55,6 +55,7 @@ class SimulationParameters:
     num_time_steps:int =int(1e4)
     prng_key: Annotated[jax.Array, "shape=(2,), dtype=jax.uint32"]=field(default_factory=lambda: jax.random.PRNGKey(0))
     mode_identifiers: list = field(default_factory=lambda: DEFAULT_MODES)
+    
     # prng_key: Annotated[jax.Array, "shape=(2,), dtype=jax.uint32"]=jax.random.key(0)
     # ):
     #     super().__setattr__('_locked', False)

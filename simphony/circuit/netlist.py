@@ -251,7 +251,8 @@ def instantiated_flat_netlist_to_graph(instantiated_flat_netlist, include_ports=
     
     #Matthew's Changes
     #Adds the ports as a graph attribute to be used within graph_to_netlist
-    graph.graph["ports"] = instantiated_flat_netlist.get("ports", {}).copy()
+    # graph.graph["ports"] = instantiated_flat_netlist.get("ports", {}).copy()
+    ### FOR NOW, JUST BE OKAY WITH THE FACT THAT WE LOSE THIS INFO
 
     return graph
 
@@ -279,8 +280,9 @@ def graph_to_netlist(graph: nx.MultiDiGraph) -> dict:
     for key, dsts in conn_map.items():
         netlist["connections"][key] = ";".join(dsts)
 
-    ports = graph.graph.get("ports", {})
-    netlist["ports"] = ports.copy()
+    # ports = graph.graph.get("ports", {})
+    # netlist["ports"] = ports.copy()
+    netlist["ports"] = {}
 
     return netlist
 

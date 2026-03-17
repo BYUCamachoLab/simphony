@@ -243,13 +243,13 @@ class SampleModeComponent(Component):
         """
         return 0
 
-    def _sample_mode_initial_state(self, simulation_parameters: SampleModeSimulationParameters):
-        _initial_state = (0, self.sample_mode_initial_state(simulation_parameters=simulation_parameters))
-        return _initial_state
-
     def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_parameters: SampleModeSimulationParameters) -> Tuple[jax.Array, dict[str, Signal]]:
         """Compute the next state of the system."""
         raise NotImplementedError
+
+    def _sample_mode_initial_state(self, simulation_parameters: SampleModeSimulationParameters):
+        _initial_state = (0, self.sample_mode_initial_state(simulation_parameters=simulation_parameters))
+        return _initial_state
     
     # @partial(jax.jit, static_argnums=(0,))
     def _sample_mode_step(self, inputs: dict, state: jax.Array, simulation_parameters: SampleModeSimulationParameters):
@@ -280,6 +280,10 @@ class SampleModeComponent(Component):
 # TODO: Get rid of this
 class SParameterComponent(Component):
     """
+    SParameterComponents may have either scattering ports, or bias ports. 
+    By default, all optical ports are onsidered as scattering type, 
+    while all other signal types correspond to bias ports.
+    ### TODO: Make simphony match this port convention
     """
     def s_parameters(
         self,
@@ -289,7 +293,24 @@ class SParameterComponent(Component):
         raise NotImplementedError(
             f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
         )
-
+    
+    def s_parameter_get_bias_ports(
+        self,
+    ):
+        """
+        bias ports are ports that recieve a steady state signal which in some way 
+        modify the s-dict of an SParameterComponent.
+        """
+        return []
+    
+    def _s_parameter_get_bias_ports(
+        self,
+    ):
+        """
+        bias ports are ports that recieve a steady state signal which in some way 
+        modify the s-dict of an SParameterComponent.
+        """
+        return self.s_parameter_get_bias_ports()
 # # TODO: Get rid of this
 # class OpticalSParameterComponent(SParameterComponent):
 #     # def __init__(self, **settings):

@@ -124,7 +124,9 @@ class Circuit:
         self.netlist = sax.netlist(deepcopy(netlist))
         
         # Sanitize the names to make netlist valid
-        self.netlist = convert_nets_to_connections(self.netlist) # necessary for gdsfactory netlists
+        new_netlist = convert_nets_to_connections(self.netlist) # necessary for gdsfactory netlists
+        if not new_netlist == {}:
+            self.netlist = new_netlist
         # Replace the original names
         
         for _, subnetlist in self.netlist.items():

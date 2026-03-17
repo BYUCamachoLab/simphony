@@ -2,6 +2,7 @@
 # if TYPE_CHECKING:
 #     from simphony.circuit import Circuit
 from .simulation import Simulation, SimulationResult, SimulationParameters, SimulationMode
+from .steady_state import SteadyStateSimulationParameters
 import jax
 from .steady_state import SteadyStateSimulation
 from simphony.circuit.circuit import Circuit
@@ -15,6 +16,9 @@ from flax import struct
 import jax.numpy as jnp
 
 from functools import partial
+from simphony.component.component import SParameterComponent, SteadyStateComponent
+
+from simphony.circuit.netlist import graph_to_netlist
 
 @struct.dataclass
 class SParameterSimulationParameters(SimulationParameters):
@@ -31,7 +35,7 @@ class SParameterSimulation(Simulation):
             self, 
             circuit: Circuit, 
             settings,
-            simulation_parameters,
+            simulation_parameters=None,
             ports=None, 
             # settings: dict = None
         ):
@@ -42,6 +46,9 @@ class SParameterSimulation(Simulation):
         By default, the exposed ports and settings are taken from 
         the provided netlist, but may be overwritten with keyword arguments.
         """
+        if simulation_parameters is None:
+            simulation_parameters = SParameterSimulationParameters()
+
         self.circuit = circuit
         self.flat_circuit = circuit.flatten()
         self.settings = settings
@@ -59,10 +66,23 @@ class SParameterSimulation(Simulation):
     ) -> SParameterSimulationResult:
         self.instantiated_circuit = self.flat_circuit.instantiate(self.settings, self.simulation_parameters)
         # self._identify_component_types()
-        self._build_s_parameter_circuit(self.ports)
-        self._validate_s_parameter_graph()
-        self._initialize_steady_state_simulation()
-        self.reset_settings(use_default_settings=True)
+        steady_state_graph, reachable_bias_nodes, s_parameter_graph = self._build_s_parameter_circuit(self.ports)
+        # self._validate_s_parameter_graph()
+
+        # TODO: FIX THE FACT THAT PORTS DONT GET CONVERETED RIGHT IN graph_to_netlist
+        steady_state_netlist = graph_to_netlist(steady_state_graph)
+        steady_state_models = {data['component']: type(data['model']) for instance_name, data in self.instantiated_circuit.instantiated_flat_netlist['instances'].items() if instance_name in steady_state_netlist['instances']}
+        
+        # TODO: Verify that we are able to obtain the settings from nested subcircuits / pcells
+        steady_state_circuit_settings = {instance_name: data['settings'] for instance_name, data in self.instantiated_circuit.instantiated_flat_netlist['instances'].items() if instance_name in steady_state_netlist['instances']}
+        # TODO: FIX CIRCUIT SO THAT IT WORKS WITH SINGLE ELEMENT NETLISTS 
+        steady_state_circuit = Circuit(steady_state_netlist, steady_state_models)
+        
+        steady_state_simulation_parameters = SteadyStateSimulationParameters()
+        steady_state_simulation = SteadyStateSimulation(steady_state_circuit, steady_state_circuit_settings, steady_state_simulation_parameters)
+        pass
+        # self._initialize_steady_state_simulation(s_parameter_graph, steady_state_graph)
+        # self.reset_settings(use_default_settings=True)
 
         s_parameter_simulation_result = SParameterSimulationResult()
         use_default_settings = True
@@ -71,8 +91,8 @@ class SParameterSimulation(Simulation):
         # s_parameter_result = SParameterSimulationResult()
 
         # self._instantiate_components(self.settings)
-        steady_state_simulation_result = self.steady_state_simulation.run(self.settings)
-        sax_circuit, sax_circuit_info = self._generate_sax_circuit(wl, steady_state_simulation_result)
+        steady_state_simulation_result = steady_state_simulation.run()
+        sax_circuit, sax_circuit_info = self._generate_sax_circuit(s_parameter_graph, steady_state_simulation_result, reachable_bias_nodes)
         s_parameter_simulation_result.sax_circuit = sax_circuit
         s_parameter_simulation_result.sax_circuit_info = sax_circuit_info
         s_parameter_simulation_result.s_parameters = sax_circuit(wl=wl)
@@ -119,12 +139,39 @@ class SParameterSimulation(Simulation):
         
 
     def _build_s_parameter_circuit(self, ports: dict):
-        # Step 1: Create a new graph with only optical connections
-        all_optical_graph = deepcopy(self.instantiated_circuit.graph)
-        for src_node, dst_node, key, data in self.instantiated_circuit.graph.edges(keys=True, data=True):
-            if not data['port_type'] == 'optical':
-                all_optical_graph.remove_edge(src_node, dst_node, key)
+        # Step 1: Create a new graph with only s-parameter components
+        s_parameter_nodes = []
+        for node, data in self.instantiated_circuit.graph.nodes(data=True):
+            model = self.instantiated_circuit.instantiated_flat_netlist['instances'][node]['model']
+            if isinstance(model, SParameterComponent):
+                s_parameter_nodes.append(node)
+        
+        s_parameter_only_graph = self.instantiated_circuit.graph.subgraph(s_parameter_nodes).copy()
+        pass
+        # all_optical_graph = deepcopy(self.instantiated_circuit.graph)
+
+
+
+        # optical_bias_ports = {}
+        # for src_node, dst_node, key, data in self.instantiated_circuit.graph.edges(keys=True, data=True):
+        #     ### TODO: Write tests for whether this works in all edge cases
+        #     dst_port = data['dst_port']
+        #     dst_bias_ports = self.instantiated_circuit.instantiated_flat_netlist['instances'][dst_node]['model']._s_parameter_get_bias_ports()
+        #     src_port = data['src_port']
+        #     src_bias_ports = self.instantiated_circuit.instantiated_flat_netlist['instances'][src_node]['model']._s_parameter_get_bias_ports()
+        #     if not data['port_type'] == 'optical' or dst_port in dst_bias_ports:
+        #         all_optical_graph.remove_edge(src_node, dst_node, key)
             
+            
+        pass
+            
+
+            # if dst_port in dst_bias_ports:
+            #     all_optical_graph.remove_edge(src_node, dst_node, key)
+            #     optical_bias_ports[dst_node] = dst_port
+        
+        # TODO: REMOVE bias port connections and verify
+
 
         reachable = set()
         for ext_port, (instance_port) in ports.items():
@@ -132,10 +179,39 @@ class SParameterSimulation(Simulation):
             instance_name = port_designator.split(',')[0]
             # print(nx.descendants(all_optical_graph, port_designator))
             # print(nx.ancestors(all_optical_graph, port_designator))
-            reachable |= nx.descendants(all_optical_graph, instance_name)
-            reachable |= nx.ancestors(all_optical_graph, instance_name)
+            reachable |= nx.descendants(s_parameter_only_graph, instance_name)
+            reachable |= nx.ancestors(s_parameter_only_graph, instance_name)
+
+        s_parameter_graph = s_parameter_only_graph.subgraph(reachable).copy()
+        reachable_bias_nodes = {}
         
-        pass
+        # TODO: add this functionality to instantiated flat netlist or instantiated circuit
+        flipped_connections = {v:k for k, v in self.instantiated_circuit.instantiated_flat_netlist['connections'].items()}
+        for node in s_parameter_graph.nodes():
+            ### TODO: Write tests for whether this works in all edge cases
+            bias_ports = self.instantiated_circuit.instantiated_flat_netlist['instances'][node]['model']._s_parameter_get_bias_ports()
+            
+            for bias_port in bias_ports:
+                bias_ports
+                
+                if f"{node},{bias_port}" in flipped_connections:
+                    bias_node, port_name = flipped_connections[f"{node},{bias_port}"].split(",")
+                    reachable_bias_nodes[(bias_node, port_name)] = (node, bias_port)
+        
+        # Check is an ancestor of the bias node is in the s_parameter graph
+        # Check whether all ancestors are SteadyStateComponents
+        # TODO: eliminate all non-bias connections first
+        steady_state_nodes = set()
+        for (biasing_node, biasing_port), (biased_node, biased_port) in reachable_bias_nodes.items():
+            steady_state_nodes.add(biasing_node)
+            for ancestor in nx.ancestors(self.instantiated_circuit.graph, biasing_node):
+                steady_state_nodes.add(ancestor)
+                # TODO: Check if ancestor is in s_parameter graph and throw an error
+
+
+        steady_state_graph = self.instantiated_circuit.graph.subgraph(list(steady_state_nodes)).copy()
+        # nx.connected_components(steady_state_only_graph)
+        return steady_state_graph, reachable_bias_nodes, s_parameter_graph
 
     def _validate_s_parameter_graph(self):
         # Signal source nodes are sources of non-optical signals
@@ -159,12 +235,12 @@ class SParameterSimulation(Simulation):
             if len(descendants&s_parameter_graph_nodes) > 0:
                 raise ValueError("Invalid S-parameter SubCircuit: Time-domain Simulation Required")
 
-    def _initialize_steady_state_simulation(self):
-        steady_state_circuit = deepcopy(self.circuit)
-        steady_state_circuit.remove_components(self.s_parameter_circuit.graph.nodes-self.hybrid_components)
-        self.steady_state_simulation = SteadyStateSimulation(steady_state_circuit)
-        # steady_state_graph.remove_nodes_from(self.s_parameter_graph.nodes)
-        # self.steady_state_simulation = SteadyStateSimulation(self.steady_state_graph)
+    # def _initialize_steady_state_simulation(self, s_parameter_graph, steady_state_graph):
+    #     steady_state_circuit = deepcopy(self.circuit)
+    #     steady_state_circuit.remove_components(self.s_parameter_circuit.graph.nodes-self.hybrid_components)
+    #     self.steady_state_simulation = SteadyStateSimulation(steady_state_circuit)
+    #     # steady_state_graph.remove_nodes_from(self.s_parameter_graph.nodes)
+    #     # self.steady_state_simulation = SteadyStateSimulation(self.steady_state_graph)
 
     ### I am going to put this in the base class
     # def _instantiate_components(self):
@@ -179,7 +255,7 @@ class SParameterSimulation(Simulation):
     #     for component in self.steady_state_order:
     #         pass
     
-    def _generate_sax_circuit(self, wl, steady_state_simulation_result):
+    def _generate_sax_circuit(self, s_parameter_graph, steady_state_simulation_result, reachable_bias_nodes):
         """
         """
         # I will assume that the only connections between the s-parameter portion of the circuit
@@ -187,24 +263,49 @@ class SParameterSimulation(Simulation):
         # in the future if more connection types become supported
         
         # These components will need to have their s_parameter methods completed with the steady state inputs
-        incomplete_components = self.hybrid_components
-        component_inputs = {component: {} for component in self.s_parameter_circuit.graph.nodes}
-        for incomplete_component in incomplete_components:
-            component_inputs[incomplete_component] = steady_state_simulation_result.component_inputs[incomplete_component]
         
+        # TODO: Test this for multiple connections
+        incomplete_components = {node: {} for (node, port) in reachable_bias_nodes.values()}
+        for source, (node, port) in reachable_bias_nodes.items():
+            incomplete_components[node][port] = source
+        component_inputs = {component: {} for component in s_parameter_graph}
+
+        for incomplete_component, biasing_node_designator in incomplete_components.items():
+            bias_nodes = incomplete_components[incomplete_component]
+            for dst_port, (src_node, src_port) in biasing_node_designator.items():
+                component_inputs[incomplete_component][dst_port] = steady_state_simulation_result.component_outputs[src_node][src_port]
+
+
+            # component_inputs[incomplete_component] = steady_state_simulation_result.component_inputs[incomplete_component]
+        
+        # sax_models 
+
         sax_models = {}
         for component, inputs in component_inputs.items():
             # model_name = self.circuit.netlist['instances'][component]['component']
-            sax_models[component] = partial(self.components[component].s_parameters, inputs)
+            s_parameter_func = self.instantiated_circuit.instantiated_flat_netlist['instances'][component]['model'].s_parameters
+            sax_models[component.replace("~", "_")] = partial(s_parameter_func, inputs)
+
+
 
         # Each instance should correspond to a unique model at this point
         # Since they might have been changed but the steady state inputs
         # Therefore, we need the netlist to reflect this change
 
-        instances = {key: key for key in self.s_parameter_circuit.netlist['instances']}
-        self.s_parameter_circuit.netlist['instances'] = instances
-        
-        return sax.circuit(self.s_parameter_circuit.netlist, sax_models)
+        # instances = {key: key for key in self.s_parameter_circuit.netlist['instances']}
+        # self.s_parameter_circuit.netlist['instances'] = instances
+        s_parameter_netlist = graph_to_netlist(s_parameter_graph)
+        for instance_name, data in s_parameter_netlist['instances'].items():
+            s_parameter_netlist['instances'][instance_name] = instance_name.replace("~", "_")
+            # data['component'] = instance_name.replace("~", "_")
+
+
+        s_parameter_netlist['ports'] = {"in":"combiner~sax_model,port_1", "out": "splitter~sax_model,port_1"}
+        s_parameter_netlist = sanitize_sax_instance_names(s_parameter_netlist)
+
+        import numpy as np
+        # s_parameter_func = self.instantiated_circuit.instantiated_flat_netlist['instances']["wg1~sax_model"]['model'].s_parameters(np.array([1.55]), {})
+        return sax.circuit(s_parameter_netlist, sax_models)
         """
         ### TODO: MATTHEW! Keep in mind that I defined the sax models to use SI units
         ### and to assume that wl is given in terms of meters, not microns
@@ -227,3 +328,60 @@ class SParameterSimulation(Simulation):
         ### For now just return the s-parameter dict
         return circuit(wl)
         """
+
+
+def sanitize_sax_instance_names(netlist):
+    """
+    Replace '~' with '_' in all SAX instance names and update references
+    in connections, ports, and nets.
+    """
+    import copy
+
+    netlist = copy.deepcopy(netlist)
+
+    # mapping old instance names -> new names
+    rename = {
+        name: name.replace("~", "_")
+        for name in netlist.get("instances", {})
+        if "~" in name
+    }
+
+    if not rename:
+        return netlist
+
+    def fix_ref(ref):
+        """Fix 'instance,port' references."""
+        if isinstance(ref, str) and "," in ref:
+            inst, port = ref.split(",", 1)
+            inst = rename.get(inst, inst)
+            return f"{inst},{port}"
+        return ref
+
+    # ---- rename instances ----
+    instances = netlist.get("instances", {})
+    new_instances = {}
+    for name, val in instances.items():
+        new_instances[rename.get(name, name)] = val
+    netlist["instances"] = new_instances
+
+    # ---- fix connections ----
+    if "connections" in netlist:
+        new_connections = {}
+        for k, v in netlist["connections"].items():
+            new_connections[fix_ref(k)] = fix_ref(v)
+        netlist["connections"] = new_connections
+
+    # ---- fix ports ----
+    if "ports" in netlist:
+        netlist["ports"] = {
+            name: fix_ref(ref)
+            for name, ref in netlist["ports"].items()
+        }
+
+    # ---- fix nets (optional SAX format) ----
+    if "nets" in netlist:
+        for net in netlist["nets"]:
+            net["p1"] = fix_ref(net["p1"])
+            net["p2"] = fix_ref(net["p2"])
+
+    return netlist

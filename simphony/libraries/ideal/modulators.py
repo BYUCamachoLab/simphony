@@ -1,6 +1,6 @@
 # class OpticalAmplitudeModulator():
 #     pass
-from simphony.component.component import SteadyStateComponent, BlockModeComponent, SampleModeComponent
+from simphony.component.component import SteadyStateComponent, BlockModeComponent, SampleModeComponent, SParameterComponent
 from simphony.component.pcell import PCell
 
 from jax.typing import ArrayLike
@@ -57,6 +57,7 @@ class DirectedOpticalModulator(
 
 
 class OpticalModulator(
+    SParameterComponent,
     SteadyStateComponent, 
     SampleModeComponent, 
     # BlockModeComponent
@@ -106,14 +107,17 @@ class OpticalModulator(
         wl: ArrayLike=1.55e-6,
     )->sax.SDict:    
         total_real_voltage = 0
-        for v in inputs["e0"].voltage:
+        for v in inputs["e0"].amplitude:
             total_real_voltage += jnp.real(v)
 
         phase_op = jnp.polyval(self.phase_coefficients, total_real_voltage)
         absorption_dB = jnp.polyval(self.absorption_coefficients, total_real_voltage)
         fraction_of_power_remaining = 10**(-absorption_dB*self.length/10)
-        delta_n = self.operating_wl/(2*jnp.pi*self.length) * phase_op
-        phase_shift = 2*jnp.pi/wl*(self.effective_index+delta_n)*self.length
+        phase_shift = phase_op
+        print(self.phase_coefficients)
+        print(phase_shift)
+        # delta_n = self.operating_wl/(2*jnp.pi*self.length) * phase_op
+        # phase_shift = 2*jnp.pi/wl*(self.effective_index+delta_n)*self.length
 
         return {
             ("o0", "o1"): jnp.sqrt(fraction_of_power_remaining)*jnp.exp(1j*phase_shift),
@@ -121,6 +125,11 @@ class OpticalModulator(
             ("o0", "o0"): 0,
             ("o1", "o1"): 0,
         }
+
+    def s_parameter_get_bias_ports(
+        self,
+    ):
+        return ["e0"]
 
     def sample_mode_initial_state(self, simulation_parameters):
         return jnp.array([0])

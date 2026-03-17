@@ -85,6 +85,9 @@ def optical_s_parameter(
     for port_name in pcell_port_names:
         port_directionality.setdefault(port_name, "bidirectional")
     
+    default_port_directionality = port_directionality
+
+
     if isinstance(default_modes, str):
         default_modes = [default_modes]
     default_modes = tuple(default_modes)
@@ -100,14 +103,17 @@ def optical_s_parameter(
             for port_name in pcell_port_names
         ]
         
-
         def __init__(
             self,
             simulation_parameters: SimulationParameters,
             sax_settings: dict = None,
             spectral_range: tuple = (1.5e-6, 1.6e-6),
             delay_compensation: int = 0,
+            port_directionality = None,
         ):
+            if port_directionality is None:
+                port_directionality = default_port_directionality
+            
             if sax_settings is None:
                 sax_settings = {}
 
@@ -129,18 +135,24 @@ def _s_parameter_design(
     port_directionality, 
     default_modes
 ):
+    """
+    `port_directionality`: As of 03-16-26, Simphony makes a "best guess" for sax models that have ambiguous port directionality.
+    For best results, convert sax models to a Simphony Component first
+    TODO: Link to a tutorial on how to convert sax models to simphony Components
+    """
     if not delay_compensation == 0:
         warnings.warn(f"A nonzero delay compensation is invalid in S-Parameter simulations. Will be ignored.")
     
     class SaxModelComponent(SParameterComponent):
         ports = [
-                Port(
-                    name=port_name,
-                    type="optical",
-                    directionality = "bidirectional"
-                ) 
-                for port_name in sax.get_ports(sax_model())
-            ]
+            Port(
+                name=port_name,
+                type="optical",
+                directionality = "bidirectional"
+            )
+
+            for port_name in sax.get_ports(sax_model())
+        ]
 
         def __init__(
             self,
@@ -148,6 +160,9 @@ def _s_parameter_design(
             **kwargs,
         ):
             self.sax_settings = kwargs
+        
+        def s_parameters(self, inputs, wl: ArrayLike=1.55e-6,):
+            return sax_model(wl*1e6, **sax_settings)
 
     
     # Create a class that will be the base component
@@ -206,9 +221,10 @@ def _block_mode_design(
     Creates a directed, non recursive circuit design for a multimodal,
     transient block mode simulation of an s-parameter circuit.
     """
+    print(port_directionality)
     for port_name, directionality in port_directionality.items():
         if directionality == "bidirectional":
-            raise ValueError(f"Port {port_name} must be directed in block mode simulation")
+            raise ValueError(f"{sax_model}'s Port {port_name} must be directed in block mode simulation")
     
     if not delay_compensation == 0:
         warnings.warn(f"A nonzero delay compensation is invalid in block mode simulations. Will be ignored.")
@@ -218,9 +234,21 @@ def _block_mode_design(
 
     input_port_modes, output_port_modes = _get_port_mode_luts(filtered_sax_model)
 
-
+    print(f"Building Model For {sax_model}")
     A, B, C, D = None, None, None, None
 
+
+
+    f_min = speed_of_light / 1.6e-6
+    f_max = speed_of_light / 1.5e-6
+    f_center = 0.5*(f_min+f_max)
+    # f_center = 192.9e12
+    frequency = jnp.linspace(f_min, f_max, 1000)
+    s_params = dict_to_matrix(circuit(wl=1e6*speed_of_light/frequency, wg={"length": 77.0, "loss": 100}))
+    min_order = 2
+    max_order = 100
+    sampling_frequency = 1e14
+    poles, residues, feedthrough, mean_squared_error = optimize_order_vector_fitting_discrete(min_order, max_order, s_params, frequency, f_center, sampling_frequency)
 
     ### TODO: Fill in empty settings..s
     settings = {}
