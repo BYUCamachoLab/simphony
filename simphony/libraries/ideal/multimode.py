@@ -8,6 +8,11 @@ class ModeConverter(
     SampleModeComponent,
     BlockModeComponent,
 ):
+    """
+    Takes in a signal on a single mode (any mode), and outputs a signal on a single, specified mode
+    
+    Will ignore all modes except for the first in the signal passed to it
+    """
     ports = [
             Port(
                 name='in',
@@ -25,9 +30,15 @@ class ModeConverter(
     def __init__(
         self,
         simulation_parameters: SimulationParameters,
-        **kwargs,
+        output_mode="TE",
     ):
+        self.simulation_parameters = simulation_parameters
+        self.output_mode = output_mode
+
+    def block_mode_response(self, inputs, simulation_parameters):
+        # TODO: IMPLEMENT MODE CONVERTER
         pass
+        return ...
 
 ### TODO: Implement ModeMultiplexer
 def mode_multiplexer(
@@ -64,9 +75,17 @@ def mode_multiplexer(
             simulation_parameters: SimulationParameters,
             **kwargs,
         ):
+            self.simulation_parameters = simulation_parameters
+    
+        def block_mode_response(self, inputs, simulation_parameters):
+            # TODO: IMPLEMENT ME
             pass
+            return ...
+
 
     return ModeMultiplexer
+
+
 
 ### TODO: Implement ModeDemultiplexer
 def mode_demultiplexer(
@@ -103,6 +122,11 @@ def mode_demultiplexer(
             **kwargs,
         ):
             pass
-        
+    
+        def block_mode_response(self, inputs, simulation_parameters):
+            # TODO: IMPLEMENT ME
+            pass
+            return ...
+    
     return ModeDemultiplexer
 

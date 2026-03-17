@@ -11,6 +11,9 @@ from simphony.libraries.ideal.s_parameters import SParameterSax
 class BlockModeSimulationParameters(SimulationParameters):
     simulation_mode: SimulationMode = field(default_factory=lambda:SimulationMode.BLOCK_MODE)    
     directed: bool = True
+    dt = 1e-14
+    spectral_range = (1.5e-6, 1.6e-6)
+    center_wavelength = 1.55e-6
     # def __init__(
     #     self,
     #     **kwargs,

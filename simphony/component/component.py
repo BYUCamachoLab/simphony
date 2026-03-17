@@ -229,7 +229,7 @@ class SteadyStateComponent(Component):
 
 class BlockModeComponent(Component):
     # IDK the best name for this method! Maybe run, but that is confusing
-    def block_mode_response(self, input_signal: ArrayLike, simulation_parameters: BlockModeSimulationParameters):
+    def block_mode_response(self, input_signals: ArrayLike, simulation_parameters: BlockModeSimulationParameters):
         """Compute the system response."""
         raise NotImplementedError
 

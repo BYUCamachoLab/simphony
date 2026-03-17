@@ -515,15 +515,89 @@ class InstantiatedCircuit:
         self.graph = instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist, include_ports=False)
         pass
 
-    def display(self, inline=True):
+    # def display(self, inline=True):
         
-        # graph.add_edge("lf1~mzi1~bot_mod", "lf1~mzi2~bot_mod", directed=True, color="red", hover="Hi!", tooltip="delay = 12 ps")
-        # graph.add_edge("lf1~mzi2~bot_mod", "lf1~mzi1~bot_mod", directed=True, color="red", hover="Hi!", tooltip="delay = 12 ps")
-        graph = instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist, include_ports=True)
-        fig = gv.d3(graph, edge_hover_tooltip=True)
+    #     # graph.add_edge("lf1~mzi1~bot_mod", "lf1~mzi2~bot_mod", directed=True, color="red", hover="Hi!", tooltip="delay = 12 ps")
+    #     # graph.add_edge("lf1~mzi2~bot_mod", "lf1~mzi1~bot_mod", directed=True, color="red", hover="Hi!", tooltip="delay = 12 ps")
+    #     graph = instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist, include_ports=True)
+    #     fig = gv.d3(graph, edge_hover_tooltip=True)
 
 
-        fig.display(inline=True)
+    #     fig.display(inline=True)
 
-        # fig = gv.d3(self.graph.to_undirected())
-        # fig.display(inline=True)
+    #     # fig = gv.d3(self.graph.to_undirected())
+    #     # fig.display(inline=True)
+    def display(self, inline=True):
+        graph = instantiated_flat_netlist_to_graph(
+            self.instantiated_flat_netlist,
+            include_ports=True
+        )
+
+
+
+        safe_graph = deepcopy(graph)
+        for _, attr in safe_graph.nodes(data=True):
+            if "settings" in attr:
+                attr["settings"] = stringify_dict_values(attr["settings"])
+
+        fig = gv.d3(safe_graph, edge_hover_tooltip=True)
+        fig.display(inline=inline)
+
+def stringify_dict_values(d):
+    """Recursively convert all values in a dict to strings."""
+    if not isinstance(d, dict):
+        return str(d)
+
+    out = {}
+    for k, v in d.items():
+        if isinstance(v, dict):
+            out[k] = stringify_dict_values(v)
+        elif isinstance(v, (list, tuple, set)):
+            out[k] = [stringify_dict_values(x) for x in v]
+        else:
+            out[k] = str(v)
+    return out
+
+# import json
+
+# def make_json_safe(obj):
+#     """Convert object into something JSON serializable."""
+#     # Fast path: already serializable
+#     try:
+#         json.dumps(obj)
+#         return obj
+#     except (TypeError, OverflowError):
+#         pass
+
+#     # Common conversions
+#     if isinstance(obj, dict):
+#         return {str(k): make_json_safe(v) for k, v in obj.items()}
+#     elif isinstance(obj, (list, tuple, set)):
+#         return [make_json_safe(v) for v in obj]
+    
+#     # JAX / NumPy arrays
+#     try:
+#         import numpy as np
+#         if hasattr(obj, "shape"):
+#             return np.array(obj).tolist()
+#     except Exception:
+#         pass
+
+#     # Fallback: string representation
+#     return str(obj)
+
+# def sanitize_graph_for_display(graph):
+#     import networkx as nx
+#     G = nx.DiGraph()
+
+#     # Copy nodes
+#     for n, attrs in graph.nodes(data=True):
+#         safe_attrs = {k: make_json_safe(v) for k, v in attrs.items()}
+#         G.add_node(n, **safe_attrs)
+
+#     # Copy edges
+#     for u, v, attrs in graph.edges(data=True):
+#         safe_attrs = {k: make_json_safe(v) for k, v in attrs.items()}
+#         G.add_edge(u, v, **safe_attrs)
+
+#     return G
