@@ -3,7 +3,7 @@ from jax.typing import ArrayLike
 
 from simphony.component.component import SteadyStateComponent
 from simphony.component.component import BlockModeComponent, SampleModeComponent
-from simphony.signal.block_mode import BlockModeOpticalSignal
+from simphony.signal.block_mode import BlockModeOpticalSignal, BlockModeElectricalSignal
 from simphony.signal.steady_state import SteadyStateOpticalSignal, SteadyStateElectricalSignal
 from simphony.signal.sample_mode import SampleModeOpticalSignal
 import jax.numpy as jnp
@@ -137,6 +137,7 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
     ]
     def __init__(
         self,
+        simulation_parameters,
         wavelength=1.55e-6,
         linewidth=0,
         lineshape='lorentzian',
@@ -230,7 +231,7 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
         outputs = {
             "o0": BlockModeOpticalSignal(
                 amplitude=A_t.reshape((N, 1, 1)),
-                wavelength=self.wavelength
+                wavelength=jnp.array([self.wavelength])
             ),
         }
 
@@ -267,6 +268,7 @@ class OpticalSource(SampleModeComponent, BlockModeComponent):
 
     def __init__(
         self, 
+        simulation_parameters,
         # wavelength = 1.55e-6,
         envelope: BlockModeOpticalSignal = None,
         envelope_fn: Callable[[Float[Array, "n"]], BlockModeOpticalSignal] = None 
@@ -282,7 +284,7 @@ class OpticalSource(SampleModeComponent, BlockModeComponent):
     
     def _calculate_envelope(self, simulation_parameters):
         N = simulation_parameters.num_time_steps
-        dt = simulation_parameters.sampling_period
+        dt = simulation_parameters.dt
         t = jnp.arange(0, N, 1)*dt
 
         if self.envelope_fn:
@@ -296,6 +298,7 @@ class OpticalSource(SampleModeComponent, BlockModeComponent):
         elif amplitude.shape[0] > N:
             amplitude = amplitude[:N, :, :]
 
+        # TODO: RETURN, DON'T MUTATE
         self.envelope = BlockModeOpticalSignal(
             amplitude=amplitude,
             wavelength=self.envelope.wavelength
@@ -354,11 +357,24 @@ class VoltageSource(
         self, 
         simulation_parameters: SimulationParameters,
         *,
+        envelope: BlockModeOpticalSignal = None,
+        envelope_fn: Callable[[Float[Array, "n"]], BlockModeOpticalSignal] = None,
         steady_state_voltage=1.0,
         steady_state_wl=0,
     ):
         self.steady_state_voltage=steady_state_voltage
         self.steady_state_wl = steady_state_wl
+        
+        
+        if envelope is not None and envelope_fn is not None:
+            raise ValueError("Specify either evelope or envelope_fn, NOT both")
+        # if envelope is None and envelope_fn is None:
+        #     raise ValueError("Parameter `envelope` or `envelope_fn` must be specified")
+        
+        # self.wavelength = wavelength
+        self.envelope = envelope
+        self.envelope_fn = envelope_fn
+        
         # optical_ports = None
         # electrical_ports = ['e0']
         # logic_ports = None
@@ -367,7 +383,30 @@ class VoltageSource(
         #     electrical_ports=electrical_ports,
         #     logic_ports=logic_ports
         # )
+    
+    def _calculate_envelope(self, simulation_parameters):
+        N = simulation_parameters.num_time_steps
+        dt = simulation_parameters.dt
+        t = jnp.arange(0, N, 1)*dt
 
+        if self.envelope:
+            pass
+        elif self.envelope_fn:
+            self.envelope = self.envelope_fn(t)
+        else:
+            self.envelope = BlockModeElectricalSignal(amplitude=np.ones((len(t), 1), dtype=complex)*self.steady_state_voltage, wavelength=[self.steady_state_wl]) 
+
+        # Make envelope match the number of time steps, by truncating or appending zeros
+        voltage = self.envelope.amplitude
+        wl = self.envelope.wavelength
+        T, L = voltage.shape
+        if voltage.shape[0] < N:
+            voltage = jnp.concatenate([voltage, jnp.zeros((N-T, L), dtype=complex)], axis=0)
+        elif voltage.shape[0] > N:
+            voltage = voltage[:N, :]
+
+        return BlockModeElectricalSignal(amplitude=voltage, wavelength=wl)
+    
     def steady_state(
         self, 
         inputs: dict,
@@ -379,7 +418,11 @@ class VoltageSource(
         return outputs
 
     def block_mode_response(self, input_signal: ArrayLike, simulation_parameters):
-        pass
+        envelope = self._calculate_envelope(simulation_parameters)
+        outputs = {
+            "e0": envelope
+        }
+        return outputs
     
     def sample_mode_step(self, inputs: dict, state: jax.Array, simulation_parameters):
         # TODO: Complete this to use the signal defined in settings

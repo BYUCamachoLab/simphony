@@ -18,7 +18,7 @@ from scipy.constants import speed_of_light
 
 from simphony.component.port import Port
 from simphony.component.component import SParameterComponent, SteadyStateComponent, BlockModeComponent, SampleModeComponent
-from simphony.utils import dict_to_matrix
+from simphony.utils import dict_to_matrix, dict_to_rect_matrix
 
 from simphony.component.pcell import PCell
 
@@ -41,6 +41,7 @@ from copy import deepcopy
 from simphony.circuit._netlist import InstantiatedFlatNetlist
 from simphony.circuit._netlist import _instantiate_netlist
 import warnings
+
 
 INPUT_SUFFIX = "in"
 OUTPUT_SUFFIX = "out"
@@ -263,7 +264,7 @@ def _block_mode_design(
     f_center = vector_fitting_parameters['center_frequency']
     # f_center = 192.9e12
     frequency = jnp.linspace(f_min, f_max, vector_fitting_parameters["num_frequency_samples"])
-    s_params = dict_to_matrix(filtered_sax_model(wl=1e6*speed_of_light/frequency, **sax_settings))
+    s_params = dict_to_rect_matrix(filtered_sax_model(wl=1e6*speed_of_light/frequency, **sax_settings), input_ports=[f"{port}@{mode}" for port, modes in input_port_modes.items() for mode in modes], output_ports=[f"{port}@{mode}" for port, modes in output_port_modes.items() for mode in modes])
     min_order = vector_fitting_parameters["min_model_order"]
     max_order = vector_fitting_parameters["max_model_order"]
     sampling_frequency = vector_fitting_parameters["sampling_frequency"]
@@ -282,8 +283,8 @@ def _block_mode_design(
     common_mode = simulation_parameters.mode_identifiers[0]
     settings = {}
     settings.update({FIR_FILTER_INSTANCE_NAME:{"A":A, "B":B, "C":C, "D":D}})
-    settings.update({_mode_converter_instance_name(port, mode, INPUT_SUFFIX):{"output_mode": common_mode} for port, modes in input_port_modes.items() for mode in modes})
-    settings.update({_mode_converter_instance_name(port, mode, OUTPUT_SUFFIX):{"output_mode": mode} for port, modes in output_port_modes.items() for mode in modes})
+    settings.update({_mode_converter_instance_name(port, mode, INPUT_SUFFIX):{"input_mode":mode,"output_mode": common_mode} for port, modes in input_port_modes.items() for mode in modes})
+    settings.update({_mode_converter_instance_name(port, mode, OUTPUT_SUFFIX):{"input_mode":common_mode, "output_mode": mode} for port, modes in output_port_modes.items() for mode in modes})
     settings.update({_demultiplexer_instance_name(port):{} for port in input_port_modes.keys()})
     settings.update({_multiplexer_instance_name(port):{} for port in output_port_modes.keys()})
     

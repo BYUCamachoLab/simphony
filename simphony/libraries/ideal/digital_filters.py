@@ -8,6 +8,7 @@ from scipy.constants import speed_of_light as SPEED_OF_LIGHT
 import jax
 from dataclasses import replace
 from simphony.simulation.simulation import SimulationParameters
+from simphony.time_domain.vector_fitting.z_domain import state_space_response_discrete
 
 class OpticalDiscreteFilter( 
     SampleModeComponent,
@@ -268,7 +269,34 @@ def discrete_state_space(
                 )
 
             return outputs, new_x
-        
+
+        # TODO: MAKE eveyrthing say input_signals and not inputs
+        def block_mode_response(self, input_signals, simulation_parameters):
+            """
+            We assume that all signals are on a common mode
+            """
+            #TODO: MAKE SURE THAT THE MATRIX ELEMENTS MATCH PORT ORDER
+            _input_amplitude = list(input_signals.values())[0].amplitude
+            wavelengths = list(input_signals.values())[0].amplitude
+            N = _input_amplitude.shape[0]
+            L = _input_amplitude.shape[1]
+            M = 1 # We assume all inputs are on a common mode
+            
+            
+            # TODO: Make it so that the state space model only has M input ports and N output ports and not NXN
+            num_inputs
+            u = jnp.zeros((N, L, num_inputs), dtype=complex)
+            for i, port_name in enumerate(input_port_names):
+                # u = u.at[i, :, :].set(input_signals[port_name].get("amplitude", jnp.zeros((N, L, 1), dtype=complex))[:,:,0])
+                u = u.at[:, :, i].set(input_signals[port_name].amplitude[:, :, 0])
+
+            y = jnp.zeros((N, L, num_outputs), dtype=complex)
+            A, B, C, D = self.state_space_matrices
+            for i, wl in enumerate(wavelengths):
+                _y, _ = state_space_response_discrete(A, B, C, D, u[:, i, :])
+                pass
+
+
         def to_fir_filter(
             self,
         ) -> Component:

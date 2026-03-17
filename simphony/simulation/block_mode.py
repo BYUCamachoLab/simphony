@@ -12,6 +12,7 @@ class BlockModeSimulationParameters(SimulationParameters):
     simulation_mode: SimulationMode = field(default_factory=lambda:SimulationMode.BLOCK_MODE)    
     directed: bool = True
     dt = 1e-14
+    num_time_steps = 1000
     spectral_range = (1.5e-6, 1.6e-6)
     center_wavelength = 1.55e-6
     # def __init__(
@@ -28,8 +29,11 @@ class BlockModeSimulationResult(SimulationResult):
     
     def _collect_component_inputs(self, component)->dict:
         inputs = {}
-        input_components = nx.ancestors(self.circuit.graph, component)
+        # TODO: Determine if STEADYSTATESIMULATION needs this change too
+        # input_components = nx.ancestors(self.circuit.graph, component)
+        input_components = immediate_ancestors = [u for u, v in self.circuit.graph.in_edges(component)]
         for input_component in input_components:
+            print(input_component)
             input_edges = self.circuit.graph.get_edge_data(input_component, component)
             for edge_number, edge in input_edges.items():
                 inputs[edge['dst_port']] = self.component_outputs[input_component][edge['src_port']]
@@ -63,24 +67,42 @@ class BlockModeSimulation(Simulation):
 
         
         self.ports = ports
-        
-        # self.block_mode_order = self._determine_block_mode_order()
-
-
-        # (self.all_components,
-        #  self.electrical_components,
-        #  self.optical_components,
-        #  self.logic_components) = identify_component_types(self.circuit.graph)
 
     def run(
         self,
     )->BlockModeSimulationResult:
         self._add_directionality_setting_to_s_parameter_components(self.flat_circuit, self.settings)
         instantiated_circuit = self.flat_circuit.instantiate(self.settings, self.simulation_parameters)
-        instantiated_circuit.display()
+        # instantiated_circuit.display()
         simulation_result = BlockModeSimulationResult(instantiated_circuit)
 
+
+        self.block_mode_order = self._determine_block_mode_order_nx_method(instantiated_circuit)
+        # self._instantiate_components(self.settings)
+        for instance_name in self.block_mode_order:
+            simulation_result._collect_component_inputs(instance_name)   
+            inputs = simulation_result.component_inputs[instance_name]
+            component = instantiated_circuit.instantiated_flat_netlist['instances'][instance_name]['model']
+            outputs = component.block_mode_response(inputs, self.simulation_parameters)
+            simulation_result.component_outputs[instance_name] = outputs
+        
         return simulation_result
+    
+    def _determine_block_mode_order_nx_method(self, instantiated_circuit):
+        """
+        Voltage signals at electrical ports are assumed to be constant
+        for SParameterSimulations, but they are not known a priori, unless
+        the voltage source is not dependent on an input signal.
+
+        Since steady-state connections are assumemd to be uni-directional, this function is
+        able to find the order in which electrical component voltages must
+        be calculated to find the proper steady state.
+        """
+        try:
+            return list(nx.topological_sort(instantiated_circuit.graph))
+        except nx.NetworkXUnfeasible:
+            raise ValueError("Failed to determine steady state order – circular dependencies detected")
+
 
 
     def _add_directionality_setting_to_s_parameter_components(

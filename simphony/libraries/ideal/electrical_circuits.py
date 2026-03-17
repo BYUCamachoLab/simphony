@@ -40,8 +40,10 @@ class VoltageFollower(
         }
         return outputs
 
-    def block_mode_response(self, input_signal: ArrayLike, simulation_parameters):
-        pass
+    def block_mode_response(self, input_signals: ArrayLike, simulation_parameters):
+        return {
+            "e1": input_signals["e0"]
+        }
     
     def sample_mode_step(self, inputs: dict, state: jax.Array, simulation_parameters):
         # TODO: Complete this to use the signal defined in settings
