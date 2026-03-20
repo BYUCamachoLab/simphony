@@ -31,17 +31,23 @@ def _lstsq_matrices(model_order, transfer_function, phi0, phi1):
     """
 
     """
-    num_ports = transfer_function.shape[1]
-    M = jnp.zeros(((num_ports**2) * (model_order), (model_order)), dtype=complex)
-    B = jnp.zeros(((num_ports**2) * (model_order)), dtype=complex)
+    # num_ports = transfer_function.shape[1]
+    num_outputs = transfer_function.shape[1]
+    num_inputs = transfer_function.shape[2]
+    # M = jnp.zeros(((num_ports**2) * (model_order), (model_order)), dtype=complex)
+    # B = jnp.zeros(((num_ports**2) * (model_order)), dtype=complex)
+    M = jnp.zeros(((num_inputs*num_outputs) * (model_order), (model_order)), dtype=complex)
+    B = jnp.zeros(((num_inputs*num_outputs) * (model_order)), dtype=complex)
     
     A1 = phi0
     Q1, R11 = jnp.linalg.qr(A1)
     
     iter = 0
-    for i in range(num_ports):
-        for j in range(num_ports):
-            D = jnp.diag(transfer_function[:, i, j])
+    # for i in range(num_ports):
+    #     for j in range(num_ports):
+    for m in range(num_inputs):
+        for q in range(num_outputs):
+            D = jnp.diag(transfer_function[:, q, m])
             A_block = jnp.hstack([phi0, -D @ phi1])            # never build the big matrix
             Q, R = jnp.linalg.qr(A_block, mode='reduced')
             
@@ -50,7 +56,7 @@ def _lstsq_matrices(model_order, transfer_function, phi0, phi1):
             R22 = R[model_order+1:, model_order+1:]
             Q2 = Q[:, model_order+1:]
 
-            V = transfer_function[:, i, j]
+            V = transfer_function[:, q, m]
             M = M.at[(iter) * (model_order) : (iter+1) * (model_order), :].set(R22)
             B = B.at[(iter) * (model_order) : (iter+1) * (model_order)].set(Q2.conj().T @ V)
             iter += 1
@@ -80,13 +86,15 @@ def _weight_error(frequency, sampling_frequency, poles_prev, weight_coeffs, sign
     
 #     return residues, feedthrough
 
-@jax.jit
+# @jax.jit
 def _fit_to_poles(transfer_function, frequency, sampling_frequency, poles, sign_convention):
     model_order = poles.shape[0]
-    num_ports = transfer_function.shape[1]
+    # num_ports = transfer_function.shape[1]
+    num_outputs = transfer_function.shape[1]
+    num_inputs = transfer_function.shape[2]
     phi0, _ = _phi_matrices(frequency, sampling_frequency, poles, sign_convention)
-    transfer_pairs = transfer_function.reshape(transfer_function.shape[0], -1)  # shape: (num_freq, num_ports*num_ports)
-
+    # transfer_pairs = transfer_function.reshape(transfer_function.shape[0], -1)  # shape: (num_freq, num_ports*num_ports)
+    transfer_pairs = transfer_function.transpose(1,2,0).reshape(-1, transfer_function.shape[0]).T
     # Define a function to solve lstsq for one port pair vector V (shape num_freq,)
     
     def solve_lstsq(V):
@@ -97,7 +105,7 @@ def _fit_to_poles(transfer_function, frequency, sampling_frequency, poles, sign_
     solutions = jax.vmap(solve_lstsq, in_axes=1)(transfer_pairs)  # shape (num_ports*num_ports, model_order + 1)
 
     # Reshape solutions back to (num_ports, num_ports, model_order + 1)
-    solutions = solutions.reshape((num_ports, num_ports, model_order + 1))
+    solutions = solutions.reshape((num_outputs, num_inputs, model_order + 1))
 
     # Extract feedthrough (constant term)
     feedthrough = solutions[:, :, 0]  # shape (num_ports, num_ports)
@@ -107,7 +115,7 @@ def _fit_to_poles(transfer_function, frequency, sampling_frequency, poles, sign_
 
     return residues, feedthrough
 
-@jax.jit
+# @jax.jit
 def pole_residue_response_discrete(frequency, center_frequency, sampling_frequency, poles, residues, feedthrough, sign_convention=PHYSICIST):
     z = jnp.exp(sign_convention*1j * 2 * jnp.pi * (frequency-center_frequency)/sampling_frequency)
     frequency_response = feedthrough[None, :, :] + jnp.sum(
@@ -293,23 +301,97 @@ def optimize_order_vector_fitting_discrete(
 
     return poles, residues, feedthrough, mean_squared_error
 
+import jax.numpy as jnp
+
+# def broken_state_space_discrete(poles, residues, feedthrough):
+#     """
+#     poles: array of shape (r,)
+#     residues: array of shape (r, q, m)
+#     D: feedthrough, shape (q, m)
+    
+#     Returns: A, B, C, D with replicated poles per input
+#     """
+#     r, q, m = residues.shape
+#     M = r * m
+
+#     # A: block-diagonal with replicated poles
+#     A = jnp.repeat(jnp.diag(poles), m, axis=0)
+
+#     # B: each input excites its replicated states
+#     B = jnp.zeros((M, m), dtype=complex)
+#     for i in range(r):
+#         for j in range(m):
+#             B = B.at[i*m + j, j].set(1.0)
+
+#     # C: map states to outputs using residues
+#     C = jnp.zeros((q, M), dtype=complex)
+#     for i in range(r):
+#         for j in range(m):
+#             C = C.at[:, i*m + j].set(residues[i, :, j])
+
+#     D = feedthrough
+#     return A, B, C, D
 
 def state_space_discrete(poles, residues, feedthrough):
-        model_order = poles.shape[0]
-        num_ports = feedthrough.shape[0]
-        
-        A = jnp.zeros(
-            (model_order * num_ports, model_order * num_ports), dtype=complex
-        )
-        B = jnp.zeros((model_order * num_ports, num_ports), dtype=complex)
-        C = jnp.zeros((num_ports, model_order * num_ports), dtype=complex)
-        for i in range(model_order):
-            A = A.at[i * num_ports : (i + 1) * num_ports, i * num_ports : (i + 1) * num_ports].set(poles[i] * jnp.eye(num_ports))
-            B = B.at[i * num_ports : (i + 1) * num_ports, :].set(jnp.eye(num_ports))
-            C = C.at[:, i * num_ports : (i + 1) * num_ports].set(residues[i, :, :])
+    """
+    Create a discrete-time state-space model without SVD.
+    
+    poles: shape (r,)
+    residues: shape (r, q, m)
+    feedthrough: shape (q, m)
+    
+    Returns A, B, C, D with replicated poles per input
+    """
+    r, q, m = residues.shape
+    M = r * m  # total number of states
 
-        D = feedthrough
-        return A, B, C, D
+    # A: block-diagonal, replicate each pole m times
+    A = jnp.kron(jnp.diag(poles), jnp.eye(m, dtype=complex))
+
+    # B: each input excites its replicated states
+    B = jnp.zeros((M, m), dtype=complex)
+    for i in range(r):
+        for j in range(m):
+            B = B.at[i*m + j, j].set(1.0)
+
+    # C: map states to outputs using residues
+    C = jnp.zeros((q, M), dtype=complex)
+    for i in range(r):      # over poles
+        for j in range(m):  # over inputs
+            # state index for this replicated pole
+            idx = i*m + j
+            # residues[i, :, j] has shape (q,)
+            C = C.at[:, idx].set(residues[i, :, j])
+
+    D = feedthrough
+    return A, B, C, D
+
+
+
+# def state_space_discrete(poles, residues, feedthrough):
+#     """
+#     Creates a state space model without the need for singular value decomposition
+
+#     This approach is not guaranteed to produce a minimal model see 
+#     Vector Fitting by Piero Triverio∗, August 27, 2019
+#     """
+#     # TODO: Make sure this works when num_inputs is not equal to num_outputs
+#     model_order = poles.shape[0]
+#     num_outputs = feedthrough.shape[0]
+#     num_inputs = feedthrough.shape[1]
+    
+#     A = jnp.zeros(
+#         (model_order * num_inputs, model_order * num_inputs), dtype=complex
+#     )
+#     B = jnp.zeros((model_order * num_inputs, num_inputs), dtype=complex)
+#     C = jnp.zeros((num_outputs, model_order * num_inputs), dtype=complex)
+#     for i in range(model_order):
+#         A = A.at[i * num_inputs : (i + 1) * num_inputs, i * num_inputs : (i + 1) * num_inputs].set(poles[i] * jnp.eye(num_inputs))
+#         B = B.at[i * num_inputs : (i + 1) * num_inputs, :].set(jnp.eye(num_inputs))
+#         C = C.at[:, i * num_outputs : (i + 1) * num_inputs].set(residues[i, :, :])
+
+#     D = feedthrough
+#     return A, B, C, D
 
 def state_space_step_discrete(A, B, C, D, x, u):
         x_next = A @ x + B @ u
@@ -342,6 +424,67 @@ def state_space_response_discrete(A, B, C, D, u, x=None):
     ))
 
     return yout, xout
+
+def state_space_frequency_response_discrete(A, B, C, D, f, f_center, dt):
+    """
+    Compute the frequency response of a state-space system.
+
+    Parameters
+    ----------
+    A : jnp.ndarray, shape (n, n)
+        State matrix
+    B : jnp.ndarray, shape (n, m)
+        Input matrix
+    C : jnp.ndarray, shape (q, n)
+        Output matrix
+    D : jnp.ndarray, shape (q, m)
+        Feedthrough matrix
+    freqs : jnp.ndarray
+        Frequencies in Hz (or angular frequencies depending on jω convention)
+
+    Returns
+    -------
+    H : jnp.ndarray, shape (q, m, len(freqs))
+        Frequency response at each frequency
+    """
+    """
+    Compute the frequency response of a discrete-time state-space system.
+
+    Parameters
+    ----------
+    A : jnp.ndarray, shape (n, n)
+        State matrix
+    B : jnp.ndarray, shape (n, m)
+        Input matrix
+    C : jnp.ndarray, shape (q, n)
+        Output matrix
+    D : jnp.ndarray, shape (q, m)
+        Feedthrough matrix
+    freqs : jnp.ndarray
+        Frequencies in Hz
+    dt : float
+        Sampling period
+
+    Returns
+    -------
+    H : jnp.ndarray, shape (q, m, len(freqs))
+        Frequency response at each frequency
+    """
+    n_out, n_in = D.shape
+    n_freq = f.size
+    H = jnp.zeros((n_freq, n_out, n_in), dtype=complex)
+
+    # Discrete-time z = e^(j*omega*dt)
+    # TODO: Add in sign conventions
+    z = jnp.exp(-1j * 2 * jnp.pi * (f-f_center) * dt)
+
+    for k in range(n_freq):
+        Hk = C @ jnp.linalg.inv(z[k] * jnp.eye(A.shape[0]) - A) @ B + D
+        H = H.at[k, :, :].set(Hk)
+
+    return H
+
+    return H
 
 def main():
     from simphony.libraries import ideal
