@@ -277,7 +277,7 @@ def discrete_state_space(
             """
             #TODO: MAKE SURE THAT THE MATRIX ELEMENTS MATCH PORT ORDER
             _input_amplitude = list(input_signals.values())[0].amplitude
-            wavelengths = list(input_signals.values())[0].amplitude
+            wavelengths = list(input_signals.values())[0].wavelength
             N = _input_amplitude.shape[0]
             L = _input_amplitude.shape[1]
             M = 1 # We assume all inputs are on a common mode
@@ -293,8 +293,11 @@ def discrete_state_space(
             y = jnp.zeros((N, L, num_outputs), dtype=complex)
             A, B, C, D = self.state_space_matrices
             for i, wl in enumerate(wavelengths):
+                # TODO: modulate inputs based on the delta f
                 _y, _ = state_space_response_discrete(A, B, C, D, u[:, i, :])
-                pass
+                y = y.at[:, i, :].set(_y)
+
+            pass
 
 
         def to_fir_filter(

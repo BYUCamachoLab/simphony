@@ -405,32 +405,72 @@ def state_space_step_discrete(A, B, C, D, x, u):
         y = C @ x + D @ u
         return x_next, y
 
-def state_space_response_discrete(A, B, C, D, u, x=None):
-    out_samples = len(u)
-    # stoptime = (out_samples) * dt
+import jax
+import jax.numpy as jnp
 
-    xout = jnp.zeros((out_samples, A.shape[0]), dtype=complex)
-    yout = jnp.zeros((out_samples, C.shape[0]), dtype=complex)
-    # tout = jnp.linspace(0.0, stoptime, num=out_samples)
+def make_state_space_runner(A, B, C, D):
+    @jax.jit
+    def run(u, x0):
+        def step(x, u_k):
+            y_k = C @ x + D @ u_k
+            x_next = A @ x + B @ u_k
+            return x_next, (y_k, x_next)
 
-    xout = xout.at[0, :].set(jnp.zeros((A.shape[1],), dtype=complex))
+        _, (yout, xout) = jax.lax.scan(step, x0, u)
+        return yout, xout
 
-    if x is not None:
-        xout = xout.at[0, :].set(x)
+    return run
 
-    u_dt = u
 
-    # Simulate the system
-    for i in range(0, out_samples):
-        xout = xout.at[i+1, :].set(jnp.dot(A, xout[i, :]) + jnp.dot(B, u_dt[i, :]))
-        yout = yout.at[i, :].set(jnp.dot(C, xout[i, :]) + jnp.dot(D, u_dt[i, :]))
+def state_space_response_discrete(A, B, C, D, u, x0=None):
+    if x0 is None:
+        x0 = jnp.zeros((A.shape[0],), dtype=A.dtype)
 
-    # Last point
-    yout = yout.at[out_samples - 1, :].set(jnp.dot(C, xout[out_samples - 1, :]) + jnp.dot(
-        D, u_dt[out_samples - 1, :]
-    ))
+    runner = make_state_space_runner(A, B, C, D)
+    return runner(u, x0)
 
-    return yout, xout
+
+# def state_space_response_discrete(A, B, C, D, u, x0=None):
+#     # Initial state
+#     if x0 is None:
+#         x0 = jnp.zeros((A.shape[0],), dtype=A.dtype)
+
+#     def step(x, u_k):
+#         y_k = C @ x + D @ u_k
+#         x_next = A @ x + B @ u_k
+#         return x_next, (y_k, x)
+
+#     # Run scan
+#     x_final, (yout, xout) = jax.lax.scan(step, x0, u)
+
+#     return yout, jnp.vstack([xout, x_final])
+
+# def state_space_response_discrete(A, B, C, D, u, x=None):
+#     out_samples = len(u)
+#     # stoptime = (out_samples) * dt
+
+#     xout = jnp.zeros((out_samples, A.shape[0]), dtype=complex)
+#     yout = jnp.zeros((out_samples, C.shape[0]), dtype=complex)
+#     # tout = jnp.linspace(0.0, stoptime, num=out_samples)
+
+#     xout = xout.at[0, :].set(jnp.zeros((A.shape[1],), dtype=complex))
+
+#     if x is not None:
+#         xout = xout.at[0, :].set(x)
+
+#     u_dt = u
+
+#     # Simulate the system
+#     for i in range(0, out_samples):
+#         xout = xout.at[i+1, :].set(jnp.dot(A, xout[i, :]) + jnp.dot(B, u_dt[i, :]))
+#         yout = yout.at[i, :].set(jnp.dot(C, xout[i, :]) + jnp.dot(D, u_dt[i, :]))
+
+#     # Last point
+#     yout = yout.at[out_samples - 1, :].set(jnp.dot(C, xout[out_samples - 1, :]) + jnp.dot(
+#         D, u_dt[out_samples - 1, :]
+#     ))
+
+#     return yout, xout
 
 def state_space_frequency_response_discrete(A, B, C, D, f, f_center, dt):
     """

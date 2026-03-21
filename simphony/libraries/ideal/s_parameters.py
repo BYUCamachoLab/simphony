@@ -270,7 +270,7 @@ def _block_mode_design(
     sampling_frequency = vector_fitting_parameters["sampling_frequency"]
     
     ### TODO: REMOVE THIS LINE USED FOR TESTING
-    vector_fitting_parameters["model_order"] = 20
+    # vector_fitting_parameters["model_order"] = 20
     
     if vector_fitting_parameters["model_order"] is None:
         poles, residues, feedthrough, mean_squared_error = optimize_order_vector_fitting_discrete(min_order, max_order, s_params, frequency, f_center, sampling_frequency, sign_convention=PHYSICIST)

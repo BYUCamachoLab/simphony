@@ -163,7 +163,7 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
 
     def lorentzian_phase_noise(self, simulation_parameters):
         key = simulation_parameters.prng_key
-        delta_phi_std = jnp.sqrt(2*jnp.pi*self.linewidth*simulation_parameters.sampling_period)
+        delta_phi_std = jnp.sqrt(2*jnp.pi*self.linewidth*simulation_parameters.dt)
         dphi = jax.random.normal(key, (simulation_parameters.num_time_steps,))*delta_phi_std
         phi = jnp.cumsum(dphi)
         
@@ -219,7 +219,7 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
         simulation_parameters: BlockModeSimulationParameters = BlockModeSimulationParameters(),
     ):
         N = simulation_parameters.num_time_steps
-        sampling_period = simulation_parameters.sampling_period
+        sampling_period = simulation_parameters.dt
         t = jnp.arange(N) * sampling_period
         linewidth = self.linewidth
         
