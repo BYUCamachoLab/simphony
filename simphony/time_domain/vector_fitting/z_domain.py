@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from time import time
 
 from simphony.conventions import PHYSICIST, ENGINEER
-from simphony.performance import persistent_cache
+from simphony.performance.performance import persistent_cache
 
 # @jax.jit
 def _initial_poles(model_order, frequency, sampling_frequency, gamma, sign_convention):
