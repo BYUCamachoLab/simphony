@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from time import time
 
 from simphony.conventions import PHYSICIST, ENGINEER
+from simphony.performance import persistent_cache
 
 # @jax.jit
 def _initial_poles(model_order, frequency, sampling_frequency, gamma, sign_convention):
@@ -150,6 +151,7 @@ def _mean_squared_error(transfer_function, frequency, center_frequency, sampling
 
 #     return A, B, C, feedthrough
 
+@persistent_cache
 def vector_fitting_discrete(
     model_order,  
     transfer_function, 
@@ -232,6 +234,7 @@ def vector_fitting_discrete(
 #         if error < tolerable_error:
 #             break
 
+
 def optimize_order(bias_fn, min_order, max_order):
     """
     bias_fn is a function of order which returns the MSE:
@@ -271,6 +274,8 @@ def optimize_order(bias_fn, min_order, max_order):
     return bias_fn(best_order)
 
 
+# TODO: Cache the model order, not the model itself to save space
+@persistent_cache
 def optimize_order_vector_fitting_discrete(
     min_order,
     max_order,  
@@ -293,9 +298,11 @@ def optimize_order_vector_fitting_discrete(
                                                                 sign_convention=sign_convention,
                                                                 max_iterations=max_iterations,
                                                                 gamma=gamma,
-                                                                weight_threshold=weight_threshold
+                                                                weight_threshold=weight_threshold,
+                                                                # use_cache=False, ### TODO: Decide whether this be necessary
                                                             )
         return mean_squared_error, poles, residues, feedthrough
+
 
     mean_squared_error, poles, residues, feedthrough = optimize_order(bias_fn, min_order, max_order)
 
