@@ -16,6 +16,7 @@ LOCAL_CACHE_DIR = "./.simphony_cache/vector_fitting_cache"
 # Replace 'your_package_name' with your actual package
 GLOBAL_CACHE_DIR = pkg_resources.files("simphony") / "performance" / "vector_fitting_cache"
 os.makedirs(LOCAL_CACHE_DIR, exist_ok=True)
+CACHE_VERSION = "v1"
 
 def is_array(x):
     return isinstance(x, (np.ndarray, jnp.ndarray))
@@ -63,51 +64,105 @@ def persistent_cache(func):
         if not use_cache:
             return func(*args, **kwargs)
 
-        key_tuple = make_cache_key(*args, **kwargs)
+        func_id = f"{func.__module__}.{func.__name__}"
+        # key_tuple = (func_id, make_cache_key(*args, **kwargs))
+        key_tuple = (CACHE_VERSION, func_id, make_cache_key(*args, **kwargs))
         key = hash_key(key_tuple)
-        filename = key + ".pkl"
 
+        filename = key + ".pkl"
         local_path = os.path.join(LOCAL_CACHE_DIR, filename)
         global_path = os.path.join(GLOBAL_CACHE_DIR, filename)
 
-        # 🔍 1. Check LOCAL cache
+        # Check local
         if os.path.exists(local_path):
             with open(local_path, "rb") as f:
                 return pickle.load(f)
 
-        # 🌍 2. Check GLOBAL cache
+        # Check global
         if os.path.exists(global_path):
             with open(global_path, "rb") as f:
                 result = pickle.load(f)
 
-            # Optional: copy to local cache for faster future access
             os.makedirs(LOCAL_CACHE_DIR, exist_ok=True)
             with open(local_path, "wb") as f:
                 pickle.dump(result, f)
 
             return result
 
-        # ⚙️ 3. Compute
+        # Compute
         result = func(*args, **kwargs)
 
-        # 💾 4. Always save locally
+        # Save locally
         os.makedirs(LOCAL_CACHE_DIR, exist_ok=True)
         with open(local_path, "wb") as f:
             pickle.dump(result, f)
 
-        # 🌍 5. Optionally save globally
+        # Optional global save
         if save_global:
             try:
                 os.makedirs(GLOBAL_CACHE_DIR, exist_ok=True)
                 with open(global_path, "wb") as f:
                     pickle.dump(result, f)
             except PermissionError:
-                # Installed packages are often read-only
                 pass
 
         return result
 
     return wrapper
+
+# def persistent_cache(func):
+#     def wrapper(*args, **kwargs):
+#         use_cache = kwargs.pop("use_cache", True)
+#         save_global = kwargs.pop("save_global", False)
+
+#         if not use_cache:
+#             return func(*args, **kwargs)
+
+#         key_tuple = make_cache_key(*args, **kwargs)
+#         key = hash_key(key_tuple)
+#         filename = key + ".pkl"
+
+#         local_path = os.path.join(LOCAL_CACHE_DIR, filename)
+#         global_path = os.path.join(GLOBAL_CACHE_DIR, filename)
+
+#         # 🔍 1. Check LOCAL cache
+#         if os.path.exists(local_path):
+#             with open(local_path, "rb") as f:
+#                 return pickle.load(f)
+
+#         # 🌍 2. Check GLOBAL cache
+#         if os.path.exists(global_path):
+#             with open(global_path, "rb") as f:
+#                 result = pickle.load(f)
+
+#             # Optional: copy to local cache for faster future access
+#             os.makedirs(LOCAL_CACHE_DIR, exist_ok=True)
+#             with open(local_path, "wb") as f:
+#                 pickle.dump(result, f)
+
+#             return result
+
+#         # ⚙️ 3. Compute
+#         result = func(*args, **kwargs)
+
+#         # 💾 4. Always save locally
+#         os.makedirs(LOCAL_CACHE_DIR, exist_ok=True)
+#         with open(local_path, "wb") as f:
+#             pickle.dump(result, f)
+
+#         # 🌍 5. Optionally save globally
+#         if save_global:
+#             try:
+#                 os.makedirs(GLOBAL_CACHE_DIR, exist_ok=True)
+#                 with open(global_path, "wb") as f:
+#                     pickle.dump(result, f)
+#             except PermissionError:
+#                 # Installed packages are often read-only
+#                 pass
+
+#         return result
+
+#     return wrapper
 
 # import numpy as np
 # import jax.numpy as jnp
