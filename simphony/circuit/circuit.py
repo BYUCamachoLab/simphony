@@ -3,7 +3,8 @@ import networkx as nx
 from typing import cast
 from collections.abc import Iterator
 # from simphony.libraries.analytic.component_types import OpticalComponent, ElectricalComponent, LogicComponent
-import gravis as gv
+from ipysigma import Sigma
+from IPython.display import display
 # import sax
 from jax.typing import ArrayLike
 from sax.saxtypes import Model as SaxModel
@@ -199,9 +200,9 @@ class Circuit:
         #     # size=5,
         # )
 
-        # fig = gv.d3(relabeled_graph.to_undirected(), edge_hover_tooltip=True)
-        fig = gv.d3(relabeled_graph, edge_hover_tooltip=True)
-        fig.display(inline=inline)
+        safe_graph = _sanitize_graph_for_widget(relabeled_graph)
+        fig = Sigma(safe_graph, node_size=safe_graph.degree, node_color="club")
+        display(fig)
     
     def flatten(
         self,
@@ -540,8 +541,9 @@ class InstantiatedCircuit:
             if "settings" in attr:
                 attr["settings"] = stringify_dict_values(attr["settings"])
 
-        fig = gv.d3(safe_graph, edge_hover_tooltip=True)
-        fig.display(inline=inline)
+        safe_graph = _sanitize_graph_for_widget(safe_graph)
+        fig = Sigma(safe_graph, node_size=safe_graph.degree, node_color="club")
+        display(fig)
 
 def stringify_dict_values(d):
     """Recursively convert all values in a dict to strings."""
@@ -557,6 +559,30 @@ def stringify_dict_values(d):
         else:
             out[k] = str(v)
     return out
+
+def _sanitize_graph_for_widget(graph):
+    """Convert graph attributes to widget-safe values for notebook renderers."""
+    safe_graph = deepcopy(graph)
+    for _, attr in safe_graph.nodes(data=True):
+        for k, v in list(attr.items()):
+            if isinstance(v, dict):
+                attr[k] = stringify_dict_values(v)
+            elif isinstance(v, (list, tuple, set)):
+                attr[k] = [stringify_dict_values(x) for x in v]
+            else:
+                try:
+                    # Keep simple JSON-like scalars as-is; stringify complex objects.
+                    if isinstance(v, (str, int, float, bool)) or v is None:
+                        continue
+                    attr[k] = str(v)
+                except Exception:
+                    attr[k] = str(v)
+    for _, _, attr in safe_graph.edges(data=True):
+        for k, v in list(attr.items()):
+            if isinstance(v, (str, int, float, bool)) or v is None:
+                continue
+            attr[k] = str(v)
+    return safe_graph
 
 # import json
 
