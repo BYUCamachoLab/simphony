@@ -3,6 +3,8 @@
 from simphony.component.component import SteadyStateComponent, BlockModeComponent, SampleModeComponent, SParameterComponent
 from simphony.component.pcell import PCell
 
+from simphony.signal.block_mode import BlockModeOpticalSignal
+
 from jax.typing import ArrayLike
 import jax
 import jax.numpy as jnp
@@ -16,6 +18,12 @@ from simphony.simulation.simulation import SimulationParameters
 class DirectedOpticalModulator(
     BlockModeComponent
 ):
+    """
+    Phase coefficients can be set for each mode in mode identifiers
+
+    It is assumed that all wavelengths are close together, thus, phase shifts across wavelength 
+    are approximately equal
+    """
     ports = [
         Port(
             name = "o0",
@@ -46,14 +54,42 @@ class DirectedOpticalModulator(
         effective_index = 0.0,
     ):
         self.length = length
-        self.absorption_coefficients = absorption_coefficients
-        self.phase_coefficients = phase_coefficients
+        self.absorption_coefficients = jnp.atleast_2d(absorption_coefficients)
+        self.phase_coefficients = jnp.atleast_2d(phase_coefficients)
         self.operating_wl = operating_wl
         self.effective_index = effective_index
     
-    def block_mode_response(self, input_signal: ArrayLike, simulation_parameters):
-        """Compute the system response."""
-        raise NotImplementedError
+    def block_mode_response(self, input_signals, simulation_parameters):
+        outputs = {}
+        input_amplitude = input_signals["o0"].amplitude
+        wavelengths = input_signals["o0"].amplitude
+        N = input_amplitude.shape[0]
+        L = input_amplitude.shape[1]
+        M = len(simulation_parameters.mode_identifiers) # Currently, ignores all but the first mode
+        
+        
+        total_real_voltage = jnp.sum(input_signals["e0"].amplitude, axis=1)
+
+        output_amplitude = jnp.zeros((N, L, M), dtype=complex)
+        
+        for m, mode in enumerate(simulation_parameters.mode_identifiers):
+            phase_op = jnp.polyval(self.phase_coefficients[m], total_real_voltage)
+            absorption_dB = jnp.polyval(self.absorption_coefficients[m], total_real_voltage)
+            fraction_of_power_remaining = 10**(-absorption_dB*self.length/10)
+            fraction_of_power_remaining = jnp.repeat(fraction_of_power_remaining[:, None], L, axis=1)
+            phase_shift = jnp.repeat(phase_op[:, None], L, axis=1)
+
+            output_amplitude = output_amplitude.at[:, :, m].set(
+                jnp.sqrt(fraction_of_power_remaining)
+                * jnp.exp(1j * phase_shift)
+                * input_amplitude[:, :, m]
+            )
+
+        outputs["o1"] = BlockModeOpticalSignal(amplitude=output_amplitude, wavelength=wavelengths)
+
+        return outputs
+    
+
 
 
 class OpticalModulator(
@@ -62,6 +98,10 @@ class OpticalModulator(
     SampleModeComponent, 
     # BlockModeComponent
 ):
+    """
+    Single Mode Optical Modulator
+    TODO: Define a nice way to make this multimodal
+    """
     ports = [
         Port(
             name = "o0",
@@ -119,6 +159,7 @@ class OpticalModulator(
         # delta_n = self.operating_wl/(2*jnp.pi*self.length) * phase_op
         # phase_shift = 2*jnp.pi/wl*(self.effective_index+delta_n)*self.length
 
+        # TODO: Make multimodal
         return {
             ("o0", "o1"): jnp.sqrt(fraction_of_power_remaining)*jnp.exp(1j*phase_shift),
             ("o1", "o0"): jnp.sqrt(fraction_of_power_remaining)*jnp.exp(1j*phase_shift),
