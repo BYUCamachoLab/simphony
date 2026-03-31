@@ -297,8 +297,12 @@ def discrete_state_space(
                 _y, _ = state_space_response_discrete(A, B, C, D, u[:, i, :])
                 y = y.at[:, i, :].set(_y)
 
-            pass
+            outputs = {}
+            for i, out_port_name in enumerate(output_port_names):
+                amplitude = y[:, :, i].reshape(N,L,M)
+                outputs[out_port_name] = BlockModeOpticalSignal(amplitude=amplitude, wavelength=wavelengths)
 
+            return outputs
 
         def to_fir_filter(
             self,

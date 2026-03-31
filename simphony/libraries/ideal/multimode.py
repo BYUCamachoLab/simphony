@@ -91,8 +91,23 @@ def mode_multiplexer(
         ):
             self.simulation_parameters = simulation_parameters
     
-        def block_mode_response(self, inputs, simulation_parameters):
-            return ...
+        def block_mode_response(self, input_signals, simulation_parameters):
+            outputs = {}
+            _input_amplitude = list(input_signals.values())[0].amplitude
+            wavelengths = list(input_signals.values())[0].wavelength
+            N = _input_amplitude.shape[0]
+            L = _input_amplitude.shape[1]
+            M = len(input_port_names)
+            
+            outputs[output_port_name] = BlockModeOpticalSignal(amplitude=jnp.zeros((N, L, M), dtype=complex), wavelength=wavelengths)
+
+            for mode_no, in_port_name in enumerate(input_port_names):
+                input_amplitude = input_signals[in_port_name].amplitude[:, :, mode_no]
+                wavelength = input_signals[in_port_name].wavelength
+                output_amplitude = outputs[output_port_name].amplitude[:, :, mode_no] + input_amplitude
+                outputs[output_port_name] = BlockModeOpticalSignal(amplitude=output_amplitude.reshape((N, L, M)), wavelength=wavelengths)
+
+            return outputs
 
 
     return ModeMultiplexer
