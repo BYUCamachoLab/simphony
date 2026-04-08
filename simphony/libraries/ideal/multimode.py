@@ -90,6 +90,8 @@ def mode_multiplexer(
             **kwargs,
         ):
             self.simulation_parameters = simulation_parameters
+            self.input_port_names = input_port_names
+            self.output_port_name = output_port_name
     
         def block_mode_response(self, input_signals, simulation_parameters):
             outputs = {}
@@ -147,11 +149,12 @@ def mode_demultiplexer(
             **kwargs,
         ):
             self.output_port_names = output_port_names
+            self.input_port_name = input_port_name
     
         # TODO: TEST THIS FOR MULTIPLE MODES
         def block_mode_response(self, inputs, simulation_parameters):
-            input_amplitude = inputs['in_port'].amplitude
-            wl = inputs['in_port'].wavelength
+            input_amplitude = inputs[self.input_port_name].amplitude
+            wl = inputs[self.input_port_name].wavelength
             
             outputs = {}
             for i, p in enumerate(self.output_port_names):
@@ -162,4 +165,3 @@ def mode_demultiplexer(
             return outputs
     
     return ModeDemultiplexer
-

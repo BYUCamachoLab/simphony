@@ -62,7 +62,7 @@ class DirectedOpticalModulator(
     def block_mode_response(self, input_signals, simulation_parameters):
         outputs = {}
         input_amplitude = input_signals["o0"].amplitude
-        wavelengths = input_signals["o0"].amplitude
+        wavelengths = input_signals["o0"].wavelength
         N = input_amplitude.shape[0]
         L = input_amplitude.shape[1]
         M = len(simulation_parameters.mode_identifiers) # Currently, ignores all but the first mode

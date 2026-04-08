@@ -65,6 +65,18 @@ class SParameterSax(PCell):
     Using the Component Factory Below
     """
 
+
+def _default_vector_fitting_parameters(simulation_parameters):
+    return {
+        "spectral_range": simulation_parameters.spectral_range,
+        "model_order": None,
+        "min_model_order": 2,
+        "max_model_order": 100,
+        "num_frequency_samples": 1000,
+        "center_frequency": speed_of_light / simulation_parameters.center_wavelength,
+        "sampling_frequency": 1 / simulation_parameters.dt,
+    }
+
 def optical_s_parameter(
     sax_model: sax.Model, 
     port_directionality: dict = None,
@@ -124,16 +136,11 @@ def optical_s_parameter(
             
             # TODO: Update the Vector Fitting Code to have a dataclass for these parameters
             # TODO: Perhaps put vector fitting params in the simulation parameters as a "default_vector_fitting_params" field
+            default_vector_fitting_parameters = _default_vector_fitting_parameters(simulation_parameters)
             if vector_fitting_parameters is None:
-                vector_fitting_parameters = {
-                    "spectral_range": simulation_parameters.spectral_range,
-                    "model_order": None,
-                    "min_model_order": 2,
-                    "max_model_order": 100,
-                    "num_frequency_samples": 1000,
-                    "center_frequency": speed_of_light / simulation_parameters.center_wavelength,
-                    "sampling_frequency": 1 / simulation_parameters.dt
-                }
+                vector_fitting_parameters = default_vector_fitting_parameters
+            else:
+                vector_fitting_parameters = default_vector_fitting_parameters | vector_fitting_parameters
 
 
             designs = {
@@ -703,5 +710,4 @@ def _get_port_names_without_mode(sax_model):
 #             return outputs
 
 #     return SParameterSax
-
 

@@ -485,12 +485,27 @@ class InstantiatedCircuit:
         models = self.circuit.models
 
         from simphony.libraries.ideal.s_parameters import SParameterSax
+        s_parameter_meta_settings = {
+            "port_directionality",
+            "vector_fitting_parameters",
+            "delay_compensation",
+        }
         # Reinterpret Sax Settings to optical_s_parameter Component settings
         # for instance_name, instance_settings in settings.items():
         for instance_name in netlist['instances'].keys():
             model_name = netlist['instances'][instance_name]['component']
             if issubclass(models[model_name], SParameterSax) and not "sax_settings" in settings[instance_name].keys():
-                settings[instance_name] = {"sax_settings": settings[instance_name]}
+                meta_settings = {
+                    k: v
+                    for k, v in settings[instance_name].items()
+                    if k in s_parameter_meta_settings
+                }
+                sax_only = {
+                    k: v
+                    for k, v in settings[instance_name].items()
+                    if k not in s_parameter_meta_settings
+                }
+                settings[instance_name] = {"sax_settings": sax_only} | meta_settings
                 pass
             pass
         

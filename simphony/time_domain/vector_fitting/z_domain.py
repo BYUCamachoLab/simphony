@@ -1,6 +1,7 @@
 import jax
 import jax.numpy as jnp
 from scipy.constants import speed_of_light
+from scipy.optimize import linear_sum_assignment
 
 # from simphony.simulation.jax_tools import python_based_while_loop
 
@@ -159,7 +160,7 @@ def vector_fitting_discrete(
     center_frequency,
     sampling_frequency,
     sign_convention=PHYSICIST,
-    max_iterations=40,
+    max_iterations=10,
     gamma=0.95,
     weight_threshold=0.0,
 ):
@@ -260,6 +261,7 @@ def optimize_order(bias_fn, min_order, max_order):
     fc = bias_fn(c)[0] + complexity_penalty*d
     fd = bias_fn(d)[0] + complexity_penalty*d
     while abs(b-a) > 1:
+        print("Again!")
         if fc < fd:  # minimum is in [a, d]
             b, d, fd = d, c, fc
             c = int(b - golden_ratio * (b - a))
@@ -654,25 +656,86 @@ def main2():
     sampling_frequency = 1
     center_frequency = sampling_frequency / 2
     frequency = jnp.linspace(-sampling_frequency/2, sampling_frequency/2, 1000) + center_frequency
-    
-    poles = jnp.array([jnp.exp(1j*2*jnp.pi*center_frequency/sampling_frequency), jnp.exp(1j*3*jnp.pi/2)])
-    residues = jnp.array([
-        [
-            [1 + 2j, 3 + 4j],
-            [5 + 6j, 7 + 8j],
-        ],
-        [
-            [1.5 + 2.5j, 3.5 + 4.5j],
-            [5.5 + 6.5j, 7.5 + 8.5j]
-        ],
-    ])
 
-    feedthrough = jnp.zeros((1, 1), dtype=complex)
-    
-    
-    
-    H = pole_residue_response_discrete(frequency, center_frequency, sampling_frequency, poles, residues, feedthrough)
-    pass
+    num_poles = 10
+    key = jax.random.PRNGKey(42)
+    pole_radius_key, pole_angle_key = jax.random.split(key)
+    pole_radii = jax.random.uniform(pole_radius_key, (num_poles,), minval=0.10, maxval=0.98)
+    pole_angles = jax.random.uniform(pole_angle_key, (num_poles,), minval=-jnp.pi, maxval=jnp.pi)
+    poles = pole_radii * jnp.exp(1j * pole_angles)
+
+    port_indices = jnp.arange(10, dtype=jnp.float32)
+    row_indices = port_indices[:, None]
+    col_indices = port_indices[None, :]
+    base_residue = (
+        0.9
+        + 0.12 * row_indices
+        - 0.05 * col_indices
+        + 0.015 * row_indices * col_indices
+        + 1j * (0.2 + 0.08 * row_indices + 0.045 * col_indices)
+    )
+    scale_magnitudes = jnp.linspace(1.00, 0.08, num_poles)
+    scale_phases = jnp.linspace(0.0, 0.75 * jnp.pi, num_poles)
+    residue_scales = scale_magnitudes * jnp.exp(1j * scale_phases)
+    residues = residue_scales[:, None, None] * base_residue[None, :, :]
+
+    feedthrough = jnp.zeros(residues.shape[1:], dtype=complex)
+
+    def match_pole_residue_pairs(reference_poles, candidate_poles, candidate_residues):
+        pole_distance = jnp.abs(reference_poles[:, None] - candidate_poles[None, :])
+        row_indices, col_indices = linear_sum_assignment(pole_distance)
+        assignment_order = jnp.asarray(col_indices[jnp.argsort(jnp.asarray(row_indices))])
+        return candidate_poles[assignment_order], candidate_residues[assignment_order]
+
+    original_poles = poles
+    original_residues = residues
+    original_feedthrough = feedthrough
+
+    H = pole_residue_response_discrete(
+        frequency,
+        center_frequency,
+        sampling_frequency,
+        original_poles,
+        original_residues,
+        original_feedthrough,
+    )
+    final_poles, final_residues, final_feedthrough, fit_error = vector_fitting_discrete(
+        model_order=num_poles,
+        transfer_function=H,
+        frequency=frequency,
+        center_frequency=center_frequency,
+        sampling_frequency=sampling_frequency,
+    )
+
+    matched_final_poles, matched_final_residues = match_pole_residue_pairs(
+        original_poles,
+        final_poles,
+        final_residues,
+    )
+    fitted_response = pole_residue_response_discrete(
+        frequency,
+        center_frequency,
+        sampling_frequency,
+        final_poles,
+        final_residues,
+        final_feedthrough,
+    )
+
+    pole_error = jnp.max(jnp.abs(matched_final_poles - original_poles))
+    residue_error = jnp.max(jnp.abs(matched_final_residues - original_residues))
+    feedthrough_error = jnp.max(jnp.abs(final_feedthrough - original_feedthrough))
+    response_error = jnp.max(jnp.abs(fitted_response - H))
+    relative_response_error = jnp.linalg.norm(fitted_response - H) / jnp.maximum(
+        jnp.linalg.norm(H),
+        1e-12,
+    )
+
+    print("Fit MSE:", fit_error)
+    print("Max pole error:", pole_error)
+    print("Max residue error:", residue_error)
+    print("Max feedthrough error:", feedthrough_error)
+    print("Max response error:", response_error)
+    print("Relative response error:", relative_response_error)
 
 if __name__ == "__main__":
-    main()
+    main2()
