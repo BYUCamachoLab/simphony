@@ -566,3 +566,20 @@ def resample(x: ArrayLike, xp: ArrayLike, sdict: sax.SDict) -> sax.SDict:
         new_sdict[k] = cs(x)
     return new_sdict
 
+def create_multimode_sax_model(models: dict):
+    """
+    This function takes individual s-parameter models or individual modes
+    and combines them into the sax-format for multimode models, assuming 
+    complete orthogonality of modes (no cross polarization)
+    """
+    def multimode_model(**params):
+        S_mm = {}
+
+        for mode, model in models.items():
+            S = model(**params)
+            for (p1, p2), val in S.items():
+                S_mm[(f"{p1}@{mode}", f"{p2}@{mode}")] = val
+
+        return S_mm
+
+    return multimode_model
