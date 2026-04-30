@@ -17,6 +17,7 @@ class BlockModeSimulationParameters(SimulationParameters):
     # spectral_range = (1.5e-6, 1.6e-6)
     # Optical Baseband Wavelengths will be used to control the frequency channels the simulator uses
     optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jax.numpy.array([1.54e-6, 1.55e-6, 1.56e-6]))
+    use_speed_up: bool = True
     # def __init__(
     #     self,
     #     **kwargs,
@@ -28,16 +29,18 @@ class BlockModeSimulationResult(SimulationResult):
         self.circuit = deepcopy(circuit)
         self.component_inputs = {}
         self.component_outputs = {}
-        self.port_outputs = {}
     
-    def _collect_component_inputs(self, component, output_cache)->dict:
+    def _collect_component_inputs(self, component)->dict:
         inputs = {}
         input_components = [u for u, v in self.circuit.graph.in_edges(component)]
         for input_component in input_components:
             input_edges = self.circuit.graph.get_edge_data(input_component, component)
             for edge_number, edge in input_edges.items():
-                inputs[edge['dst_port']] = output_cache[input_component][edge['src_port']]
-        return inputs
+                inputs[edge['dst_port']] = self.component_outputs[input_component][edge['src_port']]
+                pass
+        self.component_inputs[component] = inputs
+
+        
 
 class BlockModeSimulation(Simulation):
     def __init__(
@@ -73,39 +76,18 @@ class BlockModeSimulation(Simulation):
         instantiated_circuit = self.circuit.instantiate(self.settings, self.simulation_parameters, directed=True)
         # instantiated_circuit.display()
         simulation_result = BlockModeSimulationResult(instantiated_circuit)
-        output_cache = {}
-        remaining_successors = self._count_remaining_successors(instantiated_circuit)
-        external_port_sources = self._group_external_ports_by_instance()
-        tracked_components = set(self.simulation_parameters.tracked_components)
 
 
         self.block_mode_order = self._determine_block_mode_order_nx_method(instantiated_circuit)
-        
         # self._instantiate_components(self.settings)
         print(len(self.block_mode_order))
         for instance_name in self.block_mode_order:
-            print("Hi")
+            
             simulation_result._collect_component_inputs(instance_name)   
             inputs = simulation_result.component_inputs[instance_name]
             component = instantiated_circuit.instantiated_flat_netlist['instances'][instance_name]['model']
-            outputs = component._block_mode_response(inputs, self.simulation_parameters)
-            output_cache[instance_name] = outputs
-
-            if self._should_store_component(instance_name, self.simulation_parameters.store_component_outputs, tracked_components):
-                simulation_result.component_outputs[instance_name] = outputs
-
-            if self.simulation_parameters.store_port_outputs:
-                for circuit_port, instance_port in external_port_sources.get(instance_name, {}).items():
-                    if instance_port in outputs:
-                        simulation_result.port_outputs[circuit_port] = outputs[instance_port]
-
-            for predecessor in instantiated_circuit.graph.predecessors(instance_name):
-                remaining_successors[predecessor] -= 1
-                if remaining_successors[predecessor] == 0:
-                    output_cache.pop(predecessor, None)
-
-            if remaining_successors[instance_name] == 0:
-                output_cache.pop(instance_name, None)
+            outputs = component.block_mode_response(inputs, self.simulation_parameters)
+            simulation_result.component_outputs[instance_name] = outputs
         
         return simulation_result
     

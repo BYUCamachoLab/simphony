@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from simulation.sample_mode import SampleModeSimulationParameters 
     from simulation.simulation import SimulationParameters, SimulationMode
 
+from simphony.signal.block_mode import BlockModeOpticalSignal
 #### Include First ####
 
 import inspect

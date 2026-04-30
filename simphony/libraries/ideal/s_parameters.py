@@ -64,18 +64,6 @@ class SParameterPlaceholder(Placeholder):
     Using the Component Factory Below
     """
 
-
-def _default_vector_fitting_parameters(simulation_parameters):
-    return {
-        "spectral_range": simulation_parameters.spectral_range,
-        "model_order": None,
-        "min_model_order": 2,
-        "max_model_order": 100,
-        "num_frequency_samples": 1000,
-        "center_frequency": speed_of_light / simulation_parameters.center_wavelength,
-        "sampling_frequency": 1 / simulation_parameters.dt,
-    }
-
 def optical_s_parameter(
     sax_model: sax.Model, 
     port_directionality: dict = None,
@@ -440,8 +428,10 @@ def _block_mode_design(
         sax_model = filtered_sax_models[instance_name]
                 
         A, B, C, D = _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, vector_fitting_parameters, simulation_parameters)
+        f_b = speed_of_light / vector_fitting_parameters["center_wavelength"]
+        f_s = 1 / simulation_parameters.dt
 
-        settings.update({_state_space_instance_name(instance_name):{"A":A, "B":B, "C":C, "D":D}})
+        settings.update({_state_space_instance_name(instance_name):{"A":A, "B":B, "C":C, "D":D, "baseband_frequency": f_b, "sampling_frequency": f_s}})
 
     ## TODO: Fill in empty settings..s
     common_mode = simulation_parameters.mode_identifiers[0]

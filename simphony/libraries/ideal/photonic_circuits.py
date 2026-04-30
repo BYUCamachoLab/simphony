@@ -179,8 +179,7 @@ class MZI(PCell):
             self.settings['bot_wg'] = {"sax_settings": self.settings['bot_wg']}
             if not partial:
                 self.settings['splitter'] = {"sax_settings": self.settings['splitter']}
-            if not partial:
-                self.settings['splitter'] = {"sax_settings": self.settings['splitter']}
+                
             self.settings['combiner'] = {"sax_settings": self.settings['combiner']}
 
         elif simulation_parameters.simulation_mode == SimulationMode.S_PARAMETER:
@@ -191,7 +190,6 @@ class MZI(PCell):
 
         s_parameter_models_to_group = ["top_wg", "bot_wg", "splitter", "combiner"]
         if partial:
-            del self.settings["splitter"]
             s_parameter_models_to_group.remove("splitter")
 
         if group_id is "default":
