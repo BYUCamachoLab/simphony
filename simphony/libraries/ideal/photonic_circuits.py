@@ -9,6 +9,7 @@ from simphony.circuit.netlist import instantiate_netlist
 ### TODO: Find a better way to deal with old sax libraries
 from simphony.libraries.old_ideal import waveguide, coupler
 from simphony.libraries.ideal.s_parameters import optical_s_parameter
+from inspect import isfunction
 
 class MZI(PCell):
     r"""
@@ -67,6 +68,8 @@ class MZI(PCell):
         top_phase_shifter_settings: dict = None,
         bot_phase_shifter_settings: dict = None,
         partial: bool = False,
+        # TODO: maybe inherit a getter or setter or just don't do group ids
+        group_id = "default", # Setting to None will disable grouping, not setting will use MZI class id
     ):
         """
         `partial` boolean value which decides 
@@ -147,11 +150,14 @@ class MZI(PCell):
             "top_mod": top_phase_shifter_settings,
             "bot_mod": bot_phase_shifter_settings,
         }
+
         self.models = {
                 "coupler": coupler,
                 "waveguide": waveguide,
                 "modulator": OpticalModulator,
             }
+
+
         from simphony.simulation.simulation import SimulationMode
         if simulation_parameters.simulation_mode == SimulationMode.SAMPLE_MODE:
             pass
@@ -174,12 +180,26 @@ class MZI(PCell):
             }
             self.settings['top_wg'] = {"sax_settings": self.settings['top_wg']}
             self.settings['bot_wg'] = {"sax_settings": self.settings['bot_wg']}
-            self.settings['splitter'] = {"sax_settings": self.settings['splitter']}
+            if not partial:
+                self.settings['splitter'] = {"sax_settings": self.settings['splitter']}
             self.settings['combiner'] = {"sax_settings": self.settings['combiner']}
+
         elif simulation_parameters.simulation_mode == SimulationMode.S_PARAMETER:
             pass
         else:
             raise ValueError(f"{self} has does not support the simulation type {simulation_parameters.simulation_mode}")
+        
+
+        s_parameter_models_to_group = ["top_wg", "bot_wg", "splitter", "combiner"]
+        if partial:
+            del self.settings["splitter"]
+            s_parameter_models_to_group.remove("splitter")
+
+        if group_id is "default":
+            group_id = id(MZI)
+        
+        for instance_name in s_parameter_models_to_group:
+            self.settings[instance_name]["group_id"] = group_id
 
 
 def mzi_lattice_filter(

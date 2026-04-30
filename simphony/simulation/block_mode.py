@@ -4,8 +4,8 @@ import networkx as nx
 from copy import deepcopy
 from flax import struct
 from dataclasses import field
-
-from simphony.libraries.ideal.s_parameters import SParameterSax
+import jax
+from simphony.libraries.ideal.s_parameters import SParameterPlaceholder
 
 @struct.dataclass
 class BlockModeSimulationParameters(SimulationParameters):
@@ -13,8 +13,10 @@ class BlockModeSimulationParameters(SimulationParameters):
     directed: bool = True
     dt = 1e-14
     num_time_steps = 1000
-    spectral_range = (1.5e-6, 1.6e-6)
-    center_wavelength = 1.55e-6
+    # Moved spectral range to vector fitting parameters in optical_s_parameters
+    # spectral_range = (1.5e-6, 1.6e-6)
+    # Optical Baseband Wavelengths will be used to control the frequency channels the simulator uses
+    optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jax.numpy.array([1.54e-6, 1.55e-6, 1.56e-6]))
     # def __init__(
     #     self,
     #     **kwargs,
@@ -29,9 +31,7 @@ class BlockModeSimulationResult(SimulationResult):
     
     def _collect_component_inputs(self, component)->dict:
         inputs = {}
-        # TODO: Determine if STEADYSTATESIMULATION needs this change too
-        # input_components = nx.ancestors(self.circuit.graph, component)
-        input_components = immediate_ancestors = [u for u, v in self.circuit.graph.in_edges(component)]
+        input_components = [u for u, v in self.circuit.graph.in_edges(component)]
         for input_component in input_components:
             print(input_component)
             input_edges = self.circuit.graph.get_edge_data(input_component, component)
@@ -59,11 +59,11 @@ class BlockModeSimulation(Simulation):
 
         self.simulation_parameters = simulation_parameters
         self.circuit = circuit
-        self.flat_circuit = circuit.flatten()
+        # self.flat_circuit = circuit.flatten()
         self.settings = settings
 
         if ports is None:
-            ports = self.flat_circuit.netlist['ports']
+            ports = self.circuit.netlist['top_level']['ports']
 
         
         self.ports = ports
@@ -71,15 +71,17 @@ class BlockModeSimulation(Simulation):
     def run(
         self,
     )->BlockModeSimulationResult:
-        self._add_directionality_setting_to_s_parameter_components(self.flat_circuit, self.settings)
-        instantiated_circuit = self.flat_circuit.instantiate(self.settings, self.simulation_parameters)
+        # _add_directionality_settings_to_s_parameter_components(self.flat_circuit, self.settings)
+        instantiated_circuit = self.circuit.instantiate(self.settings, self.simulation_parameters, directed=True)
         # instantiated_circuit.display()
         simulation_result = BlockModeSimulationResult(instantiated_circuit)
 
 
         self.block_mode_order = self._determine_block_mode_order_nx_method(instantiated_circuit)
         # self._instantiate_components(self.settings)
+        print(len(self.block_mode_order))
         for instance_name in self.block_mode_order:
+            print("Hi")
             simulation_result._collect_component_inputs(instance_name)   
             inputs = simulation_result.component_inputs[instance_name]
             component = instantiated_circuit.instantiated_flat_netlist['instances'][instance_name]['model']
@@ -104,25 +106,6 @@ class BlockModeSimulation(Simulation):
             raise ValueError("Failed to determine steady state order – circular dependencies detected")
 
 
-
-    def _add_directionality_setting_to_s_parameter_components(
-        self,
-        flat_circuit,
-        settings
-    ):
-        netlist = flat_circuit.netlist
-        models = flat_circuit.models
-        for instance_name, instance_data in netlist['instances'].items():
-            component_class = models[instance_data['component']]
-            if issubclass(component_class, SParameterSax):
-                if not "sax_settings" in settings[instance_name].keys():
-                    settings[instance_name] = {"sax_settings": settings[instance_name]}
-            
-                settings[instance_name]
-                # TODO: DOUBLE CHECK DEFAULT DICTIONARY CONSTRUCTION FOR EDGE CASES
-                default_directionalities = {p.name:"output" if f"{instance_name},{p.name}" in netlist['connections'].keys() else "input" for p in component_class.ports}
-                default_directionalities = {k:d if not (f"{instance_name},{k}" in netlist['connections'].keys() or not f"{instance_name},{k}" in netlist['connections'].values()) else "output" for k,d in default_directionalities.items()}
-                settings[instance_name]["port_directionality"] = default_directionalities | settings[instance_name].get("port_directionality", {})
     # def _determine_block_mode_order(self):
     #     """
     #     Determine the order of components in block mode simulation.

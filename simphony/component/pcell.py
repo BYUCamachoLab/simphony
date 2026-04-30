@@ -1,6 +1,6 @@
 from simphony.component.component import Component
 from simphony.simulation.simulation import SimulationParameters
-from sax import DEFAULT_MODES
+# from sax import DEFAULT_MODES
 import inspect
 import sax
 from copy import deepcopy
@@ -179,12 +179,12 @@ def _convert_sax_models(
     new_settings
     
     # TODO: Remove duplicate code. This is taken from InstantiatedCircuit __init__
-    from simphony.libraries.ideal.s_parameters import SParameterSax
+    from simphony.libraries.ideal.s_parameters import SParameterPlaceholder
     # Reinterpret Sax Settings to optical_s_parameter Component settings
     # for instance_name, instance_settings in settings.items():
     for instance_name in new_netlist['instances'].keys():
         model_name = new_netlist['instances'][instance_name]['component']
-        if issubclass(new_models[model_name], SParameterSax) and not "sax_settings" in settings[instance_name].keys():
+        if issubclass(new_models[model_name], SParameterPlaceholder) and not "sax_settings" in settings[instance_name].keys():
             new_settings[instance_name] = {"sax_settings": settings[instance_name]}
 
     return new_netlist, new_models, new_settings

@@ -6,22 +6,19 @@ from collections.abc import Iterator
 from ipysigma import Sigma
 from IPython.display import display
 # import sax
-from jax.typing import ArrayLike
-from sax.saxtypes import Model as SaxModel
+# from jax.typing import ArrayLike
+# from sax.saxtypes import Model as SaxModel
 
-from simphony.circuit.netlist import add_settings_to_netlist, complete_netlist, get_settings_from_netlist, netlist_to_graph, instantiated_flat_netlist_to_graph, add_ports_to_graph
+from simphony.circuit.netlist import add_settings_to_netlist, graph_to_netlist, netlist_to_graph, instantiated_flat_netlist_to_graph, remove_instances_from_netlist
 from copy import deepcopy
 # from simphony.signal import optical_signal, complete_steady_state_inputs
 
-import jax
-import jax.numpy as jnp
-
-from simphony.component.component import Component
-from simphony.component.pcell import PCell
+# from simphony.component.component import Component
+# from simphony.component.pcell import PCell
 from simphony.simulation.simulation import SimulationParameters
 
 
-from simphony.libraries.ideal.s_parameters import optical_s_parameter
+from simphony.libraries.ideal.s_parameters import optical_s_parameter, SParameterPlaceholder, s_parameter_netlist_to_pcell
 import sax
 
 from sax.circuits import _create_dag
@@ -29,7 +26,7 @@ from sax.netlists import convert_nets_to_connections
 
 from typing import Tuple
 
-import re
+# import re
 
 
 from simphony.libraries._internal.placeholder import ExternalPortPlaceholder
@@ -137,7 +134,7 @@ class Circuit:
         # self.flattened_netlist = sax.flatten_netlist(self.netlist)
         self.subcircuit_hierarchy = _create_dag(self.netlist)
         
-        self.models = models
+        self.models = deepcopy(models)
         self._convert_sax_models()
         for instance_name, component in self.models.items():
             component._create_port_lookup_table()
@@ -214,14 +211,16 @@ class Circuit:
         self,
         settings: dict,
         simulation_parameters: SimulationParameters,
-        # directed: bool,
+        directed: bool = False,
+        fuse_models: bool = False,
         # default_modes,
     ):
         return InstantiatedCircuit(
             self, 
             settings,
             simulation_parameters, 
-             
+            directed=directed,
+            fuse_models=fuse_models
             # directed, 
             # default_modes
         )
@@ -388,10 +387,18 @@ class FlatCircuit:
     
     def instantiate(
         self,
-        settings,
-        simulation_parameters,
+        settings: dict,
+        simulation_parameters: SimulationParameters,
+        directed: bool = False,
+        fuse_models: bool = False,
     ):
-        return InstantiatedCircuit(self, settings, simulation_parameters)
+        return InstantiatedCircuit(
+            self, 
+            settings,
+            simulation_parameters, 
+            directed=directed,
+            fuse_models=fuse_models
+        )
 
     def _sanitize_netlist(
         self, 
@@ -452,6 +459,49 @@ class FlatCircuit:
         
         return sanitized_netlist, lut
 
+    # def _determine_block_mode_order(self):
+
+# TODO: Put these functions in the instantiated circuit class as methods
+# def _recover_s_parameter_placeholder_settings(
+#     instantiated_circuit,
+#     settings,
+# ):
+#     ...
+
+def _add_directionality_settings_to_s_parameter_placeholders(
+    # self,
+    instantiated_circuit,
+    settings,
+    directed = False,
+):
+    netlist = instantiated_circuit.instantiated_flat_netlist
+    # models = flat_circuit.models
+    for instance_name, instance_data in netlist['instances'].items():
+        # component_class = models[instance_data['component']]
+        component = netlist['instances'][instance_name]['model']
+        if isinstance(component, SParameterPlaceholder):
+            if not instance_name in settings:
+                settings[instance_name] = component.settings
+            # if not "sax_settings" in settings[instance_name].keys():
+            #     settings[instance_name] = {"sax_settings": settings[instance_name]}
+            # TODO: DOUBLE CHECK DEFAULT DICTIONARY CONSTRUCTION FOR EDGE CASES
+            if directed:
+                default_directionalities = {p.name:"output" if f"{instance_name},{p.name}" in netlist['connections'].keys() else "input" for p in component.ports}
+                default_directionalities = {k:d if not (f"{instance_name},{k}" in netlist['connections'].keys() or not f"{instance_name},{k}" in netlist['connections'].values()) else "output" for k,d in default_directionalities.items()}
+            else:
+                default_directionalities = {p.name:"bidirectional" for p in component.ports}                
+            
+            settings[instance_name]["port_directionality"] = default_directionalities | settings[instance_name].get("port_directionality", {})
+
+def find_clipped_edges(full_graph, subgraph_nodes):
+    subgraph_nodes = set(subgraph_nodes)
+    clipped = []
+
+    for u, v, key, data in full_graph.edges(keys=True, data=True):
+        if (u in subgraph_nodes) != (v in subgraph_nodes):
+            clipped.append((u, v, key, data))
+
+    return clipped
 
 class InstantiatedCircuit:
     """
@@ -473,9 +523,21 @@ class InstantiatedCircuit:
         circuit: Circuit | FlatCircuit,
         settings: dict,
         simulation_parameters: SimulationParameters,
+        # consolidate_s_parameter_components = True, # I have decided that this will just be the thing to do
+        directed = False, # TODO: Implement bidirectional interpretation of ambiguous s parameter models
+        fuse_models = False,
         # directed: bool,
         # default_modes,
     ):
+        """
+        When `directed` is True, unspecified directionalities of SParameterPlaceholder objects will determined 
+        based on the order of connection in the netlist
+        """
+        # TODO: I was mutating the inputs so I deep copied them. TODO: assess this for efficiency
+        circuit = deepcopy(circuit)
+        settings = deepcopy(settings)
+        simulation_parameters = deepcopy(simulation_parameters) 
+        
         if isinstance(circuit, FlatCircuit):
             self.circuit = circuit
         elif isinstance(circuit, Circuit):
@@ -484,12 +546,12 @@ class InstantiatedCircuit:
         netlist = self.circuit.netlist
         models = self.circuit.models
 
-        from simphony.libraries.ideal.s_parameters import SParameterSax
+        from simphony.libraries.ideal.s_parameters import SParameterPlaceholder
         # Reinterpret Sax Settings to optical_s_parameter Component settings
         # for instance_name, instance_settings in settings.items():
         for instance_name in netlist['instances'].keys():
             model_name = netlist['instances'][instance_name]['component']
-            if issubclass(models[model_name], SParameterSax) and not "sax_settings" in settings[instance_name].keys():
+            if issubclass(models[model_name], SParameterPlaceholder) and not "sax_settings" in settings[instance_name].keys():
                 settings[instance_name] = {"sax_settings": settings[instance_name]}
                 pass
             pass
@@ -514,7 +576,16 @@ class InstantiatedCircuit:
             self.instantiated_flat_netlist['instances'].pop(f'|EXTPORT_{ext_port}_PLACEHOLDER|')
 
         self.graph = instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist, include_ports=False)
-        pass
+        
+        self.simulation_parameters = simulation_parameters
+        
+        _add_directionality_settings_to_s_parameter_placeholders(self, settings, directed=directed)
+        self.settings = settings
+
+        self._consolidate_s_parameter_components(fuse_models)
+        self.graph = instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist, include_ports=False)
+        
+        
 
     # def display(self, inline=True):
         
@@ -533,9 +604,6 @@ class InstantiatedCircuit:
             self.instantiated_flat_netlist,
             include_ports=True
         )
-
-
-
         safe_graph = deepcopy(graph)
         for _, attr in safe_graph.nodes(data=True):
             if "settings" in attr:
@@ -544,6 +612,103 @@ class InstantiatedCircuit:
         safe_graph = _sanitize_graph_for_widget(safe_graph)
         fig = Sigma(safe_graph, node_size=safe_graph.degree, node_color="club")
         display(fig)
+
+    def _consolidate_s_parameter_components(self, fuse_models):
+        """
+        Because Simphony Circuits will likely be composed of mostly sax-s-parameter elements,
+        we include this extra functionality to optimize the placement of s-parameter models.
+
+        This method will find all of the strongly connected s-parameter components and pass each subnetlist
+        into a PCell factory. How the subnetlists are handled further will depend on how this subnetlist
+        is interpreted by the PCell factory and how it handles different siulation modes
+        """
+        # TODO: Replace all of the sugraphs with SParameterGroupPlaceholder Components, to ease the stitching process
+        # TODO: make a way to iterate over these new SParameterGroupPlaceholder instance names and subgraph
+
+        s_parameter_only_graph = deepcopy(self.graph)
+        for node in self.graph.nodes():
+            model = self.instantiated_flat_netlist['instances'][node]['model']
+            if not isinstance(model, SParameterPlaceholder):
+                s_parameter_only_graph.remove_node(node)
+
+        
+        subgraphs = [s_parameter_only_graph.subgraph(c).copy() for c in nx.weakly_connected_components(s_parameter_only_graph)]
+        TOP_LEVEL_NAME = "top_level"
+
+        clipped_netlist = remove_instances_from_netlist(self.instantiated_flat_netlist, s_parameter_only_graph.nodes())
+        instantiated_recursive_netlist = sax.netlist(clipped_netlist, top_level_name=TOP_LEVEL_NAME)
+
+        for j, subgraph in enumerate(subgraphs):
+            if j == 1:
+                pass
+            clipped_edges = find_clipped_edges(self.graph, subgraph)
+
+            # ports = [src for (src, dst, key, data) in clipped_edges] # Use the clipped edges to determine the ports
+            # TODO: IMPORTANT, when determining the ports, right now it only looks at clipped edges
+            # This causes some important ports to be ignored leading to them disappearing in the pcell's ports
+            # ports = {f"o{i}":f"{src},{data["src_port"]}" if src in subgraph else f"{dst},{data["dst_port"]}" for i, (src, dst, key, data) in enumerate(clipped_edges)}
+            # subnetlist = graph_to_netlist(subgraph, port=ports)
+
+            subnetlist = graph_to_netlist(subgraph)
+            models = {subnetlist['instances'][node]['component']: self.instantiated_flat_netlist['instances'][node]['model'].sax_model for node in subgraph.nodes()}
+            port_designators = set()
+            for instance_name, instance_data in subnetlist['instances'].items():
+                model_name = instance_data['component']
+                sdict = sax.multimode(models[model_name], self.simulation_parameters.mode_identifiers)()
+                single_mode_ports = sorted({
+                    p.split("@")[0]
+                    for edge in sdict.keys()
+                    for p in edge
+                })
+                port_designators.update([f"{instance_name},{p}" for p in single_mode_ports])
+            
+            # external_port_designators = {f"{src},{data["src_port"]}" if src in subgraph else f"{dst},{data["dst_port"]}" for (src, dst, key, data) in clipped_edges}
+            internal_port_designators = set()
+            for src_designator, dst_designator in subnetlist['connections'].items():
+                internal_port_designators.add(src_designator)
+                internal_port_designators.add(dst_designator)
+            
+            external_port_designators = port_designators - internal_port_designators
+            ports = {f"o{i}":ep_designator for i, ep_designator in enumerate(external_port_designators)}
+            subnetlist['ports'] = ports
+            port_directionality = {node: self.settings[node]['port_directionality'] for node in subgraph.nodes()}
+            # default_modes = {node: self.instantiated_flat_netlist['instances'][node]['model'].default_modes for node in subgraph.nodes()}
+
+            # _settings = {k: self.settings[k] for k in subnetlist['instances'].keys() if k in self.settings}
+
+            # We need to add the settings determined by the s_parameter_placeholder objects
+            _settings = {k: self.instantiated_flat_netlist['instances'][k]['model'].settings for k in subnetlist['instances'].keys()}
+
+
+            s_parameter_pcell = s_parameter_netlist_to_pcell(subnetlist, models, port_directionality, self.simulation_parameters.mode_identifiers, fuse_models=fuse_models)
+            
+            # TODO: The following lines of code are repeated elsewhere and it would be good to wrap them up in a function
+            instantiated_s_parameter_pcell = s_parameter_pcell(self.simulation_parameters, settings = _settings)
+            pcell_netlist = instantiated_s_parameter_pcell._instantiated_netlist(self.simulation_parameters)
+            
+            s_parameter_group = f"sparameter_group{j}"
+            instantiated_recursive_netlist[s_parameter_group] = pcell_netlist
+            instantiated_recursive_netlist[TOP_LEVEL_NAME]['instances'][s_parameter_group] = {"component": s_parameter_group}
+            
+
+
+            port_lut = {v:k for k, v in ports.items()}
+            for (src, dst, key, data) in clipped_edges:
+                src_port = data["src_port"]
+                dst_port = data["dst_port"]
+                if src in s_parameter_only_graph.nodes:
+                    src_port = port_lut[f"{src},{src_port}"]
+                    src = s_parameter_group
+                elif dst in s_parameter_only_graph.nodes:
+                    dst_port = port_lut[f"{dst},{dst_port}"]
+                    dst = s_parameter_group
+                
+                src_connection = f"{src},{src_port}"
+                dst_connection = f"{dst},{dst_port}" 
+                instantiated_recursive_netlist[TOP_LEVEL_NAME]['connections'][src_connection] = dst_connection
+                                        
+        
+        self.instantiated_flat_netlist = sax.flatten_netlist(instantiated_recursive_netlist)
 
 def stringify_dict_values(d):
     """Recursively convert all values in a dict to strings."""
