@@ -1,21 +1,20 @@
-from sax import AnyNetlist, InstanceName, Ports, Connections, Models
-import sax
-from typing import TypeAlias, TypedDict
-from simphony.component.component import Component
+# from sax import AnyNetlist, InstanceName, Ports, Connections, Models
+# import sax
+# from typing import TypeAlias, TypedDict
+# from simphony.component.component import Component
 from simphony.component.pcell import PCell
-from typing_extensions import NotRequired
+# from typing_extensions import NotRequired
 import networkx as nx
-import jax.numpy as jnp
+# import jax.numpy as jnp
 import yaml
-from jax.scipy.special import factorial
+# from jax.scipy.special import factorial
 from typing import Union
-from copy import deepcopy
-from simphony.component.pcell import PCell
-from simphony.circuit._netlist import _instantiate_netlist, _add_settings_to_netlist, InstantiatedFlatNetlist, ElaboratedInstances
-from simphony.libraries.ideal.s_parameters import optical_s_parameter
+# from copy import deepcopy
+from simphony.circuit._netlist import _instantiate_netlist, _add_settings_to_netlist, InstantiatedFlatNetlist
+# from simphony.libraries.ideal.s_parameters import optical_s_parameter
 from simphony.simulation.simulation import SimulationParameters
-from sax import DEFAULT_MODES
-import inspect
+# from sax import DEFAULT_MODES
+# import inspect
 
 def instantiate_netlist(
     netlist: dict,
@@ -124,6 +123,8 @@ def netlist_to_graph(netlist: Union[dict, str], models, include_ports=True):
             dst_instance, dst_port = dst.split(",")
             src_port_directionality = models[netlist['instances'][src_instance]['component']]._port_lookup_table[src_port].directionality
             dst_port_directionality = models[netlist['instances'][dst_instance]['component']]._port_lookup_table[dst_port].directionality
+            print(f"dst: {dst}")
+            print(f"dst_directionality: {dst_port_directionality}")
             add_connection_to_graph(graph, src_instance.strip(), dst_instance.strip(), src_port.strip(), dst_port.strip(), src_port_directionality, dst_port_directionality)
             # graph.add_edge(src_instance.strip(), dst_instance.strip(), src_port=src_port.strip(), dst_port=dst_port.strip())
     
@@ -258,7 +259,7 @@ def instantiated_flat_netlist_to_graph(instantiated_flat_netlist, include_ports=
 
 #Matthew's Changes
 #Completed the graph to netlist to be used however needed to also added
-def graph_to_netlist(graph: nx.MultiDiGraph) -> dict:
+def graph_to_netlist(graph: nx.MultiDiGraph, ports={}) -> dict:
     """
     Convert a NetworkX MultiDiGraph (with node attrs 'component' and 'settings',
     edge attrs 'src_port' and 'dst_port', and graph.graph['ports']) back into a netlist:
@@ -282,7 +283,63 @@ def graph_to_netlist(graph: nx.MultiDiGraph) -> dict:
 
     # ports = graph.graph.get("ports", {})
     # netlist["ports"] = ports.copy()
-    netlist["ports"] = {}
+    netlist["ports"] = ports
+
+    return netlist
+
+def sanitize_instance_names(netlist, old_separator="~", new_separator="_"):
+    """
+    Replace '~' with '_' in all SAX instance names and update references
+    in connections, ports, and nets.
+    """
+    import copy
+
+    netlist = copy.deepcopy(netlist)
+
+    # mapping old instance names -> new names
+    rename = {
+        name: name.replace(old_separator, new_separator)
+        for name in netlist.get("instances", {})
+        if "~" in name
+    }
+
+    if not rename:
+        return netlist
+
+    def fix_ref(ref):
+        """Fix 'instance,port' references."""
+        if isinstance(ref, str) and "," in ref:
+            inst, port = ref.split(",", 1)
+            inst = rename.get(inst, inst)
+            return f"{inst},{port}"
+        return ref
+
+    # ---- rename instances ----
+    instances = netlist.get("instances", {})
+    new_instances = {}
+    for name, val in instances.items():
+        new_instances[rename.get(name, name)] = val
+    netlist["instances"] = new_instances
+
+    # ---- fix connections ----
+    if "connections" in netlist:
+        new_connections = {}
+        for k, v in netlist["connections"].items():
+            new_connections[fix_ref(k)] = fix_ref(v)
+        netlist["connections"] = new_connections
+
+    # ---- fix ports ----
+    if "ports" in netlist:
+        netlist["ports"] = {
+            name: fix_ref(ref)
+            for name, ref in netlist["ports"].items()
+        }
+
+    # ---- fix nets (optional SAX format) ----
+    if "nets" in netlist:
+        for net in netlist["nets"]:
+            net["p1"] = fix_ref(net["p1"])
+            net["p2"] = fix_ref(net["p2"])
 
     return netlist
 
@@ -297,3 +354,52 @@ def graph_to_netlist(graph: nx.MultiDiGraph) -> dict:
 #     H = jnp.exp(-1j * phi)
 
 #     return jnp.fft.ifftshift(jnp.fft.ifft(H))
+
+def generate_valid_separator(instance_names, old_separator="~", first_try="_SEP_"):
+    instance_names = list(instance_names)
+    new_separator = first_try
+    new_instance_names = [name.replace(old_separator, new_separator) for name in instance_names]
+    while not len(set(instance_names)) == len(set(new_instance_names)):
+        new_separator = "_" + new_separator + "_"
+        new_instance_names = [name.replace(old_separator, new_separator) for name in instance_names]
+    
+    return new_separator
+
+def remove_instances_from_netlist(netlist, instances_to_remove):
+    instances_to_remove = set(instances_to_remove)
+
+    new_netlist = {
+        "instances": {},
+        "connections": {},
+        "ports": {},
+    }
+
+    # Keep surviving instances
+    new_netlist["instances"] = {
+        name: inst
+        for name, inst in netlist["instances"].items()
+        if name not in instances_to_remove
+    }
+
+    def touches_removed_instance(endpoint):
+        instance_name = endpoint.split(",")[0]
+        return instance_name in instances_to_remove
+
+    # Keep only valid connections
+    new_netlist["connections"] = {
+        src: dst
+        for src, dst in netlist["connections"].items()
+        if not (
+            touches_removed_instance(src)
+            or touches_removed_instance(dst)
+        )
+    }
+
+    # Keep only valid external ports
+    new_netlist["ports"] = {
+        port: endpoint
+        for port, endpoint in netlist["ports"].items()
+        if not touches_removed_instance(endpoint)
+    }
+
+    return new_netlist

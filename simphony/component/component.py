@@ -47,8 +47,8 @@ from scipy.constants import speed_of_light
 #                                 block_mode_logic_signal, \
 #                                 complete_steady_state_inputs, \
 #                                 complete_sample_mode_inputs
-from simphony.signal.block_mode import BlockModeElectricalSignal, BlockModeLogicSignal, BlockModeOpticalSignal
-from simphony.signal.steady_state import SteadyStateOpticalSignal
+# from simphony.signal.block_mode import BlockModeElectricalSignal, BlockModeLogicSignal, BlockModeOpticalSignal
+# from simphony.signal.steady_state import SteadyStateOpticalSignal
 
 import jax
 import jax.numpy as jnp

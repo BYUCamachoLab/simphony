@@ -17,7 +17,8 @@ class SteadyStateSimulationResult(SimulationResult):
     
     def _collect_component_inputs(self, component)->dict:
         inputs = {}
-        input_components = nx.ancestors(self.circuit.graph, component)
+        # input_components = nx.ancestors(self.circuit.graph, component)
+        input_components = [u for u, v in self.circuit.graph.in_edges(component)]
         for input_component in input_components:
             input_edges = self.circuit.graph.get_edge_data(input_component, component)
             for edge_number, edge in input_edges.items():

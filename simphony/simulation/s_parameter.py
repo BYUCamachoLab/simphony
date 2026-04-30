@@ -18,7 +18,7 @@ import jax.numpy as jnp
 from functools import partial
 from simphony.component.component import SParameterComponent, SteadyStateComponent
 
-from simphony.circuit.netlist import graph_to_netlist
+from simphony.circuit.netlist import graph_to_netlist, sanitize_instance_names
 
 @struct.dataclass
 class SParameterSimulationParameters(SimulationParameters):
@@ -301,7 +301,7 @@ class SParameterSimulation(Simulation):
 
 
         s_parameter_netlist['ports'] = {"in":"combiner~sax_model,port_1", "out": "splitter~sax_model,port_1"}
-        s_parameter_netlist = sanitize_sax_instance_names(s_parameter_netlist)
+        s_parameter_netlist = sanitize_instance_names(s_parameter_netlist)
 
         import numpy as np
         # s_parameter_func = self.instantiated_circuit.instantiated_flat_netlist['instances']["wg1~sax_model"]['model'].s_parameters(np.array([1.55]), {})
@@ -328,60 +328,3 @@ class SParameterSimulation(Simulation):
         ### For now just return the s-parameter dict
         return circuit(wl)
         """
-
-
-def sanitize_sax_instance_names(netlist):
-    """
-    Replace '~' with '_' in all SAX instance names and update references
-    in connections, ports, and nets.
-    """
-    import copy
-
-    netlist = copy.deepcopy(netlist)
-
-    # mapping old instance names -> new names
-    rename = {
-        name: name.replace("~", "_")
-        for name in netlist.get("instances", {})
-        if "~" in name
-    }
-
-    if not rename:
-        return netlist
-
-    def fix_ref(ref):
-        """Fix 'instance,port' references."""
-        if isinstance(ref, str) and "," in ref:
-            inst, port = ref.split(",", 1)
-            inst = rename.get(inst, inst)
-            return f"{inst},{port}"
-        return ref
-
-    # ---- rename instances ----
-    instances = netlist.get("instances", {})
-    new_instances = {}
-    for name, val in instances.items():
-        new_instances[rename.get(name, name)] = val
-    netlist["instances"] = new_instances
-
-    # ---- fix connections ----
-    if "connections" in netlist:
-        new_connections = {}
-        for k, v in netlist["connections"].items():
-            new_connections[fix_ref(k)] = fix_ref(v)
-        netlist["connections"] = new_connections
-
-    # ---- fix ports ----
-    if "ports" in netlist:
-        netlist["ports"] = {
-            name: fix_ref(ref)
-            for name, ref in netlist["ports"].items()
-        }
-
-    # ---- fix nets (optional SAX format) ----
-    if "nets" in netlist:
-        for net in netlist["nets"]:
-            net["p1"] = fix_ref(net["p1"])
-            net["p2"] = fix_ref(net["p2"])
-
-    return netlist
