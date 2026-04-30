@@ -232,6 +232,46 @@ class BlockModeComponent(Component):
     def block_mode_response(self, input_signals: ArrayLike, simulation_parameters: BlockModeSimulationParameters):
         """Compute the system response."""
         raise NotImplementedError
+    
+    def _block_mode_response(self, input_signals, simulation_parameters):
+        outputs = self.block_mode_response(input_signals, simulation_parameters)
+
+        baseband_wls = simulation_parameters.optical_baseband_wavelengths
+        time_steps = jnp.arange(simulation_parameters.num_time_steps) * simulation_parameters.dt
+
+        for port, signal in outputs.items():
+            if not isinstance(signal, BlockModeOpticalSignal):
+                continue
+
+            amplitude = signal.amplitude
+            wavelengths = signal.wavelength
+
+            distances = jnp.abs(baseband_wls[:, None] - wavelengths[None, :])
+            closest_idx = jnp.argmin(distances, axis=0)
+
+            f_diff = speed_of_light / wavelengths - speed_of_light / baseband_wls[closest_idx]
+
+            phase = jnp.exp(
+                -1j * 2 * jnp.pi * time_steps[:, None] * f_diff[None, :]
+            )
+
+            new_amplitude = jnp.zeros(
+                (amplitude.shape[0], baseband_wls.shape[0], amplitude.shape[2]),
+                dtype=complex,
+            )
+
+            new_amplitude = new_amplitude.at[:, closest_idx, :].add(
+                amplitude * phase[:, :, None]
+            )
+
+            outputs[port] = BlockModeOpticalSignal(
+                amplitude=new_amplitude,
+                wavelength=baseband_wls,
+            )
+
+        return outputs
+
+
 
 
 class SampleModeComponent(Component):

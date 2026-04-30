@@ -8,7 +8,7 @@ from scipy.constants import speed_of_light as SPEED_OF_LIGHT
 import jax
 from dataclasses import replace
 from simphony.simulation.simulation import SimulationParameters
-from simphony.time_domain.vector_fitting.z_domain import state_space_response_discrete
+from simphony.time_domain.vector_fitting.z_domain import state_space_response_discrete, state_space_response_discrete_structured
 
 class OpticalDiscreteFilter( 
     SampleModeComponent,
@@ -186,6 +186,7 @@ def discrete_state_space(
 
     class DiscreteStateSpace( 
         SampleModeComponent,
+        BlockModeComponent,
     ):
         """
         A is nxn, where n is the number of poles
@@ -224,14 +225,15 @@ def discrete_state_space(
             B = None,
             C = None,
             D = None,
-            center_wl = 1.55e-6,
-            sampling_period = None,
+            baseband_frequency = 1.93e14,
+            sampling_frequency = None,
             delay_compensation = 0,
             mode = 0,
         ):
             self.state_space_matrices = A, B, C, D
-            self.center_wl = center_wl
-            self.center_frequency = SPEED_OF_LIGHT / center_wl
+            # self.center_wl = center_wl
+            self.baseband_frequency = baseband_frequency
+            self.sampling_frequency = sampling_frequency
             self.delay_compensation = delay_compensation
             self.mode = mode
 
@@ -280,27 +282,37 @@ def discrete_state_space(
             wavelengths = list(input_signals.values())[0].wavelength
             N = _input_amplitude.shape[0]
             L = _input_amplitude.shape[1]
-            M = 1 # We assume all inputs are on a common mode
-            
+            M = len(simulation_parameters.mode_identifiers)
+            common_mode = simulation_parameters.mode_identifiers[0]
+            common_mode_index = simulation_parameters.mode_identifiers.index(common_mode)
             
             # TODO: Make it so that the state space model only has M input ports and N output ports and not NXN
-            num_inputs
             u = jnp.zeros((N, L, num_inputs), dtype=complex)
             for i, port_name in enumerate(input_port_names):
-                # u = u.at[i, :, :].set(input_signals[port_name].get("amplitude", jnp.zeros((N, L, 1), dtype=complex))[:,:,0])
-                u = u.at[:, :, i].set(input_signals[port_name].amplitude[:, :, 0])
+                u = u.at[:, :, i].set(input_signals[port_name].amplitude[:, :, common_mode_index])
 
             y = jnp.zeros((N, L, num_outputs), dtype=complex)
             A, B, C, D = self.state_space_matrices
             for i, wl in enumerate(wavelengths):
                 # TODO: modulate inputs based on the delta f
-                _y, _ = state_space_response_discrete(A, B, C, D, u[:, i, :])
+                f = SPEED_OF_LIGHT/wl
+                delta_omega = 2*jnp.pi*(f - self.baseband_frequency) / self.sampling_frequency
+                if simulation_parameters.use_speed_up:
+                    _y, _ = state_space_response_discrete_structured(jnp.exp(1j*delta_omega)*A, B, C, D, jnp.exp(1j*delta_omega), u[:, i, :])
+                else:
+                    _y, _ = state_space_response_discrete(jnp.exp(1j*delta_omega)*A, jnp.exp(1j*delta_omega)*B, C, D, u[:, i, :])
                 y = y.at[:, i, :].set(_y)
+
+            
 
             outputs = {}
             for i, out_port_name in enumerate(output_port_names):
-                amplitude = y[:, :, i].reshape(N,L,M)
-                outputs[out_port_name] = BlockModeOpticalSignal(amplitude=amplitude, wavelength=wavelengths)
+                amplitude = jnp.zeros((N, L, M), dtype=complex)
+                amplitude = amplitude.at[:, :, common_mode_index].set(y[:, :, i])
+                outputs[out_port_name] = BlockModeOpticalSignal(
+                    amplitude=amplitude,
+                    wavelength=wavelengths,
+                )
 
             return outputs
 

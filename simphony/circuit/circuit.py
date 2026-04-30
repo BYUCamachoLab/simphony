@@ -201,7 +201,7 @@ class Circuit:
         # )
 
         safe_graph = _sanitize_graph_for_widget(relabeled_graph)
-        fig = Sigma(safe_graph, node_size=safe_graph.degree, node_color="club")
+        fig = Sigma(safe_graph, node_size=safe_graph.degree, node_color="club", start_layout = True)
         display(fig)
     
     def flatten(

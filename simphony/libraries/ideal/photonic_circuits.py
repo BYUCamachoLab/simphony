@@ -1,15 +1,14 @@
-from simphony.component.component import SteadyStateComponent
 from simphony.component.pcell import PCell
 from simphony.simulation.simulation import SimulationParameters
 from simphony.component.port import Port
 
-from simphony.libraries.ideal.modulators import OpticalModulator, DirectedOpticalModulator
-from simphony.circuit.netlist import instantiate_netlist
+from simphony.libraries.ideal.modulators import DirectedOpticalModulator
 
-### TODO: Find a better way to deal with old sax libraries
+from simphony.simulation.block_mode import BlockModeSimulationParameters 
 from simphony.libraries.old_ideal import waveguide, coupler
 from simphony.libraries.ideal.s_parameters import optical_s_parameter
-
+from simphony.libraries.ideal.special import Terminator
+import numpy as np
 class MZI(PCell):
     r"""
     o2 ---\        /---[ϕ]---\        /--- o3 
@@ -25,6 +24,11 @@ class MZI(PCell):
     o0 ---[ϕ]---/        \--- o1       
 
     """
+    _arms = (
+        ("bot", "o1", "o0"),
+        ("top", "o3", "o2"),
+    )
+
     ports = [
         Port(
             name="o0",
@@ -46,17 +50,34 @@ class MZI(PCell):
             type="optical",
             directionality = "bidirectional"
         ),
-        Port(
-            name="e0",
-            type="electrical",
-            directionality = "input"
-        ),
-        Port(
-            name="e1",
-            type="electrical",
-            directionality = "input"
-        ),
     ]
+
+    @classmethod
+    def _arm_connections(cls, partial: bool, modulators: bool):
+        connections = {}
+
+        for arm_name, splitter_port, combiner_port in cls._arms:
+            waveguide_name = f"{arm_name}_wg"
+            modulator_name = f"{arm_name}_mod"
+            combiner = f"combiner,{combiner_port}"
+
+            if partial:
+                if modulators:
+                    connections[f"{waveguide_name},o1"] = f"{modulator_name},o0"
+                    connections[f"{modulator_name},o1"] = combiner
+                else:
+                    connections[f"{waveguide_name},o1"] = combiner
+            else:
+                if modulators:
+                    connections[f"splitter,{splitter_port}"] = f"{modulator_name},o0"
+                    connections[f"{modulator_name},o1"] = f"{waveguide_name},o0"
+                else:
+                    connections[f"splitter,{splitter_port}"] = f"{waveguide_name},o0"
+
+                connections[f"{waveguide_name},o1"] = combiner
+
+        return connections
+
     def __init__(
         self,
         simulation_parameters: SimulationParameters,
@@ -67,9 +88,12 @@ class MZI(PCell):
         top_phase_shifter_settings: dict = None,
         bot_phase_shifter_settings: dict = None,
         partial: bool = False,
+        modulators: bool = True,
+
     ):
         """
-        `partial` boolean value which decides 
+        `partial` builds only the arms and combiner, without the input splitter.
+        `modulators` controls whether each arm includes a tunable phase shifter.
         """
         if splitter_settings is None:
             splitter_settings = {}
@@ -83,75 +107,49 @@ class MZI(PCell):
             top_phase_shifter_settings = {}
         if bot_phase_shifter_settings is None:
             bot_phase_shifter_settings = {}
-
-        if not partial:
-            self.netlist = {
-                "instances": {
-                    "splitter": "coupler",
-                    "combiner": "coupler",
-                    "top_wg": "waveguide",
-                    "bot_wg": "waveguide",
-                    "top_mod": "modulator",
-                    "bot_mod": "modulator",
-                },
-                "connections": {
-                    "splitter,o1": "bot_mod,o0",
-                    "bot_mod,o1": "bot_wg,o0",
-                    "bot_wg,o1": "combiner,o0",
-                    "splitter,o3": "top_mod,o0",
-                    "top_mod,o1": "top_wg,o0",
-                    "top_wg,o1": "combiner,o2",
-                },
-                "ports": {
-                    "o0": "splitter,o0",
-                    "o1": "combiner,o1",
-                    "o2": "splitter,o2",
-                    "o3": "combiner,o3",
-                    "e0": "top_mod,e0",
-                    "e1": "bot_mod,e0",
-                },
-            }
-        else:
-            self.netlist = {
-                "instances": {
-                    # "splitter": "coupler",
-                    "combiner": "coupler",
-                    "top_wg": "waveguide",
-                    "bot_wg": "waveguide",
-                    "top_mod": "modulator",
-                    "bot_mod": "modulator",
-                },
-                "connections": {
-                    # "splitter,o1": "bot_mod,o0",
-                    "bot_wg,o1": "bot_mod,o0",
-                    "bot_mod,o1": "combiner,o0",
-                    # "splitter,o3": "top_mod,o0",
-                    "top_wg,o1": "top_mod,o0",
-                    "top_mod,o1": "combiner,o2",
-                },
-                "ports": {
-                    "o0": "bot_wg,o0",
-                    "o1": "combiner,o1",
-                    "o2": "top_wg,o0",
-                    "o3": "combiner,o3",
-                    "e0": "top_mod,e0",
-                    "e1": "bot_mod,e0",
-                },
-            }
-
+        self.netlist = {
+            "instances": {
+                "combiner": "coupler",
+                "top_wg": "waveguide",
+                "bot_wg": "waveguide",
+            },
+            "ports": {
+                "o1": "combiner,o1",
+                "o3": "combiner,o3",
+            },
+            "connections": self._arm_connections(partial, modulators),
+        }
         self.settings = {
             "top_wg": top_wg_settings,
             "bot_wg": bot_wg_settings,
-            "splitter": splitter_settings,
             "combiner": combiner_settings,
-            "top_mod": top_phase_shifter_settings,
-            "bot_mod": bot_phase_shifter_settings,
         }
+
+        if modulators:
+            self.netlist["instances"].update({
+                "top_mod": "modulator",
+                "bot_mod": "modulator",
+            })
+            self.netlist["ports"]["e0"] = "top_mod,e0"
+            self.netlist["ports"]["e1"] = "bot_mod,e0"
+            self.settings["top_mod"] = top_phase_shifter_settings
+            self.settings["bot_mod"] = bot_phase_shifter_settings
+
+        if partial:
+            self.netlist["ports"]["o0"] = "bot_wg,o0"
+            self.netlist["ports"]["o2"] = "top_wg,o0"
+        else:
+            self.netlist["instances"]["splitter"] = "coupler"
+            self.netlist["ports"]["o0"] = "splitter,o0"
+            self.netlist["ports"]["o2"] = "splitter,o2"
+            self.settings["splitter"] = splitter_settings
+
         self.models = {
-                "coupler": coupler,
-                "waveguide": waveguide,
-                "modulator": OpticalModulator,
-            }
+            "coupler": coupler,
+            "waveguide": waveguide,
+        }
+        if modulators:
+            self.models["modulator"] = DirectedOpticalModulator
         from simphony.simulation.simulation import SimulationMode
         if simulation_parameters.simulation_mode == SimulationMode.SAMPLE_MODE:
             pass
@@ -162,6 +160,7 @@ class MZI(PCell):
                 "o1": "output",
                 "o3": "output",
             }
+
             waveguide_directionality = {
                 "o0": "input",
                 "o1": "output",
@@ -170,11 +169,13 @@ class MZI(PCell):
             self.models = {
                 "coupler": optical_s_parameter(coupler, coupler_directionality, simulation_parameters.mode_identifiers),
                 "waveguide": optical_s_parameter(waveguide, waveguide_directionality, simulation_parameters.mode_identifiers),
-                "modulator": DirectedOpticalModulator,
             }
+            if modulators:
+                self.models["modulator"] = DirectedOpticalModulator
             self.settings['top_wg'] = {"sax_settings": self.settings['top_wg']}
             self.settings['bot_wg'] = {"sax_settings": self.settings['bot_wg']}
-            self.settings['splitter'] = {"sax_settings": self.settings['splitter']}
+            if not partial:
+                self.settings['splitter'] = {"sax_settings": self.settings['splitter']}
             self.settings['combiner'] = {"sax_settings": self.settings['combiner']}
         elif simulation_parameters.simulation_mode == SimulationMode.S_PARAMETER:
             pass
@@ -284,12 +285,76 @@ def mzi_lattice_filter(
 
     return MZILatticeFilter
 
+def mzi_lattice_passband(
+    order: int = 4,
+    modulators: bool = False,
+):
+    optical_ports = [
+        Port(name="o0", type="optical", directionality="bidirectional"),
+        Port(name="o1", type="optical", directionality="bidirectional"),
+    ]
 
+    electrical_ports = [
+        Port(name=f"mzi{i}_e{j}", type="electrical", directionality="input")
+        for i in range(order)
+        for j in (0, 1)
+    ] if modulators else []
 
+    class MZILatticePassband(PCell):
+        ports = optical_ports + electrical_ports
+        
+        def __init__(
+            self,
+            simulation_parameters: SimulationParameters,
+            *,
+            mzi_delay_differences:list = None,
+            base_length: float = 10.0 
+        ):
+            """Build a one-input passband cascade.
 
-# class VoltageFollower(SteadyStateComponent):
-#     electrical_ports = ["e0", "e1"]
+            `mzi_delay_differences` are added to `base_length` for the top arm
+            of each full MZI stage.
+            """
 
-# class OpAmp(SteadyStateComponent):
-#     electrical_ports = ["ninv","inv","vp","vn","vout"]
-    
+            instances = {}
+            connections = {}
+            self.settings = {}
+            self.models = {"mzi": MZI, "terminator": Terminator}
+            ports = {}
+            if mzi_delay_differences is None:
+                mzi_delay_differences = []
+                for i in range(order):
+                    mzi_delay_differences.append(10.0)
+            
+            for i in range(order):
+                instances[f"mzi{i}"] = "mzi"
+                instances[f"upt{i}1"] = "terminator"
+                instances[f"upt{i}2"] = "terminator"
+                if i < order-1:
+                    connections[f"mzi{i},o1"] = f"mzi{i+1},o2"
+                connections[f"mzi{i},o3"] = f"upt{i}1,o0"
+                connections[f"mzi{i},o0"] = f"upt{i}2,o0"
+                self.settings[f"mzi{i}"] = {
+                    "partial": False,
+                    "modulators": modulators,
+                    "top_wg_settings":{"length":base_length + mzi_delay_differences[i]},
+                    "bot_wg_settings":{"length": base_length}
+                }
+                
+            ports = {
+                "o0": f"mzi{0},o2",
+                "o1": f"mzi{order-1},o1",
+            }
+            if modulators:
+                ports.update({
+                    f"mzi{i}_e{j}": f"mzi{i},e{j}"
+                    for i in range(order)
+                    for j in (0, 1)
+                })
+            self.netlist = {
+                "instances": instances,
+                "ports": ports,
+                "connections": connections,
+            }
+            
+    return MZILatticePassband

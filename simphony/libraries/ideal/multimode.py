@@ -105,14 +105,14 @@ def mode_multiplexer(
 
             for mode_no, in_port_name in enumerate(input_port_names):
                 input_amplitude = input_signals[in_port_name].amplitude[:, :, mode_no]
-                wavelength = input_signals[in_port_name].wavelength
                 output_amplitude = outputs[output_port_name].amplitude[:, :, mode_no] + input_amplitude
-                outputs[output_port_name] = BlockModeOpticalSignal(amplitude=output_amplitude.reshape((N, L, M)), wavelength=wavelengths)
+                shaped_output_amplitude = outputs[output_port_name].amplitude.at[:, :, mode_no].set(output_amplitude)
+                outputs[output_port_name] = BlockModeOpticalSignal(amplitude=shaped_output_amplitude, wavelength=wavelengths)
 
             return outputs
-
-
+    
     return ModeMultiplexer
+
 
 
 

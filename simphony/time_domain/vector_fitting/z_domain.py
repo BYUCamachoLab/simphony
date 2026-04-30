@@ -261,7 +261,6 @@ def optimize_order(bias_fn, min_order, max_order):
     fc = bias_fn(c)[0] + complexity_penalty*d
     fd = bias_fn(d)[0] + complexity_penalty*d
     while abs(b-a) > 1:
-        print("Again!")
         if fc < fd:  # minimum is in [a, d]
             b, d, fd = d, c, fc
             c = int(b - golden_ratio * (b - a))
@@ -310,7 +309,6 @@ def optimize_order_vector_fitting_discrete(
 
     return poles, residues, feedthrough, mean_squared_error
 
-import jax.numpy as jnp
 
 # def broken_state_space_discrete(poles, residues, feedthrough):
 #     """
@@ -402,34 +400,65 @@ def state_space_discrete(poles, residues, feedthrough):
 #     D = feedthrough
 #     return A, B, C, D
 
-def state_space_step_discrete(A, B, C, D, x, u):
-        x_next = A @ x + B @ u
-        y = C @ x + D @ u
-        return x_next, y
+@jax.jit
+def _state_space_response_discrete(A, B, C, D, u, x0):
+    def step(x, u_k):
+        y_k = C @ x + D @ u_k
+        x_next = A @ x + B @ u_k
+        return x_next, (y_k, x_next)
 
-import jax
-import jax.numpy as jnp
-
-def make_state_space_runner(A, B, C, D):
-    @jax.jit
-    def run(u, x0):
-        def step(x, u_k):
-            y_k = C @ x + D @ u_k
-            x_next = A @ x + B @ u_k
-            return x_next, (y_k, x_next)
-
-        _, (yout, xout) = jax.lax.scan(step, x0, u)
-        return yout, xout
-
-    return run
+    _, (yout, xout) = jax.lax.scan(step, x0, u)
+    return yout, xout
 
 
 def state_space_response_discrete(A, B, C, D, u, x0=None):
     if x0 is None:
         x0 = jnp.zeros((A.shape[0],), dtype=A.dtype)
 
-    runner = make_state_space_runner(A, B, C, D)
-    return runner(u, x0)
+    return _state_space_response_discrete(A, B, C, D, u, x0)
+
+
+@jax.jit
+def _state_space_response_discrete_structured(A_diag, residues, D, u, x0, b_phase):
+    r = residues.shape[0]
+    m = residues.shape[2]
+
+    def step(x, u_k):
+        y_k = jnp.einsum('iqm,im->q', residues, x.reshape((r, m))) + D @ u_k
+        x_next = A_diag * x + b_phase * jnp.tile(u_k, r)
+        return x_next, (y_k, x_next)
+
+    _, (yout, xout) = jax.lax.scan(step, x0, u)
+    return yout, xout
+
+
+def state_space_response_discrete_structured(A, B, C, D, phase, u, x0=None):
+    """
+    Fast discrete-time response for the structured vector-fitting realization.
+
+    This assumes the ABCD matrices come from `state_space_discrete`, with:
+    - A diagonal/block-diagonal replicated-pole structure.
+    - B equal to the canonical replicated-input selector.
+    - C ordered so it can be reshaped into residues with shape (r, q, m).
+    - State ordering grouped by pole, then input.
+
+    This is not equivalent to `state_space_response_discrete` for arbitrary
+    state-space realizations for user-defined state space models. This method was
+    explicitly designed to be used for the pole-residue models generated from user
+    defined s-parameter matrices.
+    """
+    if x0 is None:
+        x0 = jnp.zeros((A.shape[0],), dtype=A.dtype)
+
+    M = A.shape[0]
+    m = B.shape[1]
+    r = M // m
+    q = C.shape[0]
+
+    A_diag = jnp.diag(A)
+    residues = jnp.transpose(C.reshape(q, r, m), (1, 0, 2))
+
+    return _state_space_response_discrete_structured(A_diag, residues, D, u, x0, phase)
 
 
 # def state_space_response_discrete(A, B, C, D, u, x0=None):
@@ -490,29 +519,6 @@ def state_space_frequency_response_discrete(A, B, C, D, f, f_center, dt):
         Feedthrough matrix
     freqs : jnp.ndarray
         Frequencies in Hz (or angular frequencies depending on jω convention)
-
-    Returns
-    -------
-    H : jnp.ndarray, shape (q, m, len(freqs))
-        Frequency response at each frequency
-    """
-    """
-    Compute the frequency response of a discrete-time state-space system.
-
-    Parameters
-    ----------
-    A : jnp.ndarray, shape (n, n)
-        State matrix
-    B : jnp.ndarray, shape (n, m)
-        Input matrix
-    C : jnp.ndarray, shape (q, n)
-        Output matrix
-    D : jnp.ndarray, shape (q, m)
-        Feedthrough matrix
-    freqs : jnp.ndarray
-        Frequencies in Hz
-    dt : float
-        Sampling period
 
     Returns
     -------

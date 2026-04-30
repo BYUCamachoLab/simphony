@@ -4,7 +4,8 @@ import networkx as nx
 from copy import deepcopy
 from flax import struct
 from dataclasses import field
-
+import jax
+import jax.numpy as jnp
 from simphony.libraries.ideal.s_parameters import SParameterSax
 
 
@@ -22,10 +23,14 @@ class BlockModeSimulationParameters(SimulationParameters):
     num_time_steps: int = 1000
     spectral_range: tuple[float, float] = (1.5e-6, 1.6e-6)
     center_wavelength: float = 1.55e-6
+    optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([1.55e-6]))
     store_component_inputs: bool = True
     store_component_outputs: bool = True
     store_port_outputs: bool = True
     tracked_components: tuple[str, ...] = field(default_factory=tuple)
+    use_speed_up: bool = False
+    
+    
         
     # def __init__(
     #     self,
@@ -92,13 +97,14 @@ class BlockModeSimulation(Simulation):
 
 
         self.block_mode_order = self._determine_block_mode_order_nx_method(instantiated_circuit)
+        
         # self._instantiate_components(self.settings)
         for instance_name in self.block_mode_order:
             inputs = simulation_result._collect_component_inputs(instance_name, output_cache)
             if self._should_store_component(instance_name, self.simulation_parameters.store_component_inputs, tracked_components):
                 simulation_result.component_inputs[instance_name] = inputs
             component = instantiated_circuit.instantiated_flat_netlist['instances'][instance_name]['model']
-            outputs = component.block_mode_response(inputs, self.simulation_parameters)
+            outputs = component._block_mode_response(inputs, self.simulation_parameters)
             output_cache[instance_name] = outputs
 
             if self._should_store_component(instance_name, self.simulation_parameters.store_component_outputs, tracked_components):
