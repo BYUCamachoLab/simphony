@@ -11,7 +11,7 @@ class SteadyStateOpticalSignal:
 
 @struct.dataclass
 class SteadyStateElectricalSignal:
-    amplitude: jnp.ndarray  # shape: (L,) where L is number of wavelengths
+    voltage: jnp.ndarray  # shape: (L,) where L is number of wavelengths
     wavelength: jnp.ndarray   
 
 @struct.dataclass

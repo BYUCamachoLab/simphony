@@ -392,17 +392,17 @@ class VoltageSource(
         elif self.envelope_fn:
             self.envelope = self.envelope_fn(t)
         else:
-            self.envelope = BlockModeElectricalSignal(amplitude=np.ones((len(t), 1), dtype=complex)*self.steady_state_voltage) 
+            self.envelope = BlockModeElectricalSignal(voltage=np.ones((len(t), 1), dtype=complex)*self.steady_state_voltage) 
 
         # Make envelope match the number of time steps, by truncating or appending zeros
-        voltage = self.envelope.amplitude
+        voltage = self.envelope.voltage
         T, L = voltage.shape
         if voltage.shape[0] < N:
             voltage = jnp.concatenate([voltage, jnp.zeros((N-T, L), dtype=complex)], axis=0)
         elif voltage.shape[0] > N:
             voltage = voltage[:N, :]
 
-        return BlockModeElectricalSignal(amplitude=voltage)
+        return BlockModeElectricalSignal(voltage=voltage)
     
     def steady_state(
         self, 
@@ -410,7 +410,7 @@ class VoltageSource(
         simulation_parameters: SimulationParameters,
     ):
         outputs = {
-            "e0": SteadyStateElectricalSignal(amplitude=self.steady_state_voltage)
+            "e0": SteadyStateElectricalSignal(voltage=self.steady_state_voltage)
         }
         return outputs
 

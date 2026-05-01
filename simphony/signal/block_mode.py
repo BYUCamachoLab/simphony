@@ -8,12 +8,12 @@ class BlockModeOpticalSignal:
     """
     Optical signal in block mode.
 
-    amplitude: jnp.ndarray of shape (T, L, M)
+    amplitude: complex valued jnp.ndarray of shape (T, L, M)
         - T: time steps
         - L: number of carrier wavelengths
         - M: number of polarization modes (e.g., 0=TE, 1=TM)
 
-    wavelength: jnp.ndarray of shape (L,)
+    wavelength: float valued jnp.ndarray of shape (L,)
         - Wavelengths corresponding to the second axis of amplitude
     """
     amplitude: jnp.ndarray    # shape:(T, L, M) where T is number of time steps, L is number of wavelengths, and M is the number of modes
@@ -21,7 +21,12 @@ class BlockModeOpticalSignal:
 
 @struct.dataclass
 class BlockModeElectricalSignal:
-    amplitude: jnp.ndarray    # shape:(T,) where T is time steps
+    """
+    Electrical signal in block mode
+
+    voltage: float valued jnp.ndaray of shap(T, ) where T is the number of time steps
+    """
+    voltage: jnp.ndarray 
 
 @struct.dataclass
 class BlockModeLogicSignal:

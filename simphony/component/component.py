@@ -237,8 +237,8 @@ class BlockModeComponent(Component):
         raise NotImplementedError
     
     def _block_mode_response(self, input_signals, simulation_parameters):
-        for port in self._input_port_lookup_table:
-            input_signals.setdefault(port, self._default_input_signal(simulation_parameters, port_type))
+        for port_name, port in self._input_port_lookup_table.items():
+            input_signals.setdefault(port_name, self._default_input_signal(simulation_parameters, port.type))
         outputs = self.block_mode_response(input_signals, simulation_parameters)
 
         baseband_wls = simulation_parameters.optical_baseband_wavelengths
@@ -276,11 +276,18 @@ class BlockModeComponent(Component):
 
         return outputs
 
-    def _default_input_signal(simulation_parameters, port_type):
+    def _default_input_signal(self, simulation_parameters, port_type):
         if port_type == "optical":
-            return BlockModeOpticalSignal()
+            wl = simulation_parameters.optical_baseband_wavelengths
+            T = simulation_parameters.num_time_steps
+            L = wl.shape[0]
+            M = len(simulation_parameters.mode_identifiers)
+            amplitude = jnp.zeros((T, L, M), dtype=complex)
+            return BlockModeOpticalSignal(amplitude=amplitude, wavelength=wl)
         elif port_type == "electrical":
-            return BlockModeElectricalSignal()
+            T = simulation_parameters.num_time_steps
+            voltage = jnp.zeros((T,), dtype=float)
+            return BlockModeElectricalSignal(voltage=voltage)
         elif port_type == "logic":
             raise NotImplementedError # TODO: Complete this function for more port types
         else:

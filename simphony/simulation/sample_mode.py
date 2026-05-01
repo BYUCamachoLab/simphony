@@ -112,8 +112,8 @@ class SampleModeSimulation(Simulation):
                 self.tracked_signals[key]['output'] = BlockModeOpticalSignal(amplitude=A_t.reshape((N, 1, 1)), wavelength=optical_wavelengths)
             elif port_type == 'electrical':
                 A_t = jnp.zeros((N), dtype=complex)
-                self.tracked_signals[key]['input'] = BlockModeElectricalSignal(amplitude=A_t.reshape((N, 1)))
-                self.tracked_signals[key]['output'] = BlockModeElectricalSignal(amplitude=A_t.reshape((N, 1)))
+                self.tracked_signals[key]['input'] = BlockModeElectricalSignal(voltage=A_t.reshape((N, 1)))
+                self.tracked_signals[key]['output'] = BlockModeElectricalSignal(voltage=A_t.reshape((N, 1)))
             elif port_type == 'logic':
                 value = jnp.zeros((N), dtype=int)
                 self.tracked_signals[key]['input'] = BlockModeLogicSignal(value=value, wavelength=electrical_wavelengths)

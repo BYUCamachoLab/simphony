@@ -20,7 +20,7 @@ class SampleModeOpticalSignal:
 
 @struct.dataclass
 class SampleModeElectricalSignal:
-    amplitude: float # TODO: Determine whether making this a float and not a jax array is appropriate
+    voltage: float # TODO: Determine whether making this a float and not a jax array is appropriate
     
 @struct.dataclass
 class SampleModeLogicSignal:

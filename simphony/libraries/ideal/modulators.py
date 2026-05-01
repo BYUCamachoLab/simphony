@@ -68,13 +68,13 @@ class DirectedOpticalModulator(
         M = len(simulation_parameters.mode_identifiers) # Currently, ignores all but the first mode
         
         
-        total_real_voltage = jnp.sum(input_signals["e0"].amplitude, axis=1)
+        voltage = input_signals["e0"].voltage
 
         output_amplitude = jnp.zeros((N, L, M), dtype=complex)
         
         for m, mode in enumerate(simulation_parameters.mode_identifiers):
-            phase_op = jnp.polyval(self.phase_coefficients[m], total_real_voltage)
-            absorption_dB = jnp.polyval(self.absorption_coefficients[m], total_real_voltage)
+            phase_op = jnp.polyval(self.phase_coefficients[m], voltage)
+            absorption_dB = jnp.polyval(self.absorption_coefficients[m], voltage)
             fraction_of_power_remaining = 10**(-absorption_dB*self.length/10)
             fraction_of_power_remaining = jnp.repeat(fraction_of_power_remaining[:, None], L, axis=1)
             phase_shift = jnp.repeat(phase_op[:, None], L, axis=1)
@@ -146,12 +146,10 @@ class OpticalModulator(
         inputs: dict,
         wl: ArrayLike=1.55e-6,
     )->sax.SDict:    
-        total_real_voltage = 0
-        for v in inputs["e0"].amplitude:
-            total_real_voltage += jnp.real(v)
+        voltage = inputs["e0"].voltage
 
-        phase_op = jnp.polyval(self.phase_coefficients, total_real_voltage)
-        absorption_dB = jnp.polyval(self.absorption_coefficients, total_real_voltage)
+        phase_op = jnp.polyval(self.phase_coefficients, voltage)
+        absorption_dB = jnp.polyval(self.absorption_coefficients, voltage)
         fraction_of_power_remaining = 10**(-absorption_dB*self.length/10)
         phase_shift = phase_op
         print(self.phase_coefficients)
@@ -200,9 +198,7 @@ class OpticalModulator(
         # if 'o1' not in inputs:
         #     inputs['o1'] = optical_signal(field=0)
         # We only consider DC voltage and assum
-        total_real_voltage = 0
-        for v in inputs["e0"].voltage:
-            total_real_voltage += jnp.real(v)       
+        voltage = inputs["e0"].voltage
 
         o0_field_out = []
         o1_field_out = []
@@ -210,8 +206,8 @@ class OpticalModulator(
             o0_in = inputs["o0"].field[i]
             o1_in = inputs["o1"].field[i]
             
-            phase_op = jnp.polyval(self.phase_coefficients, total_real_voltage)
-            absorption_dB = jnp.polyval(self.absorption_coefficients, total_real_voltage)
+            phase_op = jnp.polyval(self.phase_coefficients, voltage)
+            absorption_dB = jnp.polyval(self.absorption_coefficients, voltage)
             fraction_of_power_remaining = 10**(-absorption_dB*self.length/10)
             delta_n = self.operating_wl/(2*jnp.pi*self.length) * phase_op
             phase_shift = 2*jnp.pi/optical_wl * (self.effective_index+delta_n)* self.length
