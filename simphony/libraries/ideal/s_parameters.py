@@ -843,9 +843,14 @@ def _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, 
         output_ports = [f"{port}@{mode}" for port, modes in output_port_modes.items() for mode in modes]
         S = dict_to_rect_matrix(sdict, input_ports=input_ports, output_ports=output_ports)
         
-        A = jnp.zeros((1, 1), dtype=complex)
-        B = jnp.zeros((1, len(input_ports)), dtype=complex)
-        C = jnp.zeros((1, 1), dtype=complex)
+        # Order r = 1 model
+        r = 1
+        m = len(input_ports)
+        M = r*m
+        q = len(output_ports)
+        A = jnp.zeros((M, M), dtype=complex)
+        B = jnp.zeros((M, m), dtype=complex)
+        C = jnp.zeros((q, M), dtype=complex)
         D = S[0, :, :]
 
         return A, B, C, D

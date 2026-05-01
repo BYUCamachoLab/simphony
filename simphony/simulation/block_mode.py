@@ -11,18 +11,10 @@ from simphony.libraries.ideal.s_parameters import SParameterPlaceholder
 class BlockModeSimulationParameters(SimulationParameters):
     simulation_mode: SimulationMode = field(default_factory=lambda:SimulationMode.BLOCK_MODE)    
     directed: bool = True
-    dt = 1e-14
-    num_time_steps = 1000
-    # Moved spectral range to vector fitting parameters in optical_s_parameters
-    # spectral_range = (1.5e-6, 1.6e-6)
-    # Optical Baseband Wavelengths will be used to control the frequency channels the simulator uses
-    optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jax.numpy.array([1.54e-6, 1.55e-6, 1.56e-6]))
+    dt: float = 1e-14
+    num_time_steps: int = 1000
+    optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jax.numpy.array([1.55e-6]))
     use_speed_up: bool = True
-    # def __init__(
-    #     self,
-    #     **kwargs,
-    # ):
-    #     super().__init__(**kwargs)
 
 class BlockModeSimulationResult(SimulationResult):
     def __init__(self, circuit):
@@ -45,10 +37,11 @@ class BlockModeSimulationResult(SimulationResult):
 class BlockModeSimulation(Simulation):
     def __init__(
         self, 
-        circuit: Circuit, 
-        settings = None,
+        circuit: Circuit,
+        settings,
+        tracked_ports: dict = None,
         simulation_parameters = None,
-        ports = None,
+        # ports = None,
         # circuit: Circuit,
         # ports = None
     ):
@@ -62,30 +55,30 @@ class BlockModeSimulation(Simulation):
         self.circuit = circuit
         # self.flat_circuit = circuit.flatten()
         self.settings = settings
-
-        if ports is None:
-            ports = self.circuit.netlist['top_level']['ports']
+        self.tracked_ports = tracked_ports
+        # if ports is None:
+        #     ports = self.circuit.netlist['top_level']['ports']
 
         
-        self.ports = ports
+        # self.ports = ports
 
     def run(
         self,
     )->BlockModeSimulationResult:
         # _add_directionality_settings_to_s_parameter_components(self.flat_circuit, self.settings)
-        instantiated_circuit = self.circuit.instantiate(self.settings, self.simulation_parameters, directed=True)
+        self._instantiated_circuit = self.circuit.instantiate(self.settings, self.simulation_parameters, tracked_ports=self.tracked_ports, directed=True)
         # instantiated_circuit.display()
-        simulation_result = BlockModeSimulationResult(instantiated_circuit)
+        simulation_result = BlockModeSimulationResult(self._instantiated_circuit)
 
 
-        self.block_mode_order = self._determine_block_mode_order_nx_method(instantiated_circuit)
+        self.block_mode_order = self._determine_block_mode_order_nx_method(self._instantiated_circuit)
         # self._instantiate_components(self.settings)
         print(len(self.block_mode_order))
         for instance_name in self.block_mode_order:
             
             simulation_result._collect_component_inputs(instance_name)   
             inputs = simulation_result.component_inputs[instance_name]
-            component = instantiated_circuit.instantiated_flat_netlist['instances'][instance_name]['model']
+            component = self._instantiated_circuit.instantiated_flat_netlist['instances'][instance_name]['model']
             outputs = component.block_mode_response(inputs, self.simulation_parameters)
             simulation_result.component_outputs[instance_name] = outputs
         

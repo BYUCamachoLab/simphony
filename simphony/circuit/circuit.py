@@ -29,7 +29,7 @@ from typing import Tuple
 # import re
 
 
-from simphony.libraries._internal.placeholder import ExternalPortPlaceholder
+from simphony.libraries._internal.placeholder import DirectedPortLabel, BidirectionalPortLabel
 # from simphony.utils import dict_to_matrix
 
 COMPONENT_COLOR_DEFAULT = "black"
@@ -211,6 +211,7 @@ class Circuit:
         self,
         settings: dict,
         simulation_parameters: SimulationParameters,
+        tracked_ports: dict = None,
         directed: bool = False,
         fuse_models: bool = False,
         # default_modes,
@@ -218,7 +219,8 @@ class Circuit:
         return InstantiatedCircuit(
             self, 
             settings,
-            simulation_parameters, 
+            simulation_parameters,
+            tracked_ports=tracked_ports,
             directed=directed,
             fuse_models=fuse_models
             # directed, 
@@ -524,6 +526,7 @@ class InstantiatedCircuit:
         settings: dict,
         simulation_parameters: SimulationParameters,
         # consolidate_s_parameter_components = True, # I have decided that this will just be the thing to do
+        tracked_ports: dict = None,
         directed = False, # TODO: Implement bidirectional interpretation of ambiguous s parameter models
         fuse_models = False,
         # directed: bool,
@@ -533,15 +536,21 @@ class InstantiatedCircuit:
         When `directed` is True, unspecified directionalities of SParameterPlaceholder objects will determined 
         based on the order of connection in the netlist
         """
+        if not isinstance(tracked_ports, dict):
+            tracked_ports = {}
+        for ext_port_name, port_designator in circuit.netlist["top_level"]['ports'].items():
+            tracked_ports.setdefault(ext_port_name, port_designator)
+        
         # TODO: I was mutating the inputs so I deep copied them. TODO: assess this for efficiency
         circuit = deepcopy(circuit)
         settings = deepcopy(settings)
+        # simulation_parameters = deepcopy(simulation_parameters)
         simulation_parameters = deepcopy(simulation_parameters) 
         
         if isinstance(circuit, FlatCircuit):
             self.circuit = circuit
         elif isinstance(circuit, Circuit):
-            self.circuit = circuit.flatten()  
+            self.circuit = circuit.flatten()
 
         netlist = self.circuit.netlist
         models = self.circuit.models
@@ -553,27 +562,19 @@ class InstantiatedCircuit:
             model_name = netlist['instances'][instance_name]['component']
             if issubclass(models[model_name], SParameterPlaceholder) and not "sax_settings" in settings[instance_name].keys():
                 settings[instance_name] = {"sax_settings": settings[instance_name]}
-                pass
-            pass
         
-        # Add Placeholders to netlist to keep track of external ports
-        # TODO: Prevent chance of naming conflict
-        # We can assume that netlist is already flattened, ie, not recursize
-        for ext_port in netlist['ports'].keys():
-            netlist['instances'][f'|EXTPORT_{ext_port}_PLACEHOLDER|'] = f'|EXTPORT_{ext_port}_PLACEHOLDER|'
-            models[f'|EXTPORT_{ext_port}_PLACEHOLDER|'] = ExternalPortPlaceholder
-            netlist['connections'][f'|EXTPORT_{ext_port}_PLACEHOLDER|,_0'] = netlist['ports'][ext_port]
-
+        # TODO: Stitch in Directed Port Labels
+        self._insert_port_labels(tracked_ports) 
 
         from simphony.circuit.netlist import instantiate_netlist
         self.instantiated_flat_netlist = instantiate_netlist(netlist, models, settings, simulation_parameters)
-        
-        # Remove Placeholders
-        self.ext_port_lookup_table = {}
-        for ext_port in netlist['ports'].keys():
-            self.ext_port_lookup_table[ext_port] = self.instantiated_flat_netlist['connections'][f'|EXTPORT_{ext_port}_PLACEHOLDER|,_0']
-            self.instantiated_flat_netlist['connections'].pop(f'|EXTPORT_{ext_port}_PLACEHOLDER|,_0')
-            self.instantiated_flat_netlist['instances'].pop(f'|EXTPORT_{ext_port}_PLACEHOLDER|')
+
+        # # Remove Placeholders
+        # self.ext_port_lookup_table = {}
+        # for ext_port in tracked_ports.keys():
+        #     self.ext_port_lookup_table[ext_port] = self.instantiated_flat_netlist['connections'][f'|EXTPORT_{ext_port}_PLACEHOLDER|,_0']
+        #     self.instantiated_flat_netlist['connections'].pop(f'|EXTPORT_{ext_port}_PLACEHOLDER|,_0')
+        #     self.instantiated_flat_netlist['instances'].pop(f'|EXTPORT_{ext_port}_PLACEHOLDER|')
 
         self.graph = instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist, include_ports=False)
         
@@ -583,6 +584,8 @@ class InstantiatedCircuit:
         self.settings = settings
 
         self._consolidate_s_parameter_components(fuse_models)
+        self._remove_port_labels()
+
         self.graph = instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist, include_ports=False)
         
         
@@ -709,6 +712,12 @@ class InstantiatedCircuit:
                                         
         
         self.instantiated_flat_netlist = sax.flatten_netlist(instantiated_recursive_netlist)
+
+    def _insert_port_labels(self, tracked_ports):
+        pass
+
+    def _remove_port_labels(self):
+        pass
 
 def stringify_dict_values(d):
     """Recursively convert all values in a dict to strings."""
