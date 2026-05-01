@@ -6,7 +6,7 @@ if TYPE_CHECKING:
     from simulation.sample_mode import SampleModeSimulationParameters 
     from simulation.simulation import SimulationParameters, SimulationMode
 
-from simphony.signal.block_mode import BlockModeOpticalSignal
+from simphony.signal.block_mode import BlockModeOpticalSignal, BlockModeElectricalSignal
 #### Include First ####
 
 import inspect
@@ -196,6 +196,8 @@ class Component:
     @classmethod
     def _create_port_lookup_table(cls):
         cls._port_lookup_table = {p.name: p for p in cls.ports}
+        cls._input_port_lookup_table = {p.name: p  for p in cls.ports if p.directionality=="input"}
+        cls._output_port_lookup_table = {p.name: p for p in cls.ports if p.directionality=="output"}
     
     def __init__(
         self,
@@ -235,6 +237,8 @@ class BlockModeComponent(Component):
         raise NotImplementedError
     
     def _block_mode_response(self, input_signals, simulation_parameters):
+        for port in self._input_port_lookup_table:
+            input_signals.setdefault(port, self._default_input_signal(simulation_parameters, port_type))
         outputs = self.block_mode_response(input_signals, simulation_parameters)
 
         baseband_wls = simulation_parameters.optical_baseband_wavelengths
@@ -272,7 +276,19 @@ class BlockModeComponent(Component):
 
         return outputs
 
+    def _default_input_signal(simulation_parameters, port_type):
+        if port_type == "optical":
+            return BlockModeOpticalSignal()
+        elif port_type == "electrical":
+            return BlockModeElectricalSignal()
+        elif port_type == "logic":
+            raise NotImplementedError # TODO: Complete this function for more port types
+        else:
+            raise NotImplementedError(f"Default signal not specified for ports of type {port_type}") # TODO: Complete this function for more port types
 
+    # TODO: Decide whether it is worth it to implement this function
+    # def _default_output_signal(simulation_parameters, port_type):
+    #     pass
 
 
 class SampleModeComponent(Component):

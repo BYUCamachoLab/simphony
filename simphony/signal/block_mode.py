@@ -21,8 +21,7 @@ class BlockModeOpticalSignal:
 
 @struct.dataclass
 class BlockModeElectricalSignal:
-    amplitude: jnp.ndarray    # shape:(T, L) where T is time steps
-    wavelength: jnp.ndarray       # shape: (L,)
+    amplitude: jnp.ndarray    # shape:(T,) where T is time steps
 
 @struct.dataclass
 class BlockModeLogicSignal:

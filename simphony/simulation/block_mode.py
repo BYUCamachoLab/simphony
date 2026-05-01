@@ -79,7 +79,7 @@ class BlockModeSimulation(Simulation):
             simulation_result._collect_component_inputs(instance_name)   
             inputs = simulation_result.component_inputs[instance_name]
             component = self._instantiated_circuit.instantiated_flat_netlist['instances'][instance_name]['model']
-            outputs = component.block_mode_response(inputs, self.simulation_parameters)
+            outputs = component._block_mode_response(inputs, self.simulation_parameters)
             simulation_result.component_outputs[instance_name] = outputs
         
         return simulation_result

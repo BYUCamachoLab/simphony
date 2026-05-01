@@ -96,7 +96,6 @@ class SampleModeSimulation(Simulation):
     ) -> SampleModeSimulationResult:
         N = simulation_parameters.num_time_steps
         optical_wavelengths = simulation_parameters.optical_baseband_wavelengths
-        electrical_wavelengths = simulation_parameters.electrical_baseband_wavelengths
 
         if tracked_ports is None:
             tracked_ports = self.circuit.netlist['ports']
@@ -113,8 +112,8 @@ class SampleModeSimulation(Simulation):
                 self.tracked_signals[key]['output'] = BlockModeOpticalSignal(amplitude=A_t.reshape((N, 1, 1)), wavelength=optical_wavelengths)
             elif port_type == 'electrical':
                 A_t = jnp.zeros((N), dtype=complex)
-                self.tracked_signals[key]['input'] = BlockModeElectricalSignal(amplitude=A_t.reshape((N, 1)), wavelength=electrical_wavelengths)
-                self.tracked_signals[key]['output'] = BlockModeElectricalSignal(amplitude=A_t.reshape((N, 1)), wavelength=electrical_wavelengths)
+                self.tracked_signals[key]['input'] = BlockModeElectricalSignal(amplitude=A_t.reshape((N, 1)))
+                self.tracked_signals[key]['output'] = BlockModeElectricalSignal(amplitude=A_t.reshape((N, 1)))
             elif port_type == 'logic':
                 value = jnp.zeros((N), dtype=int)
                 self.tracked_signals[key]['input'] = BlockModeLogicSignal(value=value, wavelength=electrical_wavelengths)
@@ -202,7 +201,7 @@ class SampleModeSimulation(Simulation):
 
         return inputs
 
-    def _initial_outputs(self, optical_wavelengths, electrical_wavelengths):
+    def _initial_outputs(self, optical_wavelengths):
         initial_outputs = {}
         for inst_name, model in self.components.items():
             initial_outputs[inst_name] = {}
@@ -211,9 +210,7 @@ class SampleModeSimulation(Simulation):
                 wl = optical_wavelengths
                 initial_outputs[inst_name][o_port] = SampleModeOpticalSignal(amplitude, wl)
             for e_port in model.electrical_ports:
-                voltage = jnp.zeros((electrical_wavelengths.shape[0]), dtype=complex)
-                wl = electrical_wavelengths
-                initial_outputs[inst_name][e_port] = SampleModeElectricalSignal(voltage, wl)
+                initial_outputs[inst_name][e_port] = SampleModeElectricalSignal(0)
             for l_port in model.logic_ports:
                 value = 0
                 initial_outputs[inst_name][l_port] = SampleModeLogicSignal(value)

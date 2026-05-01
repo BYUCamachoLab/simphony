@@ -137,6 +137,7 @@ class Circuit:
         self.models = deepcopy(models)
         self._convert_sax_models()
         for instance_name, component in self.models.items():
+            # component._create_port_lookup_tables()
             component._create_port_lookup_table()
 
         # self.flattened_graph = netlist_to_graph(self.flattened_netlist)

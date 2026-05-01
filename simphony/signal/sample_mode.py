@@ -20,8 +20,7 @@ class SampleModeOpticalSignal:
 
 @struct.dataclass
 class SampleModeElectricalSignal:
-    amplitude: jnp.ndarray # shape: (L,), corresponding wavelengths
-    wavelength: jnp.ndarray # shape: (L,), corresponding wavelengths
+    amplitude: float # TODO: Determine whether making this a float and not a jax array is appropriate
     
 @struct.dataclass
 class SampleModeLogicSignal:

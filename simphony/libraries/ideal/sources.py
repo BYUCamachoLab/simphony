@@ -358,12 +358,10 @@ class VoltageSource(
         simulation_parameters: SimulationParameters,
         *,
         envelope: BlockModeOpticalSignal = None,
-        envelope_fn: Callable[[Float[Array, "n"]], BlockModeOpticalSignal] = None,
+        envelope_fn: Callable[[Float[Array, "n"]], BlockModeElectricalSignal] = None,
         steady_state_voltage=1.0,
-        steady_state_wl=0,
     ):
         self.steady_state_voltage=steady_state_voltage
-        self.steady_state_wl = steady_state_wl
         
         
         if envelope is not None and envelope_fn is not None:
@@ -394,18 +392,17 @@ class VoltageSource(
         elif self.envelope_fn:
             self.envelope = self.envelope_fn(t)
         else:
-            self.envelope = BlockModeElectricalSignal(amplitude=np.ones((len(t), 1), dtype=complex)*self.steady_state_voltage, wavelength=[self.steady_state_wl]) 
+            self.envelope = BlockModeElectricalSignal(amplitude=np.ones((len(t), 1), dtype=complex)*self.steady_state_voltage) 
 
         # Make envelope match the number of time steps, by truncating or appending zeros
         voltage = self.envelope.amplitude
-        wl = self.envelope.wavelength
         T, L = voltage.shape
         if voltage.shape[0] < N:
             voltage = jnp.concatenate([voltage, jnp.zeros((N-T, L), dtype=complex)], axis=0)
         elif voltage.shape[0] > N:
             voltage = voltage[:N, :]
 
-        return BlockModeElectricalSignal(amplitude=voltage, wavelength=wl)
+        return BlockModeElectricalSignal(amplitude=voltage)
     
     def steady_state(
         self, 
@@ -413,7 +410,7 @@ class VoltageSource(
         simulation_parameters: SimulationParameters,
     ):
         outputs = {
-            "e0": SteadyStateElectricalSignal(amplitude=[self.steady_state_voltage], wavelength=[self.steady_state_wl])
+            "e0": SteadyStateElectricalSignal(amplitude=self.steady_state_voltage)
         }
         return outputs
 
