@@ -107,3 +107,14 @@ instantiated_circuit = circuit.instantiate(block_mode_settings, BlockModeSimulat
 
 
 instantiated_circuit.display()
+
+from simphony.simulation.block_mode import BlockModeSimulation, BlockModeSimulationParameters
+tracked_ports = {
+    "gc1": "gc1,o1",
+    "lf1": "lf1,o1",
+    "lf2": "lf2,o1",
+}
+circuit = Circuit(netlist, models)
+block_mode_simulation_parameters = BlockModeSimulationParameters(mode_identifiers=["TE", "TM"], use_speed_up=True)
+block_mode_simulation = BlockModeSimulation(circuit, block_mode_settings, tracked_ports, block_mode_simulation_parameters)
+block_mode_simulation_result = block_mode_simulation.run()

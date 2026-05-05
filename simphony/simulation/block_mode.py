@@ -17,20 +17,22 @@ class BlockModeSimulationParameters(SimulationParameters):
     use_speed_up: bool = True
 
 class BlockModeSimulationResult(SimulationResult):
-    def __init__(self, circuit):
-        self.circuit = deepcopy(circuit)
-        self.component_inputs = {}
-        self.component_outputs = {}
+    def __init__(self, input_signals, output_signals):
+        self.input_signals = input_signals
+        self.output_signals = output_signals
+        # self.circuit = deepcopy(circuit)
+        # self.component_inputs = {}
+        # self.component_outputs = {}
     
-    def _collect_component_inputs(self, component)->dict:
-        inputs = {}
-        input_components = [u for u, v in self.circuit.graph.in_edges(component)]
-        for input_component in input_components:
-            input_edges = self.circuit.graph.get_edge_data(input_component, component)
-            for edge_number, edge in input_edges.items():
-                inputs[edge['dst_port']] = self.component_outputs[input_component][edge['src_port']]
-                pass
-        self.component_inputs[component] = inputs
+    # def _collect_component_inputs(self, component)->dict:
+    #     inputs = {}
+    #     input_components = [u for u, v in self.circuit.graph.in_edges(component)]
+    #     for input_component in input_components:
+    #         input_edges = self.circuit.graph.get_edge_data(input_component, component)
+    #         for edge_number, edge in input_edges.items():
+    #             inputs[edge['dst_port']] = self.component_outputs[input_component][edge['src_port']]
+    #             pass
+    #     self.component_inputs[component] = inputs
 
         
 
@@ -56,6 +58,8 @@ class BlockModeSimulation(Simulation):
         # self.flat_circuit = circuit.flatten()
         self.settings = settings
         self.tracked_ports = tracked_ports
+        self.component_inputs = {}
+        self.component_outputs = {}
         # if ports is None:
         #     ports = self.circuit.netlist['top_level']['ports']
 
@@ -68,7 +72,7 @@ class BlockModeSimulation(Simulation):
         # _add_directionality_settings_to_s_parameter_components(self.flat_circuit, self.settings)
         self._instantiated_circuit = self.circuit.instantiate(self.settings, self.simulation_parameters, tracked_ports=self.tracked_ports, directed=True)
         # instantiated_circuit.display()
-        simulation_result = BlockModeSimulationResult(self._instantiated_circuit)
+        # simulation_result = BlockModeSimulationResult(self._instantiated_circuit)
 
 
         self.block_mode_order = self._determine_block_mode_order_nx_method(self._instantiated_circuit)
@@ -76,13 +80,33 @@ class BlockModeSimulation(Simulation):
         # print(len(self.block_mode_order))
         for instance_name in self.block_mode_order:
             
-            simulation_result._collect_component_inputs(instance_name)   
-            inputs = simulation_result.component_inputs[instance_name]
+            self._collect_component_inputs(instance_name)   
+            inputs = self.component_inputs[instance_name]
             component = self._instantiated_circuit.instantiated_flat_netlist['instances'][instance_name]['model']
             outputs = component._block_mode_response(inputs, self.simulation_parameters)
-            simulation_result.component_outputs[instance_name] = outputs
+            self.component_outputs[instance_name] = outputs
+        
+        input_signals = {}
+        output_signals = {}
+        for tracked_port_name, tracked_port_designator in self._instantiated_circuit.port_lookup_table.items():
+            instance_name, port_name = tracked_port_designator.split(",")
+            if port_name in self.component_inputs[instance_name]:
+                input_signals[tracked_port_name] = self.component_inputs[instance_name][port_name]
+            if port_name in self.component_outputs[instance_name]:
+                output_signals[tracked_port_name] = self.component_outputs[instance_name][port_name]
+        simulation_result = BlockModeSimulationResult(input_signals, output_signals)
         
         return simulation_result
+    
+    def _collect_component_inputs(self, component)->dict:
+        inputs = {}
+        input_components = [u for u, v in self._instantiated_circuit.graph.in_edges(component)]
+        for input_component in input_components:
+            input_edges = self._instantiated_circuit.graph.get_edge_data(input_component, component)
+            for edge_number, edge in input_edges.items():
+                inputs[edge['dst_port']] = self.component_outputs[input_component][edge['src_port']]
+                pass
+        self.component_inputs[component] = inputs
     
     def _determine_block_mode_order_nx_method(self, instantiated_circuit):
         """
