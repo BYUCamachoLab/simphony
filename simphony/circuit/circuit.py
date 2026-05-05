@@ -25,11 +25,11 @@ from sax.circuits import _create_dag
 from sax.netlists import convert_nets_to_connections
 
 from typing import Tuple
-
+from simphony.libraries._internal.port_label import PortLabel, DirectedPortLabel, BidirectionalPortLabel
 # import re
 
 
-from simphony.libraries._internal.placeholder import DirectedPortLabel, BidirectionalPortLabel
+from simphony.libraries._internal.port_label import PortLabel, DirectedPortLabel, BidirectionalPortLabel
 # from simphony.utils import dict_to_matrix
 
 COMPONENT_COLOR_DEFAULT = "black"
@@ -477,6 +477,12 @@ def _add_directionality_settings_to_s_parameter_placeholders(
     settings,
     directed = False,
 ):
+    """
+    Important: Currently, simphony assumes all ports with an ambiguous directionality are source nodes (input) if the corresponding instance 
+    appears in the values of the connection dict in the netlist. Otherwise (if the port is unconnected or in the keys of the connections dict)
+    we label the port as "output". This convention is used assuming elsewhere, for example, the _insert_port_labels function depends on this
+    assumption.
+    """
     netlist = instantiated_circuit.instantiated_flat_netlist
     # models = flat_circuit.models
     for instance_name, instance_data in netlist['instances'].items():
@@ -496,6 +502,16 @@ def _add_directionality_settings_to_s_parameter_placeholders(
             
             settings[instance_name]["port_directionality"] = default_directionalities | settings[instance_name].get("port_directionality", {})
 
+# def find_clipped_edges(full_graph, subgraph_nodes):
+#     subgraph_nodes = set(subgraph_nodes)
+#     clipped = []
+
+#     for u, v, key, data in full_graph.edges(keys=True, data=True):
+#         if (u in subgraph_nodes) != (v in subgraph_nodes):
+#             clipped.append((u, v, key, data))
+
+#     return clipped
+
 def find_clipped_edges(full_graph, subgraph_nodes):
     subgraph_nodes = set(subgraph_nodes)
     clipped = []
@@ -504,7 +520,21 @@ def find_clipped_edges(full_graph, subgraph_nodes):
         if (u in subgraph_nodes) != (v in subgraph_nodes):
             clipped.append((u, v, key, data))
 
-    return clipped
+    # Remove bidirectional duplicates
+    unique_clipped = []
+    seen = set()
+
+    for u, v, key, data in clipped:
+        normalized = frozenset({
+            (u, data["src_port"]),
+            (v, data["dst_port"]),
+        })
+
+        if normalized not in seen:
+            seen.add(normalized)
+            unique_clipped.append((u, v, key, data))
+
+    return unique_clipped
 
 class InstantiatedCircuit:
     """
@@ -564,28 +594,24 @@ class InstantiatedCircuit:
             if issubclass(models[model_name], SParameterPlaceholder) and not "sax_settings" in settings[instance_name].keys():
                 settings[instance_name] = {"sax_settings": settings[instance_name]}
         
-        # TODO: Stitch in Directed Port Labels
-        self._insert_port_labels(tracked_ports) 
+        # import gravis as gv
+        # gv.d3(netlist_to_graph(netlist, models)).display()
+        tracked_ports = self._insert_port_label_placeholders(netlist, settings, models, tracked_ports) 
+        # gv.d3(netlist_to_graph(netlist, models)).display()
 
         from simphony.circuit.netlist import instantiate_netlist
         self.instantiated_flat_netlist = instantiate_netlist(netlist, models, settings, simulation_parameters)
-
-        # # Remove Placeholders
-        # self.ext_port_lookup_table = {}
-        # for ext_port in tracked_ports.keys():
-        #     self.ext_port_lookup_table[ext_port] = self.instantiated_flat_netlist['connections'][f'|EXTPORT_{ext_port}_PLACEHOLDER|,_0']
-        #     self.instantiated_flat_netlist['connections'].pop(f'|EXTPORT_{ext_port}_PLACEHOLDER|,_0')
-        #     self.instantiated_flat_netlist['instances'].pop(f'|EXTPORT_{ext_port}_PLACEHOLDER|')
-
         self.graph = instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist, include_ports=False)
-        
         self.simulation_parameters = simulation_parameters
         
         _add_directionality_settings_to_s_parameter_placeholders(self, settings, directed=directed)
         self.settings = settings
 
+
+        # gv.d3(instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist)).display()
         self._consolidate_s_parameter_components(fuse_models)
-        self._remove_port_labels()
+        # gv.d3(instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist)).display()
+        self.instantiated_flat_netlist, self.port_lookup_table = self._remove_port_labels(self.instantiated_flat_netlist, tracked_ports)
 
         self.graph = instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist, include_ports=False)
         
@@ -645,6 +671,8 @@ class InstantiatedCircuit:
         for j, subgraph in enumerate(subgraphs):
             if j == 1:
                 pass
+            # The following line is likely leading to duplicate connections, since bidirectional connections
+            # are represented with two different connections (since nx.multidigraph doesn't have "bidirectional connections")
             clipped_edges = find_clipped_edges(self.graph, subgraph)
 
             # ports = [src for (src, dst, key, data) in clipped_edges] # Use the clipped edges to determine the ports
@@ -697,6 +725,7 @@ class InstantiatedCircuit:
 
 
             port_lut = {v:k for k, v in ports.items()}
+            # TODO: Make sure this isn't creating the duplicate connections that may be in clipped edges
             for (src, dst, key, data) in clipped_edges:
                 src_port = data["src_port"]
                 dst_port = data["dst_port"]
@@ -714,11 +743,219 @@ class InstantiatedCircuit:
         
         self.instantiated_flat_netlist = sax.flatten_netlist(instantiated_recursive_netlist)
 
-    def _insert_port_labels(self, tracked_ports):
-        pass
+    def _insert_port_label_placeholders(self, netlist, settings, models, tracked_ports):
+        # First, we will take care of the tracked ports that are not connected to anything else
+        new_tracked_ports = {}
+        unconnected_tracked_ports = []
+        for tracked_port_name, tracked_port_designator in tracked_ports.items():
+            if not is_endpoint_connected(netlist, tracked_port_designator):
+                unconnected_tracked_ports.append((tracked_port_name, tracked_port_designator))
+        
+        for tracked_port_name, tracked_port_designator in unconnected_tracked_ports:
+            internal_instance_name, internal_port_name = tracked_port_designator.split(",")
+            port_label_instance_name = f"{tracked_port_name}|PORT_LABEL"
+            port_label_model_name = port_label_instance_name
 
-    def _remove_port_labels(self):
-        pass
+            netlist["instances"][port_label_instance_name] = {'component': port_label_model_name, "settings": {}}
+            settings[port_label_instance_name] = {"name": tracked_port_name, "designator": tracked_port_designator}
+            model_name = netlist['instances'][internal_instance_name]['component']
+            tracked_port = models[model_name]._port_lookup_table[internal_port_name]
+            
+            
+
+            if tracked_port.directionality == "bidirectional":
+                models[port_label_model_name] = BidirectionalPortLabel
+            else:
+                models[port_label_model_name] = DirectedPortLabel
+
+            if tracked_port.directionality == "output":
+                netlist['connections'][tracked_port_designator] = f"{port_label_instance_name},in"
+                new_tracked_ports[tracked_port_name] = f"{port_label_instance_name},in"
+            elif tracked_port.directionality == "bidirectional":
+                netlist['connections'][tracked_port_designator] = f"{port_label_instance_name},port1"
+                new_tracked_ports[tracked_port_name] = f"{port_label_instance_name},port1"
+            elif tracked_port.directionality == "input":
+                netlist['connections'][f"{port_label_instance_name},out"] = tracked_port_designator
+                new_tracked_ports[tracked_port_name] = f"{port_label_instance_name},out"
+        
+        for key, _ in unconnected_tracked_ports:
+            tracked_ports.pop(key)
+        
+        # Next, we will take care of the tracked ports that are further connected
+        for tracked_ext_port_name, tracked_port_designator in tracked_ports.items():
+            if tracked_ext_port_name == "gc_out":
+                pass
+            internal_instance_name, internal_port_name = tracked_port_designator.split(",")
+            port_label_instance_name = f"{tracked_ext_port_name}|PORT_LABEL"
+            port_label_model_name = port_label_instance_name
+            # netlist["instances"][port_label_instance_name] = {'component': port_label_model_name, "settings": {"name": tracked_ext_port_name, "designator": tracked_port_designator}}
+            netlist["instances"][port_label_instance_name] = {'component': port_label_model_name, "settings": {}}
+            settings[port_label_instance_name] = {"name": tracked_ext_port_name, "designator": tracked_port_designator}
+            model_name = netlist['instances'][internal_instance_name]['component']
+            tracked_port = models[model_name]._port_lookup_table[internal_port_name]
+            
+            if tracked_port.directionality == "bidirectional":
+                models[port_label_model_name] = BidirectionalPortLabel
+            elif tracked_port.directionality == "input" or tracked_port.directionality == "output":
+                models[port_label_model_name] = DirectedPortLabel
+
+            reverse_order = False
+            if tracked_port_designator in netlist['connections'].keys():
+                the_other_port_designator = netlist['connections'][tracked_port_designator]
+                del netlist['connections'][tracked_port_designator]
+            elif tracked_port_designator in netlist['connections'].values():
+                reverse_order = True
+                flipped_connections = {v:k for k, v in netlist['connections'].items()} # I put this here since the connections are mutated by inserted placeholders
+                k = flipped_connections[tracked_port_designator]
+                the_other_port_designator = k
+                del netlist['connections'][k]
+
+            def insert_port_label(netlist, tracked_designator, other_designator, port_names=("in", "out"), reverse_order=False):
+                if reverse_order:
+                    netlist["connections"][f"{port_label_instance_name},{port_names[0]}"] = tracked_designator
+                    netlist["connections"][other_designator] = f"{port_label_instance_name},{port_names[1]}"
+                    new_tracked_ports[tracked_ext_port_name] = f"{port_label_instance_name},{port_names[0]}"
+
+                else:
+                    netlist["connections"][tracked_designator] = f"{port_label_instance_name},{port_names[0]}"
+                    netlist["connections"][f"{port_label_instance_name},{port_names[1]}"] = other_designator
+                    new_tracked_ports[tracked_ext_port_name] = f"{port_label_instance_name},{port_names[0]}"
+            
+            if tracked_port.directionality == "bidirectional":
+                insert_port_label(netlist, tracked_port_designator, the_other_port_designator, port_names=("port1", "port2"), reverse_order=reverse_order)
+            elif tracked_port.directionality == "output":
+                insert_port_label(netlist, tracked_port_designator, the_other_port_designator, port_names=("in", "out"), reverse_order=reverse_order)
+            elif tracked_port.directionality == "input":
+                insert_port_label(netlist, tracked_port_designator, the_other_port_designator, port_names=("out", "in"), reverse_order=reverse_order)
+        return new_tracked_ports
+            
+    # # TODO: Test this function
+    # # TODO: Currently, if two adjacent tracked ports are specified, things will break.
+    # def _insert_port_label_placeholders(self, netlist, settings, models, tracked_ports):
+    #     """
+    #     Because pcells are recursively expanded into an unpredictable (from the perspective of this class) networks of simphony components,
+    #     we insert a placeholder component to "track" were the ports in the top level netlist "end up"
+
+    #     If the tracked port is an input port, the resulting placeholder will point into the port. The external facing port in the placeholder will match the tracked port and will be an input port
+
+    #     If the tracked port is an output port, the tracked port will point into the placeholder. The external facing port in the placeholder will match the tracked port and will be an output port
+
+    #     If the tracked port is bidirectional, then the placeholder will be connected to the tracked port via a bidirectional port and the external facing port will also be bidirectional. 
+    #     """
+        
+        
+    #     for tracked_ext_port_name, tracked_port_designator in tracked_ports.items():
+    #         # TODO: optimize the following line
+    #         flipped_connections = {v:k for k, v in netlist['connections'].items()} # I have to do this, otherwise, I can't have adjacent labels
+            
+    #         internal_instance_name, internal_port_name = tracked_port_designator.split(",")
+    #         port_label_instance_name = f"{tracked_ext_port_name}|PORT_LABEL"
+    #         port_label_model_name = port_label_instance_name
+    #         # netlist["instances"][port_label_instance_name] = {'component': port_label_model_name, "settings": {"name": tracked_ext_port_name, "designator": tracked_port_designator}}
+    #         netlist["instances"][port_label_instance_name] = {'component': port_label_model_name, "settings": {}}
+    #         settings[port_label_instance_name] = {"name": tracked_ext_port_name, "designator": tracked_port_designator}
+    #         model_name = netlist['instances'][internal_instance_name]['component']
+    #         tracked_port = models[model_name]._port_lookup_table[internal_port_name]
+            
+    #         if tracked_port.directionality == "bidirectional":
+    #             models[port_label_model_name] = BidirectionalPortLabel
+    #         elif tracked_port.directionality == "input" or tracked_port.directionality == "output":
+    #             models[port_label_model_name] = DirectedPortLabel
+            
+    #         if tracked_port_designator in netlist['connections'].keys():
+    #             the_other_port_designator = netlist["connections"][tracked_port_designator]
+    #             del netlist['connections'][flipped_connections[the_other_port_designator]]
+                
+    #             if tracked_port.directionality == "output" or tracked_port.directionality == "bidirectional":
+    #                 netlist["connections"][tracked_port_designator] = f"{port_label_instance_name},in"
+    #                 netlist["connections"][f"{port_label_instance_name},out"] = the_other_port_designator
+    #             elif tracked_port.directionality == "input":
+    #                 # THESE TECHNICALLY VIOLATE ONE OF SIMPHONIES ASSUMPTIONS ABOUT PORT DIRECITONALITY
+    #                 netlist["connections"][tracked_port_designator] = f"{port_label_instance_name},out"
+    #                 netlist["connections"][f"{port_label_instance_name},in"] = the_other_port_designator
+
+    #         elif tracked_port_designator in netlist['connections'].values():
+    #             # Now, I need the key in the netlist that corresponds to the tracked_port_designator value
+    #             # Is there an efficient and pythonic way to do this?
+    #             the_other_port_designator = flipped_connections[tracked_port_designator]
+    #             del netlist['connections'][flipped_connections[tracked_port_designator]]
+    #             if tracked_port.directionality == "output" or tracked_port.directionality == "bidirectional":
+    #                 netlist["connections"][f"{port_label_instance_name},in"] = tracked_port_designator
+    #                 netlist["connections"][the_other_port_designator] = f"{port_label_instance_name},out"
+    #             elif tracked_port.directionality == "input":
+    #                 netlist["connections"][f"{port_label_instance_name},out"] = tracked_port_designator
+    #                 netlist["connections"][the_other_port_designator] = f"{port_label_instance_name},in"
+    #         else: # The tracked port is unconnected
+    #             if tracked_port.directionality == "output" or tracked_port.directionality == "bidirectional":
+    #                 netlist["connections"][tracked_port_designator] = f"{port_label_instance_name},in"
+    #             elif tracked_port.directionality == "input":
+    #                 netlist["connections"][f"{port_label_instance_name},out"] = tracked_port_designator
+
+
+    def _remove_port_labels(self, netlist, tracked_ports):
+        new_tracked_ports = {}
+        port_labels = {instance_name:instance_data['model'].name for instance_name, instance_data in netlist['instances'].items() if isinstance(instance_data['model'], PortLabel)}
+        external_port_labels = {}
+        internal_port_labels = {}
+
+        for instance_name, tracked_port_name in port_labels.items():
+            endpoints = _find_port_label_endpoints(netlist, instance_name)
+            if len(endpoints) == 1:
+                external_port_labels[instance_name] = tracked_port_name
+            elif len(endpoints) == 2:
+                internal_port_labels[instance_name] = tracked_port_name
+        
+        for instance_name, tracked_port_name in external_port_labels.items():
+            new_tracked_ports[tracked_port_name] = find_connected_endpoint(netlist, tracked_ports[tracked_port_name])
+
+        netlist = remove_instances_from_netlist(netlist, external_port_labels.keys())
+
+        for instance_name, tracked_port_name in internal_port_labels.items():
+            endpoints = _find_port_label_endpoints(netlist, instance_name)
+            if endpoints[0] in netlist['connections'].keys():
+                src = endpoints[0]
+                dst = endpoints[1]
+            else:
+                src = endpoints[1]
+                dst = endpoints[0]
+            new_tracked_ports[tracked_port_name] = find_connected_endpoint(netlist, tracked_ports[tracked_port_name])
+            netlist = remove_instances_from_netlist(netlist, [instance_name])
+            netlist['connections'][src] = dst
+            pass
+
+
+            # if len(endpoints) == 1 and endpoints[0] in netlist['connections'].keys():
+            #     remove_instances_from_netlist(netlist, [instance_name])
+
+            # elif len(endpoints) == 1 and endpoints[0] in netlist['connections'].values():
+            #     remove_instances_from_netlist(netlist, [instance_name])
+
+            # if endpoints[0] in netlist['connections'].keys():
+            #     src = endpoints[0]
+            #     dst = endpoints[1]
+            # else:
+            #     src = endpoints[1]
+            #     dst = endpoints[0]
+
+            # if len(endpoints) == 2:
+            #     remove_instances_from_netlist(netlist, [instance_name])
+        
+        return netlist, new_tracked_ports
+
+def _find_port_label_endpoints(netlist, instance_name):
+    # if instance_name == 'lf2|PORT_LABEL':
+    #     pass
+    endpoints = []
+    for src_designator, dst_designator in netlist['connections'].items():
+        src_instance = src_designator.split(",")[0]
+        dst_instance = dst_designator.split(",")[0]
+
+        if instance_name == src_instance:
+            endpoints.append(dst_designator)
+        if instance_name == dst_instance:
+            endpoints.append(src_designator)
+
+    return endpoints
 
 def stringify_dict_values(d):
     """Recursively convert all values in a dict to strings."""
@@ -802,3 +1039,81 @@ def _sanitize_graph_for_widget(graph):
 #         G.add_edge(u, v, **safe_attrs)
 
 #     return G
+def is_endpoint_connected(netlist, endpoint):
+    """
+    Check whether a SAX netlist endpoint is connected.
+
+    Parameters
+    ----------
+    netlist : dict
+        SAX-style netlist dictionary containing a "connections" dict.
+
+    endpoint : str
+        Endpoint in the form "instance_name,port_name"
+
+    Returns
+    -------
+    bool
+        False if the endpoint does not appear in any connection,
+        True otherwise.
+    """
+
+    connections = netlist.get("connections", {})
+
+    for src, dst in connections.items():
+        if endpoint == src or endpoint == dst:
+            return True
+
+    return False
+
+def find_bidirectional_duplicates(connections: dict):
+    """
+    Finds pairs (k, v) where both k->v and v->k exist.
+
+    Returns:
+        set of frozensets, each representing a duplicate pair
+        (so {A, B} represents A<->B)
+    """
+    seen = set()
+    duplicates = set()
+
+    for k, v in connections.items():
+        pair = (k, v)
+
+        # normalize direction-independent representation
+        reversed_pair = (v, k)
+
+        if reversed_pair in seen:
+            duplicates.add(frozenset(pair))
+        else:
+            seen.add(pair)
+
+    return duplicates
+
+def find_connected_endpoint(netlist, endpoint):
+    """
+    Find the endpoint connected to `endpoint` in a SAX netlist.
+
+    Parameters
+    ----------
+    netlist : dict
+        SAX-style netlist dictionary containing a "connections" dict.
+
+    endpoint : str
+        Endpoint in the form "instance_name,port_name"
+
+    Returns
+    -------
+    str | None
+        The connected endpoint if found, otherwise None.
+    """
+
+    connections = netlist.get("connections", {})
+
+    for src, dst in connections.items():
+        if endpoint == src:
+            return dst
+        elif endpoint == dst:
+            return src
+
+    return None

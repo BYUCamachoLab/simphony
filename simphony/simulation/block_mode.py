@@ -73,7 +73,7 @@ class BlockModeSimulation(Simulation):
 
         self.block_mode_order = self._determine_block_mode_order_nx_method(self._instantiated_circuit)
         # self._instantiate_components(self.settings)
-        print(len(self.block_mode_order))
+        # print(len(self.block_mode_order))
         for instance_name in self.block_mode_order:
             
             simulation_result._collect_component_inputs(instance_name)   

@@ -3,7 +3,19 @@ from simphony.component.placeholder import Placeholder
 from simphony.component.port import Port
 from simphony.simulation.simulation import SimulationParameters
 
-class DirectedPortLabel(Placeholder):
+class PortLabel(Placeholder):
+    def __init__(
+        self, 
+        simulation_parameters, 
+        *,
+        name=None, 
+        designator=None
+    ):
+        self.name = name
+        self.designator = designator
+
+
+class DirectedPortLabel(PortLabel):
     ports = [
         Port(
             name = "in",
@@ -17,15 +29,15 @@ class DirectedPortLabel(Placeholder):
         )
     ]
 
-class BidirectionalPortLabel(Placeholder):
+class BidirectionalPortLabel(PortLabel):
     ports = [
         Port(
-            name = "in",
+            name = "port1",
             type = "any",
             directionality = "bidirectional",
         ),
         Port(
-            name = "out",
+            name = "port2",
             type = "any",
             directionality = "bidirectional",
         ),

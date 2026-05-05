@@ -3,7 +3,7 @@ from simphony.libraries.ideal.photonic_circuits import mzi_lattice_filter
 from simphony.libraries.siepic import grating_coupler
 # from simphony.simulation.simulation import SimulationMode
 from simphony.simulation.block_mode import BlockModeSimulationParameters
-# from simphony.simulation.sample_mode import SampleModeSimulationParameters
+from simphony.simulation.sample_mode import SampleModeSimulationParameters
 # from simphony.simulation.s_parameter import SParameterSimulationParameters
 from simphony.libraries.ideal.sources import CWLaser
 
@@ -23,12 +23,12 @@ netlist = {
     },
     "ports": {
         # "in": "gc1,o0",
-        "out": "gc2,o0",
+        "gc_out": "gc2,o0",
     }
 }
 
 models = {
-    "lattice_filter": mzi_lattice_filter(3),
+    "lattice_filter": mzi_lattice_filter(1),
     "grating_coupler": grating_coupler,
     "cw_laser": CWLaser,
 }
@@ -95,10 +95,15 @@ block_mode_settings = {
     },
 }
 
+tracked_ports = {
+    "gc1": "gc1,o1",
+    "lf1_in": "lf1,o0",
+    "lf1_out": "lf1,o1",
+    "lf2": "lf2,o1",
+}
+
 circuit = Circuit(netlist, models)
-# circuit.display(inline=True)
-instantiated_circuit = circuit.instantiate(block_mode_settings, BlockModeSimulationParameters(), directed=True, fuse_models=True)
-# instantiated_circuit = circuit.instantiate(s_parameter_settings, SParameterSimulationParameters())
+instantiated_circuit = circuit.instantiate(block_mode_settings, BlockModeSimulationParameters(), tracked_ports=tracked_ports, directed=True)
 
 
-instantiated_circuit.display(inline=False)
+instantiated_circuit.display()
