@@ -2,11 +2,11 @@ from simphony.component.pcell import PCell
 from simphony.simulation.simulation import SimulationParameters
 from simphony.component.port import Port
 
-from simphony.libraries.ideal.modulators import DirectedOpticalModulator
+from simphony.libraries.ideal.modulators import DirectedOpticalModulator, OpticalModulator
 
 from simphony.simulation.block_mode import BlockModeSimulationParameters 
 from simphony.libraries.old_ideal import waveguide, coupler
-from simphony.libraries.ideal.s_parameters import optical_s_parameter
+from simphony.libraries.ideal.s_parameters import optical_s_parameter_placeholder
 from inspect import isfunction
 from simphony.libraries.ideal.special import Terminator
 import numpy as np
@@ -151,8 +151,11 @@ class MZI(PCell):
             "coupler": coupler,
             "waveguide": waveguide,
         }
-        if modulators:
+        if modulators and simulation_parameters.directed:
             self.models["modulator"] = DirectedOpticalModulator
+        elif modulators:
+            self.models["modulator"] = OpticalModulator
+
         from simphony.simulation.simulation import SimulationMode
         if simulation_parameters.simulation_mode == SimulationMode.SAMPLE_MODE:
             pass
@@ -170,8 +173,8 @@ class MZI(PCell):
             }
 
             self.models = {
-                "coupler": optical_s_parameter(coupler, coupler_directionality, simulation_parameters.mode_identifiers),
-                "waveguide": optical_s_parameter(waveguide, waveguide_directionality, simulation_parameters.mode_identifiers),
+                "coupler": optical_s_parameter_placeholder(coupler, coupler_directionality, simulation_parameters.mode_identifiers),
+                "waveguide": optical_s_parameter_placeholder(waveguide, waveguide_directionality, simulation_parameters.mode_identifiers),
             }
             if modulators:
                 self.models["modulator"] = DirectedOpticalModulator

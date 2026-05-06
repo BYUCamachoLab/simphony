@@ -259,33 +259,101 @@ def instantiated_flat_netlist_to_graph(instantiated_flat_netlist, include_ports=
 
 #Matthew's Changes
 #Completed the graph to netlist to be used however needed to also added
-def graph_to_netlist(graph: nx.MultiDiGraph, ports={}) -> dict:
+import networkx as nx
+
+def graph_to_netlist(graph: nx.MultiDiGraph, ports=None) -> dict:
     """
-    Convert a NetworkX MultiDiGraph (with node attrs 'component' and 'settings',
-    edge attrs 'src_port' and 'dst_port', and graph.graph['ports']) back into a netlist:
+    Convert a NetworkX MultiDiGraph into a SAX-compatible netlist.
+
+    Assumptions:
+    - Node attrs contain:
+        - 'component'
+        - optional 'settings'
+    - Edge attrs contain:
+        - 'src_port'
+        - 'dst_port'
+
+    Multiple edges between the same ports that merely represent
+    bidirectionality are collapsed into a single connection.
+
+    SAX connections are represented as:
+        "inst1,portA": "inst2,portB"
     """
-    netlist = {"instances": {}, "connections": {}}
+
+    if ports is None:
+        ports = {}
+
+    netlist = {
+        "instances": {},
+        "connections": {},
+        "ports": ports.copy(),
+    }
+
+    # ------------------------------------------------------------------
+    # Instances
+    # ------------------------------------------------------------------
 
     for node, data in graph.nodes(data=True):
         netlist["instances"][node] = {
             "component": data["component"],
-            "settings":  data.get("settings", {}).copy()
+            "settings": data.get("settings", {}).copy(),
         }
 
-    conn_map = {}
+    # ------------------------------------------------------------------
+    # Connections
+    # ------------------------------------------------------------------
+
+    # Use a set so we can ignore duplicated reverse-direction edges
+    seen_connections = set()
+
     for src, dst, attrs in graph.edges(data=True):
-        key  = f"{src},{attrs['src_port']}"
-        pair = f"{dst},{attrs['dst_port']}"
-        conn_map.setdefault(key, []).append(pair)
 
-    for key, dsts in conn_map.items():
-        netlist["connections"][key] = ";".join(dsts)
+        a = f"{src},{attrs['src_port']}"
+        b = f"{dst},{attrs['dst_port']}"
 
-    # ports = graph.graph.get("ports", {})
-    # netlist["ports"] = ports.copy()
-    netlist["ports"] = ports
+        # Canonicalize connection ordering so:
+        #   A -> B
+        # and
+        #   B -> A
+        # are treated as the same physical connection
+        canonical = tuple(sorted((a, b)))
+
+        if canonical in seen_connections:
+            continue
+
+        seen_connections.add(canonical)
+
+        # Store only one direction in SAX netlist
+        netlist["connections"][a] = b
 
     return netlist
+# def graph_to_netlist(graph: nx.MultiDiGraph, ports={}) -> dict:
+#     """
+#     Convert a NetworkX MultiDiGraph (with node attrs 'component' and 'settings',
+#     edge attrs 'src_port' and 'dst_port', and graph.graph['ports']) back into a netlist:
+#     """
+#     netlist = {"instances": {}, "connections": {}}
+
+#     for node, data in graph.nodes(data=True):
+#         netlist["instances"][node] = {
+#             "component": data["component"],
+#             "settings":  data.get("settings", {}).copy()
+#         }
+
+#     conn_map = {}
+#     for src, dst, attrs in graph.edges(data=True):
+#         key  = f"{src},{attrs['src_port']}"
+#         pair = f"{dst},{attrs['dst_port']}"
+#         conn_map.setdefault(key, []).append(pair)
+
+#     for key, dsts in conn_map.items():
+#         netlist["connections"][key] = ";".join(dsts)
+
+#     # ports = graph.graph.get("ports", {})
+#     # netlist["ports"] = ports.copy()
+#     netlist["ports"] = ports
+
+#     return netlist
 
 def sanitize_instance_names(netlist, old_separator="~", new_separator="_"):
     """

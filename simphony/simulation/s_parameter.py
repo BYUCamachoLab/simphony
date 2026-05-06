@@ -18,7 +18,7 @@ import jax.numpy as jnp
 from functools import partial
 from simphony.component.component import SParameterComponent, SteadyStateComponent
 
-from simphony.circuit.netlist import graph_to_netlist, sanitize_instance_names
+from simphony.circuit.netlist import graph_to_netlist, sanitize_instance_names, generate_valid_separator
 
 @struct.dataclass
 class SParameterSimulationParameters(SimulationParameters):
@@ -50,12 +50,12 @@ class SParameterSimulation(Simulation):
             simulation_parameters = SParameterSimulationParameters()
 
         self.circuit = circuit
-        self.flat_circuit = circuit.flatten()
+        # self.flat_circuit = circuit.flatten()
         self.settings = settings
         self.simulation_parameters = simulation_parameters
         
         if ports is None:
-            ports = self.flat_circuit.netlist['ports']
+            ports = self.circuit.netlist['top_level']['ports']
         
         self.ports = ports
 
@@ -64,7 +64,8 @@ class SParameterSimulation(Simulation):
         wl: ArrayLike=1.55e-6, 
         # use_default_settings: bool = True
     ) -> SParameterSimulationResult:
-        self.instantiated_circuit = self.flat_circuit.instantiate(self.settings, self.simulation_parameters)
+        self.instantiated_circuit = self.circuit.instantiate(self.settings, self.simulation_parameters)
+        
         # self._identify_component_types()
         steady_state_graph, reachable_bias_nodes, s_parameter_graph = self._build_s_parameter_circuit(self.ports)
         # self._validate_s_parameter_graph()
@@ -92,7 +93,8 @@ class SParameterSimulation(Simulation):
 
         # self._instantiate_components(self.settings)
         steady_state_simulation_result = steady_state_simulation.run()
-        sax_circuit, sax_circuit_info = self._generate_sax_circuit(s_parameter_graph, steady_state_simulation_result, reachable_bias_nodes)
+        ports = {k:self.instantiated_circuit.port_lookup_table[k] for k in self.ports.keys()}
+        sax_circuit, sax_circuit_info = self._generate_sax_circuit(s_parameter_graph, steady_state_simulation_result, reachable_bias_nodes, ports)
         s_parameter_simulation_result.sax_circuit = sax_circuit
         s_parameter_simulation_result.sax_circuit_info = sax_circuit_info
         s_parameter_simulation_result.s_parameters = sax_circuit(wl=wl)
@@ -175,7 +177,7 @@ class SParameterSimulation(Simulation):
 
         reachable = set()
         for ext_port, (instance_port) in ports.items():
-            port_designator = self.instantiated_circuit.ext_port_lookup_table[ext_port]
+            port_designator = self.instantiated_circuit.port_lookup_table[ext_port]
             instance_name = port_designator.split(',')[0]
             # print(nx.descendants(all_optical_graph, port_designator))
             # print(nx.ancestors(all_optical_graph, port_designator))
@@ -255,7 +257,7 @@ class SParameterSimulation(Simulation):
     #     for component in self.steady_state_order:
     #         pass
     
-    def _generate_sax_circuit(self, s_parameter_graph, steady_state_simulation_result, reachable_bias_nodes):
+    def _generate_sax_circuit(self, s_parameter_graph, steady_state_simulation_result, reachable_bias_nodes, ports):
         """
         """
         # I will assume that the only connections between the s-parameter portion of the circuit
@@ -263,6 +265,8 @@ class SParameterSimulation(Simulation):
         # in the future if more connection types become supported
         
         # These components will need to have their s_parameter methods completed with the steady state inputs
+        
+        
         
         # TODO: Test this for multiple connections
         incomplete_components = {node: {} for (node, port) in reachable_bias_nodes.values()}
@@ -279,12 +283,13 @@ class SParameterSimulation(Simulation):
             # component_inputs[incomplete_component] = steady_state_simulation_result.component_inputs[incomplete_component]
         
         # sax_models 
-
+        separator = generate_valid_separator(component_inputs.keys())
         sax_models = {}
         for component, inputs in component_inputs.items():
             # model_name = self.circuit.netlist['instances'][component]['component']
             s_parameter_func = self.instantiated_circuit.instantiated_flat_netlist['instances'][component]['model'].s_parameters
-            sax_models[component.replace("~", "_")] = partial(s_parameter_func, inputs)
+            # TODO: Make sure i am replacing with a unique value ("_" does not guarantee a unique instance name)
+            sax_models[component.replace("~", separator)] = partial(s_parameter_func, inputs)
 
 
 
@@ -296,12 +301,12 @@ class SParameterSimulation(Simulation):
         # self.s_parameter_circuit.netlist['instances'] = instances
         s_parameter_netlist = graph_to_netlist(s_parameter_graph)
         for instance_name, data in s_parameter_netlist['instances'].items():
-            s_parameter_netlist['instances'][instance_name] = instance_name.replace("~", "_")
+            s_parameter_netlist['instances'][instance_name] = instance_name.replace("~", separator)
             # data['component'] = instance_name.replace("~", "_")
 
-
-        s_parameter_netlist['ports'] = {"in":"combiner~sax_model,port_1", "out": "splitter~sax_model,port_1"}
-        s_parameter_netlist = sanitize_instance_names(s_parameter_netlist)
+        s_parameter_netlist['ports'] = ports
+        # s_parameter_netlist['ports'] = {"in":"combiner~sax_model,port_1", "out": "splitter~sax_model,port_1"}
+        s_parameter_netlist = sanitize_instance_names(s_parameter_netlist, new_separator=separator)
 
         import numpy as np
         # s_parameter_func = self.instantiated_circuit.instantiated_flat_netlist['instances']["wg1~sax_model"]['model'].s_parameters(np.array([1.55]), {})
