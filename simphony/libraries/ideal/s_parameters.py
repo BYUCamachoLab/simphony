@@ -112,6 +112,7 @@ def optical_s_parameter(
     
     BaseSParameterElement = SParameterElement # Freeze the instance
     class SpecificSParameterElement(BaseSParameterElement):
+        _sax_model = staticmethod(sax_model)
         ports = [
             Port(
                 name=port_name,
