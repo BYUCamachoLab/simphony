@@ -196,9 +196,11 @@ class Component:
     @classmethod
     def _create_port_lookup_table(cls):
         cls._port_lookup_table = {p.name: p for p in cls.ports}
-        cls._input_port_lookup_table = {p.name: p  for p in cls.ports if p.directionality=="input"}
-        cls._output_port_lookup_table = {p.name: p for p in cls.ports if p.directionality=="output"}
-    
+        # cls._input_port_lookup_table = {p.name: p  for p in cls.ports if p.directionality=="input"}
+        # cls._output_port_lookup_table = {p.name: p for p in cls.ports if p.directionality=="output"}
+        cls._input_port_lookup_table = {p.name: p  for p in cls.ports if p.directionality=="input" or p.directionality=="bidirectional"}
+        cls._output_port_lookup_table = {p.name: p for p in cls.ports if p.directionality=="output" or p.directionality=="bidirectional"}
+        
     def __init__(
         self,
         simulation_mode: SimulationMode,
@@ -307,26 +309,28 @@ class SampleModeComponent(Component):
         """
         return 0
 
-    def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_parameters: SampleModeSimulationParameters) -> Tuple[jax.Array, dict[str, Signal]]:
+    def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_state, simulation_parameters: SampleModeSimulationParameters) -> Tuple[dict[str, Signal], jax.Array]:
         """Compute the next state of the system."""
         raise NotImplementedError
 
     def _sample_mode_initial_state(self, simulation_parameters: SampleModeSimulationParameters):
         _initial_state = (0, self.sample_mode_initial_state(simulation_parameters=simulation_parameters))
+        self._output_optical_port_names = [p.name for p in self._output_port_lookup_table.values() if (p.directionality=="bidirectional" or p.directionality=="output") and p.type == "optical"]
         return _initial_state
     
     # @partial(jax.jit, static_argnums=(0,))
-    def _sample_mode_step(self, inputs: dict, state: jax.Array, simulation_parameters: SampleModeSimulationParameters):
+    def _sample_mode_step(self, inputs: dict, state: jax.Array, simulation_state, simulation_parameters: SampleModeSimulationParameters):
         time_step = state[0]
         internal_state = state[1]
         
-        f_s = 1/simulation_parameters.sampling_period
+        f_s = 1/simulation_parameters.dt
 
-        outputs, output_state = self.sample_mode_step(inputs, internal_state, simulation_parameters)
+        outputs, output_state = self.sample_mode_step(inputs, internal_state, simulation_state, simulation_parameters)
 
         # Convert all inputs to the frequency channels in the simulator
         baseband_wls = simulation_parameters.optical_baseband_wavelengths
-        for port, signal in outputs.items():
+        for port_name in self._output_optical_port_names:
+            signal = outputs[port_name]
             amplitude = signal.amplitude
             wavelength = signal.wavelength
             dists = jnp.abs(baseband_wls[:, None] - wavelength[None, :])
@@ -336,7 +340,7 @@ class SampleModeComponent(Component):
 
             new_amplitude = jnp.zeros((baseband_wls.shape[0], amplitude.shape[1]), dtype=complex)
             new_amplitude = new_amplitude.at[closest_idx].add(amplitude*jnp.exp(-1j*2*jnp.pi*f_diff[:, None]/f_s * time_step))
-            outputs[port] = signal.replace(amplitude=new_amplitude, wavelength=baseband_wls)
+            outputs[port_name] = signal.replace(amplitude=new_amplitude, wavelength=baseband_wls)
 
 
         return outputs, (time_step+1, output_state)

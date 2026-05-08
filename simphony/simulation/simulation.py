@@ -7,7 +7,7 @@ from __future__ import annotations
 import jax.numpy as jnp
 from jax.typing import ArrayLike
 from sax.saxtypes import Model
-from typing import Annotated
+
 
 # from typing import TYPE_CHECKING
 # if TYPE_CHECKING:
@@ -54,8 +54,9 @@ class SimulationParameters:
     # sampling_period:float=1e-15
     # sampling_rate:float=1e15,
     # num_time_steps:int =int(1e4)
-    prng_key: Annotated[jax.Array, "shape=(2,), dtype=jax.uint32"]=field(default_factory=lambda: jax.random.PRNGKey(0))
+    # prng_key: Annotated[jax.Array, "shape=(2,), dtype=jax.uint32"]=field(default_factory=lambda: jax.random.PRNGKey(0))
     mode_identifiers: list = field(default_factory=lambda: DEFAULT_MODES)
+    seed = 0
     
     # prng_key: Annotated[jax.Array, "shape=(2,), dtype=jax.uint32"]=jax.random.key(0)
     # ):

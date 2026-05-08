@@ -61,7 +61,7 @@ STATE_SPACE_INSTANCE_NAME_BASE = STATE_SPACE_MODEL_NAME_BASE
 _default_vector_fitting_parameters = {
                 "model_order": None,
                 "min_model_order": 2,
-                "max_model_order": 100,
+                "max_model_order": 50,
                 "num_frequency_samples": 1000,
                 "center_wavelength": 1.55e-6,
                 "spectral_range": (1.5e-6, 1.6e-6),
@@ -107,6 +107,7 @@ def optical_s_parameter(
 
     if isinstance(default_modes, str):
         default_modes = [default_modes]
+    
     default_modes = tuple(default_modes)
     
     BaseSParameterElement = SParameterElement # Freeze the instance
@@ -133,13 +134,19 @@ def optical_s_parameter(
             """
             TODO: Add documentation for each of the kwargs
             """
-            self.sax_model = sax_model
+            # The following lines are helpful for debugging (I am just freezing the references)
+            _ = sax_model
+            _ = port_directionality
+            _ = default_modes
+            
+            self.sax_model = _get_filtered_sax_model(sax_model, port_directionality=port_directionality, default_modes=default_modes)
             self.settings = kwargs
             self.settings.setdefault('sax_settings', {})
             self.settings.setdefault('group_id', None)
             self.settings.setdefault('vector_fitting_parameters', _default_vector_fitting_parameters)
             self.settings.setdefault('delay_compensation', 0)
             self.settings.setdefault('port_directionality', {})
+
             # self.sax_model = sax_model
             # self.sax_settings = self.settings.setdefault('sax_settings', {})
             # self.vector_fitting_parameters = self.settings.setdefault('vector_fitting_parameters', default_vector_fitting_parameters)
@@ -159,11 +166,59 @@ def optical_s_parameter(
             Returns the initial the state of the system.
             Called by the sample mode simulator after `set_sample_mode_simulation_parameters`
             """
-            return 0
+            sax_settings = self.settings['sax_settings']
+            vector_fitting_parameters = self.settings['vector_fitting_parameters']
+            self.state_space_matrices, _state_space_input_ports, _state_space_output_ports = _calculate_state_space_coefficients_from_sax_model(self.sax_model, sax_settings, vector_fitting_parameters, simulation_parameters)
+            self.state_space_input_indices = {tuple(p.split("@")):i for i, p in enumerate(_state_space_input_ports)}
+            self.state_space_output_indices = {tuple(p.split("@")):i for i, p in enumerate(_state_space_output_ports)}
+            self.mode_indices = {mode: i for i, mode in enumerate(simulation_parameters.mode_identifiers)}
+            
+            A, _, _, _ = self.state_space_matrices
+            L = len(simulation_parameters.optical_baseband_wavelengths)
+            x = jnp.zeros((L, A.shape[1],), dtype=complex)
+            return x
 
-        def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_parameters):
+        def sample_mode_step(self, input_signals: dict, state: jax.Array, simulation_state, simulation_parameters):
             """Compute the next state of the system."""
-            raise NotImplementedError
+            # TODO: Add the delay compensation logic
+            k = 0
+            x = state
+            new_x = jnp.zeros_like(x)
+            A, B, C, D = self.state_space_matrices
+
+            L = len(simulation_parameters.optical_baseband_wavelengths)
+            M = len(simulation_parameters.mode_identifiers)
+            u = jnp.zeros((L, len(self.state_space_input_indices)), dtype=complex)
+            y = jnp.zeros((L, len(self.state_space_input_indices)), dtype=complex)
+            
+
+            wl_center = self.settings['vector_fitting_parameters']['center_wavelength']
+            for (port_name, mode), state_space_idx in self.state_space_input_indices.items():
+                input_signal = input_signals[port_name]
+                mode_idx = self.mode_indices[mode]
+                u = u.at[:, state_space_idx].set(input_signals[port_name].amplitude[:, mode_idx])
+
+            for wl_idx, wl in enumerate(simulation_parameters.optical_baseband_wavelengths):
+                delta_omega = speed_of_light * (1/wl - 1/wl_center)
+                _A, _B, _C, _D = jnp.exp(1j*delta_omega)*A, jnp.exp(1j*delta_omega)*B, jnp.exp(1j*k*delta_omega)*C, jnp.exp(1j*k*delta_omega)*D
+            
+                _new_x = _A@x[wl_idx, :] + _B@u[wl_idx, :]
+                _y = _C@x[wl_idx, :] + _D@u[wl_idx, :]
+            
+                new_x = new_x.at[wl_idx, :].set(_new_x)
+                y = y.at[wl_idx, :].set(_y)    
+            
+            output_signals = {}
+            for port_name in self._output_optical_port_names:                
+                output_signals[port_name] = SampleModeOpticalSignal(amplitude=jnp.zeros((L, M), dtype=complex), wavelength=simulation_parameters.optical_baseband_wavelengths)
+
+            for (port_name, mode), state_space_idx in self.state_space_output_indices.items():                
+                mode_idx = self.mode_indices[mode]
+                signal = output_signals[port_name]
+                amplitude = signal.amplitude.at[:, mode_idx].set(y[:, mode_idx])
+                output_signals[port_name] = signal.replace(amplitude=amplitude, wavelength=signal.wavelength)
+            
+            return output_signals, new_x
     
     return SpecificSParameterElement
 
@@ -516,7 +571,8 @@ def _block_mode_design(
         # sax_model = filtered_sax_models[model_name]
         sax_model = filtered_sax_models[instance_name]
                 
-        A, B, C, D = _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, vector_fitting_parameters, simulation_parameters)
+        # TODO: Make sure that the port modes in these vectors are mapping correctly
+        (A, B, C, D), _, _ = _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, vector_fitting_parameters, simulation_parameters)
         f_b = speed_of_light / vector_fitting_parameters["center_wavelength"]
         f_s = 1 / simulation_parameters.dt
 
@@ -922,16 +978,41 @@ def _bidirectional_ports_to_unidirectional_ports(
     return unidirectional_sax_model, unidirectional_port_directionality, in_suffix, out_suffix
 
 def _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, vector_fitting_parameters, simulation_parameters):
+    """
+    Returns A, B, C, D, input_ports, output_ports
+    For D[i, j], output_ports[i] <- input_ports[j]
+    """
     input_port_modes, output_port_modes = _get_port_mode_luts(sax_model, simulation_parameters.mode_identifiers)
     sax_model_signature = inspect.signature(sax_model).parameters
+    constant_over_wavelength = False
+    
+    def has_wl_kwarg(model):
+        sig = inspect.signature(model)
 
-    # Some sax models are constant over wavelength. This accounts for those.
-    if not "wl" in sax_model_signature:
+        if "wl" in sig.parameters:
+            return True
+
+        if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
+            try:
+                model(wl=0.0)
+                return True
+            except TypeError:
+                return False
+
+        return False
+    
+    if not has_wl_kwarg(sax_model):
+        constant_over_wavelength = True
+    elif False:
+        # Check if the model is constant over the bandwidth with respect to wavelength
+        pass
+    
+    if constant_over_wavelength:
         sdict = sax_model(**sax_settings)
+        # TODO: Fix Block Mode Simulator so that this is deterministic
         input_ports = [f"{port}@{mode}" for port, modes in input_port_modes.items() for mode in modes]
         output_ports = [f"{port}@{mode}" for port, modes in output_port_modes.items() for mode in modes]
         S = dict_to_rect_matrix(sdict, input_ports=input_ports, output_ports=output_ports)
-        
         # Order r = 1 model
         r = 1
         m = len(input_ports)
@@ -942,11 +1023,7 @@ def _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, 
         C = jnp.zeros((q, M), dtype=complex)
         D = S[0, :, :]
 
-        return A, B, C, D
-    elif False:
-        # TODO: Account for the case where the function is constant over wavelength, by wl happens to be a parameter
-        # Perhaps the best way to account for that is to put a check in the z_domain code
-        pass
+        return (A, B, C, D), input_ports, output_ports
 
     f_min = speed_of_light / max(vector_fitting_parameters['spectral_range'])
     f_max = speed_of_light / min(vector_fitting_parameters['spectral_range'])
@@ -954,6 +1031,8 @@ def _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, 
     # f_center = 192.9e12
     frequency = jnp.linspace(f_min, f_max, vector_fitting_parameters["num_frequency_samples"])
     sdict = sax_model(wl=1e6*speed_of_light/frequency, **sax_settings)
+    
+    # TODO: Fix Block Mode Simulator so that this is deterministic
     input_ports = [f"{port}@{mode}" for port, modes in input_port_modes.items() for mode in modes]
     output_ports = [f"{port}@{mode}" for port, modes in output_port_modes.items() for mode in modes]
     s_params = dict_to_rect_matrix(sdict, input_ports=input_ports, output_ports=output_ports)
@@ -972,7 +1051,7 @@ def _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, 
 
     A, B, C, D = state_space_discrete(poles, residues, feedthrough)
 
-    return A, B, C, D
+    return (A, B, C, D), input_ports, output_ports
 
 class SParameterPlaceholder(Placeholder):
     """

@@ -79,8 +79,6 @@ class BlockModeSimulation(Simulation):
         # self._instantiate_components(self.settings)
         # print(len(self.block_mode_order))
         for instance_name in self.block_mode_order:
-            if instance_name == "mod1":
-                pass
             self._collect_component_inputs(instance_name)   
             inputs = self.component_inputs[instance_name]
             component = self._instantiated_circuit.instantiated_flat_netlist['instances'][instance_name]['model']

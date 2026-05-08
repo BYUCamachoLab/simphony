@@ -433,6 +433,22 @@ def generate_valid_separator(instance_names, old_separator="~", first_try="_SEP_
     
     return new_separator
 
+def generate_unique_string(instance_names, first_try="xXx"):
+    instance_names = list(instance_names)
+    new_str = first_try
+
+    def instances_contain_string(str):
+        for instance_name in instance_names:
+            if str in instance_name:
+                return True
+        return False
+
+    while instances_contain_string(new_str):
+        new_str = "_" + new_str + "_"
+    
+    return new_str
+    
+
 def remove_instances_from_netlist(netlist, instances_to_remove):
     instances_to_remove = set(instances_to_remove)
 

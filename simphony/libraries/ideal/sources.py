@@ -109,7 +109,7 @@ class OpticalCombSource(SampleModeComponent, BlockModeComponent):
         output_signal = self.block_mode_response(simulation_parameters=simulation_parameters)['o0']
         return time_step, output_signal
 
-    def sample_mode_step(self, inputs, state, simulation_parameters):
+    def sample_mode_step(self, inputs, state, simulation_state, simulation_parameters):
         time_step, full_output_signal = state
 
         outputs = {
@@ -141,10 +141,12 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
         wavelength=1.55e-6,
         linewidth=0,
         lineshape='lorentzian',
+        mode_idx = 0,
     ):
         self.wavelength = wavelength
         self.linewidth = linewidth
         self.lineshape = lineshape
+        self.mode_idx = mode_idx
         
         if self.lineshape.lower() == "lorentzian":
             self.phase_noise = self.lorentzian_phase_noise
@@ -169,19 +171,36 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
         
         return phi
     
-    def sample_mode_step_lorentzian(self, inputs, state, simulation_parameters):
+    def sample_mode_step_lorentzian(self, inputs, state, simulation_state, simulation_parameters):
         phi_prev = state
-        key = simulation_parameters.prng_key
-        delta_phi_std = jnp.sqrt(2*jnp.pi*self.linewidth*simulation_parameters.sampling_period)
+        key = simulation_state.prng_key
+        delta_phi_std = jnp.sqrt(2*jnp.pi*self.linewidth*simulation_parameters.dt)
         dphi = jax.random.normal(key)*delta_phi_std
         phi = dphi + phi_prev
         
         A_t = jnp.exp(1j*phi)
+        amplitude = jnp.zeros((1, len(simulation_parameters.mode_identifiers)), dtype=complex)
+        amplitude = amplitude.at[0, self.mode_idx].set(A_t)
+        # outputs = {
+        #     "o0": SampleModeOpticalSignal(
+        #         amplitude=amplitude,
+        #         wavelength=jnp.array([self.wavelength])
+        #     ),
+        # }
 
+        amplitude = jnp.zeros((3, len(simulation_parameters.mode_identifiers)), dtype=complex)
+        amplitude = amplitude.at[0, 0].set(0.1 + 0j)
+        amplitude = amplitude.at[1, 0].set(0.2 + 0j)
+        amplitude = amplitude.at[2, 0].set(0.3 + 0j)
+        amplitude = amplitude.at[0, 1].set(1.1 + 0j)
+        amplitude = amplitude.at[1, 1].set(1.2 + 0j)
+        amplitude = amplitude.at[2, 1].set(1.3 + 0j)
+        wl = jnp.array([1.51e-6, 1.549e-6, 1.59e-6])
+        # TODO: REMOVE THIS HARDCODED TESTING CODE
         outputs = {
             "o0": SampleModeOpticalSignal(
-                amplitude=A_t.reshape((1, 1)),
-                wavelength=jnp.array([self.wavelength])
+                amplitude=amplitude,
+                wavelength=wl
             ),
         }
 
@@ -227,10 +246,12 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
 
         # Compute complex envelope
         A_t = jnp.exp(1j*phi)
+        amplitude = jnp.zeros((A_t.shape[0], 1, len(simulation_parameters.mode_identifiers)), dtype=complex)
+        amplitude = amplitude.at[:, 0, self.mode_idx].set(A_t)       
 
         outputs = {
             "o0": BlockModeOpticalSignal(
-                amplitude=A_t.reshape((N, 1, 1)),
+                amplitude=amplitude,
                 wavelength=jnp.array([self.wavelength])
             ),
         }
@@ -329,6 +350,7 @@ class OpticalSource(SampleModeComponent, BlockModeComponent):
         self, 
         inputs: dict,
         state,
+        simulation_state,
         simulation_parameters: SampleModeSimulationParameters,
     ):
         current_time_step = state
@@ -421,7 +443,7 @@ class VoltageSource(
         }
         return outputs
     
-    def sample_mode_step(self, inputs: dict, state: jax.Array, simulation_parameters):
+    def sample_mode_step(self, inputs: dict, state: jax.Array, simulation_state, simulation_parameters):
         # TODO: Complete this to use the signal defined in settings
         return inputs, state
     

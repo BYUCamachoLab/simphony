@@ -145,6 +145,264 @@ class Circuit:
         # self._add_ports_to_graph(self.flattened_graph)
         # self._validate_connections(self.flattened_graph)
 
+    def add_component(
+        self,
+        instance_name,
+        model_name,
+        model=None,
+    ):
+        """
+        Add a component instance to the top-level netlist.
+
+        Parameters
+        ----------
+        instance_name : str
+            Name of the instance in the netlist.
+
+        model_name : str
+            Name of the component model.
+
+        model : optional
+            Optional model object to insert into self.models.
+        """
+
+        root = _find_root(self.subcircuit_hierarchy)[0]
+
+        if instance_name in self.netlist[root]["instances"]:
+            raise ValueError(f"Instance '{instance_name}' already exists")
+
+        # Add model if provided
+        if model is not None:
+            self.models[model_name] = model
+
+            if not inspect.isclass(self.models[model_name]):
+                s_parameter = optical_s_parameter_placeholder(
+                    self.models[model_name]
+                )
+                self.models[model_name] = s_parameter
+
+            self.models[model_name]._create_port_lookup_table()
+
+        if model_name not in self.models:
+            raise ValueError(f"Model '{model_name}' not found")
+
+        self.netlist[root]["instances"][instance_name] = {
+            "component": model_name,
+            "settings": {},
+        }
+
+        return self
+
+    def add_connection(
+        self,
+        src_instance,
+        src_port,
+        dst_instance,
+        dst_port,
+    ):
+        """
+        Add a connection between two component ports.
+        """
+
+        root = _find_root(self.subcircuit_hierarchy)[0]
+
+        if "connections" not in self.netlist[root]:
+            self.netlist[root]["connections"] = {}
+
+        src = f"{src_instance},{src_port}"
+        dst = f"{dst_instance},{dst_port}"
+
+        # SAX-style directed connection representation
+        self.netlist[root]["connections"][src] = dst
+
+        return self
+
+    # def add_connection(
+    #     self,
+    #     src_instance,
+    #     src_port,
+    #     dst_instance,
+    #     dst_port,
+    # ):
+    #     """
+    #     Add a connection between two component ports.
+    #     """
+
+    #     root = _find_root(self.subcircuit_hierarchy)[0]
+
+    #     connection_name = (
+    #         f"{src_instance},{src_port}:{dst_instance},{dst_port}"
+    #     )
+
+    #     if "connections" not in self.netlist[root]:
+    #         self.netlist[root]["connections"] = {}
+
+    #     self.netlist[root]["connections"][connection_name] = (
+    #         f"{src_instance},{src_port}",
+    #         f"{dst_instance},{dst_port}",
+    #     )
+
+    #     return self
+
+
+    # def unconnected_ports(
+    #     self,
+    #     inputs_only: bool = False,
+    # ):
+    #     """
+    #     Return all unconnected ports as
+
+    #     {
+    #         instance_name: [port_name1, port_name2, ...]
+    #     }
+
+    #     Parameters
+    #     ----------
+    #     inputs_only : bool
+    #         If True, only return ports whose directionality is
+    #         "input" or "bidirectional".
+    #     """
+
+    #     root = _find_root(self.subcircuit_hierarchy)[0]
+    #     netlist = self.netlist[root]
+
+    #     # Start with all relevant ports assumed unconnected
+    #     unconnected_ports = {}
+
+    #     for instance_name, instance_data in netlist["instances"].items():
+
+    #         model_name = instance_data["component"]
+
+    #         if model_name not in self.models:
+    #             continue
+
+    #         component = self.models[model_name]
+
+    #         if inputs_only:
+    #             port_names = [
+    #                 port.name
+    #                 for port in component.ports
+    #                 if port.directionality in ("input", "bidirectional")
+    #             ]
+    #         else:
+    #             port_names = [
+    #                 port.name
+    #                 for port in component.ports
+    #             ]
+
+    #         unconnected_ports[instance_name] = set(port_names)
+
+    #     # Remove connected ports
+    #     for src, dst in netlist.get("connections", {}).items():
+
+    #         for endpoint in (src, dst):
+    #             instance_name, port_name = endpoint.split(",")
+
+    #             if instance_name in unconnected_ports:
+    #                 unconnected_ports[instance_name].discard(port_name)
+
+    #     # Convert sets to sorted lists
+    #     unconnected_ports = {
+    #         instance: sorted(list(ports))
+    #         for instance, ports in unconnected_ports.items()
+    #         if len(ports) > 0
+    #     }
+
+    #     return unconnected_ports
+    def unconnected_ports(
+        self,
+        inputs_only: bool = False,
+    ):
+        """
+        Return all unconnected ports as
+
+        {
+            instance_name: [port_obj1, port_obj2, ...]
+        }
+
+        Parameters
+        ----------
+        inputs_only : bool
+            If True, only return ports whose directionality is
+            "input" or "bidirectional".
+        """
+
+        root = _find_root(self.subcircuit_hierarchy)[0]
+        netlist = self.netlist[root]
+
+        # instance -> set(port objects)
+        unconnected_ports = {}
+
+        for instance_name, instance_data in netlist["instances"].items():
+
+            model_name = instance_data["component"]
+
+            if model_name not in self.models:
+                continue
+
+            component = self.models[model_name]
+
+            if inputs_only:
+                ports = [
+                    port
+                    for port in component.ports
+                    if port.directionality in ("input", "bidirectional")
+                ]
+            else:
+                ports = list(component.ports)
+
+            unconnected_ports[instance_name] = set(ports)
+
+        # Remove connected ports (match by name)
+        for src, dst in netlist.get("connections", {}).items():
+
+            for endpoint in (src, dst):
+                instance_name, port_name = endpoint.split(",")
+
+                if instance_name in unconnected_ports:
+
+                    # remove the matching port object
+                    unconnected_ports[instance_name] = {
+                        p for p in unconnected_ports[instance_name]
+                        if p.name != port_name
+                    }
+
+        # Convert sets to lists
+        unconnected_ports = {
+            instance: list(ports)
+            for instance, ports in unconnected_ports.items()
+            if len(ports) > 0
+        }
+
+        return unconnected_ports
+
+    # def add_component(
+    #     self,
+    #     instance_name,
+    #     model_name,
+    #     model = None,
+    # ):
+    #     # Don't forget to update the port_lookup_table, you might as well just call _create_port_lookup_table
+    #     pass
+
+    # def add_connection(
+    #     self,
+    #     instance_name,
+    #     model_name,
+    #     model = None,
+    # ):
+    #     # Don't forget to update the port_lookup_table, you might as well just call _create_port_lookup_table
+    #     pass
+
+    # def unconnected_ports(
+    #     self,
+    # ):
+    #     # Look through all of the models in the models dict, simphony models are different than 
+    #     # Sax models in that they have a ports attribute self.models[model_name].ports
+    #     # Each port in self.models[model_name].ports has a port.name attribute
+    #     # Alternatively, there is a port
+    #     unconnected_ports = ... 
+    #     return unconnected_ports
 
     def display(
         self, 
@@ -686,7 +944,8 @@ class InstantiatedCircuit:
             port_designators = set()
             for instance_name, instance_data in subnetlist['instances'].items():
                 model_name = instance_data['component']
-                sdict = sax.multimode(models[model_name], self.simulation_parameters.mode_identifiers)()
+                # Changed this line on Friday 05-08-26
+                sdict = sax.multimode(models[model_name](), self.simulation_parameters.mode_identifiers)
                 single_mode_ports = sorted({
                     p.split("@")[0]
                     for edge in sdict.keys()

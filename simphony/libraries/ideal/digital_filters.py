@@ -67,7 +67,7 @@ class OpticalDiscreteFilter(
         state = (x_hist, y_hist)
         return state
     
-    def _sample_mode_step_iir(self, inputs: dict,  state: jax.Array, simulation_parameters):
+    def _sample_mode_step_iir(self, inputs: dict,  state: jax.Array, simulation_state, simulation_parameters):
         delay_compensation = self.delay_compensation
         
         x_hist, y_hist = state
@@ -242,7 +242,7 @@ def discrete_state_space(
             x = jnp.zeros((len(simulation_parameters.optical_baseband_wavelengths), A.shape[0]), dtype=complex)
             return x
         
-        def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_parameters):
+        def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_state, simulation_parameters):
             x = state
             A, B, C, D = self.state_space_matrices
             u = jnp.zeros(

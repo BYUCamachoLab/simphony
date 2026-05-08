@@ -173,7 +173,7 @@ class OpticalModulator(
     def sample_mode_initial_state(self, simulation_parameters):
         return jnp.array([0])
     
-    def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_parameters):
+    def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_state, simulation_parameters):
         # TODO: Complete this to acount for delay and phase shift
         return inputs, state
         

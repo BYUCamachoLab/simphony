@@ -54,7 +54,8 @@ class MZI(PCell):
     ]
 
     @classmethod
-    def _arm_connections(cls, partial: bool, modulators: bool):
+    def _arm_connections(cls, partial: bool):
+        modulators = True
         connections = {}
 
         for arm_name, splitter_port, combiner_port in cls._arms:
@@ -91,8 +92,6 @@ class MZI(PCell):
         partial: bool = False,
         # TODO: maybe inherit a getter or setter or just don't do group ids
         group_id = "default", # Setting to None will disable grouping, not setting will use MZI class id
-        modulators: bool = True,
-
     ):
         """
         `partial` builds only the arms and combiner, without the input splitter.
@@ -110,6 +109,7 @@ class MZI(PCell):
             top_phase_shifter_settings = {}
         if bot_phase_shifter_settings is None:
             bot_phase_shifter_settings = {}
+        
         self.netlist = {
             "instances": {
                 "combiner": "coupler",
@@ -120,23 +120,28 @@ class MZI(PCell):
                 "o1": "combiner,o1",
                 "o3": "combiner,o3",
             },
-            "connections": self._arm_connections(partial, modulators),
+            "connections": self._arm_connections(partial),
         }
         self.settings = {
-            "top_wg": top_wg_settings,
-            "bot_wg": bot_wg_settings,
-            "combiner": combiner_settings,
+            "top_wg": {
+                "sax_settings": top_wg_settings,
+            },
+            "bot_wg": {
+                "sax_settings": bot_wg_settings,
+            },
+            "combiner": {
+                "sax_settings": combiner_settings,
+            }
         }
 
-        if modulators:
-            self.netlist["instances"].update({
-                "top_mod": "modulator",
-                "bot_mod": "modulator",
-            })
-            self.netlist["ports"]["e0"] = "top_mod,e0"
-            self.netlist["ports"]["e1"] = "bot_mod,e0"
-            self.settings["top_mod"] = top_phase_shifter_settings
-            self.settings["bot_mod"] = bot_phase_shifter_settings
+        self.netlist["instances"].update({
+            "top_mod": "modulator",
+            "bot_mod": "modulator",
+        })
+        self.netlist["ports"]["e0"] = "top_mod,e0"
+        self.netlist["ports"]["e1"] = "bot_mod,e0"
+        self.settings["top_mod"] = top_phase_shifter_settings
+        self.settings["bot_mod"] = bot_phase_shifter_settings
 
         if partial:
             self.netlist["ports"]["o0"] = "bot_wg,o0"
@@ -145,15 +150,15 @@ class MZI(PCell):
             self.netlist["instances"]["splitter"] = "coupler"
             self.netlist["ports"]["o0"] = "splitter,o0"
             self.netlist["ports"]["o2"] = "splitter,o2"
-            self.settings["splitter"] = splitter_settings
+            self.settings["splitter"] = {"sax_settings": splitter_settings}
 
         self.models = {
             "coupler": coupler,
             "waveguide": waveguide,
         }
-        if modulators and simulation_parameters.directed:
+        if simulation_parameters.directed:
             self.models["modulator"] = DirectedOpticalModulator
-        elif modulators:
+        else:
             self.models["modulator"] = OpticalModulator
 
         from simphony.simulation.simulation import SimulationMode
@@ -176,14 +181,13 @@ class MZI(PCell):
                 "coupler": optical_s_parameter_placeholder(coupler, coupler_directionality, simulation_parameters.mode_identifiers),
                 "waveguide": optical_s_parameter_placeholder(waveguide, waveguide_directionality, simulation_parameters.mode_identifiers),
             }
-            if modulators:
-                self.models["modulator"] = DirectedOpticalModulator
-            self.settings['top_wg'] = {"sax_settings": self.settings['top_wg']}
-            self.settings['bot_wg'] = {"sax_settings": self.settings['bot_wg']}
-            if not partial:
-                self.settings['splitter'] = {"sax_settings": self.settings['splitter']}
+
+            # self.settings['top_wg'] = {"sax_settings": self.settings['top_wg']}
+            # self.settings['bot_wg'] = {"sax_settings": self.settings['bot_wg']}
+            # if not partial:
+            #     self.settings['splitter'] = {"sax_settings": self.settings['splitter']}
                 
-            self.settings['combiner'] = {"sax_settings": self.settings['combiner']}
+            # self.settings['combiner'] = {"sax_settings": self.settings['combiner']}
 
         elif simulation_parameters.simulation_mode == SimulationMode.S_PARAMETER:
             pass
@@ -192,6 +196,7 @@ class MZI(PCell):
         
 
         s_parameter_models_to_group = ["top_wg", "bot_wg", "splitter", "combiner"]
+        
         if partial:
             s_parameter_models_to_group.remove("splitter")
 
@@ -200,6 +205,8 @@ class MZI(PCell):
         
         for instance_name in s_parameter_models_to_group:
             self.settings[instance_name]["group_id"] = group_id
+        
+        pass
 
 
 def mzi_lattice_filter(
@@ -215,6 +222,16 @@ def mzi_lattice_filter(
             ),
             Port(
                 name="o1",
+                type="optical",
+                directionality = "bidirectional"
+            ),
+            Port(
+                name="o2",
+                type="optical",
+                directionality = "bidirectional"
+            ),
+            Port(
+                name="o3",
                 type="optical",
                 directionality = "bidirectional"
             )
@@ -274,12 +291,17 @@ def mzi_lattice_filter(
             # ports["o0"] = f"{mzi_instance_name(0)},o0"
             # ports["o1"] = f"{mzi_instance_name(order-1)},o1"
 
-            ports = {
-                "o0": f"{mzi_instance_name(0)},o0",
-                "o1": f"{mzi_instance_name(order-1)},o1",
-                "o2": f"{mzi_instance_name(0)},o2",
-                "o3": f"{mzi_instance_name(order-1)},o3",
-            }
+            # ports = {
+            #     "o0": f"{mzi_instance_name(0)},o0",
+            #     "o1": f"{mzi_instance_name(order-1)},o1",
+            #     "o2": f"{mzi_instance_name(0)},o2",
+            #     "o3": f"{mzi_instance_name(order-1)},o3",
+            # }
+            ports = {p.name:f"{p.name.split("_")[0]},{p.name.split("_")[1]}" for p in self.ports if p.type == "electrical" }
+            ports["o0"] = f"{mzi_instance_name(0)},o0"
+            ports["o1"] = f"{mzi_instance_name(order-1)},o1"
+            ports["o2"] = f"{mzi_instance_name(0)},o2"
+            ports["o3"] = f"{mzi_instance_name(order-1)},o3"
 
             self.netlist = {
                 "instances": instances,
