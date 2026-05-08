@@ -395,7 +395,7 @@ def state_space_discrete(poles, residues, feedthrough):
 #     for i in range(model_order):
 #         A = A.at[i * num_inputs : (i + 1) * num_inputs, i * num_inputs : (i + 1) * num_inputs].set(poles[i] * jnp.eye(num_inputs))
 #         B = B.at[i * num_inputs : (i + 1) * num_inputs, :].set(jnp.eye(num_inputs))
-#         C = C.at[:, i * num_outputs : (i + 1) * num_inputs].set(residues[i, :, :])
+#         C = C.at[:, i * num_outputs : (i + 1) * self.state_space_matricesnum_inputs].set(residues[i, :, :])
 
 #     D = feedthrough
 #     return A, B, C, D
