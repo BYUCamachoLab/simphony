@@ -181,28 +181,28 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
         A_t = jnp.exp(1j*phi)
         amplitude = jnp.zeros((1, len(simulation_parameters.mode_identifiers)), dtype=complex)
         amplitude = amplitude.at[0, self.mode_idx].set(A_t)
-        # outputs = {
-        #     "o0": SampleModeOpticalSignal(
-        #         amplitude=amplitude,
-        #         wavelength=jnp.array([self.wavelength])
-        #     ),
-        # }
-
-        amplitude = jnp.zeros((3, len(simulation_parameters.mode_identifiers)), dtype=complex)
-        amplitude = amplitude.at[0, 0].set(0.1 + 0j)
-        amplitude = amplitude.at[1, 0].set(0.2 + 0j)
-        amplitude = amplitude.at[2, 0].set(0.3 + 0j)
-        amplitude = amplitude.at[0, 1].set(1.1 + 0j)
-        amplitude = amplitude.at[1, 1].set(1.2 + 0j)
-        amplitude = amplitude.at[2, 1].set(1.3 + 0j)
-        wl = jnp.array([1.51e-6, 1.549e-6, 1.59e-6])
-        # TODO: REMOVE THIS HARDCODED TESTING CODE
         outputs = {
             "o0": SampleModeOpticalSignal(
                 amplitude=amplitude,
-                wavelength=wl
+                wavelength=jnp.array([self.wavelength])
             ),
         }
+
+        # amplitude = jnp.zeros((3, len(simulation_parameters.mode_identifiers)), dtype=complex)
+        # amplitude = amplitude.at[0, 0].set(0.1 + 0j)
+        # amplitude = amplitude.at[1, 0].set(0.2 + 0j)
+        # amplitude = amplitude.at[2, 0].set(0.3 + 0j)
+        # amplitude = amplitude.at[0, 1].set(1.1 + 0j)
+        # amplitude = amplitude.at[1, 1].set(1.2 + 0j)
+        # amplitude = amplitude.at[2, 1].set(1.3 + 0j)
+        # wl = jnp.array([1.51e-6, 1.549e-6, 1.59e-6])
+        # # TODO: REMOVE THIS HARDCODED TESTING CODE
+        # outputs = {
+        #     "o0": SampleModeOpticalSignal(
+        #         amplitude=amplitude,
+        #         wavelength=wl
+        #     ),
+        # }
 
         return outputs, phi
     
