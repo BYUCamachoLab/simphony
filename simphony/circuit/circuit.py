@@ -11,6 +11,8 @@ from IPython.display import display
 
 from simphony.circuit.netlist import add_settings_to_netlist, graph_to_netlist, netlist_to_graph, instantiated_flat_netlist_to_graph, remove_instances_from_netlist
 from copy import deepcopy
+import warnings
+import inspect
 # from simphony.signal import optical_signal, complete_steady_state_inputs
 
 # from simphony.component.component import Component
@@ -39,6 +41,12 @@ COMPONENT_COLOR_ELECTRICAL = "red"
 COMPONENT_COLOR_OPTOELECTRICAL = "purple"
 COMPONENT_COLOR_LOGIC = "gray"
 
+S_PARAMETER_SETTING_KEYS = {
+    "group_id",
+    "vector_fitting_parameters",
+    "delay_compensation",
+    "port_directionality",
+}
 
 # -----------------------------------------------------------------
 # The following functions taken from sax.circuits from sax 0.15.10
@@ -536,6 +544,16 @@ def find_clipped_edges(full_graph, subgraph_nodes):
 
     return unique_clipped
 
+def _normalize_settings(model, instance_name, settings):
+    original_model = model._sax_model
+    model_params = inspect.signature(original_model).parameters
+    instance_settings = settings[instance_name]
+    if any(setting in model_params for setting in instance_settings):
+        settings[instance_name] = {"sax_settings": instance_settings}
+    else:
+        settings[instance_name].setdefault("sax_settings", {})
+        warnings.warn(f"Sax settings were not specified and inside settings do not match model function call for {instance_name}. Appending an empty sax_setting dictionary for that component.")
+
 class InstantiatedCircuit:
     """
     Similar to the Circuit, but composed of the instantiated models, themselves, not Component classes
@@ -590,9 +608,9 @@ class InstantiatedCircuit:
         # Reinterpret Sax Settings to optical_s_parameter Component settings
         # for instance_name, instance_settings in settings.items():
         for instance_name in netlist['instances'].keys():
-            model_name = netlist['instances'][instance_name]['component']
-            if issubclass(models[model_name], SParameterPlaceholder) and not "sax_settings" in settings[instance_name].keys():
-                settings[instance_name] = {"sax_settings": settings[instance_name]}
+            model = models[netlist['instances'][instance_name]['component']]
+            if issubclass(model, SParameterPlaceholder) and not "sax_settings" in settings[instance_name].keys():
+                _normalize_settings(model=model, instance_name=instance_name, settings=settings)
         
         # import gravis as gv
         # gv.d3(netlist_to_graph(netlist, models)).display()
