@@ -612,7 +612,6 @@ class InstantiatedCircuit:
             if issubclass(model, SParameterPlaceholder) and not "sax_settings" in settings[instance_name].keys():
                 _normalize_settings(model=model, instance_name=instance_name, settings=settings)
         
-        import gravis as gv
         # gv.d3(netlist_to_graph(netlist, models)).display()
         tracked_ports = self._insert_port_label_placeholders(netlist, settings, models, tracked_ports) 
         # gv.d3(netlist_to_graph(netlist, models)).display()
