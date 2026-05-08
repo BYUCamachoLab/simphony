@@ -802,15 +802,15 @@ def find_clipped_edges(full_graph, subgraph_nodes):
 
     return unique_clipped
 
-def _normalize_settings(model, instance_name, settings):
-    original_model = model._sax_model
-    model_params = inspect.signature(original_model).parameters
-    instance_settings = settings[instance_name]
-    if any(setting in model_params for setting in instance_settings):
-        settings[instance_name] = {"sax_settings": instance_settings}
-    else:
-        settings[instance_name].setdefault("sax_settings", {})
-        warnings.warn(f"Sax settings were not specified and inside settings do not match model function call for {instance_name}. Appending an empty sax_setting dictionary for that component.")
+# def _normalize_settings(model, instance_name, settings):
+#     original_model = model._sax_model
+#     model_params = inspect.signature(original_model).parameters
+#     instance_settings = settings[instance_name]
+#     if any(setting in model_params for setting in instance_settings):
+#         settings[instance_name] = {"sax_settings": instance_settings}
+#     else:
+#         settings[instance_name].setdefault("sax_settings", {})
+#         warnings.warn(f"Sax settings were not specified and inside settings do not match model function call for {instance_name}. Appending an empty sax_setting dictionary for that component.")
 
 class InstantiatedCircuit:
     """
@@ -868,7 +868,7 @@ class InstantiatedCircuit:
         for instance_name in netlist['instances'].keys():
             model = models[netlist['instances'][instance_name]['component']]
             if issubclass(model, SParameterPlaceholder) and not "sax_settings" in settings[instance_name].keys():
-                _normalize_settings(model=model, instance_name=instance_name, settings=settings)
+                settings[instance_name] = {"sax_settings": settings[instance_name]}
         
         # gv.d3(netlist_to_graph(netlist, models)).display()
         tracked_ports = self._insert_port_label_placeholders(netlist, settings, models, tracked_ports) 

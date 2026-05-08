@@ -1093,6 +1093,7 @@ def optical_s_parameter_placeholder(
     
     BaseSParameterSax = SParameterPlaceholder # Freeze the reference
     class SpecificSParameterPlaceholder(BaseSParameterSax):
+        
         ports = [
             Port(
                 name=port_name,
