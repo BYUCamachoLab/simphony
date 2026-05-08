@@ -190,7 +190,7 @@ def optical_s_parameter(
             L = len(simulation_parameters.optical_baseband_wavelengths)
             M = len(simulation_parameters.mode_identifiers)
             u = jnp.zeros((L, len(self.state_space_input_indices)), dtype=complex)
-            y = jnp.zeros((L, len(self.state_space_input_indices)), dtype=complex)
+            y = jnp.zeros((L, len(self.state_space_output_indices)), dtype=complex)
             
 
             wl_center = self.settings['vector_fitting_parameters']['center_wavelength']
@@ -216,7 +216,7 @@ def optical_s_parameter(
             for (port_name, mode), state_space_idx in self.state_space_output_indices.items():                
                 mode_idx = self.mode_indices[mode]
                 signal = output_signals[port_name]
-                amplitude = signal.amplitude.at[:, mode_idx].set(y[:, mode_idx])
+                amplitude = signal.amplitude.at[:, mode_idx].set(y[:, state_space_idx])
                 output_signals[port_name] = signal.replace(amplitude=amplitude, wavelength=signal.wavelength)
             
             return output_signals, new_x
