@@ -9,7 +9,7 @@ from jax.typing import ArrayLike
 from sax.saxtypes import Model as SaxModel
 
 import matplotlib.pyplot as plt
-from simphony.time_domain.vector_fitting.z_domain import optimize_order_vector_fitting_discrete, vector_fitting_discrete, pole_residue_response_discrete, state_space_discrete, PHYSICIST
+from simphony.time_domain.vector_fitting.z_domain import optimize_order_vector_fitting_discrete, vector_fitting_discrete, pole_residue_response_discrete, state_space_discrete, PHYSICIST, state_space_response_discrete
 from simphony.signal.sample_mode import SampleModeOpticalSignal, SampleModeElectricalSignal, SampleModeLogicSignal
 from simphony.signal.steady_state import SteadyStateOpticalSignal
 
@@ -173,7 +173,12 @@ def optical_s_parameter(
             self.state_space_input_indices = {tuple(p.split("@")):i for i, p in enumerate(_state_space_input_ports)}
             self.state_space_output_indices = {tuple(p.split("@")):i for i, p in enumerate(_state_space_output_ports)}
             self.mode_indices = {mode: i for i, mode in enumerate(simulation_parameters.mode_identifiers)}
-            
+            # A, B, C, D = self.state_space_matrices
+            # import matplotlib.pyplot as plt
+            # u = jnp.ones((1000, 2), dtype=complex)
+            # response, _ = state_space_response_discrete(A, B, C, D, u)
+            # plt.plot(response)
+
             A, _, _, _ = self.state_space_matrices
             L = len(simulation_parameters.optical_baseband_wavelengths)
             x = jnp.zeros((L, A.shape[1],), dtype=complex)
