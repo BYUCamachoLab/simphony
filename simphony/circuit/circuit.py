@@ -20,7 +20,7 @@ import inspect
 from simphony.simulation.simulation import SimulationParameters
 
 
-from simphony.libraries.ideal.s_parameters import optical_s_parameter, SParameterPlaceholder, s_parameter_netlist_to_pcell
+from simphony.libraries.ideal.s_parameters import optical_s_parameter_placeholder, SParameterPlaceholder, s_parameter_netlist_to_pcell
 import sax
 
 from sax.circuits import _create_dag
@@ -250,7 +250,7 @@ class Circuit:
         for model in self.models:
             component = self.models[model]
             if not inspect.isclass(component):
-                s_parameter = optical_s_parameter(component)
+                s_parameter = optical_s_parameter_placeholder(component)
                 self.models[model] = s_parameter
 
     def _get_ports_from_subcircuit(self, subcircuit: str):
@@ -612,7 +612,7 @@ class InstantiatedCircuit:
             if issubclass(model, SParameterPlaceholder) and not "sax_settings" in settings[instance_name].keys():
                 _normalize_settings(model=model, instance_name=instance_name, settings=settings)
         
-        # import gravis as gv
+        import gravis as gv
         # gv.d3(netlist_to_graph(netlist, models)).display()
         tracked_ports = self._insert_port_label_placeholders(netlist, settings, models, tracked_ports) 
         # gv.d3(netlist_to_graph(netlist, models)).display()

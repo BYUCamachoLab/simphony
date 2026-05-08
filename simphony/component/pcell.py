@@ -115,7 +115,7 @@ def _convert_sax_models(
     # port_directionality,    
 ):
     from simphony.circuit.netlist import add_settings_to_netlist
-    from simphony.libraries.ideal.s_parameters import optical_s_parameter
+    from simphony.libraries.ideal.s_parameters import optical_s_parameter_placeholder
     
     netlist = sax.netlist(deepcopy(netlist))
     for _, subnetlist in netlist.items():
@@ -146,7 +146,7 @@ def _convert_sax_models(
             ### on order, but the specification in the ports list can trump this
             # print(port_directionality)
             directionality = None # Defaults to bidirectional
-            new_models[model_name] = optical_s_parameter(model, directionality, simulation_parameters.mode_identifiers)
+            new_models[model_name] = optical_s_parameter_placeholder(model, directionality, simulation_parameters.mode_identifiers)
             continue
         
         raise ValueError("Directed Simulations Require Component Types, no sax models allowed. This is because sax models are bidirectional")
