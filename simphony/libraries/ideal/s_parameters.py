@@ -169,7 +169,7 @@ def optical_s_parameter(
             """
             sax_settings = self.settings['sax_settings']
             vector_fitting_parameters = self.settings['vector_fitting_parameters']
-            self.state_space_matrices, _state_space_input_ports, _state_space_output_ports = _calculate_state_space_coefficients_from_sax_model(self.sax_model, sax_settings, vector_fitting_parameters, simulation_parameters)
+            self.state_space_matrices, _state_space_input_ports, _state_space_output_ports = _calculate_state_space_coefficients_from_sax_model(self.sax_model, sax_settings, vector_fitting_parameters, simulation_parameters, delay_compensation=self.settings['delay_compensation'])
             self.state_space_input_indices = {tuple(p.split("@")):i for i, p in enumerate(_state_space_input_ports)}
             self.state_space_output_indices = {tuple(p.split("@")):i for i, p in enumerate(_state_space_output_ports)}
             self.mode_indices = {mode: i for i, mode in enumerate(simulation_parameters.mode_identifiers)}
@@ -187,7 +187,7 @@ def optical_s_parameter(
         def sample_mode_step(self, input_signals: dict, state: jax.Array, simulation_state, simulation_parameters):
             """Compute the next state of the system."""
             # TODO: Add the delay compensation logic
-            k = 0
+            k = self.settings['delay_compensation']
             x = state
             new_x = jnp.zeros_like(x)
             A, B, C, D = self.state_space_matrices
@@ -205,7 +205,8 @@ def optical_s_parameter(
                 u = u.at[:, state_space_idx].set(input_signals[port_name].amplitude[:, mode_idx])
 
             for wl_idx, wl in enumerate(simulation_parameters.optical_baseband_wavelengths):
-                delta_omega = speed_of_light * (1/wl - 1/wl_center)
+                sampling_frequency = 1/simulation_parameters.dt
+                delta_omega = 2*jnp.pi*speed_of_light * (1/wl - 1/wl_center) / sampling_frequency
                 _A, _B, _C, _D = jnp.exp(1j*delta_omega)*A, jnp.exp(1j*delta_omega)*B, jnp.exp(1j*k*delta_omega)*C, jnp.exp(1j*k*delta_omega)*D
             
                 _new_x = _A@x[wl_idx, :] + _B@u[wl_idx, :]
@@ -578,7 +579,7 @@ def _block_mode_design(
         sax_model = filtered_sax_models[instance_name]
                 
         # TODO: Make sure that the port modes in these vectors are mapping correctly
-        (A, B, C, D), _, _ = _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, vector_fitting_parameters, simulation_parameters)
+        (A, B, C, D), _, _ = _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, vector_fitting_parameters, simulation_parameters, delay_compensation=0)
         f_b = speed_of_light / vector_fitting_parameters["center_wavelength"]
         f_s = 1 / simulation_parameters.dt
 
@@ -983,7 +984,7 @@ def _bidirectional_ports_to_unidirectional_ports(
 
     return unidirectional_sax_model, unidirectional_port_directionality, in_suffix, out_suffix
 
-def _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, vector_fitting_parameters, simulation_parameters):
+def _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, vector_fitting_parameters, simulation_parameters, delay_compensation=0):
     """
     Returns A, B, C, D, input_ports, output_ports
     For D[i, j], output_ports[i] <- input_ports[j]
@@ -1014,6 +1015,9 @@ def _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, 
         pass
     
     if constant_over_wavelength:
+        if not delay_compensation == 0:
+            raise ValueError("delay compensation cannot be applied to a 0 delay element")
+        
         sdict = sax_model(**sax_settings)
         # TODO: Fix Block Mode Simulator so that this is deterministic
         input_ports = [f"{port}@{mode}" for port, modes in input_port_modes.items() for mode in modes]
@@ -1050,6 +1054,8 @@ def _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, 
     ### TODO: REMOVE THIS LINE USED FOR TESTING
     # vector_fitting_parameters["model_order"] = 20
     
+    Omega = 2*jnp.pi*(frequency - f_center) / sampling_frequency
+    s_params = jnp.exp(-1j*delay_compensation*Omega)[:, None, None]*s_params
     if vector_fitting_parameters["model_order"] is None:
         poles, residues, feedthrough, mean_squared_error = optimize_order_vector_fitting_discrete(min_order, max_order, s_params, frequency, f_center, sampling_frequency, sign_convention=PHYSICIST)
     else:
