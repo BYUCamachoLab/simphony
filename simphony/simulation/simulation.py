@@ -33,6 +33,7 @@ class SimulationMode(StrEnum):
     SAMPLE_MODE = "sample_mode"
     BLOCK_MODE = "block_mode"
     STEADY_STATE = "steady_state"
+    GAUSSIAN_PROCESS = "gaussian_process"
     _SIMPHONY_PREPROCESSING = "simphony_preprocessing"
     #### TODO: Fix naming conventions for all simulation modes
     # TRANSIENT_SAMPLE = "transient_sample"

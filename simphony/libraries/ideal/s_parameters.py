@@ -995,18 +995,13 @@ def _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, 
     
     def has_wl_kwarg(model):
         sig = inspect.signature(model)
-
         if "wl" in sig.parameters:
             return True
-
-        if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
-            try:
-                model(wl=0.0)
-                return True
-            except TypeError:
-                return False
-
-        return False
+        try:
+            model(wl=0.0)
+            return True
+        except TypeError:
+            return False
     
     if not has_wl_kwarg(sax_model):
         constant_over_wavelength = True

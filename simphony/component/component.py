@@ -379,6 +379,46 @@ class SParameterComponent(Component):
         modify the s-dict of an SParameterComponent.
         """
         return self.s_parameter_get_bias_ports()
+
+
+class GaussianProcessComponent(Component):
+    """
+    Base class for components that participate in GaussianProcessSimulation.
+
+    Designers implement `gaussian_process_mode_response`; the simulator calls
+    `_gaussian_process_mode_response` (the wrapper).
+    """
+
+    def gaussian_process_mode_response(self, inputs: dict, simulation_parameters) -> dict:
+        """Return a dict of GaussianProcessOpticalSignal for each output port."""
+        raise NotImplementedError
+
+    def _gaussian_process_mode_response(self, inputs: dict, simulation_parameters) -> dict:
+        from simphony.signal.gaussian_process import GaussianProcessOpticalSignal
+        for port_name, port in self._input_port_lookup_table.items():
+            inputs.setdefault(
+                port_name,
+                self._default_gp_input_signal(simulation_parameters, port.type),
+            )
+        return self.gaussian_process_mode_response(inputs, simulation_parameters)
+
+    def _default_gp_input_signal(self, simulation_parameters, port_type: str):
+        from simphony.signal.gaussian_process import GaussianProcessOpticalSignal
+        if port_type == "optical":
+            wl = simulation_parameters.optical_baseband_wavelengths
+            T = simulation_parameters.num_time_steps
+            L = wl.shape[0]
+            M = len(simulation_parameters.mode_identifiers)
+            return GaussianProcessOpticalSignal(
+                mean_amplitude=jnp.zeros((T, L, M), dtype=complex),
+                covariance=jnp.zeros((L, T, T, M, M), dtype=complex),
+                wavelength=wl,
+            )
+        raise NotImplementedError(
+            f"No default GP signal defined for port type '{port_type}'"
+        )
+
+
 # # TODO: Get rid of this
 # class OpticalSParameterComponent(SParameterComponent):
 #     # def __init__(self, **settings):
