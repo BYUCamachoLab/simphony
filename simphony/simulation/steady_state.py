@@ -7,15 +7,36 @@ from flax import struct
 
 @struct.dataclass
 class SteadyStateSimulationParameters(SimulationParameters):
+    """Global settings for steady-state simulations.
+
+    Steady-state simulation currently relies mostly on the shared
+    `SimulationParameters` fields. The class exists so components and PCells can
+    distinguish steady-state instantiation from S-parameter, Block mode, and
+    Sample mode instantiation.
+    """
     pass
 
 class SteadyStateSimulationResult(SimulationResult):
+    """Inputs and outputs collected during a steady-state solve.
+
+    Attributes
+    ----------
+    circuit:
+        Deep copy of the instantiated circuit used for the solve.
+    component_inputs:
+        Mapping from instance name to the steady-state signals supplied to that
+        instance.
+    component_outputs:
+        Mapping from instance name to the steady-state signals returned by that
+        instance.
+    """
     def __init__(self, circuit):
         self.circuit = deepcopy(circuit)
         self.component_inputs = {}
         self.component_outputs = {}
     
     def _collect_component_inputs(self, component)->dict:
+        """Collect already-computed predecessor outputs for one component."""
         inputs = {}
         # input_components = nx.ancestors(self.circuit.graph, component)
         input_components = [u for u, v in self.circuit.graph.in_edges(component)]
@@ -30,6 +51,12 @@ class SteadyStateSimulationResult(SimulationResult):
     #     self.component_outputs[component]=outputs
 
 class SteadyStateSimulation(Simulation):
+    """Run components in topological order to compute static signals.
+
+    Steady-state simulations are used directly by users and internally by
+    S-parameter simulations to resolve bias/control values before evaluating
+    optical scattering responses.
+    """
     def __init__(
             self,         
             circuit: Circuit, 
@@ -37,6 +64,20 @@ class SteadyStateSimulation(Simulation):
             simulation_parameters,
             ports=None,          
         ):
+        """Create a steady-state simulation.
+
+        Parameters
+        ----------
+        circuit:
+            Circuit to instantiate and solve.
+        settings:
+            Per-instance constructor settings.
+        simulation_parameters:
+            Steady-state simulation parameters.
+        ports:
+            Optional top-level port mapping. Defaults to the flattened circuit
+            ports.
+        """
         self.circuit = circuit
         self.flat_circuit = circuit.flatten()
         self.settings = settings
@@ -51,6 +92,7 @@ class SteadyStateSimulation(Simulation):
         self, 
         # settings:dict = None
     ) -> SteadyStateSimulationResult:
+        """Instantiate the circuit and compute steady-state component outputs."""
         
         instantiated_circuit = self.circuit.instantiate(self.settings, self.simulation_parameters)
         simulation_result = SteadyStateSimulationResult(instantiated_circuit)
@@ -99,19 +141,14 @@ class SteadyStateSimulation(Simulation):
     #it appears to be exactly the same as the custom implementation. Though this depends
     #if we need a custom implementation depending on the circuit structure.
     def _determine_steady_state_order_nx_method(self, instantiated_circuit):
-        """
-        Voltage signals at electrical ports are assumed to be constant
-        for SParameterSimulations, but they are not known a priori, unless
-        the voltage source is not dependent on an input signal.
+        """Return the topological execution order for steady-state components.
 
-        Since steady-state connections are assumemd to be uni-directional, this function is
-        able to find the order in which electrical component voltages must
-        be calculated to find the proper steady state.
+        Steady-state components are evaluated once, so the instantiated graph
+        must be acyclic. Cycles imply a feedback equation that this driver does
+        not currently solve.
         """
         try:
             return list(nx.topological_sort(instantiated_circuit.graph))
         except nx.NetworkXUnfeasible:
             raise ValueError("Failed to determine steady state order – circular dependencies detected")
-
-
 

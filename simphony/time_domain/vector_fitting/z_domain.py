@@ -119,6 +119,31 @@ def _fit_to_poles(transfer_function, frequency, sampling_frequency, poles, sign_
 
 # @jax.jit
 def pole_residue_response_discrete(frequency, center_frequency, sampling_frequency, poles, residues, feedthrough, sign_convention=PHYSICIST):
+    """Evaluate a discrete pole-residue transfer function.
+
+    Parameters
+    ----------
+    frequency:
+        Frequency samples, in Hz, where the response is evaluated.
+    center_frequency:
+        Frequency, in Hz, used as the baseband expansion point.
+    sampling_frequency:
+        Discrete-time sampling frequency, in Hz.
+    poles:
+        Discrete poles with shape `(r,)`.
+    residues:
+        Residue tensor with shape `(r, q, m)` for `r` poles, `q` outputs, and
+        `m` inputs.
+    feedthrough:
+        Direct term with shape `(q, m)`.
+    sign_convention:
+        Complex exponential convention, usually `PHYSICIST` or `ENGINEER`.
+
+    Returns
+    -------
+    jax.Array
+        Frequency response with shape `(len(frequency), q, m)`.
+    """
     z = jnp.exp(sign_convention*1j * 2 * jnp.pi * (frequency-center_frequency)/sampling_frequency)
     frequency_response = feedthrough[None, :, :] + jnp.sum(
     residues[None, :, :, :] / (z[:, None, None, None] - poles[None, :, None, None]),
@@ -164,6 +189,42 @@ def vector_fitting_discrete(
     gamma=0.95,
     weight_threshold=0.0,
 ):
+    """Fit a discrete-time pole-residue model to sampled transfer data.
+
+    This is the core z-domain vector fitting routine. It relocates poles until
+    the weighting function converges or `max_iterations` is reached, then solves
+    for residues and feedthrough for all input/output pairs.
+
+    Parameters
+    ----------
+    model_order:
+        Number of poles to fit.
+    transfer_function:
+        Target response with shape `(num_frequency, q, m)`.
+    frequency:
+        Frequency samples, in Hz, matching the first axis of
+        `transfer_function`.
+    center_frequency:
+        Center frequency, in Hz, used for basebanding.
+    sampling_frequency:
+        Discrete-time sampling frequency, in Hz.
+    sign_convention:
+        Complex exponential convention, usually `PHYSICIST` or `ENGINEER`.
+    max_iterations:
+        Maximum number of pole-relocation iterations.
+    gamma:
+        Radius used for the initial pole placement inside the unit circle.
+    weight_threshold:
+        Stop when the weight error is at or below this value.
+
+    Returns
+    -------
+    tuple
+        `(poles, residues, feedthrough, mean_squared_error)` where `poles` has
+        shape `(model_order,)`, `residues` has shape `(model_order, q, m)`,
+        `feedthrough` has shape `(q, m)`, and `mean_squared_error` is the fit
+        error against `transfer_function`.
+    """
     # Convert to engineer's Sign Convention
     # transfer_function = jnp.conj(transfer_function)
 
@@ -237,9 +298,22 @@ def vector_fitting_discrete(
 
 
 def optimize_order(bias_fn, min_order, max_order):
-    """
-    bias_fn is a function of order which returns the MSE:
-    https://ieeexplore.ieee.org/abstract/document/10274284?casa_token=rnFq1k0dt48AAAAA:nWbftIlFFN_x_a5oZ_CER3WTMeCXcAsvapSF8-SiLfi7seo-6rWv0TPWPLQkIaxEgtUr-w
+    """Choose a model order by balancing fit error and complexity.
+
+    Parameters
+    ----------
+    bias_fn:
+        Callable accepting an integer model order and returning a tuple whose
+        first value is the mean squared error for that order.
+    min_order:
+        Minimum model order to consider.
+    max_order:
+        Maximum model order to consider.
+
+    Returns
+    -------
+    tuple
+        The full `bias_fn(best_order)` result for the selected order.
     """ 
     C_min, *_ = bias_fn(min_order)
     C_max, *_ = bias_fn(max_order)
@@ -289,6 +363,40 @@ def optimize_order_vector_fitting_discrete(
     gamma=0.95,
     weight_threshold=0.0,
 ):
+    """Fit a discrete pole-residue model while selecting the model order.
+
+    This wraps `vector_fitting_discrete` with `optimize_order`, searching between
+    `min_order` and `max_order`.
+
+    Parameters
+    ----------
+    min_order:
+        Smallest number of poles to consider.
+    max_order:
+        Largest number of poles to consider.
+    transfer_function:
+        Target response with shape `(num_frequency, q, m)`.
+    frequency:
+        Frequency samples, in Hz.
+    center_frequency:
+        Center frequency, in Hz, used for basebanding.
+    sampling_frequency:
+        Discrete-time sampling frequency, in Hz.
+    sign_convention:
+        Complex exponential convention, usually `PHYSICIST` or `ENGINEER`.
+    max_iterations:
+        Maximum pole-relocation iterations for each attempted order.
+    gamma:
+        Initial pole radius used by `vector_fitting_discrete`.
+    weight_threshold:
+        Pole-relocation convergence threshold.
+
+    Returns
+    -------
+    tuple
+        `(poles, residues, feedthrough, mean_squared_error)` for the selected
+        order.
+    """
     def bias_fn(model_order):
         poles, residues, feedthrough, mean_squared_error = vector_fitting_discrete(
                                                                 model_order, 
@@ -340,14 +448,25 @@ def optimize_order_vector_fitting_discrete(
 #     return A, B, C, D
 
 def state_space_discrete(poles, residues, feedthrough):
-    """
-    Create a discrete-time state-space model without SVD.
-    
-    poles: shape (r,)
-    residues: shape (r, q, m)
-    feedthrough: shape (q, m)
-    
-    Returns A, B, C, D with replicated poles per input
+    """Convert a pole-residue model into a discrete state-space realization.
+
+    The realization replicates each pole once per input channel. It is simple
+    and deterministic, but it is not guaranteed to be minimal.
+
+    Parameters
+    ----------
+    poles:
+        Discrete poles with shape `(r,)`.
+    residues:
+        Residue tensor with shape `(r, q, m)`.
+    feedthrough:
+        Direct term with shape `(q, m)`.
+
+    Returns
+    -------
+    tuple[jax.Array, jax.Array, jax.Array, jax.Array]
+        `(A, B, C, D)` with shapes `(r*m, r*m)`, `(r*m, m)`, `(q, r*m)`, and
+        `(q, m)`.
     """
     r, q, m = residues.shape
     M = r * m  # total number of states
@@ -412,6 +531,23 @@ def _state_space_response_discrete(A, B, C, D, u, x0):
 
 
 def state_space_response_discrete(A, B, C, D, u, x0=None):
+    """Simulate a discrete state-space model over an input sequence.
+
+    Parameters
+    ----------
+    A, B, C, D:
+        State-space matrices.
+    u:
+        Input samples with shape `(T, m)`.
+    x0:
+        Optional initial state with shape `(n,)`. Defaults to zeros.
+
+    Returns
+    -------
+    tuple[jax.Array, jax.Array]
+        Output samples `y` with shape `(T, q)` and state history with shape
+        `(T, n)`.
+    """
     if x0 is None:
         x0 = jnp.zeros((A.shape[0],), dtype=A.dtype)
 
@@ -504,26 +640,27 @@ def state_space_response_discrete_structured(A, B, C, D, phase, u, x0=None):
 #     return yout, xout
 
 def state_space_frequency_response_discrete(A, B, C, D, f, f_center, dt):
-    """
-    Compute the frequency response of a state-space system.
+    """Compute the frequency response of a discrete state-space system.
 
     Parameters
     ----------
-    A : jnp.ndarray, shape (n, n)
+    A:  jnp.ndarray, shape (n, n)
         State matrix
-    B : jnp.ndarray, shape (n, m)
+    B:  jnp.ndarray, shape (n, m)
         Input matrix
-    C : jnp.ndarray, shape (q, n)
+    C:  jnp.ndarray, shape (q, n)
         Output matrix
-    D : jnp.ndarray, shape (q, m)
+    D:  jnp.ndarray, shape (q, m)
         Feedthrough matrix
-    freqs : jnp.ndarray
-        Frequencies in Hz (or angular frequencies depending on jω convention)
-
-    Returns
+    f:
+        Frequency samples, in Hz.
+    f_center:
+        Center frequency, in Hz, used for basebanding.
+    dt:
+        Time step, in seconds.
     -------
-    H : jnp.ndarray, shape (q, m, len(freqs))
-        Frequency response at each frequency
+    jax.Array
+        Frequency response with shape `(len(f), q, m)`.
     """
     n_out, n_in = D.shape
     n_freq = f.size

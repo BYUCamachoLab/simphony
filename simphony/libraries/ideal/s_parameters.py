@@ -82,16 +82,33 @@ def optical_s_parameter(
     port_directionality: dict = None,
     default_modes: list|tuple|str = DEFAULT_MODES,
 )-> type[SParameterElement]:
-    """
-    The directionality of each port defaults to 'bidirectional', 
-    but individual ports may be set to 'bidirectional', 'input', or 'output
-    by supplying a dictionary with port name keys.
+    """Wrap a SAX optical model as a Simphony S-parameter component class.
 
-    It is necessary for any directional simulators, such as the BlockModeSimulation class to specify the directionality of each port
+    The returned class can be used in circuit netlists like any other component.
+    In S-parameter simulations it calls the original `sax_model`; in time-domain
+    simulations it can use vector fitting settings to approximate the frequency
+    response with a discrete state-space model.
 
-    default_mode_identifier: since sax circuits do not require the user
-    to specify the mode by default, we assign each relationship to the TE/TM mode by default (replicating behavior across the two different modes),
-    if unspecified. Refer to sax.multimode for more details
+    Parameters
+    ----------
+    sax_model:
+        Callable SAX model returning an `SDict`.
+    port_directionality:
+        Optional mapping from port name to `"input"`, `"output"`, or
+        `"bidirectional"`. Unspecified ports default to `"bidirectional"`.
+        Directional simulators such as Block mode need enough directionality
+        information to orient the netlist.
+    default_modes:
+        Mode label or labels assigned when the SAX model does not encode
+        explicit multimode port names. These labels are replicated across the
+        model's optical relationships.
+
+    Returns
+    -------
+    type[SParameterElement]
+        A component class whose constructor accepts settings such as
+        `sax_settings`, `port_directionality`, `vector_fitting_parameters`, and
+        `delay_compensation`.
     """
     pcell_port_names = _get_port_names_without_mode(sax_model)
 
@@ -274,8 +291,13 @@ def optical_s_parameter(
 #             raise NotImplementedError
 
 class SParameterGroup(PCell):
-    """
-    Using the Component Factory Below
+    """Base PCell for circuits assembled from S-parameter elements.
+
+    Users normally create concrete subclasses through
+    `s_parameter_netlist_to_pcell` rather than inheriting from this class
+    directly. The generated class exposes the netlist's top-level optical ports
+    and expands the internal S-parameter models into the representation required
+    by the active simulator.
     """
 
 def s_parameter_netlist_to_pcell(
@@ -285,19 +307,39 @@ def s_parameter_netlist_to_pcell(
     default_modes: list|tuple|str = DEFAULT_MODES,
     fuse_models: bool = False,
 ) -> type[PCell]:
-    """
-    the models parameter should be structured like a sax netlist, but including a Simphony SParameter PCell is also fine
-    The directionality of each port defaults to 'bidirectional', 
-    but individual ports may be set to 'bidirectional', 'input', or 'output
-    by supplying a dictionary with port name keys.
+    """Create a PCell class from a netlist of SAX S-parameter models.
 
-    It is necessary for any directional simulators, such as the BlockModeSimulation class to specify the directionality of each port
+    The returned PCell lets a SAX-style netlist be used as a Simphony component.
+    At instantiation time the PCell chooses an internal representation for the
+    active simulator. For Block mode, it filters the SAX relationships according
+    to port directionality, vector-fits each S-parameter element, and builds a
+    directed state-space subcircuit.
 
-    default_mode_identifier: since sax circuits do not require the user
-    to specify the mode by default, we assign each relationship to the TE/TM mode by default (replicating behavior across the two different modes),
-    if unspecified. Refer to sax.multimode for more details
-    
-    Models will be fused according to their group_id
+    Parameters
+    ----------
+    netlist:
+        SAX-style netlist dictionary with `instances`, `connections`, and
+        top-level `ports`.
+    models:
+        Mapping from model name to SAX model callable.
+    port_directionality:
+        Nested mapping from instance name to port directionality, for example
+        `{"mzi": {"o0": "input", "o1": "output"}}`. Top-level PCell port
+        directionality is inferred from the instance ports named in
+        `netlist["ports"]`.
+    default_modes:
+        Optical mode labels used when SAX models do not explicitly encode mode
+        names.
+    fuse_models:
+        Preserve per-instance `group_id` settings when true. When false,
+        instance `group_id` values are cleared before expansion.
+
+    Returns
+    -------
+    type[PCell]
+        A generated PCell class. Constructor settings are passed per instance
+        and should include entries such as `sax_settings` and
+        `vector_fitting_parameters` for Block mode use.
     """
     # pcell_port_names = _get_port_names_without_mode(sax_model)
 
@@ -1061,8 +1103,11 @@ def _calculate_state_space_coefficients_from_sax_model(sax_model, sax_settings, 
     return (A, B, C, D), input_ports, output_ports
 
 class SParameterPlaceholder(Placeholder):
-    """
-    Using the Component Factory Below
+    """Placeholder base class for SAX models inside PCell expansion.
+
+    `optical_s_parameter_placeholder` creates concrete subclasses of this class
+    when a raw SAX callable needs to travel through PCell/netlist processing
+    before being converted into a simulator-specific component.
     """
 
 def optical_s_parameter_placeholder(
@@ -1070,16 +1115,30 @@ def optical_s_parameter_placeholder(
     port_directionality: dict = None,
     default_modes: list|tuple|str = DEFAULT_MODES,
 )-> type[SParameterPlaceholder]:
-    """
-    The directionality of each port defaults to 'bidirectional', 
-    but individual ports may be set to 'bidirectional', 'input', or 'output
-    by supplying a dictionary with port name keys.
+    """Wrap a SAX optical model as a placeholder component class.
 
-    It is necessary for any directional simulators, such as the BlockModeSimulation class to specify the directionality of each port
+    Unlike `optical_s_parameter`, this factory does not create a component that
+    directly evaluates an S-parameter response. It records the SAX model, ports,
+    directionality, and settings so later PCell expansion can convert the model
+    into the representation needed by the selected simulator.
 
-    default_mode_identifier: since sax circuits do not require the user
-    to specify the mode by default, we assign each relationship to the TE/TM mode by default (replicating behavior across the two different modes),
-    if unspecified. Refer to sax.multimode for more details
+    Parameters
+    ----------
+    sax_model:
+        Callable SAX model returning an `SDict`.
+    port_directionality:
+        Optional mapping from port name to `"input"`, `"output"`, or
+        `"bidirectional"`. Unspecified ports default to `"bidirectional"`.
+    default_modes:
+        Mode label or labels assigned when the SAX model omits explicit
+        multimode port names.
+
+    Returns
+    -------
+    type[SParameterPlaceholder]
+        A generated placeholder class whose instances store settings such as
+        `sax_settings`, `port_directionality`, `vector_fitting_parameters`, and
+        `delay_compensation`.
     """
     pcell_port_names = _get_port_names_without_mode(sax_model)
 

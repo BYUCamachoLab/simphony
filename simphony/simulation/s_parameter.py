@@ -22,15 +22,46 @@ from simphony.circuit.netlist import graph_to_netlist, sanitize_instance_names, 
 
 @struct.dataclass
 class SParameterSimulationParameters(SimulationParameters):
+    """Global settings for S-parameter simulations.
+
+    S-parameter simulations operate in the frequency domain and expose a SAX
+    `SDict` over selected circuit ports.
+    """
     simulation_mode: SimulationMode = field(default_factory=lambda:SimulationMode.S_PARAMETER)
     optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([1.54e-6, 1.55e-6, 1.56e-6]))
     directed: bool = False
 
 class SParameterSimulationResult(SimulationResult):
+    """Result returned by `SParameterSimulation.run`.
+
+    Attributes are attached by `run`:
+
+    - `sax_circuit`: callable SAX circuit assembled for the requested ports.
+    - `sax_circuit_info`: metadata returned by `sax.circuit`.
+    - `s_parameters`: evaluated `SDict` at the requested wavelength grid.
+    """
     def __init__(self):
         pass
 
 class SParameterSimulation(Simulation):
+    """Compute frequency-domain S-parameters for selected circuit ports.
+
+    The simulator instantiates the circuit, separates the optical S-parameter
+    subgraph from any steady-state bias circuitry, computes required bias
+    values, and builds a SAX circuit for the requested ports.
+
+    Parameters
+    ----------
+    circuit:
+        Circuit to simulate.
+    settings:
+        Per-instance settings used during instantiation.
+    simulation_parameters:
+        Shared `SParameterSimulationParameters`. Defaults are used when omitted.
+    ports:
+        Optional mapping of exposed port names to top-level port designators. If
+        omitted, the circuit top-level ports are used.
+    """
     def __init__(
             self, 
             circuit: Circuit, 
@@ -64,6 +95,18 @@ class SParameterSimulation(Simulation):
         wl: ArrayLike=1.55e-6, 
         # use_default_settings: bool = True
     ) -> SParameterSimulationResult:
+        """Evaluate the circuit S-parameters at wavelength `wl`.
+
+        Parameters
+        ----------
+        wl:
+            Wavelength or wavelength array, in meters.
+
+        Returns
+        -------
+        SParameterSimulationResult
+            Result containing the generated SAX circuit and evaluated `SDict`.
+        """
         self.instantiated_circuit = self.circuit.instantiate(self.settings, self.simulation_parameters)
         
         # self._identify_component_types()
@@ -141,6 +184,22 @@ class SParameterSimulation(Simulation):
         
 
     def _build_s_parameter_circuit(self, ports: dict):
+        """Split the instantiated graph into optical and bias subgraphs.
+
+        The S-parameter simulator needs two pieces of information:
+
+        - the connected optical S-parameter subgraph reachable from the exposed
+          ports, which becomes a SAX circuit; and
+        - any steady-state bias/control components that drive S-parameter bias
+          ports.
+
+        Returns
+        -------
+        tuple
+            `(steady_state_graph, reachable_bias_nodes, s_parameter_graph)`.
+            `reachable_bias_nodes` maps bias-source designators to the
+            S-parameter instance and port they control.
+        """
         # Step 1: Create a new graph with only s-parameter components
         s_parameter_nodes = []
         for node, data in self.instantiated_circuit.graph.nodes(data=True):
@@ -258,7 +317,23 @@ class SParameterSimulation(Simulation):
     #         pass
     
     def _generate_sax_circuit(self, s_parameter_graph, steady_state_simulation_result, reachable_bias_nodes, ports):
-        """
+        """Build a callable SAX circuit from the reachable optical subgraph.
+
+        Bias-dependent S-parameter components are partially applied with the
+        steady-state signals computed earlier in `run`. The resulting callable
+        accepts the usual SAX wavelength argument and returns an `SDict` over the
+        requested exposed ports.
+
+        Parameters
+        ----------
+        s_parameter_graph:
+            Reachable graph containing only S-parameter components.
+        steady_state_simulation_result:
+            Result containing bias/control outputs for any reachable bias ports.
+        reachable_bias_nodes:
+            Mapping produced by `_build_s_parameter_circuit`.
+        ports:
+            Exposed SAX port mapping for the generated circuit.
         """
         # I will assume that the only connections between the s-parameter portion of the circuit
         # and the steady-state portion of the circuit are electrical or optical (this might change)

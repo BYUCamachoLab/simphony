@@ -18,11 +18,32 @@ from simphony.simulation.simulation import SimulationParameters
 class DirectedOpticalModulator(
     BlockModeComponent
 ):
-    """
-    Phase coefficients can be set for each mode in mode identifiers
+    """Directed Block mode optical modulator.
 
-    It is assumed that all wavelengths are close together, thus, phase shifts across wavelength 
-    are approximately equal
+    The component reads an optical input on `o0`, an electrical drive on `e0`,
+    and emits the modulated optical signal on `o1`. For each optical mode, the
+    electrical voltage is evaluated through polynomial phase and absorption
+    coefficients, then applied to every wavelength channel in the input block.
+
+    Parameters
+    ----------
+    length:
+        Physical length used to scale the absorption term.
+    operating_wl:
+        Nominal operating wavelength, in meters. Stored for model context; the
+        current Block mode response applies the same phase law to all wavelength
+        channels.
+    absorption_coefficients:
+        Polynomial coefficients, in `jnp.polyval` order, that map voltage to
+        absorption in dB per unit length. A one-dimensional array is shared as a
+        single mode row.
+    phase_coefficients:
+        Polynomial coefficients, in `jnp.polyval` order, that map voltage to
+        phase shift in radians. A one-dimensional array is shared as a single
+        mode row.
+    effective_index:
+        Stored effective-index value for compatibility with related modulator
+        models.
     """
     ports = [
         Port(
