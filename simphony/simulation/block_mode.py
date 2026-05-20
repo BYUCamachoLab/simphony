@@ -9,6 +9,26 @@ from simphony.libraries.ideal.s_parameters import SParameterPlaceholder
 
 @struct.dataclass
 class BlockModeSimulationParameters(SimulationParameters):
+    """Global settings for a Block mode simulation.
+
+    Block mode evaluates a full time block at once. These parameters define the
+    time grid, optical carrier wavelengths, and optical modes shared by every
+    component in the circuit.
+
+    Attributes
+    ----------
+    dt:
+        Time step, in seconds, between adjacent samples in the block.
+    num_time_steps:
+        Number of samples processed by each component during one simulation run.
+    optical_baseband_wavelengths:
+        Carrier wavelengths, in meters, tracked by the optical envelope arrays.
+    mode_identifiers:
+        Inherited from `SimulationParameters`; labels for the optical modes
+        represented on the last axis of a `BlockModeOpticalSignal`.
+    use_speed_up:
+        Enables implementation-specific acceleration paths where available.
+    """
     simulation_mode: SimulationMode = field(default_factory=lambda:SimulationMode.BLOCK_MODE)    
     directed: bool = True
     dt: float = 1e-14
@@ -17,26 +37,46 @@ class BlockModeSimulationParameters(SimulationParameters):
     use_speed_up: bool = True
 
 class BlockModeSimulationResult(SimulationResult):
+    """Signals collected from a completed Block mode simulation.
+
+    Attributes
+    ----------
+    input_signals:
+        Signals observed on tracked ports when the tracked port corresponds to a
+        component input.
+    output_signals:
+        Signals observed on tracked ports when the tracked port corresponds to a
+        component output.
+    """
     def __init__(self, input_signals, output_signals):
         self.input_signals = input_signals
         self.output_signals = output_signals
-        # self.circuit = deepcopy(circuit)
-        # self.component_inputs = {}
-        # self.component_outputs = {}
-    
-    # def _collect_component_inputs(self, component)->dict:
-    #     inputs = {}
-    #     input_components = [u for u, v in self.circuit.graph.in_edges(component)]
-    #     for input_component in input_components:
-    #         input_edges = self.circuit.graph.get_edge_data(input_component, component)
-    #         for edge_number, edge in input_edges.items():
-    #             inputs[edge['dst_port']] = self.component_outputs[input_component][edge['src_port']]
-    #             pass
-    #     self.component_inputs[component] = inputs
 
         
 
 class BlockModeSimulation(Simulation):
+    """Run a directed circuit by propagating full-block signals component by component.
+
+    The simulator instantiates the circuit with the provided settings, determines
+    a topological execution order, calls each component's block-mode response, and
+    returns the signals available at tracked or top-level ports.
+
+    Parameters
+    ----------
+    circuit:
+        Circuit to simulate. For Block mode, the instantiated graph must be
+        directed and acyclic.
+    settings:
+        Per-instance settings used when the circuit is instantiated. SAX
+        S-parameter components typically need `sax_settings`,
+        `port_directionality`, and `vector_fitting_parameters`.
+    tracked_ports:
+        Optional mapping of names to internal `"instance,port"` designators to
+        expose in the returned result. Top-level circuit ports are tracked by
+        default.
+    simulation_parameters:
+        Shared `BlockModeSimulationParameters`. If omitted, defaults are used.
+    """
     def __init__(
         self, 
         circuit: Circuit,
@@ -69,6 +109,12 @@ class BlockModeSimulation(Simulation):
     def run(
         self,
     )->BlockModeSimulationResult:
+        """Run the Block mode simulation and collect tracked port signals.
+
+        The circuit is instantiated in directed mode, components are evaluated in
+        topological order, and each component receives a full time block of input
+        signals at once.
+        """
         # _add_directionality_settings_to_s_parameter_components(self.flat_circuit, self.settings)
         self._instantiated_circuit = self.circuit.instantiate(self.settings, self.simulation_parameters, tracked_ports=self.tracked_ports, directed=True)
         # instantiated_circuit.display()

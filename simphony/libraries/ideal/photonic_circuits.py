@@ -210,9 +210,25 @@ class MZI(PCell):
 
 
 def mzi_lattice_filter(
-    order: int = 3,
-    # expose_modulators: bool = True,      
+    order: int = 3,      
 ):
+    """Create a PCell class for a bidirectional MZI lattice filter.
+
+    The returned class expands into `order` cascaded `MZI` stages. The first
+    stage is a full MZI with an input splitter; later stages are partial MZIs
+    that connect the two optical paths from one stage into the next.
+
+    Parameters
+    ----------
+    order:
+        Number of MZI stages in the lattice.
+
+    Returns
+    -------
+    type[PCell]
+        A parameterized component class exposing optical ports `o0`, `o1`,
+        `o2`, and `o3`, plus two electrical phase-shifter ports per stage.
+    """
     class MZILatticeFilter(PCell):
         ports = [
             Port(
@@ -330,6 +346,27 @@ def mzi_lattice_passband(
     order: int = 4,
     modulators: bool = False,
 ):
+    """Create a PCell class for a one-input MZI lattice passband filter.
+
+    The returned class builds a cascade of `MZI` stages where only `o0` and
+    `o1` are exposed as optical top-level ports. Unused MZI ports are terminated
+    internally. Each stage uses a common bottom-arm length and a configurable
+    top-arm delay difference.
+
+    Parameters
+    ----------
+    order:
+        Number of MZI stages in the passband cascade.
+    modulators:
+        If true, expose two electrical tuning ports per MZI stage. The current
+        `MZI` implementation always includes phase-shifter instances internally.
+
+    Returns
+    -------
+    type[PCell]
+        A parameterized component class. Constructor settings include
+        `base_length` and `mzi_delay_differences`.
+    """
     optical_ports = [
         Port(name="o0", type="optical", directionality="bidirectional"),
         Port(name="o1", type="optical", directionality="bidirectional"),

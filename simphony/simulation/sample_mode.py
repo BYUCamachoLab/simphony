@@ -32,11 +32,32 @@ from typing import Annotated
 #     return obj.__class__(**fields)
 
 class SampleModeSimulationResult(SimulationResult):
+    """Placeholder result type for sample-by-sample simulations.
+
+    The current `SampleModeSimulation.run` implementation returns the scan output
+    structure directly rather than populating this class.
+    """
     def __init__(self):
         pass
 
 @struct.dataclass
 class SampleModeSimulationParameters(SimulationParameters):
+    """Global settings for a sample-mode simulation.
+
+    Sample mode advances the circuit one time sample at a time while preserving
+    per-component state between samples.
+
+    Attributes
+    ----------
+    optical_baseband_wavelengths:
+        Carrier wavelengths, in meters, tracked by sample-mode optical signals.
+    dt:
+        Time step, in seconds.
+    num_time_steps:
+        Number of sample updates to run.
+    mode_identifiers:
+        Inherited optical mode labels.
+    """
     simulation_mode: SimulationMode = field(default_factory=lambda:SimulationMode.SAMPLE_MODE)
     optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jax.numpy.array([1.55e-6]))
     directed: bool = False
@@ -46,6 +67,7 @@ class SampleModeSimulationParameters(SimulationParameters):
 
 @struct.dataclass
 class SampleModeSimulationState():
+    """Mutable global state carried through a sample-mode scan."""
     prng_key: Annotated[jax.Array, "shape=(2,), dtype=jax.uint32"]=field(default_factory=lambda: jax.random.PRNGKey(0))
 
 class SampleModeOpticalTerminator(OpticalTerminator, SampleModeComponent):
@@ -65,6 +87,26 @@ class SampleModeLogicTerminator(LogicTerminator, SampleModeComponent):
 
 
 class SampleModeSimulation(Simulation):
+    """Run a circuit one time sample at a time.
+
+    Sample mode is intended for components that inherit from the SampleModeComponent class that expose
+    `sample_mode_initial_state` and `sample_mode_step`. The simulator inserts
+    terminators for unconnected input-like ports, instantiates the circuit,
+    initializes component state, then advances all components for
+    `num_time_steps`.
+
+    Parameters
+    ----------
+    circuit:
+        Circuit to simulate.
+    settings:
+        Per-instance constructor settings.
+    tracked_ports:
+        Optional mapping of names to `"instance,port"` designators. Defaults to
+        the circuit top-level ports.
+    simulation_parameters:
+        Shared `SampleModeSimulationParameters`. Defaults are used when omitted.
+    """
     def __init__(
         self, 
         circuit: Circuit,
@@ -119,6 +161,20 @@ class SampleModeSimulation(Simulation):
         self,
         use_jit = True,
     ) -> SampleModeSimulationResult:
+        """Run the sample-mode simulation.
+
+        Parameters
+        ----------
+        use_jit:
+            If true, use `jax.lax.scan`; otherwise use the Python scan helper,
+            which is easier to debug.
+
+        Returns
+        -------
+        dict
+            Current implementation returns the nested scan output structure
+            keyed by instance and port for each time step.
+        """
         # Currently, we pass in randomly generated prng keys through the simualtion parameters field, so
         # we have to get rid of the enum field to make jax happy.
         # otherwise, I would simply mark the dataclass as static
@@ -193,6 +249,7 @@ class SampleModeSimulation(Simulation):
         return system_outputs
 
     def insert_terminators(self):
+        """Attach terminator source components to unconnected input-like ports."""
         unconnected_ports = self.circuit.unconnected_ports(inputs_only=True)
         optical_port_terminator_number = 0
         electrical_port_terminator_number = 0
@@ -221,6 +278,7 @@ class SampleModeSimulation(Simulation):
                     logic_port_terminator_number += 1
     
     def edge_lookup_tables(self):
+        """Build predecessor and successor lookup tables keyed by instance port."""
         successors_map = {}
         predecessors_map = {}
         instances = self._instantiated_circuit.instantiated_flat_netlist['instances']

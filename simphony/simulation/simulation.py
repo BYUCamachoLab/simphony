@@ -24,10 +24,10 @@ from sax import DEFAULT_MODES
 from enum import StrEnum
 
 class SimulationMode(StrEnum):
-    """
-    Some classes, such as PCells, need access to the type of simulation being performed.
-    This enum provides a way to consistently identify supported simulation types, while
-    avoiding circular imports
+    """Names for supported simulator execution modes.
+
+    PCells and component factories use this enum to choose simulator-specific
+    internal designs without importing individual simulator classes.
     """
     S_PARAMETER = "s_parameter"
     SAMPLE_MODE = "sample_mode"
@@ -48,6 +48,22 @@ class SimDevice:
 
 @struct.dataclass
 class SimulationParameters:
+    """Base dataclass for parameters shared by simulator variants.
+
+    Subclasses add mode-specific fields such as wavelength grids, time step, or
+    number of time samples.
+
+    Attributes
+    ----------
+    simulation_mode:
+        `SimulationMode` value identifying the active simulator.
+    directed:
+        Whether the simulation requires a directed instance graph.
+    mode_identifiers:
+        Optical mode labels represented by optical signal arrays.
+    seed:
+        Integer seed used by simulations/components that create PRNG keys.
+    """
     # def __init__(
     #     self,
     simulation_mode: SimulationMode = None
@@ -71,15 +87,7 @@ class SimulationParameters:
     #     super().__setattr__('_locked', True)
 
 class Simulation:
-    """Base class for simphony simulations.
-
-    Parameters
-    ----------
-    ckt : Model
-        A callable SAX model.
-    wl : ArrayLike
-        The wavelengths at which to simulate the circuit.
-    """
+    """Base class for Simphony simulation drivers."""
 
     def __init__(self, ckt: Model, wl: ArrayLike) -> None:
         self.ckt = ckt
@@ -103,8 +111,13 @@ class Simulation:
                 self.settings[instance] = {}
 
     def reset_settings(self, use_default_settings: bool = True):
-        """
-        Reset settings to their defaults (specified in Circuit) or clear all settings
+        """Reset per-instance settings.
+
+        Parameters
+        ----------
+        use_default_settings:
+            If true, restore defaults from the circuit before applying future
+            updates. If false, clear every instance settings dictionary.
         """
         if use_default_settings:
             self._clear_settings()
@@ -114,8 +127,10 @@ class Simulation:
             self._clear_settings()
 
     def add_settings(self, settings: dict):
-        """
-        Update the current settings with additional settings.
+        """Merge additional per-instance settings into the simulation.
+
+        `settings` is keyed by instance name. Values are shallow-merged into the
+        current settings for each instance.
         """
         for instance, instance_settings in settings.items():
             self.settings[instance].update(instance_settings)

@@ -1,3 +1,12 @@
+"""Netlist conversion and normalization helpers.
+
+This module contains the lower-level utilities used by `Circuit` and the
+simulators to move between SAX-style netlists, NetworkX graphs, and instantiated
+flat netlists. Most users interact with these helpers indirectly through
+`Circuit`, but they are useful when building examples, diagnostics, or custom
+tooling around Simphony netlists.
+"""
+
 # from sax import AnyNetlist, InstanceName, Ports, Connections, Models
 # import sax
 # from typing import TypeAlias, TypedDict
@@ -24,11 +33,29 @@ def instantiate_netlist(
     # directed: bool = False,
     # default_modes: tuple = DEFAULT_MODES,
 )->InstantiatedFlatNetlist:
-    """
-    parameters
-    directed: whether sax models should be interpreted as directed or not
-    default_modes: default_modes for sax models
-    Will automatically walk down the tree to flatten PCell structures. 
+    """Instantiate a possibly hierarchical netlist.
+
+    The helper delegates to the internal recursive instantiation routine. It
+    expands PCells, applies per-instance settings, and returns a flat netlist
+    whose instances contain concrete component objects under the `"model"` key.
+
+    Parameters
+    ----------
+    netlist:
+        SAX-style netlist, usually containing `instances`, `connections`, and
+        `ports`.
+    models:
+        Mapping from component/model names to Simphony component classes, PCell
+        classes, or converted SAX placeholders.
+    settings:
+        Per-instance constructor settings.
+    simulation_parameters:
+        Active simulation-mode parameters used when constructing components.
+
+    Returns
+    -------
+    InstantiatedFlatNetlist
+        Flattened netlist with instantiated component objects.
     """
 
     return _instantiate_netlist(netlist, models, settings, simulation_parameters)
@@ -57,10 +84,10 @@ def instantiate_netlist(
 
 
 def complete_netlist(netlist):
-    """
-    Netlists may not have ports, or connections specified. 
-    This function adds empty dictionaries to flat netlists
-    without these specified.
+    """Ensure a flat netlist has the standard top-level keys.
+
+    Missing `instances`, `connections`, or `ports` entries are inserted as empty
+    dictionaries. The input dictionary is updated in place.
 
     """
     if 'instances' not in netlist:
@@ -72,9 +99,20 @@ def complete_netlist(netlist):
 
 
 def add_settings_to_netlist(netlist, settings=None):
+    """Attach settings dictionaries to each instance in a netlist.
+
+    Parameters
+    ----------
+    netlist:
+        Flat SAX-style netlist to update.
+    settings:
+        Optional mapping from instance name to settings. When omitted, each
+        instance receives an empty settings dictionary.
+    """
     return _add_settings_to_netlist(netlist, settings=settings)
 
 def get_settings_from_netlist(netlist):
+    """Extract per-instance settings from a flat netlist."""
     settings = {}
     for instance, attr in netlist['instances'].items():
         settings[instance] = attr['settings']
@@ -83,6 +121,23 @@ def get_settings_from_netlist(netlist):
 
 
 def netlist_to_graph(netlist: Union[dict, str], models, include_ports=True):
+    """Convert a flat netlist into a NetworkX multidigraph.
+
+    Connection direction is derived from the declared `Port.directionality` of
+    the two endpoints. Bidirectional-to-bidirectional connections are represented
+    with edges in both directions, while directed combinations produce a single
+    edge in the signal-flow direction.
+
+    Parameters
+    ----------
+    netlist:
+        Flat netlist dictionary or path to a YAML netlist file.
+    models:
+        Model library used to look up port metadata.
+    include_ports:
+        If true, add small graph nodes for top-level and unconnected ports so
+        display tools can show the circuit boundary.
+    """
     if isinstance(netlist, dict):
         pass
     elif isinstance(netlist, str):
@@ -138,6 +193,12 @@ def netlist_to_graph(netlist: Union[dict, str], models, include_ports=True):
     return graph
 
 def add_ports_to_graph(graph, netlist, models):
+    """Add top-level port nodes to a circuit graph.
+
+    This helper is primarily used by `netlist_to_graph` for display graphs. It
+    reads `netlist["ports"]`, looks up the connected internal port
+    directionality, and adds boundary nodes connected to the owning component.
+    """
     for external_port_name, internal_port_data in netlist["ports"].items():
         instance_name, internal_port_name = internal_port_data.split(",")
         node_name = f".{external_port_name}" # . Symbol Ensures Uniqueness of node_name
@@ -152,6 +213,13 @@ def add_ports_to_graph(graph, netlist, models):
                 unconnected_ports.add(f"{instance_name},{port.name}")
 
 def add_connection_to_graph(graph, src_node, dst_node, src_port, dst_port, src_directionality, dst_directionality, port_type=None):
+    """Add a connection edge using endpoint directionality rules.
+
+    The source and destination in the netlist are treated as a physical
+    connection description. The actual graph edge direction is chosen from the
+    source/destination port directionality values. Bidirectional ports create
+    reverse edges where needed.
+    """
     if (src_directionality == "bidirectional" and dst_directionality == "bidirectional"):
         graph.add_edge(src_node, dst_node, src_port=src_port, dst_port=dst_port, hover=f"{src_node},{src_port}↔{dst_node},{dst_port}", port_type=port_type)
         graph.add_edge(dst_node, src_node, src_port=dst_port, dst_port=src_port, hover=f"{src_node},{src_port}↔{dst_node},{dst_port}", port_type=port_type)
@@ -169,6 +237,7 @@ def add_connection_to_graph(graph, src_node, dst_node, src_port, dst_port, src_d
         raise ValueError(f"Cannot connect {src_directionality} to {dst_directionality}")
 
 def add_port_to_graph(graph, instance_name, internal_port_name, directionality, external: bool, external_port_name=None, port_type=None):
+    """Add one visual port node and connect it to its component node."""
     if external:
         node_name = f".{external_port_name}" # '.' enforces uniqueness
         shape="circle",
@@ -191,6 +260,13 @@ def add_port_to_graph(graph, instance_name, internal_port_name, directionality, 
     add_connection_to_graph(graph, node_name, instance_name.strip(), None, None, "bidirectional", directionality, port_type=port_type)
 
 def instantiated_flat_netlist_to_graph(instantiated_flat_netlist, include_ports=False):
+    """Convert an instantiated flat netlist into a graph.
+
+    Unlike `netlist_to_graph`, this function reads port metadata from the
+    instantiated component objects stored under each instance's `"model"` key.
+    This is the graph form used by simulation drivers after `Circuit.instantiate`
+    has expanded PCells and placeholders.
+    """
     graph = nx.MultiDiGraph()
     # Add nodes for each instance
     for instance_name, instance in instantiated_flat_netlist["instances"].items():
@@ -262,8 +338,7 @@ def instantiated_flat_netlist_to_graph(instantiated_flat_netlist, include_ports=
 import networkx as nx
 
 def graph_to_netlist(graph: nx.MultiDiGraph, ports=None) -> dict:
-    """
-    Convert a NetworkX MultiDiGraph into a SAX-compatible netlist.
+    """Convert a NetworkX multidigraph into a SAX-compatible flat netlist.
 
     Assumptions:
     - Node attrs contain:
@@ -356,9 +431,12 @@ def graph_to_netlist(graph: nx.MultiDiGraph, ports=None) -> dict:
 #     return netlist
 
 def sanitize_instance_names(netlist, old_separator="~", new_separator="_"):
-    """
-    Replace '~' with '_' in all SAX instance names and update references
-    in connections, ports, and nets.
+    """Replace a separator substring in instance names and references.
+
+    SAX flattening commonly creates nested instance names containing `"~"`.
+    Some downstream tools expect valid Python identifiers, so this helper
+    rewrites instance names and updates `connections`, `ports`, and optional
+    `nets` entries consistently.
     """
     import copy
 
@@ -424,6 +502,11 @@ def sanitize_instance_names(netlist, old_separator="~", new_separator="_"):
 #     return jnp.fft.ifftshift(jnp.fft.ifft(H))
 
 def generate_valid_separator(instance_names, old_separator="~", first_try="_SEP_"):
+    """Generate a separator that will not collide when replacing names.
+
+    The returned separator can be used to replace `old_separator` without
+    causing two distinct instance names to collapse to the same string.
+    """
     instance_names = list(instance_names)
     new_separator = first_try
     new_instance_names = [name.replace(old_separator, new_separator) for name in instance_names]
@@ -434,6 +517,7 @@ def generate_valid_separator(instance_names, old_separator="~", first_try="_SEP_
     return new_separator
 
 def generate_unique_string(instance_names, first_try="xXx"):
+    """Return a string that is not contained in any instance name."""
     instance_names = list(instance_names)
     new_str = first_try
 
@@ -450,6 +534,12 @@ def generate_unique_string(instance_names, first_try="xXx"):
     
 
 def remove_instances_from_netlist(netlist, instances_to_remove):
+    """Return a copy of `netlist` without selected instances.
+
+    Connections and top-level ports touching removed instances are removed as
+    well. This is useful when extracting or replacing subgraphs during PCell and
+    S-parameter consolidation.
+    """
     instances_to_remove = set(instances_to_remove)
 
     new_netlist = {

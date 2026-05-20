@@ -7,25 +7,19 @@ from copy import deepcopy
 
 ### TODO: Decide whether PCells are Components or not, gotta love OOP
 class PCell(Component):
-    """
-    Some circuit components will not have a well defined, internal structure 
-    until after they are parameterized. For this case, we use parameterized 
-    cells, or PCells. 
+    """Base class for parameterized circuit cells.
 
-    The Circuit objects will display the PCell as a single component. 
-    
-    All PCell classes must have well defined external ports, prior to instantiation.
+    A PCell is useful when a component's internal netlist depends on constructor
+    settings or the active simulation mode. Circuit diagrams can treat the PCell
+    as one component, while simulation expands it into its internal `netlist`,
+    `models`, and `settings`.
 
-    Similar to the Component Classes, the PCell class is a baseclass for special 
-    Component objects that require a dynamic structure at the simulation runtime.
-    Therefore, the __init__() function should be called by the InstantiatedCircuit class, and 
-    not the designer of the PCell. 
+    Subclasses should define external `ports` at the class level. During
+    `__init__`, the subclass should populate `self.netlist`, `self.models`, and
+    `self.settings` with the internal circuit that should replace the PCell.
 
-    The PCell designer should simply inherit from the PCell baseclass and overwrite the 
-    appropriate class fields and methods. 
-
-    Models may be modified or left alone before the conclusion of 
-    the __init__() function
+    The constructor is normally called by circuit instantiation rather than
+    directly by users building a netlist.
     """
     ports = None
     
@@ -50,8 +44,11 @@ class PCell(Component):
         # directed: bool = False,
         # default_modes: tuple = DEFAULT_MODES,
     ):
-        """
-        If directed is true, then 
+        """Expand this PCell into an instantiated internal netlist.
+
+        Raw SAX callables in `self.models` are converted to Simphony placeholder
+        components when possible, then the internal netlist is instantiated with
+        the active simulation parameters.
         """
         if self.netlist is None:
             raise NotImplementedError(
@@ -114,6 +111,27 @@ def _convert_sax_models(
     # default_modes,
     # port_directionality,    
 ):
+    """Convert raw SAX models inside a PCell into Simphony placeholders.
+
+    PCells may define their internal `models` dictionary using plain SAX
+    callables. During instantiation those callables need Simphony component
+    classes so that port metadata, settings, and simulator-specific expansion
+    can be handled uniformly.
+
+    Parameters
+    ----------
+    simulation_parameters:
+        Active simulation parameters. The `directed` flag controls whether raw
+        SAX models can be converted automatically.
+    netlist, models, settings:
+        Internal PCell definition to normalize.
+
+    Returns
+    -------
+    tuple
+        `(new_netlist, new_models, new_settings)` ready for recursive
+        instantiation.
+    """
     from simphony.circuit.netlist import add_settings_to_netlist
     from simphony.libraries.ideal.s_parameters import optical_s_parameter_placeholder
     

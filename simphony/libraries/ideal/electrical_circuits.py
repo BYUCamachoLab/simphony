@@ -11,6 +11,12 @@ class VoltageFollower(
     SampleModeComponent, 
     BlockModeComponent,
 ):
+    """Pass an electrical signal from input port `e0` to output port `e1`.
+
+    This helper is useful in directed Block mode netlists when an electrical
+    signal needs an explicit through component. The Block mode response returns
+    the input electrical signal object unchanged.
+    """
     ports = [
         Port(
             name="e0",

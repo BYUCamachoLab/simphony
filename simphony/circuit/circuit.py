@@ -18,6 +18,7 @@ import inspect
 # from simphony.component.component import Component
 # from simphony.component.pcell import PCell
 from simphony.simulation.simulation import SimulationParameters
+#from simphony.diagnostics import SimphonyConfigurationWarning
 
 
 from simphony.libraries.ideal.s_parameters import optical_s_parameter_placeholder, SParameterPlaceholder, s_parameter_netlist_to_pcell
@@ -116,6 +117,22 @@ def _find_leaves(g: nx.DiGraph) -> list[str]:
 # -----------------------------------------------------------------
 
 class Circuit:
+    """Hierarchical circuit built from a SAX-style netlist and model library.
+
+    `Circuit` is the main user-facing container for assembling simulations. It
+    stores the recursive netlist, normalizes settings, wraps raw SAX callables as
+    Simphony placeholders, and prepares model port lookup tables.
+
+    Parameters
+    ----------
+    netlist:
+        Recursive SAX-style netlist dictionary. The top-level circuit is usually
+        stored under `"top_level"` and contains `instances`, `connections`, and
+        `ports`.
+    models:
+        Mapping from model name to Simphony component class, PCell class, or raw
+        SAX model callable.
+    """
     def __init__(
         self,
         netlist: dict,
@@ -208,8 +225,17 @@ class Circuit:
         dst_instance,
         dst_port,
     ):
-        """
-        Add a connection between two component ports.
+        """Add a top-level connection between two component ports.
+
+        Connections are stored in SAX directed connection form:
+        `"src_instance,src_port" -> "dst_instance,dst_port"`. In directed
+        simulation modes this ordering is also used as directionality evidence
+        when explicit port directionality is not available.
+
+        Returns
+        -------
+        Circuit
+            The same circuit object, allowing chained edits.
         """
 
         root = _find_root(self.subcircuit_hierarchy)[0]
@@ -321,18 +347,18 @@ class Circuit:
         self,
         inputs_only: bool = False,
     ):
-        """
-        Return all unconnected ports as
-
-        {
-            instance_name: [port_obj1, port_obj2, ...]
-        }
+        """Return unconnected top-level instance ports.
 
         Parameters
         ----------
-        inputs_only : bool
-            If True, only return ports whose directionality is
-            "input" or "bidirectional".
+        inputs_only:
+            If true, only return ports whose directionality is `"input"` or
+            `"bidirectional"`.
+
+        Returns
+        -------
+        dict[str, list[Port]]
+            Mapping from instance name to unconnected `Port` objects.
         """
 
         root = _find_root(self.subcircuit_hierarchy)[0]
@@ -418,13 +444,18 @@ class Circuit:
         inline: bool = True,
         node_labels: dict = {},
     ):
-        """
-        The true instance name is often not desirable for a node label.
-        When an abbreviated or modified instance name is required, it 
-        can be specified in the "node_labels" field.
+        """Display a circuit or subcircuit graph.
 
-        Any instance name that is not a key in the dict, will be used
-        as the default node label.        
+        Parameters
+        ----------
+        subcircuit:
+            Name of the recursive netlist section to display. Defaults to the
+            root/top-level subcircuit.
+        inline:
+            Kept for display backends that support inline rendering.
+        node_labels:
+            Optional mapping from instance name to a shorter display label. Any
+            instance not included uses its real instance name.
         """
         recursive_netlist = {}
 
@@ -467,11 +498,34 @@ class Circuit:
         safe_graph = _sanitize_graph_for_widget(relabeled_graph)
         fig = Sigma(safe_graph, node_size=safe_graph.degree, node_color="club", start_layout = True)
         display(fig)
+
+    def diagnostics(self, settings=None, directed=None):
+        """Return lightweight diagnostics for this circuit.
+
+        Parameters
+        ----------
+        settings:
+            Optional per-instance settings dictionary to validate alongside the
+            circuit netlist.
+        directed:
+            If true, also check the instance graph for directed cycles and note
+            where S-parameter port directionality will be inferred.
+        """
+        from simphony.diagnostics import diagnose_circuit
+
+        return diagnose_circuit(self, settings=settings, directed=directed)
     
     def flatten(
         self,
         separator = "~",
     ):
+        """Return a flattened view of this recursive circuit.
+
+        Parameters
+        ----------
+        separator:
+            String used by SAX to join nested instance names while flattening.
+        """
         return FlatCircuit(self.netlist, self.models, separator=separator)
     
     def instantiate(
@@ -483,6 +537,29 @@ class Circuit:
         fuse_models: bool = False,
         # default_modes,
     ):
+        """Instantiate the circuit for a specific simulation run.
+
+        Instantiation applies per-instance settings, expands PCells, converts
+        placeholders as needed, inserts tracked-port labels, and returns a flat
+        circuit whose instances hold concrete component objects.
+
+        Parameters
+        ----------
+        settings:
+            Per-instance constructor settings.
+        simulation_parameters:
+            Simulation mode and shared parameters used during component
+            construction.
+        tracked_ports:
+            Optional mapping from user-facing names to `"instance,port"`
+            designators to expose in simulation results.
+        directed:
+            Whether connection order may be used to infer directionality for
+            ambiguous placeholders.
+        fuse_models:
+            Whether to preserve compatible S-parameter model groups during
+            consolidation.
+        """
         return InstantiatedCircuit(
             self, 
             settings,
@@ -495,6 +572,11 @@ class Circuit:
         )
 
     def get_subnetlist(self, subcircuit: str):
+        """Return the recursive netlist rooted at `subcircuit`.
+
+        The returned netlist includes the requested subcircuit and any recursive
+        descendants needed to define it.
+        """
         original_netlist = deepcopy(self.netlist)
         if not subcircuit in self.subcircuit_hierarchy.nodes:
                 return ValueError(f"{subcircuit} not in circuit. Did you mean {list(self.subcircuit_hierarchy.nodes)}?")
@@ -626,6 +708,13 @@ class Circuit:
             graph.nodes[instance]["color"] = color
 
 class FlatCircuit:
+    """Flattened circuit wrapper with sanitized instance names.
+
+    `FlatCircuit` is usually created with `Circuit.flatten()`. It preserves the
+    model library, flattens recursive subcircuits into one netlist, and replaces
+    separator characters with valid identifier substrings so downstream
+    instantiation can handle nested names consistently.
+    """
     def __init__(
         self,
         netlist: dict,
@@ -646,6 +735,7 @@ class FlatCircuit:
         inline: bool = True,
         node_labels: dict = {},
     ):
+        """Display the flattened circuit graph."""
         
         sanitized_node_labels = {v:k for k, v in self._sanitized_netlist_lut.items()}
         sanitized_node_labels_to_modify = {self._sanitized_netlist_lut[k]:v for k, v in node_labels.items()}
@@ -661,6 +751,7 @@ class FlatCircuit:
         directed: bool = False,
         fuse_models: bool = False,
     ):
+        """Instantiate the flattened circuit for a simulation run."""
         return InstantiatedCircuit(
             self, 
             settings,
@@ -813,19 +904,14 @@ def find_clipped_edges(full_graph, subgraph_nodes):
 #         warnings.warn(f"Sax settings were not specified and inside settings do not match model function call for {instance_name}. Appending an empty sax_setting dictionary for that component.")
 
 class InstantiatedCircuit:
-    """
-    Similar to the Circuit, but composed of the instantiated models, themselves, not Component classes
+    """Concrete, flattened circuit used internally by simulators.
 
-    Will always be flattened 
-    1. no recursively defined netlists 
-    2. PCells have been flattened into base components
+    Unlike `Circuit`, this object contains instantiated component objects rather
+    than component classes. Recursive subcircuits and PCells have already been
+    expanded, and `graph` describes the executable instance graph.
 
-    Ultimately, the core identity of this class is a wrapper around the FlatCircuit Class, 
-    except that each instance in the netlist has an extra field "simphony_model", which 
-    is an instantiated component object.
-
-    Additional utility methods are added here for use in Simulator classes
-
+    Simulators normally obtain this object through `Circuit.instantiate()` rather
+    than constructing it directly.
     """
     def __init__(
         self,
@@ -839,9 +925,11 @@ class InstantiatedCircuit:
         # directed: bool,
         # default_modes,
     ):
-        """
-        When `directed` is True, unspecified directionalities of SParameterPlaceholder objects will determined 
-        based on the order of connection in the netlist
+        """Instantiate components and prepare simulator lookup structures.
+
+        When `directed` is true, unspecified directionalities of
+        `SParameterPlaceholder` objects may be inferred from connection order in
+        the netlist.
         """
         if not isinstance(tracked_ports, dict):
             tracked_ports = {}
@@ -905,6 +993,7 @@ class InstantiatedCircuit:
     #     # fig = gv.d3(self.graph.to_undirected())
     #     # fig.display(inline=True)
     def display(self, inline=True):
+        """Display the instantiated flat circuit graph."""
         graph = instantiated_flat_netlist_to_graph(
             self.instantiated_flat_netlist,
             include_ports=True

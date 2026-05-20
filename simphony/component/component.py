@@ -191,10 +191,23 @@ class Signal: ## TODO: Make an actual base class
     ...
 
 class Component:
+    """Base class for objects that can be placed in a Simphony circuit.
+
+    Concrete component classes define a class-level `ports` list containing
+    `Port` objects. Simulator-specific mixins such as `BlockModeComponent`,
+    `SampleModeComponent`, and `SParameterComponent` then define the response
+    methods that a simulator is allowed to call.
+    """
     def __repr__(self):
         return f"<{type(self).__name__} (Component obj)>"
     @classmethod
     def _create_port_lookup_table(cls):
+        """Build internal lookup tables from the component's declared ports.
+
+        Bidirectional ports are included in both the input and output lookup
+        tables because they can participate on either side depending on the
+        simulation mode and netlist orientation.
+        """
         cls._port_lookup_table = {p.name: p for p in cls.ports}
         # cls._input_port_lookup_table = {p.name: p  for p in cls.ports if p.directionality=="input"}
         # cls._output_port_lookup_table = {p.name: p for p in cls.ports if p.directionality=="output"}
@@ -216,7 +229,12 @@ class Component:
     # optical_ports = []
 
 class SteadyStateComponent(Component):
-    """ 
+    """Mixin for components that can compute a static operating point.
+
+    Steady-state responses are commonly used to provide bias values for
+    frequency-domain or S-parameter simulations. Implementations receive a
+    dictionary of input signals keyed by port name and return output signals in
+    the same style.
     """
     delay_compensation = 0
 
@@ -224,8 +242,17 @@ class SteadyStateComponent(Component):
         self, 
         inputs: dict
     ) -> dict:
-        """
-        Used when calculating steady state voltages for SParameterSimulation
+        """Compute steady-state output signals.
+
+        Parameters
+        ----------
+        inputs:
+            Mapping from input port name to steady-state signal object.
+
+        Returns
+        -------
+        dict
+            Mapping from output port name to steady-state signal object.
         """
         raise NotImplementedError(
             f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
@@ -233,9 +260,32 @@ class SteadyStateComponent(Component):
 
 
 class BlockModeComponent(Component):
+    """Base class for components that process an entire time block at once.
+
+    User-defined Block mode components should declare a class-level `ports`
+    list and implement `block_mode_response`. The simulator supplies a
+    dictionary of input signals keyed by port name, and the method should return
+    a dictionary of output signals keyed by output port name.
+    """
     # IDK the best name for this method! Maybe run, but that is confusing
     def block_mode_response(self, input_signals: ArrayLike, simulation_parameters: BlockModeSimulationParameters):
-        """Compute the system response."""
+        """Compute output signals for one full Block mode time block.
+
+        Parameters
+        ----------
+        input_signals:
+            Mapping from input port name to a block signal object. Optical ports
+            receive `BlockModeOpticalSignal`; electrical ports receive
+            `BlockModeElectricalSignal`.
+        simulation_parameters:
+            Shared Block mode parameters defining the time grid, wavelengths,
+            and modes.
+
+        Returns
+        -------
+        dict
+            Mapping from output port name to block signal object.
+        """
         raise NotImplementedError
     
     def _block_mode_response(self, input_signals, simulation_parameters):
@@ -301,16 +351,29 @@ class BlockModeComponent(Component):
 
 
 class SampleModeComponent(Component):
+    """Mixin for components that advance one simulation sample at a time.
+
+    Sample mode components keep explicit state between time steps. The simulator
+    first calls `sample_mode_initial_state`, then repeatedly calls
+    `sample_mode_step` with the current inputs, component state, global
+    simulation state, and simulation parameters.
+    """
     def sample_mode_initial_state(self, simulation_parameters: SampleModeSimulationParameters):
-        """
-        May be overwritten by user.
-        Returns the initial the state of the system.
-        Called by the sample mode simulator after `set_sample_mode_simulation_parameters`
+        """Return the component's initial sample-mode state.
+
+        Components without internal memory can keep the default zero state.
         """
         return 0
 
     def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_state, simulation_parameters: SampleModeSimulationParameters) -> Tuple[dict[str, Signal], jax.Array]:
-        """Compute the next state of the system."""
+        """Compute one sample of output and the next component state.
+
+        Returns
+        -------
+        tuple[dict, jax.Array]
+            Output signals keyed by port name, followed by the updated internal
+            state.
+        """
         raise NotImplementedError
 
     def _sample_mode_initial_state(self, simulation_parameters: SampleModeSimulationParameters):
@@ -347,17 +410,31 @@ class SampleModeComponent(Component):
 
 # TODO: Get rid of this
 class SParameterComponent(Component):
-    """
-    SParameterComponents may have either scattering ports, or bias ports. 
-    By default, all optical ports are onsidered as scattering type, 
-    while all other signal types correspond to bias ports.
-    ### TODO: Make simphony match this port convention
+    """Mixin for components described by wavelength-dependent S-parameters.
+
+    Optical ports are treated as scattering ports by default. Other signal types
+    are typically bias ports whose steady-state values modify the returned
+    S-parameter dictionary.
     """
     def s_parameters(
         self,
         inputs: dict,
         wl: ArrayLike=1.55e-6,
     ):
+        """Return the component S-parameter dictionary at wavelength `wl`.
+
+        Parameters
+        ----------
+        inputs:
+            Bias or control signals keyed by port name.
+        wl:
+            Wavelength or wavelength array, in meters.
+
+        Returns
+        -------
+        sax.SDict
+            Mapping from `(output_port, input_port)` to complex transmission.
+        """
         raise NotImplementedError(
             f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
         )
@@ -365,9 +442,10 @@ class SParameterComponent(Component):
     def s_parameter_get_bias_ports(
         self,
     ):
-        """
-        bias ports are ports that recieve a steady state signal which in some way 
-        modify the s-dict of an SParameterComponent.
+        """Return ports whose steady-state inputs affect `s_parameters`.
+
+        Bias ports receive steady-state signal values before the S-parameter
+        response is evaluated.
         """
         return []
     
@@ -435,5 +513,3 @@ class GaussianProcessComponent(Component):
 #         raise NotImplementedError(
 #             f"{inspect.currentframe().f_code.co_name} method not defined for {self.__class__.__name__}"
 #         )
-
-

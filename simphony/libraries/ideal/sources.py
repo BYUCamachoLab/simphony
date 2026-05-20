@@ -128,8 +128,23 @@ class OpticalCombSource(SampleModeComponent, BlockModeComponent):
 
 
 class CWLaser(SampleModeComponent, BlockModeComponent):
-    """
-    The CW Laser is meant to be used in time-domain simulations.
+    """Continuous-wave optical source for time-domain simulations.
+
+    The laser emits a complex optical envelope on output port `o0`. In Block
+    mode, the returned `BlockModeOpticalSignal` spans the full simulation time
+    block and uses `wavelength` as its carrier channel set.
+
+    Parameters
+    ----------
+    wavelength:
+        Optical carrier wavelength or wavelength array, in meters.
+    linewidth:
+        Lorentzian linewidth used to generate phase noise. A value of zero
+        produces a deterministic constant-envelope source.
+    lineshape:
+        Phase-noise model name. Currently only `"lorentzian"` is implemented.
+    mode_idx:
+        Index of the optical mode that receives the source amplitude.
     """
     # delay_compensation = 0
     # optical_ports = ["o0"]
@@ -249,6 +264,7 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
         
         phi = self.phase_noise(simulation_parameters)
 
+
         # Compute complex envelope
         A_t = jnp.exp(1j*phi)
         amplitude = jnp.zeros((A_t.shape[0], 1, len(simulation_parameters.mode_identifiers)), dtype=complex)
@@ -278,17 +294,16 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
 
         
 class OpticalSource(SampleModeComponent, BlockModeComponent):
-    """
-    A complex evelope for each wavelength may be specified. 
-    This envelope is a discrete time array of optical signals,
-    and will be assumed to be at the sampling_period of the simulation parameters.
+    """Optical source driven by a user-provided envelope.
 
-    If the user wishes to create a source that is agnostic of the simulation
-    parameters, then envelope_fn may be specified instead. 
-    
-    Only evelope or envelope_fn should be initialized, not both. 
-    If both are initiated, an error will be thrown.
-    If envelope is None, then envelope_fn must be specified and vice versa.
+    The source emits a `BlockModeOpticalSignal` on output port `o0`. Users can
+    either provide a concrete `envelope` or an `envelope_fn` that creates one
+    from the simulation time vector. Exactly one of those options must be
+    supplied.
+
+    If the envelope length does not match `simulation_parameters.num_time_steps`,
+    it is truncated or padded with zeros so the emitted block has the simulation
+    length.
     """
     optical_ports = ["o0"]
 
@@ -372,6 +387,24 @@ class VoltageSource(
     SampleModeComponent, 
     BlockModeComponent,
 ):
+    """Electrical source for steady-state, sample-mode, and Block mode runs.
+
+    In Block mode, the source emits a `BlockModeElectricalSignal` on `e0`.
+    Users can supply a concrete electrical `envelope`, an `envelope_fn` that
+    receives the simulation time vector, or neither. If neither is supplied, the
+    source emits a constant voltage equal to `steady_state_voltage`.
+
+    Parameters
+    ----------
+    envelope:
+        Electrical signal to emit in time-domain simulations.
+    envelope_fn:
+        Callable that receives the time vector and returns a
+        `BlockModeElectricalSignal`.
+    steady_state_voltage:
+        Constant voltage used for steady-state simulations and as the Block mode
+        default when no envelope is supplied.
+    """
     ports = [
         Port(
             name="e0",
