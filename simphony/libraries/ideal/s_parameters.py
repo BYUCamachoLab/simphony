@@ -64,6 +64,7 @@ _default_vector_fitting_parameters = {
                 "max_model_order": 50,
                 "num_frequency_samples": 1000,
                 "center_wavelength": 1.55e-6,
+                # "center_wavelength": 1.52e-6,
                 "spectral_range": (1.5e-6, 1.6e-6),
                 # NOTE: Currently, a user CAN change the spectral range parameter (the default is set by )
             }

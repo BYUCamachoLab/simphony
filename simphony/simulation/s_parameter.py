@@ -23,7 +23,7 @@ from simphony.circuit.netlist import graph_to_netlist, sanitize_instance_names, 
 @struct.dataclass
 class SParameterSimulationParameters(SimulationParameters):
     simulation_mode: SimulationMode = field(default_factory=lambda:SimulationMode.S_PARAMETER)
-    optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([1.54e-6, 1.55e-6, 1.56e-6]))
+    # optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jnp.array([1.54e-6, 1.55e-6, 1.56e-6]))
     directed: bool = False
 
 class SParameterSimulationResult(SimulationResult):
@@ -181,6 +181,7 @@ class SParameterSimulation(Simulation):
             instance_name = port_designator.split(',')[0]
             # print(nx.descendants(all_optical_graph, port_designator))
             # print(nx.ancestors(all_optical_graph, port_designator))
+            reachable.add(instance_name)
             reachable |= nx.descendants(s_parameter_only_graph, instance_name)
             reachable |= nx.ancestors(s_parameter_only_graph, instance_name)
 

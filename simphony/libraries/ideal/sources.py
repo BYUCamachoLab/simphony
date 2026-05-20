@@ -65,61 +65,66 @@ import jax.numpy as jnp
 
 
 class OpticalCombSource(SampleModeComponent, BlockModeComponent):
-    optical_ports = ["o0"]
+    ports = [
+        Port(
+            name="o0",
+            type="optical",
+            directionality="output",
+        ),
+    ]
+
     def __init__(
         self,
         simulation_parameters: SimulationParameters,
         *,
-        wavelength=jnp.array([1.53e-6, 1.54e-6, 1.55e-6, 1.56e-6, 1.57e-7]),
+        wavelength=jnp.array([1.53e-6, 1.54e-6, 1.55e-6, 1.56e-6, 1.57e-6]),
         linewidth=0.0,
     ):
-        self.wavelength = wavelength
+        self.wavelength = jnp.asarray(wavelength)
         self.linewidth = linewidth
 
-    def block_mode_response (
-        self,
-        inputs: dict={},
-        simulation_parameters: BlockModeSimulationParameters = BlockModeSimulationParameters(),
-    ):
+    def _generate_phase_noise(self, simulation_parameters):
         N = simulation_parameters.num_time_steps
         num_wls = self.wavelength.shape[0]
-        sampling_period = simulation_parameters.sampling_period
-        t = jnp.arange(N) * sampling_period
-        linewidth = self.linewidth
-        
-        key = simulation_parameters.prng_key
-        delta_phi_std = jnp.sqrt(2*jnp.pi*self.linewidth*simulation_parameters.sampling_period)
-        dphi = jax.random.normal(key, (simulation_parameters.num_time_steps, num_wls))*delta_phi_std
-        phi = jnp.cumsum(dphi, axis=0)
+        dt = simulation_parameters.dt
+        delta_phi_std = float(jnp.sqrt(2 * jnp.pi * self.linewidth * dt))
+        rng = np.random.default_rng(simulation_parameters.seed)
+        dphi = rng.standard_normal((N, num_wls)) * delta_phi_std
+        return jnp.array(jnp.cumsum(dphi, axis=0))
 
-        # Compute complex envelope
-        A_t = jnp.exp(1j*phi)[:, :, None]
+    def block_mode_response(
+        self,
+        inputs: dict = {},
+        simulation_parameters: BlockModeSimulationParameters = BlockModeSimulationParameters(),
+    ):
+        num_modes = len(simulation_parameters.mode_identifiers)
+        phi = self._generate_phase_noise(simulation_parameters)
+        # shape: (N, L, M) — one unit amplitude per wavelength, placed in mode 0
+        A_t = jnp.zeros((*phi.shape, num_modes), dtype=complex)
+        A_t = A_t.at[:, :, 0].set(jnp.exp(1j * phi))
 
         outputs = {
             "o0": BlockModeOpticalSignal(
                 amplitude=A_t,
-                wavelength=self.wavelength
+                wavelength=self.wavelength,
             ),
         }
-        
         return outputs
-    
+
     def sample_mode_initial_state(self, simulation_parameters):
-        time_step = 0
-        output_signal = self.block_mode_response(simulation_parameters=simulation_parameters)['o0']
+        time_step = jnp.array(0, dtype=int)
+        output_signal = self.block_mode_response(simulation_parameters=simulation_parameters)["o0"]
         return time_step, output_signal
 
     def sample_mode_step(self, inputs, state, simulation_state, simulation_parameters):
         time_step, full_output_signal = state
-
         outputs = {
             "o0": SampleModeOpticalSignal(
                 amplitude=full_output_signal.amplitude[time_step],
-                wavelength=full_output_signal.wavelength
+                wavelength=full_output_signal.wavelength,
             ),
         }
-
-        return outputs, (time_step+1, full_output_signal)
+        return outputs, (time_step + 1, full_output_signal)
 
 
 class CWLaser(SampleModeComponent, BlockModeComponent):

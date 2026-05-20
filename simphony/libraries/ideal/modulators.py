@@ -152,8 +152,6 @@ class OpticalModulator(
         absorption_dB = jnp.polyval(self.absorption_coefficients, voltage)
         fraction_of_power_remaining = 10**(-absorption_dB*self.length/10)
         phase_shift = phase_op
-        print(self.phase_coefficients)
-        print(phase_shift)
         # delta_n = self.operating_wl/(2*jnp.pi*self.length) * phase_op
         # phase_shift = 2*jnp.pi/wl*(self.effective_index+delta_n)*self.length
 
@@ -172,10 +170,26 @@ class OpticalModulator(
 
     def sample_mode_initial_state(self, simulation_parameters):
         return jnp.array([0])
-    
-    def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_state, simulation_parameters):
-        # TODO: Complete this to acount for delay and phase shift
-        return inputs, state
+
+    def sample_mode_step(self, inputs: dict, state: jax.Array, simulation_state, simulation_parameters):
+        from simphony.signal.sample_mode import SampleModeOpticalSignal
+        baseband_wls = simulation_parameters.optical_baseband_wavelengths
+        n_modes      = len(simulation_parameters.mode_identifiers)
+        zero_amp     = jnp.zeros((baseband_wls.shape[0], n_modes), dtype=complex)
+
+        voltage       = inputs["e0"].voltage if "e0" in inputs else 0.0
+        phase_op      = jnp.polyval(self.phase_coefficients, voltage)
+        absorption_dB = jnp.polyval(self.absorption_coefficients, voltage)
+        transfer      = jnp.sqrt(10 ** (-absorption_dB * self.length / 10)) * jnp.exp(1j * phase_op)
+
+        o0_in = inputs["o0"].amplitude if "o0" in inputs else zero_amp
+        o1_in = inputs["o1"].amplitude if "o1" in inputs else zero_amp
+
+        outputs = {
+            "o1": SampleModeOpticalSignal(amplitude=transfer * o0_in, wavelength=baseband_wls),
+            "o0": SampleModeOpticalSignal(amplitude=transfer * o1_in, wavelength=baseband_wls),
+        }
+        return outputs, state
         
     # @staticmethod
     # @jax.jit
