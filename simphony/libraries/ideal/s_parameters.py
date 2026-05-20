@@ -222,7 +222,8 @@ def optical_s_parameter(
                 mode_idx = self.mode_indices[mode]
                 u = u.at[:, state_space_idx].set(input_signals[port_name].amplitude[:, mode_idx])
 
-            for wl_idx, wl in enumerate(simulation_parameters.optical_baseband_wavelengths):
+            for wl_idx in range(len(simulation_parameters.optical_baseband_wavelengths)):
+                wl = simulation_parameters.optical_baseband_wavelengths[wl_idx]
                 sampling_frequency = 1/simulation_parameters.dt
                 delta_omega = 2*jnp.pi*speed_of_light * (1/wl - 1/wl_center) / sampling_frequency
                 _A, _B, _C, _D = jnp.exp(1j*delta_omega)*A, jnp.exp(1j*delta_omega)*B, jnp.exp(1j*k*delta_omega)*C, jnp.exp(1j*k*delta_omega)*D
