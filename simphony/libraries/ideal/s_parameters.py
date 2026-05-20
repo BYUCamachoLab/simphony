@@ -164,8 +164,14 @@ def optical_s_parameter(
             self.settings.setdefault('group_id', None)
             self.settings.setdefault('vector_fitting_parameters', _default_vector_fitting_parameters)
             self.settings.setdefault('delay_compensation', 0)
+            self.settings.setdefault('apply_phase_correction', True)
             self.settings.setdefault('port_directionality', {})
-
+            
+            if self.settings['apply_phase_correction']:
+                self._k = self.settings['delay_compensation']
+            else:
+                self._k = 0
+            
             # self.sax_model = sax_model
             # self.sax_settings = self.settings.setdefault('sax_settings', {})
             # self.vector_fitting_parameters = self.settings.setdefault('vector_fitting_parameters', default_vector_fitting_parameters)
@@ -205,7 +211,8 @@ def optical_s_parameter(
         def sample_mode_step(self, input_signals: dict, state: jax.Array, simulation_state, simulation_parameters):
             """Compute the next state of the system."""
             # TODO: Add the delay compensation logic
-            k = self.settings['delay_compensation']
+            # k = self.settings['delay_compensation']
+            k = self._k
             x = state
             new_x = jnp.zeros_like(x)
             A, B, C, D = self.state_space_matrices
@@ -1204,6 +1211,7 @@ def optical_s_parameter_placeholder(
             self.settings.setdefault('vector_fitting_parameters', _default_vector_fitting_parameters)
             self.settings.setdefault('delay_compensation', 0)
             self.settings.setdefault('port_directionality', {})
+            self.settings.setdefault('apply_phase_correction', True)
             # self.sax_model = sax_model
             # self.sax_settings = self.settings.setdefault('sax_settings', {})
             # self.vector_fitting_parameters = self.settings.setdefault('vector_fitting_parameters', default_vector_fitting_parameters)
