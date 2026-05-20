@@ -218,21 +218,26 @@ def optical_s_parameter(
 
             wl_center = self.settings['vector_fitting_parameters']['center_wavelength']
             for (port_name, mode), state_space_idx in self.state_space_input_indices.items():
-                input_signal = input_signals[port_name]
                 mode_idx = self.mode_indices[mode]
                 u = u.at[:, state_space_idx].set(input_signals[port_name].amplitude[:, mode_idx])
 
-            for wl_idx in range(len(simulation_parameters.optical_baseband_wavelengths)):
-                wl = simulation_parameters.optical_baseband_wavelengths[wl_idx]
-                sampling_frequency = 1/simulation_parameters.dt
-                delta_omega = 2*jnp.pi*speed_of_light * (1/wl - 1/wl_center) / sampling_frequency
-                _A, _B, _C, _D = jnp.exp(1j*delta_omega)*A, jnp.exp(1j*delta_omega)*B, jnp.exp(1j*k*delta_omega)*C, jnp.exp(1j*k*delta_omega)*D
-            
-                _new_x = _A@x[wl_idx, :] + _B@u[wl_idx, :]
-                _y = _C@x[wl_idx, :] + _D@u[wl_idx, :]
-            
-                new_x = new_x.at[wl_idx, :].set(_new_x)
-                y = y.at[wl_idx, :].set(_y)    
+            # Vectorised over all wavelengths — replaces the old Python for-loop that
+            # caused lax.scan to unroll L copies of the loop body into the XLA graph,
+            # making compilation memory O(L) instead of O(1).
+            #
+            # For each wavelength l:
+            #   new_x[l] = phase_AB[l] * (A @ x[l] + B @ u[l])
+            #   y[l]     = phase_CD[l] * (C @ x[l] + D @ u[l])
+            #
+            # (x @ A.T)[l] == A @ x[l]  for 1-D row slices, so batched matmul works.
+            sampling_frequency = 1.0 / simulation_parameters.dt
+            wls         = simulation_parameters.optical_baseband_wavelengths        # (L,)
+            delta_omega = 2*jnp.pi*speed_of_light * (1.0/wls - 1.0/wl_center) / sampling_frequency  # (L,)
+            phase_AB    = jnp.exp(1j * delta_omega)        # (L,)
+            phase_CD    = jnp.exp(1j * k * delta_omega)    # (L,)
+
+            new_x = phase_AB[:, None] * (x @ A.T + u @ B.T)   # (L, n_states)
+            y     = phase_CD[:, None] * (x @ C.T + u @ D.T)   # (L, n_outputs)
             
             output_signals = {}
             for port_name in self._output_optical_port_names:                
