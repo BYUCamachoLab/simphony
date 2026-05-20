@@ -158,15 +158,32 @@ def optical_s_parameter(
             _ = port_directionality
             _ = default_modes
             
+
+
             self.sax_model = _get_filtered_sax_model(sax_model, port_directionality=port_directionality, default_modes=default_modes)
+            
             self.settings = kwargs
+
+            
             self.settings.setdefault('sax_settings', {})
             self.settings.setdefault('group_id', None)
             self.settings.setdefault('vector_fitting_parameters', _default_vector_fitting_parameters)
             self.settings.setdefault('delay_compensation', 0)
             self.settings.setdefault('apply_phase_correction', True)
             self.settings.setdefault('port_directionality', {})
+
+            if "vector_fitting_parameters" in self.settings and not self.settings['vector_fitting_parameters'] is None:
+                for k, v in _default_vector_fitting_parameters.items():
+                    self.settings["vector_fitting_parameters"].setdefault(k, _default_vector_fitting_parameters[k])
+
+                if not self.settings["vector_fitting_parameters"]['model_order'] is None:
+                    self.settings["vector_fitting_parameters"]['min_model_order'] = None
+                    self.settings["vector_fitting_parameters"]['max_model_order'] = None            
+
             
+
+
+
             if self.settings['apply_phase_correction']:
                 self._k = self.settings['delay_compensation']
             else:
