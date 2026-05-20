@@ -112,19 +112,37 @@ class OpticalCombSource(SampleModeComponent, BlockModeComponent):
         return outputs
 
     def sample_mode_initial_state(self, simulation_parameters):
-        time_step = jnp.array(0, dtype=int)
-        output_signal = self.block_mode_response(simulation_parameters=simulation_parameters)["o0"]
-        return time_step, output_signal
+        # State is just the accumulated phase per wavelength — O(L), not O(N×L).
+        # block_mode_response is left unchanged for block-mode callers.
+        L = self.wavelength.shape[0]
+        return jnp.zeros((L,))
 
     def sample_mode_step(self, inputs, state, simulation_state, simulation_parameters):
-        time_step, full_output_signal = state
+        phi = state   # accumulated phase, shape (L,)
+        L   = self.wavelength.shape[0]
+        M   = len(simulation_parameters.mode_identifiers)
+
+        if self.linewidth == 0.0:
+            # CW: constant unit amplitude, phase never changes.
+            new_phi = phi
+        else:
+            # Noisy laser: grow a random-walk phase one step at a time using the
+            # per-step PRNG key already provided by the simulator.
+            dt             = simulation_parameters.dt
+            delta_phi_std  = jnp.sqrt(2 * jnp.pi * self.linewidth * dt)
+            dphi           = delta_phi_std * jax.random.normal(
+                                simulation_state.prng_key, shape=(L,))
+            new_phi = phi + dphi
+
+        amplitude = jnp.zeros((L, M), dtype=complex).at[:, 0].set(jnp.exp(1j * new_phi))
+
         outputs = {
             "o0": SampleModeOpticalSignal(
-                amplitude=full_output_signal.amplitude[time_step],
-                wavelength=full_output_signal.wavelength,
+                amplitude=amplitude,
+                wavelength=self.wavelength,
             ),
         }
-        return outputs, (time_step + 1, full_output_signal)
+        return outputs, new_phi
 
 
 class CWLaser(SampleModeComponent, BlockModeComponent):

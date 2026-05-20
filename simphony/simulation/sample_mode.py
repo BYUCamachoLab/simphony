@@ -213,32 +213,37 @@ class SampleModeSimulation(Simulation):
         for instance_name, instance in self.components.items():
             initial_states[instance_name] = instance._sample_mode_initial_state(self.simulation_parameters)
 
+        # Build lightweight maps from tracked port name → (instance, port) for both
+        # output and input sides.  These are passed as static partial arguments so
+        # _system_step can emit only the tracked signals instead of the full circuit
+        # output dict, avoiding O(N_steps × N_instances × N_ports) memory allocation.
+        tracked_output_map = {}
+        tracked_input_map  = {}
+        for tracked_port_name, tracked_port_designator in port_lookup_table.items():
+            inst, port = tracked_port_designator.split(",", 1)
+            tracked_output_map[tracked_port_name] = (inst, port)
+            for src_inst, src_port in self._predecessors_map.get((inst, port), []):
+                tracked_input_map[tracked_port_name] = (src_inst, src_port)
+                break
+
         current_outputs = self._initial_outputs()
         tic = time()
         simulation_state = SampleModeSimulationState(prng_key=jax.random.PRNGKey(self.simulation_parameters.seed))
-        system_step = partial(self._system_step, simulation_parameters=self.simulation_parameters)
-        _, system_outputs = self._scan(system_step, (current_outputs, initial_states, simulation_state), length=N)
+        system_step = partial(
+            self._system_step,
+            simulation_parameters=self.simulation_parameters,
+            tracked_output_map=tracked_output_map,
+            tracked_input_map=tracked_input_map,
+        )
+        _, stacked_tracked = self._scan(system_step, (current_outputs, initial_states, simulation_state), length=N)
         toc = time()
         print(toc - tic)
 
-        # Build result keyed by tracked-port name, mirroring BlockModeSimulationResult.
-        # port_lookup_table maps tracked_port_name → "instance_name,port_name".
-        input_signals  = {}
-        output_signals = {}
-        for tracked_port_name, tracked_port_designator in port_lookup_table.items():
-            instance_name, port_name = tracked_port_designator.split(",", 1)
-
-            # Output: what the component emits at this port across all time steps.
-            if instance_name in system_outputs and port_name in system_outputs[instance_name]:
-                output_signals[tracked_port_name] = system_outputs[instance_name][port_name]
-
-            # Input: what arrived at this port (the predecessor's output, 1 step earlier).
-            for src_inst, src_port in self._predecessors_map.get((instance_name, port_name), []):
-                if src_inst in system_outputs and src_port in system_outputs[src_inst]:
-                    input_signals[tracked_port_name] = system_outputs[src_inst][src_port]
-                    break
-
-        return SampleModeSimulationResult(input_signals, output_signals)
+        # stacked_tracked is already keyed by tracked port name with shape (N, L, M).
+        return SampleModeSimulationResult(
+            input_signals=stacked_tracked["inputs"],
+            output_signals=stacked_tracked["outputs"],
+        )
 
     def insert_terminators(self):
         """Attach terminator source components to unconnected input-like ports."""
@@ -297,37 +302,42 @@ class SampleModeSimulation(Simulation):
 
         return predecessors_map, successors_map
 
-    def _system_step(self, carry, x, simulation_parameters=None):
-        time_step = x
+    def _system_step(self, carry, x, simulation_parameters=None,
+                     tracked_output_map=None, tracked_input_map=None):
         system_outputs = carry[0]
         states = carry[1]
         simulation_state = carry[2]
-        # simulation_parameters = carry[3]
         prng_key = simulation_state.prng_key
-        # y = self.tracked_signals
 
-        old_system_outputs = system_outputs
         system_inputs = {}
         for instance_name, instance in self.components.items():
             system_inputs[instance_name] = self._get_inputs(instance_name, system_outputs)
 
         for instance_name, instance in self.components.items():
-            # Generate a unique key for each time_step/instance
             prng_key, subkey = jax.random.split(prng_key)
-            # TODO: Find a more idiomatic place to pass in the subkey (simulation parameters really should be constant values)
-            simulation_state = replace(simulation_state,prng_key=subkey)
-            
-            if "gc1" in instance_name:
-                pass
+            simulation_state = replace(simulation_state, prng_key=subkey)
             inputs = system_inputs[instance_name]
             input_state = states[instance_name]
             instance_outputs, output_state = instance._sample_mode_step(inputs, input_state, simulation_state, simulation_parameters)
             states[instance_name] = output_state
             system_outputs[instance_name] = system_outputs[instance_name] | instance_outputs
 
-            
         new_carry = (system_outputs, states, simulation_state)
-        y = system_outputs
+
+        # Emit only the tracked-port signals.  The full system_outputs remains in
+        # the carry for routing but is never stacked across time steps, keeping
+        # scan memory proportional to the number of tracked ports rather than to
+        # the total number of ports in the circuit.
+        y = {
+            "outputs": {
+                name: system_outputs[inst][port]
+                for name, (inst, port) in tracked_output_map.items()
+            },
+            "inputs": {
+                name: system_outputs[inst][port]
+                for name, (inst, port) in tracked_input_map.items()
+            },
+        }
         return new_carry, y
     
     def _get_inputs(self, instance_name, current_outputs):
