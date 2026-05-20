@@ -139,49 +139,29 @@ print(f"Running sample-mode: {N_STEPS} steps × {len(sm_wl_m)} wavelengths, dt={
 sm_result = sm_sim.run(use_jit=True)
 print("Done.")
 
-# ── Inspect all output signals ────────────────────────────────────────────────
-print("\nAll output signals in result:")
-for inst, ports in sm_result.items():
-    for port, sig in ports.items():
-        if hasattr(sig, "amplitude"):
-            amp = np.array(sig.amplitude)
-            print(f"  {inst!r:45s}  port={port!r:10s}  "
-                  f"shape={str(amp.shape):15s}  max|A|={np.abs(amp).max():.4f}")
+# ── Inspect tracked port signals ─────────────────────────────────────────────
+print("\nTracked output signals:")
+for port_name, sig in sm_result.output_signals.items():
+    if hasattr(sig, "amplitude"):
+        amp = np.array(sig.amplitude)
+        print(f"  {port_name!r:20s}  shape={str(amp.shape):15s}  max|A|={np.abs(amp).max():.4f}")
 
-# ── Find the ring through-port output (port_3) ───────────────────────────────
-out_amp   = None
-out_label = None
-n_wl      = len(sm_wl_m)
+print("\nTracked input signals:")
+for port_name, sig in sm_result.input_signals.items():
+    if hasattr(sig, "amplitude"):
+        amp = np.array(sig.amplitude)
+        print(f"  {port_name!r:20s}  shape={str(amp.shape):15s}  max|A|={np.abs(amp).max():.4f}")
 
-for inst, ports in sm_result.items():
-    for port, sig in ports.items():
-        if hasattr(sig, "amplitude"):
-            amp = np.array(sig.amplitude)
-            if amp.ndim == 3 and amp.shape[1] == n_wl and "port_3" in port:
-                out_amp   = amp
-                out_label = f"{inst}  port={port}"
-                break
-    if out_amp is not None:
-        break
-
-if out_amp is None:
-    # Fallback: highest-power optical signal with correct wavelength count
-    best = 0.0
-    for inst, ports in sm_result.items():
-        for port, sig in ports.items():
-            if hasattr(sig, "amplitude"):
-                amp = np.array(sig.amplitude)
-                if amp.ndim == 3 and amp.shape[1] == n_wl:
-                    p = float(np.abs(amp[TRANSIENT:]).max())
-                    if p > best:
-                        best, out_amp, out_label = p, amp, f"{inst}  port={port}"
-
-print(f"\nUsing output signal: {out_label}")
+# ── Extract the through-port output ──────────────────────────────────────────
+out_sig = sm_result.output_signals["out"]
+out_amp = np.array(out_sig.amplitude)  # (N_STEPS, L, M)
+print(f"\nUsing output signal: 'out'  shape={out_amp.shape}")
 
 # Steady-state: time-average of |amplitude|² after the transient
 sm_T_steady = np.mean(np.abs(out_amp[TRANSIENT:, :, 0])**2, axis=0)  # (L,)
 
 # ── Comparison table ──────────────────────────────────────────────────────────
+n_wl = len(sm_wl_m)
 print(f"\n{'Wavelength (µm)':<18} {'S-param T':>10} {'SM steady T':>12} {'ratio':>8}")
 print("-" * 52)
 for i in range(0, n_wl, max(1, n_wl // 10)):

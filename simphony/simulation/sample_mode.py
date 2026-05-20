@@ -32,13 +32,20 @@ from typing import Annotated
 #     return obj.__class__(**fields)
 
 class SampleModeSimulationResult(SimulationResult):
-    """Placeholder result type for sample-by-sample simulations.
+    """Signals collected from a completed sample-mode simulation.
 
-    The current `SampleModeSimulation.run` implementation returns the scan output
-    structure directly rather than populating this class.
+    Attributes
+    ----------
+    input_signals:
+        Signals received at each tracked port (the predecessor's output,
+        one step earlier than the component's own output).
+    output_signals:
+        Signals emitted by the component at each tracked port across all
+        time steps.
     """
-    def __init__(self):
-        pass
+    def __init__(self, input_signals: dict, output_signals: dict):
+        self.input_signals  = input_signals
+        self.output_signals = output_signals
 
 @struct.dataclass
 class SampleModeSimulationParameters(SimulationParameters):
@@ -192,61 +199,46 @@ class SampleModeSimulation(Simulation):
         #     self.output_optical_port_lookup_table[instance_name] = {p.name for p in instance_output_port_lut.values if (p.directionality)}
         
         N = self.simulation_parameters.num_time_steps
-        optical_wavelengths = self.simulation_parameters.optical_baseband_wavelengths
-        
-        tracked_signals = {}
-        for tracked_port_name, _ in port_lookup_table.items():
-            tracked_signals[tracked_port_name] = {}
-            # TODO: Determine port type
-            port_type = 'optical'
-            if port_type == 'optical':
-                A_t = jnp.zeros((N), dtype=complex)
-                tracked_signals[tracked_port_name]['input'] = BlockModeOpticalSignal(amplitude=A_t.reshape((N, 1, 1)), wavelength=optical_wavelengths)
-                tracked_signals[tracked_port_name]['output'] = BlockModeOpticalSignal(amplitude=A_t.reshape((N, 1, 1)), wavelength=optical_wavelengths)
-            elif port_type == 'electrical':
-                A_t = jnp.zeros((N), dtype=complex)
-                tracked_signals[tracked_port_name]['input'] = BlockModeElectricalSignal(voltage=A_t.reshape((N, 1)))
-                tracked_signals[tracked_port_name]['output'] = BlockModeElectricalSignal(voltage=A_t.reshape((N, 1)))
-            elif port_type == 'logic':
-                value = jnp.zeros((N), dtype=int)
-                tracked_signals[tracked_port_name]['input'] = BlockModeLogicSignal(value=value)
-                tracked_signals[tracked_port_name]['output'] = BlockModeLogicSignal(value=value)
-        
-        # self.reset_settings(use_default_settings=True)
-        # self.add_settings(settings)
-        optical_wavelengths = jnp.sort(optical_wavelengths)        
-        # use_jit = False
+
         if use_jit:
             self._scan = lax.scan
         else:
             self._scan = jax_tools.python_based_scan
-        
+
         self.components = {}
         for instance_name, instance_data in self._instantiated_circuit.instantiated_flat_netlist['instances'].items():
-            instance = instance_data['model']
-            self.components[instance_name] = instance
-        
+            self.components[instance_name] = instance_data['model']
+
         initial_states = {}
         for instance_name, instance in self.components.items():
-            initial_states[instance_name] = instance._sample_mode_initial_state(
-                self.simulation_parameters,
-            )
-            # initial_states[instance_name] = instance._initial_state()
+            initial_states[instance_name] = instance._sample_mode_initial_state(self.simulation_parameters)
 
-
-        # current_inputs = self._initial_inputs()
-        # current_outputs = deepcopy(current_inputs)
         current_outputs = self._initial_outputs()
-        time_steps = jnp.arange(0, N, 1, dtype=int)
         tic = time()
         simulation_state = SampleModeSimulationState(prng_key=jax.random.PRNGKey(self.simulation_parameters.seed))
-        system_step = partial(self._system_step, simulation_parameters = self.simulation_parameters)
+        system_step = partial(self._system_step, simulation_parameters=self.simulation_parameters)
         _, system_outputs = self._scan(system_step, (current_outputs, initial_states, simulation_state), length=N)
         toc = time()
-        elapsed_time = toc - tic
-        print(elapsed_time)
-        
-        return system_outputs
+        print(toc - tic)
+
+        # Build result keyed by tracked-port name, mirroring BlockModeSimulationResult.
+        # port_lookup_table maps tracked_port_name → "instance_name,port_name".
+        input_signals  = {}
+        output_signals = {}
+        for tracked_port_name, tracked_port_designator in port_lookup_table.items():
+            instance_name, port_name = tracked_port_designator.split(",", 1)
+
+            # Output: what the component emits at this port across all time steps.
+            if instance_name in system_outputs and port_name in system_outputs[instance_name]:
+                output_signals[tracked_port_name] = system_outputs[instance_name][port_name]
+
+            # Input: what arrived at this port (the predecessor's output, 1 step earlier).
+            for src_inst, src_port in self._predecessors_map.get((instance_name, port_name), []):
+                if src_inst in system_outputs and src_port in system_outputs[src_inst]:
+                    input_signals[tracked_port_name] = system_outputs[src_inst][src_port]
+                    break
+
+        return SampleModeSimulationResult(input_signals, output_signals)
 
     def insert_terminators(self):
         """Attach terminator source components to unconnected input-like ports."""
