@@ -396,6 +396,9 @@ class SampleModeComponent(Component):
             signal = outputs[port_name]
             amplitude = signal.amplitude
             wavelength = signal.wavelength
+            if wavelength is baseband_wls:
+                continue
+
             dists = jnp.abs(baseband_wls[:, None] - wavelength[None, :])
             closest_idx = jnp.argmin(dists, axis=0)
 

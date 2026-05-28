@@ -34,7 +34,7 @@ class BlockModeSimulationParameters(SimulationParameters):
     dt: float = 1e-14
     num_time_steps: int = 1000
     optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jax.numpy.array([1.55e-6]))
-    use_speed_up: bool = True
+    use_optimized: bool = True
 
 class BlockModeSimulationResult(SimulationResult):
     """Signals collected from a completed Block mode simulation.

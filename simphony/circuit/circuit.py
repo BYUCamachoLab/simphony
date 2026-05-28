@@ -18,7 +18,7 @@ import inspect
 # from simphony.component.component import Component
 # from simphony.component.pcell import PCell
 from simphony.simulation.simulation import SimulationParameters
-#from simphony.diagnostics import SimphonyConfigurationWarning
+
 
 
 from simphony.libraries.ideal.s_parameters import optical_s_parameter_placeholder, SParameterPlaceholder, s_parameter_netlist_to_pcell
@@ -499,21 +499,21 @@ class Circuit:
         fig = Sigma(safe_graph, node_size=safe_graph.degree, node_color="club", start_layout = True)
         display(fig)
 
-    def diagnostics(self, settings=None, directed=None):
-        """Return lightweight diagnostics for this circuit.
+    # def diagnostics(self, settings=None, directed=None):
+    #     """Return lightweight diagnostics for this circuit.
 
-        Parameters
-        ----------
-        settings:
-            Optional per-instance settings dictionary to validate alongside the
-            circuit netlist.
-        directed:
-            If true, also check the instance graph for directed cycles and note
-            where S-parameter port directionality will be inferred.
-        """
-        from simphony.diagnostics import diagnose_circuit
+    #     Parameters
+    #     ----------
+    #     settings:
+    #         Optional per-instance settings dictionary to validate alongside the
+    #         circuit netlist.
+    #     directed:
+    #         If true, also check the instance graph for directed cycles and note
+    #         where S-parameter port directionality will be inferred.
+    #     """
+    #     from simphony.diagnostics import diagnose_circuit
 
-        return diagnose_circuit(self, settings=settings, directed=directed)
+    #     return diagnose_circuit(self, settings=settings, directed=directed)
     
     def flatten(
         self,

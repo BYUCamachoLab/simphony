@@ -9,7 +9,16 @@ from jax.typing import ArrayLike
 from sax.saxtypes import Model as SaxModel
 
 import matplotlib.pyplot as plt
-from simphony.time_domain.vector_fitting.z_domain import optimize_order_vector_fitting_discrete, vector_fitting_discrete, pole_residue_response_discrete, state_space_discrete, PHYSICIST, state_space_response_discrete
+from simphony.time_domain.vector_fitting.z_domain import (
+    optimize_order_vector_fitting_discrete,
+    vector_fitting_discrete,
+    pole_residue_response_discrete,
+    state_space_discrete,
+    PHYSICIST,
+    state_space_response_discrete,
+    state_space_discrete_optimized_terms,
+    state_space_step_discrete_optimized,
+)
 from simphony.signal.sample_mode import SampleModeOpticalSignal, SampleModeElectricalSignal, SampleModeLogicSignal
 from simphony.signal.steady_state import SteadyStateOpticalSignal
 
@@ -220,7 +229,14 @@ def optical_s_parameter(
             # response, _ = state_space_response_discrete(A, B, C, D, u)
             # plt.plot(response)
 
-            A, _, _, _ = self.state_space_matrices
+            A, B, C, _ = self.state_space_matrices
+            self._optimized_state_space_terms = None
+            if getattr(simulation_parameters, "use_optimized", True):
+                try:
+                    self._optimized_state_space_terms = state_space_discrete_optimized_terms(A, B, C)
+                except ValueError:
+                    self._optimized_state_space_terms = None
+
             L = len(simulation_parameters.optical_baseband_wavelengths)
             x = jnp.zeros((L, A.shape[1],), dtype=complex)
             return x
@@ -231,13 +247,11 @@ def optical_s_parameter(
             # k = self.settings['delay_compensation']
             k = self._k
             x = state
-            new_x = jnp.zeros_like(x)
             A, B, C, D = self.state_space_matrices
 
             L = len(simulation_parameters.optical_baseband_wavelengths)
             M = len(simulation_parameters.mode_identifiers)
             u = jnp.zeros((L, len(self.state_space_input_indices)), dtype=complex)
-            y = jnp.zeros((L, len(self.state_space_output_indices)), dtype=complex)
             
 
             wl_center = self.settings['vector_fitting_parameters']['center_wavelength']
@@ -260,8 +274,23 @@ def optical_s_parameter(
             phase_AB    = jnp.exp(1j * delta_omega)        # (L,)
             phase_CD    = jnp.exp(1j * k * delta_omega)    # (L,)
 
-            new_x = phase_AB[:, None] * (x @ A.T + u @ B.T)   # (L, n_states)
-            y     = phase_CD[:, None] * (x @ C.T + u @ D.T)   # (L, n_outputs)
+            if (
+                getattr(simulation_parameters, "use_optimized", True)
+                and self._optimized_state_space_terms is not None
+            ):
+                A_diag, residues = self._optimized_state_space_terms
+                y, new_x = state_space_step_discrete_optimized(
+                    A_diag,
+                    residues,
+                    D,
+                    phase_AB,
+                    u,
+                    x,
+                )
+                y = phase_CD[:, None] * y
+            else:
+                new_x = phase_AB[:, None] * (x @ A.T + u @ B.T)   # (L, n_states)
+                y     = phase_CD[:, None] * (x @ C.T + u @ D.T)   # (L, n_outputs)
             
             output_signals = {}
             for port_name in self._output_optical_port_names:                

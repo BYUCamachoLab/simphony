@@ -554,21 +554,65 @@ def state_space_response_discrete(A, B, C, D, u, x0=None):
     return _state_space_response_discrete(A, B, C, D, u, x0)
 
 
+def state_space_has_optimized_structure(A, B):
+    """Return true when ABCD matrices match `state_space_discrete` structure."""
+    M = A.shape[0]
+    m = B.shape[1]
+    if A.shape != (M, M) or B.shape[0] != M or m == 0 or M % m != 0:
+        return False
+
+    r = M // m
+    expected_B = jnp.tile(jnp.eye(m, dtype=B.dtype), (r, 1))
+    diagonal_A = jnp.diag(jnp.diag(A))
+
+    return bool(jnp.allclose(B, expected_B)) and bool(jnp.allclose(A, diagonal_A))
+
+
+def state_space_discrete_optimized_terms(A, B, C, check_structure=True):
+    """Precompute the terms used by optimized structured state-space updates."""
+    if check_structure and not state_space_has_optimized_structure(A, B):
+        raise ValueError("ABCD matrices do not match the optimized state-space structure")
+
+    M = A.shape[0]
+    m = B.shape[1]
+    r = M // m
+    q = C.shape[0]
+
+    A_diag = jnp.diag(A)
+    residues = jnp.transpose(C.reshape(q, r, m), (1, 0, 2))
+    return A_diag, residues
+
+
 @jax.jit
-def _state_space_response_discrete_structured(A_diag, residues, D, u, x0, b_phase):
+def state_space_step_discrete_optimized(A_diag, residues, D, update_constant, u, x):
+    """Run one batched sample update for the optimized pole-residue realization.
+
+    `update_constant` may be any per-wavelength multiplier for the state update,
+    not only a unit-magnitude phase.
+    """
+    r = residues.shape[0]
+    m = residues.shape[2]
+    x_by_pole = x.reshape((x.shape[0], r, m))
+    y = jnp.einsum("rqm,lrm->lq", residues, x_by_pole) + u @ D.T
+    x_next = update_constant[:, None] * (A_diag[None, :] * x + jnp.tile(u, (1, r)))
+    return y, x_next
+
+
+@jax.jit
+def _state_space_response_discrete_optimized(A_diag, residues, D, u, x0, input_constant):
     r = residues.shape[0]
     m = residues.shape[2]
 
     def step(x, u_k):
         y_k = jnp.einsum('iqm,im->q', residues, x.reshape((r, m))) + D @ u_k
-        x_next = A_diag * x + b_phase * jnp.tile(u_k, r)
+        x_next = A_diag * x + input_constant * jnp.tile(u_k, r)
         return x_next, (y_k, x_next)
 
     _, (yout, xout) = jax.lax.scan(step, x0, u)
     return yout, xout
 
 
-def state_space_response_discrete_structured(A, B, C, D, phase, u, x0=None):
+def state_space_response_discrete_optimized(A, B, C, D, input_constant, u, x0=None):
     """
     Fast discrete-time response for the structured vector-fitting realization.
 
@@ -578,6 +622,10 @@ def state_space_response_discrete_structured(A, B, C, D, phase, u, x0=None):
     - C ordered so it can be reshaped into residues with shape (r, q, m).
     - State ordering grouped by pole, then input.
 
+    `input_constant` is just a multiplicative constant for the replicated input
+    branch. It is often a phase factor in baseband simulations, but the optimized
+    update does not require it to be unit magnitude.
+
     This is not equivalent to `state_space_response_discrete` for arbitrary
     state-space realizations for user-defined state space models. This method was
     explicitly designed to be used for the pole-residue models generated from user
@@ -586,15 +634,14 @@ def state_space_response_discrete_structured(A, B, C, D, phase, u, x0=None):
     if x0 is None:
         x0 = jnp.zeros((A.shape[0],), dtype=A.dtype)
 
-    M = A.shape[0]
-    m = B.shape[1]
-    r = M // m
-    q = C.shape[0]
+    A_diag, residues = state_space_discrete_optimized_terms(
+        A,
+        B,
+        C,
+        check_structure=False,
+    )
 
-    A_diag = jnp.diag(A)
-    residues = jnp.transpose(C.reshape(q, r, m), (1, 0, 2))
-
-    return _state_space_response_discrete_structured(A_diag, residues, D, u, x0, phase)
+    return _state_space_response_discrete_optimized(A_diag, residues, D, u, x0, input_constant)
 
 
 # def state_space_response_discrete(A, B, C, D, u, x0=None):

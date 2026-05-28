@@ -13,6 +13,7 @@ from dataclasses import replace
 from copy import deepcopy
 import jax
 import jax.numpy as jnp
+import numpy as np
 from jax import lax
 from simphony.simulation import jax_tools
 from flax import struct
@@ -62,6 +63,8 @@ class SampleModeSimulationParameters(SimulationParameters):
         Time step, in seconds.
     num_time_steps:
         Number of sample updates to run.
+    use_optimized:
+        Enables optimized structured state-space updates where available.
     mode_identifiers:
         Inherited optical mode labels.
     """
@@ -70,6 +73,9 @@ class SampleModeSimulationParameters(SimulationParameters):
     directed: bool = False
     dt: float = 1e-14
     num_time_steps: int = 50
+    use_optimized: bool = True
+    wavelength_batch_size = None,
+    time_batch_size = None,
     # random_seed = 0
 
 @struct.dataclass
@@ -130,7 +136,7 @@ class SampleModeSimulation(Simulation):
         if simulation_parameters is None:
             simulation_parameters = SampleModeSimulationParameters()
         if tracked_ports is None:
-            tracked_ports = circuit.netlist['ports']
+            tracked_ports = circuit.netlist["top_level"]['ports']
 
         self.simulation_parameters = simulation_parameters
         self.circuit = circuit
@@ -175,6 +181,12 @@ class SampleModeSimulation(Simulation):
         use_jit:
             If true, use `jax.lax.scan`; otherwise use the Python scan helper,
             which is easier to debug.
+        wavelength_batch_size:
+            Optional number of optical baseband wavelengths to simulate per
+            batch. When omitted, all wavelengths are simulated together.
+        time_batch_size:
+            Optional number of time steps per scan chunk. The simulator carries
+            component state between chunks and concatenates the tracked outputs.
 
         Returns
         -------
@@ -182,6 +194,65 @@ class SampleModeSimulation(Simulation):
             Current implementation returns the nested scan output structure
             keyed by instance and port for each time step.
         """
+        if self.simulation_parameters.wavelength_batch_size is not None:
+            return self._run_wavelength_batches(
+                use_jit=use_jit,
+                wavelength_batch_size=self.simulation_parameters.wavelength_batch_size,
+                time_batch_size=self.simulation_parameters.time_batch_size,
+            )
+
+        return self._run_single(use_jit=use_jit, time_batch_size=self.simulation_parameters.time_batch_size)
+
+    def _run_wavelength_batches(
+        self,
+        use_jit=True,
+        wavelength_batch_size=None,
+        time_batch_size=None,
+    ):
+        wavelength_batch_size = int(wavelength_batch_size)
+        if wavelength_batch_size <= 0:
+            raise ValueError("wavelength_batch_size must be a positive integer")
+
+        original_simulation_parameters = self.simulation_parameters
+        original_settings = self.settings
+        optical_wavelengths = original_simulation_parameters.optical_baseband_wavelengths
+        num_wavelengths = int(optical_wavelengths.shape[0])
+
+        if wavelength_batch_size >= num_wavelengths:
+            return self._run_single(use_jit=use_jit, time_batch_size=time_batch_size)
+
+        input_signal_batches = []
+        output_signal_batches = []
+
+        try:
+            for start in range(0, num_wavelengths, wavelength_batch_size):
+                stop = min(start + wavelength_batch_size, num_wavelengths)
+                self.simulation_parameters = replace(
+                    original_simulation_parameters,
+                    optical_baseband_wavelengths=optical_wavelengths[start:stop],
+                )
+                self.settings = self._settings_for_wavelength_batch(
+                    original_settings,
+                    optical_wavelengths,
+                    slice(start, stop),
+                )
+                result = self._run_single(use_jit=use_jit, time_batch_size=time_batch_size)
+                input_signal_batches.append(result.input_signals)
+                output_signal_batches.append(result.output_signals)
+        finally:
+            self.simulation_parameters = original_simulation_parameters
+            self.settings = original_settings
+
+        return SampleModeSimulationResult(
+            input_signals=self._combine_wavelength_batch_signal_dicts(input_signal_batches),
+            output_signals=self._combine_wavelength_batch_signal_dicts(output_signal_batches),
+        )
+
+    def _run_single(
+        self,
+        use_jit=True,
+        time_batch_size=None,
+    ) -> SampleModeSimulationResult:
         # Currently, we pass in randomly generated prng keys through the simualtion parameters field, so
         # we have to get rid of the enum field to make jax happy.
         # otherwise, I would simply mark the dataclass as static
@@ -235,7 +306,20 @@ class SampleModeSimulation(Simulation):
             tracked_output_map=tracked_output_map,
             tracked_input_map=tracked_input_map,
         )
-        _, stacked_tracked = self._scan(system_step, (current_outputs, initial_states, simulation_state), length=N)
+        carry = (current_outputs, initial_states, simulation_state)
+        if time_batch_size is None or int(time_batch_size) >= N:
+            _, stacked_tracked = self._scan(system_step, carry, length=N)
+        else:
+            time_batch_size = int(time_batch_size)
+            if time_batch_size <= 0:
+                raise ValueError("time_batch_size must be a positive integer")
+
+            tracked_chunks = []
+            for start in range(0, N, time_batch_size):
+                chunk_length = min(time_batch_size, N - start)
+                carry, tracked_chunk = self._scan(system_step, carry, length=chunk_length)
+                tracked_chunks.append(tracked_chunk)
+            stacked_tracked = self._combine_time_batch_pytrees(tracked_chunks)
         toc = time()
         print(toc - tic)
 
@@ -244,6 +328,48 @@ class SampleModeSimulation(Simulation):
             input_signals=stacked_tracked["inputs"],
             output_signals=stacked_tracked["outputs"],
         )
+
+    def _combine_time_batch_pytrees(self, tracked_chunks):
+        if not tracked_chunks:
+            return {"inputs": {}, "outputs": {}}
+
+        return jax.tree_util.tree_map(
+            lambda *xs: jnp.concatenate(xs, axis=0),
+            *tracked_chunks,
+        )
+
+    def _combine_wavelength_batch_signal_dicts(self, signal_batches):
+        if not signal_batches:
+            return {}
+
+        combined = {}
+        for port_name in signal_batches[0].keys():
+            signals = [batch[port_name] for batch in signal_batches if port_name in batch]
+            first_signal = signals[0]
+
+            amplitude_axis = 1 if first_signal.amplitude.ndim >= 3 else 0
+            wavelength_axis = 1 if first_signal.wavelength.ndim >= 2 else 0
+            combined[port_name] = first_signal.replace(
+                amplitude=jnp.concatenate(
+                    [signal.amplitude for signal in signals],
+                    axis=amplitude_axis,
+                ),
+                wavelength=jnp.concatenate(
+                    [signal.wavelength for signal in signals],
+                    axis=wavelength_axis,
+                ),
+            )
+            
+        return combined
+
+    def _settings_for_wavelength_batch(self, settings, optical_wavelengths, wavelength_slice):
+        if self._matches_wavelength_grid(settings.wavelength, optical_wavelengths):
+            return settings.replace(
+                amplitude=settings.amplitude[wavelength_slice],
+                wavelength=settings.wavelength[wavelength_slice],
+            )
+        return settings
+        
 
     def insert_terminators(self):
         """Attach terminator source components to unconnected input-like ports."""
@@ -523,4 +649,3 @@ class SampleModeSimulation(Simulation):
     #             raise ValueError(f"{model} is NOT a SampleModeComponent")
 
     #     # TODO: Check that each connection is one port to one port
-

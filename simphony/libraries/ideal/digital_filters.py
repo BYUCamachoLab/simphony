@@ -8,7 +8,7 @@ from scipy.constants import speed_of_light as SPEED_OF_LIGHT
 import jax
 from dataclasses import replace
 from simphony.simulation.simulation import SimulationParameters
-from simphony.time_domain.vector_fitting.z_domain import state_space_response_discrete, state_space_response_discrete_structured
+from simphony.time_domain.vector_fitting.z_domain import state_space_response_discrete, state_space_response_discrete_optimized
 
 class OpticalDiscreteFilter( 
     SampleModeComponent,
@@ -297,8 +297,8 @@ def discrete_state_space(
                 # TODO: modulate inputs based on the delta f
                 f = SPEED_OF_LIGHT/wl
                 delta_omega = 2*jnp.pi*(f - self.baseband_frequency) / self.sampling_frequency
-                if simulation_parameters.use_speed_up:
-                    _y, _ = state_space_response_discrete_structured(jnp.exp(1j*delta_omega)*A, B, C, D, jnp.exp(1j*delta_omega), u[:, i, :])
+                if simulation_parameters.use_optimized:
+                    _y, _ = state_space_response_discrete_optimized(jnp.exp(1j*delta_omega)*A, B, C, D, jnp.exp(1j*delta_omega), u[:, i, :])
                 else:
                     _y, _ = state_space_response_discrete(jnp.exp(1j*delta_omega)*A, jnp.exp(1j*delta_omega)*B, C, D, u[:, i, :])
                 y = y.at[:, i, :].set(_y)

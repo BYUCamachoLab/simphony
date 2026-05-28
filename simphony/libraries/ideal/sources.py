@@ -202,7 +202,7 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
             raise ValueError(f"Unrecognized name for lineshape parameter: {self.lineshape}")
 
     def lorentzian_phase_noise(self, simulation_parameters):
-        key = simulation_parameters.prng_key
+        key = jax.random.PRNGKey(seed=0)
         delta_phi_std = jnp.sqrt(2*jnp.pi*self.linewidth*simulation_parameters.dt)
         dphi = jax.random.normal(key, (simulation_parameters.num_time_steps,))*delta_phi_std
         phi = jnp.cumsum(dphi)
