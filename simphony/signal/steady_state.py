@@ -1,22 +1,23 @@
-from flax import struct
 import jax.numpy as jnp
-from typing import Union
+from flax import struct
 
 
 @struct.dataclass
 class SteadyStateOpticalSignal:
     # Array of complex amplitudes per wavelength
     amplitude: jnp.ndarray  # shape: (L,M) where L is number of wavelengths, M is number of modes
-    wavelength: jnp.ndarray     # shape: (L,), carrier wavelengths
+    wavelength: jnp.ndarray  # shape: (L,), carrier wavelengths
+
 
 @struct.dataclass
 class SteadyStateElectricalSignal:
     voltage: jnp.ndarray  # shape: (L,) where L is number of wavelengths
-    # wavelength: jnp.ndarray   
+    # wavelength: jnp.ndarray
+
 
 @struct.dataclass
 class SteadyStateLogicSignal:
-    value: jnp.ndarray 
+    value: jnp.ndarray
 
 
 # def steady_state_optical_signal(
@@ -63,7 +64,7 @@ class SteadyStateLogicSignal:
 #         elif isinstance(signal, SteadyStateElectricalSignal):
 #             electrical_wls.append(signal.wl)
 #             # num_wls_per_port[port] = signal.wl.shape[0]
-    
+
 #     optical_wls = jnp.unique(jnp.concatenate(optical_wls))
 #     electrical_wls = jnp.unique(jnp.concatenate(electrical_wls))
 #     for port, signal in inputs.items():

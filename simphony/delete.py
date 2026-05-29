@@ -1,12 +1,11 @@
-from matplotlib import pyplot as plt
 import numpy as np
+from matplotlib import pyplot as plt
+
 # from utils import add_settings_to_netlist, get_settings_from_netlist, netlist_to_graph, graph_to_netlist
 import simphony.libraries.siepic as siepic
-import simphony.libraries.ideal as analytic
-from copy import deepcopy
 from simphony.circuit.circuit import Circuit
 from simphony.simulation import SParameterSimulation
-import sax
+
 # netlist={
 #     "instances": {
 #         "splitter": {
@@ -15,7 +14,7 @@ import sax
 #                 "test_setting": 100,
 #             },
 #         },
-#         "combiner": "ybranch",  
+#         "combiner": "ybranch",
 #         "top1": "waveguide",
 #         "top2": "waveguide",
 #         "bot1": "waveguide",
@@ -37,7 +36,7 @@ import sax
 #     "connections": {
 #         "splitter,port_2":"top1,o0",
 #         "splitter,port_3":"bot1,o0",
-#         "top2,o1":"combiner,port_2",   
+#         "top2,o1":"combiner,port_2",
 #         "bot2,o1": "combiner,port_3",
 #         "top1,o1":"pm1,o0",
 #         "pm1,o1":"top2,o0",
@@ -49,13 +48,13 @@ import sax
 
 #         "vs3,e0":"""vf2,e0;
 #                     opamp,inv""",
-        
+
 #         "vs2,e0":"opamp,ninv",
-        
+
 #         "vf2,e1":"opamp,vp",
 
 #         "vf3,e1":"pm2,e0",
-#         "vf1,e0":"opamp,vn",     
+#         "vf1,e0":"opamp,vn",
 
 #         "opamp,vout":"pm1,e0",
 #     },
@@ -76,7 +75,7 @@ import sax
 #     "opamp": analytic.OpAmp,
 # }
 
-# settings={ 
+# settings={
 #     # "splitter": {"bad_setting": 10},
 #     "top1": {"length": 5},
 #     "top2": {"length": 5},
@@ -89,10 +88,11 @@ netlist = {
     "instances": {
         "hr1": "half_ring",
         "hr2": "half_ring",
-        "w1":  {"component":"waveguide",
-                "settings":{
-                    "length": 20,
-                },
+        "w1": {
+            "component": "waveguide",
+            "settings": {
+                "length": 20,
+            },
         },
         "w2": "waveguide",
     },
@@ -103,14 +103,13 @@ netlist = {
         "w1,o1": "hr2,port_1",
         "hr1,port_3": "w2,o0",
         "w2,o1": "hr2,port_3",
-
     },
     "ports": {
         "o0": "hr1,port_2",
         "o1": "hr2,port_2",
         "o2": "hr1,port_4",
         "o3": "hr2,port_4",
-    }
+    },
 }
 
 models = {
@@ -119,17 +118,15 @@ models = {
 }
 
 ckt = Circuit(netlist, models)
-wl = np.linspace(1.5, 1.6, 1000)*1e-6
-settings = {
-
-}
+wl = np.linspace(1.5, 1.6, 1000) * 1e-6
+settings = {}
 sps = SParameterSimulation(ckt)
-results = sps.run(wl,settings)
+results = sps.run(wl, settings)
 print("S-Parameters:")
 print(results.s_parameters)
-plt.plot(wl, np.abs(results.s_parameters[("o0","o2")])**2, label="S11")
+plt.plot(wl, np.abs(results.s_parameters[("o0", "o2")]) ** 2, label="S11")
 plt.show()
-plt.plot(wl, np.angle(results.s_parameters[("o0","o2")]), label="S11")
+plt.plot(wl, np.angle(results.s_parameters[("o0", "o2")]), label="S11")
 plt.show()
 
 

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import math
 from typing import TYPE_CHECKING
 
-import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -37,8 +35,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class TimeResult(SimulationResult):
-    """
-    Stores and manages the results of a time-domain photonic simulation.
+    """Stores and manages the results of a time-domain photonic simulation.
 
     **User-Facing**: Typically, you'll create and obtain an instance of TimeResult
     from the TimeSim.run(...) function, then call plot_sim() if needed.
@@ -56,10 +53,9 @@ class TimeResult(SimulationResult):
     S_params: ArrayLike
 
     def plot_sim(self) -> None:
-        """
-        Plots the intensity of each port's input and output signals over time,
-        aligned so that input and output for the same port share a row.
-        """
+        """Plots the intensity of each port's input and output signals over
+        time, aligned so that input and output for the same port share a
+        row."""
         # Find ports present in both inputs and outputs
         ports = [k for k in self.inputs.keys() if k in self.outputs]
         if not ports:
@@ -86,9 +82,8 @@ class TimeResult(SimulationResult):
 
 
 class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
-    """
-    A class for time-domain photonic circuit simulation, allowing for both passive
-    and active components.
+    """A class for time-domain photonic circuit simulation, allowing for both
+    passive and active components.
 
     **User-Facing**: Typical usage involves:
       1) Initializing with a netlist and component models (`__init__`).
@@ -118,9 +113,8 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
         # dt: float = 1e-14,
         # suppress_output: bool = False
     ):
-        """
-        Initializes the TimeSim object with a netlist, a dictionary of models,
-        and an optional set of active components.
+        """Initializes the TimeSim object with a netlist, a dictionary of
+        models, and an optional set of active components.
 
         Args:
             netlist (dict): Dictionary containing 'instances', 'connections', and 'ports'.
@@ -187,8 +181,7 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
         dt: float = 1e-14,
         suppress_output: bool = False,
     ) -> None:
-        """
-        Builds or configures the underlying IIR model(s) for the circuit.
+        """Builds or configures the underlying IIR model(s) for the circuit.
 
         **User-Facing**: This is typically the second step (after __init__).
         If active components are present, the netlist is decomposed into
@@ -218,7 +211,6 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
 
         # If active components exist, break out passive sub-circuits
         if self.time_system_components is not None:
-
             (
                 self.passive_subnetlists,
                 self.removed_connections,
@@ -504,9 +496,10 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
         self._output_specs = tuple(outs)
 
     def build_initial_states(self):
-        """
-        Return a tuple of per‐instance initial states, in the same order
-        as `self._systems` / `self._names`.  Stateless components get ().
+        """Return a tuple of per‐instance initial states, in the same order as
+        `self._systems` / `self._names`.
+
+        Stateless components get ().
         """
         states_list = []
         for sys in self._systems:
@@ -529,8 +522,11 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
         input_specs: tuple,  # static tuple-of-tuples, length = nInst
         output_specs: tuple,  # static tuple-of-(inst_idx, port_idx)
     ) -> jnp.ndarray:
-        """Return stacked outputs (T, nTop, 1).  Handles heterogeneous port
-        counts by zero-padding to *max_ports* before stacking."""
+        """Return stacked outputs (T, nTop, 1).
+
+        Handles heterogeneous port counts by zero-padding to *max_ports*
+        before stacking.
+        """
         n_steps = top_inputs.shape[0]
         max_ports = inst0.shape[1]  # compile-time constant
         n_inst = len(systems)  # number of instances
@@ -631,9 +627,8 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
     ############################################################################
 
     def interpolate_inputs(self) -> tuple:
-        """
-        Resamples all input signals from the original time array to the new time array
-        defined by self.dt, using linear interpolation.
+        """Resamples all input signals from the original time array to the new
+        time array defined by self.dt, using linear interpolation.
 
         Returns:
             tuple: (resampled_time, resampled_inputs)
@@ -668,9 +663,10 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
             top_in   = a single array of shape (nTop,)
             returns  ((new_inst_outs, new_states), out_row)
             """
-            inst_outs, states = (
-                carry  # inst_outs: (nInst,max_ports,1); states: tuple length=nInst
-            )
+            (
+                inst_outs,
+                states,
+            ) = carry  # inst_outs: (nInst,max_ports,1); states: tuple length=nInst
 
             # -----------------------------
             # (1) Gather each subsystem’s inputs into a (nInst,max_ports,1) array
@@ -754,9 +750,8 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
         return (new_inst_outs, new_states), out_row
 
     def prepare_time_domain_netlist(self, port_map_list: dict) -> None:
-        """
-        Constructs self.td_netlist to unify all passive sub-circuits and active
-        components in a single structure for time stepping.
+        """Constructs self.td_netlist to unify all passive sub-circuits and
+        active components in a single structure for time stepping.
 
         Adds references to:
           - Passive sub-circuit models in subcircuit_time_systems
@@ -843,8 +838,8 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
         connection: tuple = None,
         port: tuple = None,
     ) -> dict:
-        """
-        Inserts new items into self.td_netlist, which includes:
+        """Inserts new items into self.td_netlist, which includes:
+
           - A new time-domain model (model_name, model_type)
           - A new connection (connection[0] -> connection[1])
           - A new external port (port_label -> "instance,port")
@@ -879,13 +874,11 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
         active_components: set,
         directed: bool = False,
     ) -> tuple:
-        """
-        Decomposes the netlist into purely passive sub-netlists by:
-          1) Removing edges that touch active components.
-          2) Removing top-level ports referencing active components.
-          3) Building a component-level graph.
-          4) Finding strongly connected components (SCCs) of that graph (splitting large SCCs).
-          5) Building a sub-netlist for each SCC.
+        """Decomposes the netlist into purely passive sub-netlists by: 1)
+        Removing edges that touch active components. 2) Removing top-level
+        ports referencing active components. 3) Building a component-level
+        graph. 4) Finding strongly connected components (SCCs) of that graph
+        (splitting large SCCs). 5) Building a sub-netlist for each SCC.
 
         Returns:
             tuple:
@@ -895,9 +888,11 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
                 passive_reconnections (list): Info for reconnecting passive components externally.
         """
         # 1) Remove edges that touch active components
-        filtered_connections, removed_active_edges, removed_conns = (
-            self.remove_active_edges_and_track_them(connections, active_components)
-        )
+        (
+            filtered_connections,
+            removed_active_edges,
+            removed_conns,
+        ) = self.remove_active_edges_and_track_them(connections, active_components)
 
         # 2) Remove ports that reference active components
         filtered_ports, removed_ports = self.remove_ports_to_active(
@@ -938,8 +933,7 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
     def remove_active_edges_and_track_them(
         self, connections: dict, active_components: set
     ) -> tuple:
-        """
-        Removes any connection involving at least one active component.
+        """Removes any connection involving at least one active component.
 
         Returns:
             tuple:
@@ -979,8 +973,7 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
         return filtered_connections, removed_edges, removed_connections
 
     def remove_ports_to_active(self, ports: dict, active_components: set) -> tuple:
-        """
-        Removes top-level ports that directly reference an active component.
+        """Removes top-level ports that directly reference an active component.
 
         Returns:
             (filtered_ports, removed_ports)
@@ -1005,8 +998,8 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
         removed_edges: list,
         directed: bool = False,
     ) -> dict:
-        """
-        Builds a graph (adjacency list) at the component level from the netlist.
+        """Builds a graph (adjacency list) at the component level from the
+        netlist.
 
         Args:
             connections (dict): e.g. {'compA,portA': 'compB,portB'}.
@@ -1046,8 +1039,7 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
         return graph
 
     def tarjan_scc(self, graph: dict) -> list:
-        """
-        Computes strongly connected components (SCCs) for the given graph,
+        """Computes strongly connected components (SCCs) for the given graph,
         and splits any SCC that exceeds `max_size` by removing selected edges.
 
         Args:
@@ -1058,9 +1050,8 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
         """
 
         def compute_scc(g: dict) -> list:
-            """
-            Standard Tarjan's algorithm to compute SCCs without splitting large ones.
-            """
+            """Standard Tarjan's algorithm to compute SCCs without splitting
+            large ones."""
             index_counter = [0]
             stack = []
             on_stack = set()
@@ -1111,14 +1102,14 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
         instances,
         active_components,
     ):
-        """
-        Construct a single netlist for the given set of SCC components (e.g. { 'cr1', 'wg1', 'cr2' }).
+        """Construct a single netlist for the given set of SCC components (e.g.
+        { 'cr1', 'wg1', 'cr2' }).
 
-        1) Keep only those instances in scc_components (all passive).
-        2) Keep only those connections that link two components in scc_components.
-        3) Keep original ports referencing these components.
-        4) For each removed passive->active edge, if the passive comp is in scc_components,
-        create a new external port.
+        1) Keep only those instances in scc_components (all passive). 2)
+        Keep only those connections that link two components in
+        scc_components. 3) Keep original ports referencing these
+        components. 4) For each removed passive->active edge, if the
+        passive comp is in scc_components, create a new external port.
         """
         # 1) Filter instances
         scc_instances = {}
@@ -1177,13 +1168,13 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
                                     while new_label in scc_ports:
                                         new_label = f"o{tempcheck}"
                                         tempcheck -= 1
-                                    scc_ports[new_label] = (
-                                        f"{k_comp},{k_string.split(',')[1]}"
-                                    )
+                                    scc_ports[
+                                        new_label
+                                    ] = f"{k_comp},{k_string.split(',')[1]}"
                                 else:
-                                    scc_ports[new_label] = (
-                                        f"{k_comp},{k_string.split(',')[1]}"
-                                    )
+                                    scc_ports[
+                                        new_label
+                                    ] = f"{k_comp},{k_string.split(',')[1]}"
                                 break
 
                     else:
@@ -1214,13 +1205,13 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
                                     while new_label in scc_ports:
                                         new_label = f"o{tempcheck}"
                                         tempcheck -= 1
-                                    scc_ports[new_label] = (
-                                        f"{k_comp},{k_string.split(',')[1]}"
-                                    )
+                                    scc_ports[
+                                        new_label
+                                    ] = f"{k_comp},{k_string.split(',')[1]}"
                                 else:
-                                    scc_ports[new_label] = (
-                                        f"{k_comp},{k_string.split(',')[1]}"
-                                    )
+                                    scc_ports[
+                                        new_label
+                                    ] = f"{k_comp},{k_string.split(',')[1]}"
                                 break
                     else:
                         new_label = f"o{port_index_counter}"
@@ -1251,13 +1242,13 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
                                     while new_label in scc_ports:
                                         new_label = f"o{tempcheck}"
                                         tempcheck -= 1
-                                    scc_ports[new_label] = (
-                                        f"{v_comp},{v_string.split(',')[1]}"
-                                    )
+                                    scc_ports[
+                                        new_label
+                                    ] = f"{v_comp},{v_string.split(',')[1]}"
                                 else:
-                                    scc_ports[new_label] = (
-                                        f"{v_comp},{v_string.split(',')[1]}"
-                                    )
+                                    scc_ports[
+                                        new_label
+                                    ] = f"{v_comp},{v_string.split(',')[1]}"
                                 break
                     else:
                         new_label = f"o{port_index_counter}"
@@ -1280,16 +1271,17 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
 
 
 class SampleModeSimulation(SampleModeComponent, BlockModeComponent):
-    """
-    `SampleModeSimulation` runs bidirectional, element-by-element, simulations on circuits
-    composed of s-parameter elements and/or `SampleModeComponent` objects.
+    """`SampleModeSimulation` runs bidirectional, element-by-element,
+    simulations on circuits composed of s-parameter elements and/or
+    `SampleModeComponent` objects.
 
-    Should be used when reflections are not neglible and/or there are recursive elements
-    within the circuit
+    Should be used when reflections are not neglible and/or there are
+    recursive elements within the circuit
 
-    `SampleModeSimulation` objects are compatible with block mode simulations
-    as well as sample mode simulations, hence a sample mode simulation is of type
-    `BlockModeComponent` and `SampleModeComponent`.
+    `SampleModeSimulation` objects are compatible with block mode
+    simulations as well as sample mode simulations, hence a sample mode
+    simulation is of type `BlockModeComponent` and
+    `SampleModeComponent`.
     """
 
     def __init__(
@@ -1309,12 +1301,11 @@ class SampleModeSimulation(SampleModeComponent, BlockModeComponent):
 
 
 class BlockModeSimulation(BlockModeComponent):
-    """
-    `BlockModeSimulation` runs each unidirectional simulations on circuits
+    """`BlockModeSimulation` runs each unidirectional simulations on circuits
     composed of s-parameter elements and/or `BlockModeComponent` objects.
 
-    Should be used when reflections are neglibible and recursive elements are
-    abstracted with subnetworks.
+    Should be used when reflections are neglibible and recursive
+    elements are abstracted with subnetworks.
 
     Because `BlockModeSimulation` objects cannot be time-stepped, they
     CANNOT be used as subcircuits in sample-mode simulations.

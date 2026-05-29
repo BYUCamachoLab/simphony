@@ -1,15 +1,16 @@
-from abc import ABC, abstractmethod
-from typing import Tuple
+from abc import ABC
+from functools import partial
 
+import jax
 import jax.numpy as jnp
 import numpy as np
 import sax
-import jax
 from jax.typing import ArrayLike
-from functools import partial
 
 from simphony.time_domain.pole_residue_model import PoleResidueModel
+
 # from simphony.circuit import SampleModeComponent, BlockModeComponent
+
 
 class TimeSystem(ABC):
     def __init__(self, optical_ports, electrical_ports, logic_ports) -> None:
@@ -33,7 +34,6 @@ class TimeSystem(ABC):
 
         if not unique_port_names:
             raise ValueError("Port names must be uniqe")
-        pass
 
     def __call__(self, wl: ArrayLike, **kwargs) -> sax.SDict:
         return self.frequency_response(wl, **kwargs)
@@ -252,7 +252,7 @@ def my_dlsimworks(system, u, t=None, x0=None):
 #         self.state_vector = None
 
 
-class TimeSystemIIR():
+class TimeSystemIIR:
     def __init__(self, pole_model: PoleResidueModel, ports=None):
         super().__init__()
         # Generate the discrete‐time state‐space (A,B,C,D) from your pole‐residue model:
@@ -270,19 +270,19 @@ class TimeSystemIIR():
             self.ports = ports
 
     def init_state(self, **kwargs):
-        """
-        Return the initial x(0) for this IIR system.
+        """Return the initial x(0) for this IIR system.
+
         If you want x(0)=0, make a zeros vector of shape (A.shape[0],).
         """
         n_states = self.sys.A.shape[0]
         return jnp.zeros((n_states,), dtype=jnp.complex128)
-    
+
     @partial(jax.jit, static_argnums=(0,))
     def step(self, x_prev: jnp.ndarray, inputs: tuple, **kwargs):
-        """
-        A pure function (no in-place mutation).
-        If there are N inputs to this IIR block, `inputs_tuple` is a tuple of length N,
-        so we first stack them into a 1-D vector `u_row`.
+        """A pure function (no in-place mutation). If there are N inputs to
+        this IIR block, `inputs_tuple` is a tuple of length N, so we first
+        stack them into a 1-D vector `u_row`.
+
         Then:
            x_next = A @ x_prev + B @ u_row
            y_row  = C @ x_prev + D @ u_row

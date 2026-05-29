@@ -1,4 +1,5 @@
-"""Gaussian process propagation through causal MIMO LTI systems via the Papoulis equations.
+"""Gaussian process propagation through causal MIMO LTI systems via the
+Papoulis equations.
 
 Propagates the mean and covariance of a Gaussian random process through a
 discrete-time multi-input multi-output LTI system described by its impulse
@@ -22,7 +23,6 @@ McGraw-Hill, 2002. See Chapter 12 (response of LTI systems to random inputs).
 
 import jax
 import jax.numpy as jnp
-
 
 # ---------------------------------------------------------------------------
 # Covariance / autocorrelation transforms
@@ -76,8 +76,7 @@ def autocorrelation_to_covariance(Rxx, mu_x):
 
 @jax.jit
 def propagate_mean(h, mu_x):
-    """
-    Propagate the mean sequence through a causal MIMO LTI system.
+    """Propagate the mean sequence through a causal MIMO LTI system.
 
     mu_y[n] = sum_{k=0}^{K-1} h[k] @ mu_x[n-k]
 
@@ -190,8 +189,7 @@ def _propagate_output_autocorrelation(h, Rxy):
 
 
 def propagate_autocorrelation(h, Rxx):
-    """
-    Propagate input autocorrelation through a causal MIMO LTI system.
+    """Propagate input autocorrelation through a causal MIMO LTI system.
 
     Applies both Papoulis steps in sequence:
 
@@ -220,8 +218,7 @@ def propagate_autocorrelation(h, Rxx):
 
 
 def gaussian_process_response(h, mu_x, Cx):
-    """
-    Compute output mean and covariance for a Gaussian input through a causal
+    """Compute output mean and covariance for a Gaussian input through a causal
     MIMO LTI system.
 
     This is the stochastic analog of state_space_response_discrete in
@@ -257,8 +254,7 @@ def gaussian_process_response(h, mu_x, Cx):
 
 
 def white_noise_covariance(T, m, sigma_sq=1.0):
-    """
-    Create a spectrally white (temporally uncorrelated) covariance matrix.
+    """Create a spectrally white (temporally uncorrelated) covariance matrix.
 
     Cx[n1, n2, i, j] = sigma_sq * delta[n1-n2] * delta[i-j]
 
@@ -288,8 +284,7 @@ def white_noise_covariance(T, m, sigma_sq=1.0):
 
 
 def covariance_blocks_to_matrix(C):
-    """
-    Flatten block-structured covariance (T, T, M, M) → (T*M, T*M).
+    """Flatten block-structured covariance (T, T, M, M) → (T*M, T*M).
 
     The flat layout satisfies C_flat[n1*M+i, n2*M+j] = C[n1, n2, i, j].
 
@@ -306,8 +301,7 @@ def covariance_blocks_to_matrix(C):
 
 
 def covariance_matrix_to_blocks(C_flat, T, M):
-    """
-    Unflatten covariance matrix (T*M, T*M) → block structure (T, T, M, M).
+    """Unflatten covariance matrix (T*M, T*M) → block structure (T, T, M, M).
 
     Inverse of covariance_blocks_to_matrix.
 
@@ -332,8 +326,8 @@ def covariance_matrix_to_blocks(C_flat, T, M):
 
 
 def main():
-    """Verify output variance matches Parseval's identity for white-noise input."""
-    import matplotlib.pyplot as plt
+    """Verify output variance matches Parseval's identity for white-noise
+    input."""
     T = 60
     K = 12
     q, m = 2, 2
@@ -354,9 +348,7 @@ def main():
 
     # For white noise the output power matrix at large lag should equal
     # sum_k h[k] @ h[k]^H  (Parseval).
-    h_gram = jnp.sum(
-        jnp.einsum("kqi,kpi->kqp", h, jnp.conj(h)), axis=0
-    )  # (q, q)
+    h_gram = jnp.sum(jnp.einsum("kqi,kpi->kqp", h, jnp.conj(h)), axis=0)  # (q, q)
     output_power = Cy[T - 1, T - 1]  # (q, q), last sample has seen all K taps
 
     print("Expected output power matrix (Parseval):")

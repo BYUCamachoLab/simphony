@@ -1,19 +1,14 @@
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import numpy as np
-import sax
 from jax import config
 
 config.update("jax_enable_x64", True)
-import pickle
 import time
-
-from scipy import signal
 
 from simphony.libraries import siepic
 from simphony.time_domain.ideal import Modulator
-from simphony.time_domain.simulation import TimeResult, TimeSim
-from simphony.time_domain.utils import gaussian_pulse, smooth_rectangular_pulse
+from simphony.time_domain.simulation import TimeSim
+from simphony.time_domain.utils import smooth_rectangular_pulse
 
 # Simulation parameters
 T = 2.5e-11

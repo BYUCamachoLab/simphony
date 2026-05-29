@@ -1,17 +1,10 @@
-from abc import ABC, abstractmethod
-from collections.abc import Iterable
-
-import matplotlib.pyplot as plt
-import numpy as np
-from numpy.linalg import svd
-from scipy.linalg import block_diag
-from scipy.signal import StateSpace, dlsim, lsim
-
-from simphony.utils import dict_to_matrix
-
-from scipy.constants import speed_of_light
+from abc import ABC
 
 import jax.numpy as jnp
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.linalg import block_diag
+from scipy.signal import StateSpace, dlsim
 
 
 class PoleResidueModel(ABC):
@@ -67,7 +60,9 @@ class BVF_Options:
 
 
 class IIRModelBaseband(PoleResidueModel):
-    def __init__(self, wvl_microns, center_wvl, s_params, sampling_period, order, options=None):
+    def __init__(
+        self, wvl_microns, center_wvl, s_params, sampling_period, order, options=None
+    ):
         if options == None:
             self.options = BVF_Options()
         else:
@@ -81,8 +76,10 @@ class IIRModelBaseband(PoleResidueModel):
 
         self.freqs = c / (wvl_microns * 1e-6) - self.center_freq
 
-        self.sampling_freq = -1/sampling_period
-        self.options.beta = np.abs(self.sampling_freq / (self.freqs[-1] - self.freqs[0]))
+        self.sampling_freq = -1 / sampling_period
+        self.options.beta = np.abs(
+            self.sampling_freq / (self.freqs[-1] - self.freqs[0])
+        )
 
         self.poles = np.array([])
         self.residues = np.zeros((order, self.num_ports, self.num_ports), dtype=complex)
@@ -178,18 +175,18 @@ class IIRModelBaseband(PoleResidueModel):
             response[:, b, a] += r / (z - p)
 
         return response[:, b, a]
-    
+
     def baseband_transfer_function(self, f):
         H = jnp.zeros((f.shape[0], self.num_ports, self.num_ports), dtype=complex)
         H = H + self.D
-        
-        z = jnp.exp(2j*jnp.pi*f/self.sampling_freq)
+
+        z = jnp.exp(2j * jnp.pi * f / self.sampling_freq)
         for r, p in zip(self.residues, self.poles):
-            H += r / (z-p)[:, None, None]
-        
+            H += r / (z - p)[:, None, None]
+
         return H
-    
-    def discrete_time_impulse_response(self, N = 1600):
+
+    def discrete_time_impulse_response(self, N=1600):
         num_ports = self.num_ports
         h = np.zeros([N, num_ports, num_ports], dtype=complex)
 
@@ -199,12 +196,12 @@ class IIRModelBaseband(PoleResidueModel):
             for b in range(num_ports):
                 residues = self.residues[:, a, b]
                 dt = np.abs(1 / self.sampling_freq)
-                t = np.linspace(0, dt*N, N)
+                t = np.linspace(0, dt * N, N)
 
                 h[0, a, b] = self.D[a, b]
                 for n in range(1, t.shape[0]):
                     for p, r in zip(poles, residues):
-                        h[n, a, b] += r*(p**(n-1))
+                        h[n, a, b] += r * (p ** (n - 1))
 
         return h
 
@@ -254,7 +251,9 @@ class IIRModelBaseband(PoleResidueModel):
 
     def compute_lstsq_matrices(self, phi0, phi1):
         if self.options.mode == "Fast":
-            M = np.zeros(((self.num_ports**2) * self.order, self.order), dtype=complex)
+            M = np.zeros(
+                ((self.num_ports**2) * self.order, self.order), dtype=complex
+            )
             B = np.zeros(((self.num_ports**2) * self.order), dtype=complex)
             iter = 0
             for i in range(self.num_ports):
@@ -282,7 +281,6 @@ class IIRModelBaseband(PoleResidueModel):
                     # plt.show()
                     # plt.plot(np.abs(B))
                     # plt.show()
-                    pass
 
             return M, B
         else:

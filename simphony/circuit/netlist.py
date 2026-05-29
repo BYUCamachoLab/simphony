@@ -1,29 +1,40 @@
 """Netlist conversion and normalization helpers.
 
 This module contains the lower-level utilities used by `Circuit` and the
-simulators to move between SAX-style netlists, NetworkX graphs, and instantiated
-flat netlists. Most users interact with these helpers indirectly through
-`Circuit`, but they are useful when building examples, diagnostics, or custom
-tooling around Simphony netlists.
+simulators to move between SAX-style netlists, NetworkX graphs, and
+instantiated flat netlists. Most users interact with these helpers
+indirectly through `Circuit`, but they are useful when building
+examples, diagnostics, or custom tooling around Simphony netlists.
 """
+
+# from jax.scipy.special import factorial
+from typing import Union
+
+# from typing_extensions import NotRequired
+import networkx as nx
+
+# import jax.numpy as jnp
+import yaml
+
+# from copy import deepcopy
+from simphony.circuit._netlist import (
+    InstantiatedFlatNetlist,
+    _add_settings_to_netlist,
+    _instantiate_netlist,
+)
 
 # from sax import AnyNetlist, InstanceName, Ports, Connections, Models
 # import sax
 # from typing import TypeAlias, TypedDict
 # from simphony.component.component import Component
 from simphony.component.pcell import PCell
-# from typing_extensions import NotRequired
-import networkx as nx
-# import jax.numpy as jnp
-import yaml
-# from jax.scipy.special import factorial
-from typing import Union
-# from copy import deepcopy
-from simphony.circuit._netlist import _instantiate_netlist, _add_settings_to_netlist, InstantiatedFlatNetlist
+
 # from simphony.libraries.ideal.s_parameters import optical_s_parameter
 from simphony.simulation.simulation import SimulationParameters
+
 # from sax import DEFAULT_MODES
 # import inspect
+
 
 def instantiate_netlist(
     netlist: dict,
@@ -32,7 +43,7 @@ def instantiate_netlist(
     simulation_parameters: SimulationParameters,
     # directed: bool = False,
     # default_modes: tuple = DEFAULT_MODES,
-)->InstantiatedFlatNetlist:
+) -> InstantiatedFlatNetlist:
     """Instantiate a possibly hierarchical netlist.
 
     The helper delegates to the internal recursive instantiation routine. It
@@ -60,20 +71,18 @@ def instantiate_netlist(
 
     return _instantiate_netlist(netlist, models, settings, simulation_parameters)
 
-    
-    
     # for instance_name, instance_data in netlist['instances'].items():
     #     model = models[instance_data['component']]
     #     if issubclass(model, Component) or issubclass(model, PCell):
     #         continue
-        
+
     #     if directed:
     #         directionality = ""
     #         model = optical_s_parameter(model, directionality, default_modes)
     #     else:
     #         directionality = "bidirectional"
     #         model = optical_s_parameter(model, directionality, default_modes)
-    
+
     # return new_netlist, new_models
 
 
@@ -86,16 +95,15 @@ def instantiate_netlist(
 def complete_netlist(netlist):
     """Ensure a flat netlist has the standard top-level keys.
 
-    Missing `instances`, `connections`, or `ports` entries are inserted as empty
-    dictionaries. The input dictionary is updated in place.
-
+    Missing `instances`, `connections`, or `ports` entries are inserted
+    as empty dictionaries. The input dictionary is updated in place.
     """
-    if 'instances' not in netlist:
-        netlist['instances'] = {}
-    if 'connections' not in netlist:
-        netlist['connections'] = {}
-    if 'ports' not in netlist:
-        netlist['ports'] = {}
+    if "instances" not in netlist:
+        netlist["instances"] = {}
+    if "connections" not in netlist:
+        netlist["connections"] = {}
+    if "ports" not in netlist:
+        netlist["ports"] = {}
 
 
 def add_settings_to_netlist(netlist, settings=None):
@@ -111,12 +119,13 @@ def add_settings_to_netlist(netlist, settings=None):
     """
     return _add_settings_to_netlist(netlist, settings=settings)
 
+
 def get_settings_from_netlist(netlist):
     """Extract per-instance settings from a flat netlist."""
     settings = {}
-    for instance, attr in netlist['instances'].items():
-        settings[instance] = attr['settings']
-    
+    for instance, attr in netlist["instances"].items():
+        settings[instance] = attr["settings"]
+
     return settings
 
 
@@ -152,8 +161,8 @@ def netlist_to_graph(netlist: Union[dict, str], models, include_ports=True):
     graph = nx.MultiDiGraph()
 
     for instance_name, instance in netlist["instances"].items():
-        model = models[instance['component']]
-        shape="rectangle"
+        model = models[instance["component"]]
+        shape = "rectangle"
         if issubclass(model, PCell):
             shape = "hexagon"
 
@@ -167,110 +176,238 @@ def netlist_to_graph(netlist: Union[dict, str], models, include_ports=True):
             border_size=1,
             shape=shape,
         )
-        models[netlist['instances'][instance_name]['component']]._create_port_lookup_table()
+        models[
+            netlist["instances"][instance_name]["component"]
+        ]._create_port_lookup_table()
 
     # Add edges based on connections
     for src, dsts in netlist["connections"].items():
         for dst in dsts.split(";"):
-            if dst =='':
+            if dst == "":
                 continue
             src_instance, src_port = src.split(",")
             dst_instance, dst_port = dst.split(",")
-            src_port_directionality = models[netlist['instances'][src_instance]['component']]._port_lookup_table[src_port].directionality
-            dst_port_directionality = models[netlist['instances'][dst_instance]['component']]._port_lookup_table[dst_port].directionality
+            src_port_directionality = (
+                models[netlist["instances"][src_instance]["component"]]
+                ._port_lookup_table[src_port]
+                .directionality
+            )
+            dst_port_directionality = (
+                models[netlist["instances"][dst_instance]["component"]]
+                ._port_lookup_table[dst_port]
+                .directionality
+            )
             print(f"dst: {dst}")
             print(f"dst_directionality: {dst_port_directionality}")
-            add_connection_to_graph(graph, src_instance.strip(), dst_instance.strip(), src_port.strip(), dst_port.strip(), src_port_directionality, dst_port_directionality)
+            add_connection_to_graph(
+                graph,
+                src_instance.strip(),
+                dst_instance.strip(),
+                src_port.strip(),
+                dst_port.strip(),
+                src_port_directionality,
+                dst_port_directionality,
+            )
             # graph.add_edge(src_instance.strip(), dst_instance.strip(), src_port=src_port.strip(), dst_port=dst_port.strip())
-    
+
     if include_ports:
         add_ports_to_graph(graph, netlist, models)
 
-    #Matthew's Changes
-    #Adds the ports as a graph attribute to be used within graph_to_netlist
+    # Matthew's Changes
+    # Adds the ports as a graph attribute to be used within graph_to_netlist
     graph.graph["ports"] = netlist.get("ports", {}).copy()
 
     return graph
 
+
 def add_ports_to_graph(graph, netlist, models):
     """Add top-level port nodes to a circuit graph.
 
-    This helper is primarily used by `netlist_to_graph` for display graphs. It
-    reads `netlist["ports"]`, looks up the connected internal port
-    directionality, and adds boundary nodes connected to the owning component.
+    This helper is primarily used by `netlist_to_graph` for display
+    graphs. It reads `netlist["ports"]`, looks up the connected internal
+    port directionality, and adds boundary nodes connected to the owning
+    component.
     """
     for external_port_name, internal_port_data in netlist["ports"].items():
         instance_name, internal_port_name = internal_port_data.split(",")
-        node_name = f".{external_port_name}" # . Symbol Ensures Uniqueness of node_name
-        directionality = models[netlist['instances'][instance_name]['component']]._port_lookup_table[internal_port_name].directionality
-        add_port_to_graph(graph, instance_name, internal_port_name, directionality, external=True, external_port_name=external_port_name)
+        node_name = f".{external_port_name}"  # . Symbol Ensures Uniqueness of node_name
+        directionality = (
+            models[netlist["instances"][instance_name]["component"]]
+            ._port_lookup_table[internal_port_name]
+            .directionality
+        )
+        add_port_to_graph(
+            graph,
+            instance_name,
+            internal_port_name,
+            directionality,
+            external=True,
+            external_port_name=external_port_name,
+        )
 
     unconnected_ports = set()
-    connected_ports = {connection for connection in list(netlist['connections'].keys()) + list(netlist['connections'].values())}
-    for instance_name, instance_data in netlist['instances'].items():
-        for port in models[netlist['instances'][instance_name]['component']].ports:
+    connected_ports = {
+        connection
+        for connection in list(netlist["connections"].keys())
+        + list(netlist["connections"].values())
+    }
+    for instance_name, instance_data in netlist["instances"].items():
+        for port in models[netlist["instances"][instance_name]["component"]].ports:
             if not f"{instance_name},{port.name}" in connected_ports:
                 unconnected_ports.add(f"{instance_name},{port.name}")
 
-def add_connection_to_graph(graph, src_node, dst_node, src_port, dst_port, src_directionality, dst_directionality, port_type=None):
+
+def add_connection_to_graph(
+    graph,
+    src_node,
+    dst_node,
+    src_port,
+    dst_port,
+    src_directionality,
+    dst_directionality,
+    port_type=None,
+):
     """Add a connection edge using endpoint directionality rules.
 
     The source and destination in the netlist are treated as a physical
-    connection description. The actual graph edge direction is chosen from the
-    source/destination port directionality values. Bidirectional ports create
-    reverse edges where needed.
+    connection description. The actual graph edge direction is chosen
+    from the source/destination port directionality values.
+    Bidirectional ports create reverse edges where needed.
     """
-    if (src_directionality == "bidirectional" and dst_directionality == "bidirectional"):
-        graph.add_edge(src_node, dst_node, src_port=src_port, dst_port=dst_port, hover=f"{src_node},{src_port}↔{dst_node},{dst_port}", port_type=port_type)
-        graph.add_edge(dst_node, src_node, src_port=dst_port, dst_port=src_port, hover=f"{src_node},{src_port}↔{dst_node},{dst_port}", port_type=port_type)
-    elif (src_directionality == "bidirectional" and dst_directionality == "input") or (src_directionality == "output" and dst_directionality == "bidirectional") or (src_directionality == "output" and dst_directionality == "input"):
-        graph.add_edge(src_node, dst_node, src_port=src_port, dst_port=dst_port, hover=f"{src_node},{src_port}→{dst_node},{dst_port}", port_type=port_type)
-    elif (src_directionality == "bidirectional" and dst_directionality == "output") or (src_directionality == "input" and dst_directionality == "bidirectional") or (src_directionality == "input" and dst_directionality == "output"):
-        graph.add_edge(dst_node, src_node, src_port=dst_port, dst_port=src_port, hover=f"{src_node},{src_port}←{dst_node},{dst_port}", port_type=port_type)
-    elif (src_directionality == "unknown" and dst_directionality== "input") or (src_directionality == "output" and dst_directionality== "unknown"):
-        graph.add_edge(src_node, dst_node, src_port=src_port, dst_port=dst_port, hover=f"{src_node},{src_port}→{dst_node},{dst_port}", port_type=port_type)
-    elif (src_directionality == "unknown" and dst_directionality== "output") or (src_directionality == "input" and dst_directionality== "unknown"):
-        graph.add_edge(dst_node, src_node, src_port=dst_port, dst_port=src_port, hover=f"{src_node},{src_port}←{dst_node},{dst_port}", port_type=port_type)
-    elif (src_directionality == "unknown" or dst_directionality== "unknown"):
-        graph.add_edge(src_node, dst_node, src_port=src_port, dst_port=dst_port, hover=f"{src_node},{src_port}?⎯?{dst_node},{dst_port}", color="red", type=port_type)
+    if src_directionality == "bidirectional" and dst_directionality == "bidirectional":
+        graph.add_edge(
+            src_node,
+            dst_node,
+            src_port=src_port,
+            dst_port=dst_port,
+            hover=f"{src_node},{src_port}↔{dst_node},{dst_port}",
+            port_type=port_type,
+        )
+        graph.add_edge(
+            dst_node,
+            src_node,
+            src_port=dst_port,
+            dst_port=src_port,
+            hover=f"{src_node},{src_port}↔{dst_node},{dst_port}",
+            port_type=port_type,
+        )
+    elif (
+        (src_directionality == "bidirectional" and dst_directionality == "input")
+        or (src_directionality == "output" and dst_directionality == "bidirectional")
+        or (src_directionality == "output" and dst_directionality == "input")
+    ):
+        graph.add_edge(
+            src_node,
+            dst_node,
+            src_port=src_port,
+            dst_port=dst_port,
+            hover=f"{src_node},{src_port}→{dst_node},{dst_port}",
+            port_type=port_type,
+        )
+    elif (
+        (src_directionality == "bidirectional" and dst_directionality == "output")
+        or (src_directionality == "input" and dst_directionality == "bidirectional")
+        or (src_directionality == "input" and dst_directionality == "output")
+    ):
+        graph.add_edge(
+            dst_node,
+            src_node,
+            src_port=dst_port,
+            dst_port=src_port,
+            hover=f"{src_node},{src_port}←{dst_node},{dst_port}",
+            port_type=port_type,
+        )
+    elif (src_directionality == "unknown" and dst_directionality == "input") or (
+        src_directionality == "output" and dst_directionality == "unknown"
+    ):
+        graph.add_edge(
+            src_node,
+            dst_node,
+            src_port=src_port,
+            dst_port=dst_port,
+            hover=f"{src_node},{src_port}→{dst_node},{dst_port}",
+            port_type=port_type,
+        )
+    elif (src_directionality == "unknown" and dst_directionality == "output") or (
+        src_directionality == "input" and dst_directionality == "unknown"
+    ):
+        graph.add_edge(
+            dst_node,
+            src_node,
+            src_port=dst_port,
+            dst_port=src_port,
+            hover=f"{src_node},{src_port}←{dst_node},{dst_port}",
+            port_type=port_type,
+        )
+    elif src_directionality == "unknown" or dst_directionality == "unknown":
+        graph.add_edge(
+            src_node,
+            dst_node,
+            src_port=src_port,
+            dst_port=dst_port,
+            hover=f"{src_node},{src_port}?⎯?{dst_node},{dst_port}",
+            color="red",
+            type=port_type,
+        )
     else:
         raise ValueError(f"Cannot connect {src_directionality} to {dst_directionality}")
 
-def add_port_to_graph(graph, instance_name, internal_port_name, directionality, external: bool, external_port_name=None, port_type=None):
+
+def add_port_to_graph(
+    graph,
+    instance_name,
+    internal_port_name,
+    directionality,
+    external: bool,
+    external_port_name=None,
+    port_type=None,
+):
     """Add one visual port node and connect it to its component node."""
     if external:
-        node_name = f".{external_port_name}" # '.' enforces uniqueness
-        shape="circle",
+        node_name = f".{external_port_name}"  # '.' enforces uniqueness
+        shape = ("circle",)
         size = 8
     else:
-        node_name = f"{instance_name},{internal_port_name}" # ',' enforces uniqueness
-        size = 8,
-        shape="circle"
+        node_name = f"{instance_name},{internal_port_name}"  # ',' enforces uniqueness
+        size = (8,)
+        shape = "circle"
 
     graph.add_node(
-            node_name, 
-            shape=shape,
-            opacity=1.0,
-            border_color="black",
-            border_size=1,
-            size=size,
-            color="white"
-        )
-    
-    add_connection_to_graph(graph, node_name, instance_name.strip(), None, None, "bidirectional", directionality, port_type=port_type)
+        node_name,
+        shape=shape,
+        opacity=1.0,
+        border_color="black",
+        border_size=1,
+        size=size,
+        color="white",
+    )
+
+    add_connection_to_graph(
+        graph,
+        node_name,
+        instance_name.strip(),
+        None,
+        None,
+        "bidirectional",
+        directionality,
+        port_type=port_type,
+    )
+
 
 def instantiated_flat_netlist_to_graph(instantiated_flat_netlist, include_ports=False):
     """Convert an instantiated flat netlist into a graph.
 
-    Unlike `netlist_to_graph`, this function reads port metadata from the
-    instantiated component objects stored under each instance's `"model"` key.
-    This is the graph form used by simulation drivers after `Circuit.instantiate`
-    has expanded PCells and placeholders.
+    Unlike `netlist_to_graph`, this function reads port metadata from
+    the instantiated component objects stored under each instance's
+    `"model"` key. This is the graph form used by simulation drivers
+    after `Circuit.instantiate` has expanded PCells and placeholders.
     """
     graph = nx.MultiDiGraph()
     # Add nodes for each instance
     for instance_name, instance in instantiated_flat_netlist["instances"].items():
-        instantiated_flat_netlist['instances'][instance_name]['model']._create_port_lookup_table()
+        instantiated_flat_netlist["instances"][instance_name][
+            "model"
+        ]._create_port_lookup_table()
         graph.add_node(
             instance_name,
             component=instance["component"],
@@ -279,44 +416,95 @@ def instantiated_flat_netlist_to_graph(instantiated_flat_netlist, include_ports=
             size=25,
             border_size=1,
             border_color="black",
-            color="white"
+            color="white",
         )
         # graph.add_node(instance_name, label="test", click="Test: $label", **instance_data)
         # graph.add_node(instance_name, weight=netlist['instances'][instance_name]["weight"])
 
-
     # Add edges based on connections
     for src, dsts in instantiated_flat_netlist["connections"].items():
         for dst in dsts.split(";"):
-            if dst =='':
+            if dst == "":
                 continue
             src_instance, src_port = src.split(",")
             dst_instance, dst_port = dst.split(",")
-            
-            src_port_directionality = instantiated_flat_netlist['instances'][src_instance]['model']._port_lookup_table[src_port].directionality
-            dst_port_directionality = instantiated_flat_netlist['instances'][dst_instance]['model']._port_lookup_table[dst_port].directionality
-            port_type = instantiated_flat_netlist['instances'][src_instance]['model']._port_lookup_table[src_port].type
-            add_connection_to_graph(graph, src_instance.strip(), dst_instance.strip(), src_port.strip(), dst_port.strip(), src_port_directionality, dst_port_directionality, port_type=port_type)
+
+            src_port_directionality = (
+                instantiated_flat_netlist["instances"][src_instance]["model"]
+                ._port_lookup_table[src_port]
+                .directionality
+            )
+            dst_port_directionality = (
+                instantiated_flat_netlist["instances"][dst_instance]["model"]
+                ._port_lookup_table[dst_port]
+                .directionality
+            )
+            port_type = (
+                instantiated_flat_netlist["instances"][src_instance]["model"]
+                ._port_lookup_table[src_port]
+                .type
+            )
+            add_connection_to_graph(
+                graph,
+                src_instance.strip(),
+                dst_instance.strip(),
+                src_port.strip(),
+                dst_port.strip(),
+                src_port_directionality,
+                dst_port_directionality,
+                port_type=port_type,
+            )
 
     if include_ports:
-        for external_port_name, internal_port_data in instantiated_flat_netlist["ports"].items():
+        for external_port_name, internal_port_data in instantiated_flat_netlist[
+            "ports"
+        ].items():
             instance_name, internal_port_name = internal_port_data.split(",")
-            node_name = f".{external_port_name}" # . Symbol Ensures Uniqueness of node_name
-            model = instantiated_flat_netlist['instances'][instance_name]['model']
+            node_name = (
+                f".{external_port_name}"  # . Symbol Ensures Uniqueness of node_name
+            )
+            model = instantiated_flat_netlist["instances"][instance_name]["model"]
             directionality = model._port_lookup_table[internal_port_name].directionality
             port_type = model._port_lookup_table[internal_port_name].type
-            add_port_to_graph(graph, instance_name, internal_port_name, directionality, external=True, external_port_name=external_port_name, port_type=port_type)
+            add_port_to_graph(
+                graph,
+                instance_name,
+                internal_port_name,
+                directionality,
+                external=True,
+                external_port_name=external_port_name,
+                port_type=port_type,
+            )
 
         unconnected_ports = set()
-        connected_ports = {connection for connection in list(instantiated_flat_netlist['connections'].keys()) + list(instantiated_flat_netlist['connections'].values())}
-        for instance_name, instance_data in instantiated_flat_netlist['instances'].items():
-            for port in instantiated_flat_netlist['instances'][instance_name]['model'].ports:
-                if not f"{instance_name},{port.name}" in connected_ports and not f"{instance_name},{port.name}" in instantiated_flat_netlist['ports'].values():
+        connected_ports = {
+            connection
+            for connection in list(instantiated_flat_netlist["connections"].keys())
+            + list(instantiated_flat_netlist["connections"].values())
+        }
+        for instance_name, instance_data in instantiated_flat_netlist[
+            "instances"
+        ].items():
+            for port in instantiated_flat_netlist["instances"][instance_name][
+                "model"
+            ].ports:
+                if (
+                    not f"{instance_name},{port.name}" in connected_ports
+                    and not f"{instance_name},{port.name}"
+                    in instantiated_flat_netlist["ports"].values()
+                ):
                     unconnected_ports.add(f"{instance_name},{port.name}")
                     # instantiated_flat_netlist['instances'][instance_name]['model']._port_lookup_table
-                    add_port_to_graph(graph, instance_name, port.name, port.directionality, external=False, port_type=port.type)
+                    add_port_to_graph(
+                        graph,
+                        instance_name,
+                        port.name,
+                        port.directionality,
+                        external=False,
+                        port_type=port.type,
+                    )
                     # graph.add_node(
-                    #     "FIX ME", 
+                    #     "FIX ME",
                     #     shape="rectangle",
                     #     opacity=1.0,
                     #     border_color="black",
@@ -324,18 +512,19 @@ def instantiated_flat_netlist_to_graph(instantiated_flat_netlist, include_ports=
                     #     size=15,
                     #     color="white"
                     # )
-        pass
-    
-    #Matthew's Changes
-    #Adds the ports as a graph attribute to be used within graph_to_netlist
+
+    # Matthew's Changes
+    # Adds the ports as a graph attribute to be used within graph_to_netlist
     # graph.graph["ports"] = instantiated_flat_netlist.get("ports", {}).copy()
     ### FOR NOW, JUST BE OKAY WITH THE FACT THAT WE LOSE THIS INFO
 
     return graph
 
-#Matthew's Changes
-#Completed the graph to netlist to be used however needed to also added
+
+# Matthew's Changes
+# Completed the graph to netlist to be used however needed to also added
 import networkx as nx
+
 
 def graph_to_netlist(graph: nx.MultiDiGraph, ports=None) -> dict:
     """Convert a NetworkX multidigraph into a SAX-compatible flat netlist.
@@ -382,7 +571,6 @@ def graph_to_netlist(graph: nx.MultiDiGraph, ports=None) -> dict:
     seen_connections = set()
 
     for src, dst, attrs in graph.edges(data=True):
-
         a = f"{src},{attrs['src_port']}"
         b = f"{dst},{attrs['dst_port']}"
 
@@ -402,6 +590,8 @@ def graph_to_netlist(graph: nx.MultiDiGraph, ports=None) -> dict:
         netlist["connections"][a] = b
 
     return netlist
+
+
 # def graph_to_netlist(graph: nx.MultiDiGraph, ports={}) -> dict:
 #     """
 #     Convert a NetworkX MultiDiGraph (with node attrs 'component' and 'settings',
@@ -430,13 +620,14 @@ def graph_to_netlist(graph: nx.MultiDiGraph, ports=None) -> dict:
 
 #     return netlist
 
+
 def sanitize_instance_names(netlist, old_separator="~", new_separator="_"):
     """Replace a separator substring in instance names and references.
 
-    SAX flattening commonly creates nested instance names containing `"~"`.
-    Some downstream tools expect valid Python identifiers, so this helper
-    rewrites instance names and updates `connections`, `ports`, and optional
-    `nets` entries consistently.
+    SAX flattening commonly creates nested instance names containing
+    `"~"`. Some downstream tools expect valid Python identifiers, so
+    this helper rewrites instance names and updates `connections`,
+    `ports`, and optional `nets` entries consistently.
     """
     import copy
 
@@ -477,8 +668,7 @@ def sanitize_instance_names(netlist, old_separator="~", new_separator="_"):
     # ---- fix ports ----
     if "ports" in netlist:
         netlist["ports"] = {
-            name: fix_ref(ref)
-            for name, ref in netlist["ports"].items()
+            name: fix_ref(ref) for name, ref in netlist["ports"].items()
         }
 
     # ---- fix nets (optional SAX format) ----
@@ -488,6 +678,7 @@ def sanitize_instance_names(netlist, old_separator="~", new_separator="_"):
             net["p2"] = fix_ref(net["p2"])
 
     return netlist
+
 
 # def discrete_time_impulse_response(propagation_constants, sampling_freq, length=1e-6, N=20000):
 #     freqs = jnp.fft.fftfreq(N, d=1/sampling_freq)
@@ -501,20 +692,27 @@ def sanitize_instance_names(netlist, old_separator="~", new_separator="_"):
 
 #     return jnp.fft.ifftshift(jnp.fft.ifft(H))
 
+
 def generate_valid_separator(instance_names, old_separator="~", first_try="_SEP_"):
     """Generate a separator that will not collide when replacing names.
 
-    The returned separator can be used to replace `old_separator` without
-    causing two distinct instance names to collapse to the same string.
+    The returned separator can be used to replace `old_separator`
+    without causing two distinct instance names to collapse to the same
+    string.
     """
     instance_names = list(instance_names)
     new_separator = first_try
-    new_instance_names = [name.replace(old_separator, new_separator) for name in instance_names]
+    new_instance_names = [
+        name.replace(old_separator, new_separator) for name in instance_names
+    ]
     while not len(set(instance_names)) == len(set(new_instance_names)):
         new_separator = "_" + new_separator + "_"
-        new_instance_names = [name.replace(old_separator, new_separator) for name in instance_names]
-    
+        new_instance_names = [
+            name.replace(old_separator, new_separator) for name in instance_names
+        ]
+
     return new_separator
+
 
 def generate_unique_string(instance_names, first_try="xXx"):
     """Return a string that is not contained in any instance name."""
@@ -529,16 +727,16 @@ def generate_unique_string(instance_names, first_try="xXx"):
 
     while instances_contain_string(new_str):
         new_str = "_" + new_str + "_"
-    
+
     return new_str
-    
+
 
 def remove_instances_from_netlist(netlist, instances_to_remove):
     """Return a copy of `netlist` without selected instances.
 
-    Connections and top-level ports touching removed instances are removed as
-    well. This is useful when extracting or replacing subgraphs during PCell and
-    S-parameter consolidation.
+    Connections and top-level ports touching removed instances are
+    removed as well. This is useful when extracting or replacing
+    subgraphs during PCell and S-parameter consolidation.
     """
     instances_to_remove = set(instances_to_remove)
 
@@ -563,10 +761,7 @@ def remove_instances_from_netlist(netlist, instances_to_remove):
     new_netlist["connections"] = {
         src: dst
         for src, dst in netlist["connections"].items()
-        if not (
-            touches_removed_instance(src)
-            or touches_removed_instance(dst)
-        )
+        if not (touches_removed_instance(src) or touches_removed_instance(dst))
     }
 
     # Keep only valid external ports

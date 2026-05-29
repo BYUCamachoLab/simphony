@@ -14,8 +14,7 @@ from dataclasses import dataclass
 from scipy.interpolate import interp1d
 
 from simphony.exceptions import UndefinedActiveComponent
-from simphony.libraries import ideal, siepic
-from simphony.simulation import SimDevice, Simulation, SimulationResult
+from simphony.simulation import Simulation, SimulationResult
 from simphony.time_domain.pole_residue_model import BVF_Options, IIRModelBaseband
 from simphony.utils import dict_to_matrix
 
@@ -28,7 +27,6 @@ class TimeResult(SimulationResult):
     S_params: ArrayLike
 
     def plot_sim(self):
-
         input_keys = list(self.inputs.keys())
         output_keys = list(self.outputs.keys())
 
@@ -85,7 +83,6 @@ class TimeSim(Simulation):
         custom_options = BVF_Options(beta=beta)
 
         if self.active_components is not None:
-
             (
                 self.sub_netlists,
                 self.removed_connections,
@@ -126,7 +123,6 @@ class TimeSim(Simulation):
             self.S_params_dict = {}
 
             for i, circuit in sub_circuit_list.items():
-
                 # Execute circuit with generated parameters
                 s = circuit(**model_parameters)
                 temp_port_list = []
@@ -138,7 +134,6 @@ class TimeSim(Simulation):
                 S = np.asarray(dict_to_matrix(s))
                 self.S_params_dict[i] = S
                 try:
-
                     temp_model = TimeSystemIIR(
                         IIRModelBaseband(
                             wvl, center_wvl, S, model_order, options=custom_options
@@ -305,7 +300,6 @@ class TimeSim(Simulation):
             for _ in self.t:
                 self.step(i)
                 i += 1
-                pass
         else:
             self.outputs, __ = self.time_system.response(self.inputs, time_sim=False)
 
@@ -335,7 +329,6 @@ class TimeSim(Simulation):
         return t_new, new_inputs
 
     def step(self, i):
-
         for instance_name, time_system in self.step_list["step_models"].items():
             instance_inputs = {}
 
@@ -387,8 +380,7 @@ class TimeSim(Simulation):
     def add_to_netlist(
         self, model_name=None, model_type=None, connection=None, port=None
     ):
-        """
-        Adds new elements to the netlist.
+        """Adds new elements to the netlist.
 
         Args:
             netlist (dict): The existing netlist to update.
@@ -414,8 +406,8 @@ class TimeSim(Simulation):
         return self.step_list
 
     def remove_active_edges_and_track_them(self, connections, active_components):
-        """
-        Remove any connection that involves an active component.
+        """Remove any connection that involves an active component.
+
         Return:
         - filtered_connections (still "compA,portA" -> "compB,portB" form)
         - removed_edges: a list of tuples (passive_comp, active_comp)
@@ -456,8 +448,8 @@ class TimeSim(Simulation):
         return filtered, removed_edges, removed_connections
 
     def remove_ports_to_active(self, ports, active_components):
-        """
-        Remove top-level ports that directly reference an active component.
+        """Remove top-level ports that directly reference an active component.
+
         Returns (filtered_ports, removed_ports).
         """
         filtered = {}
@@ -473,10 +465,9 @@ class TimeSim(Simulation):
     def build_component_graph(
         self, connections, ports, active_components, removed_edges, directed=False
     ):
-        """
-        Build a graph (adjacency list) where each node is just the component name.
-        For example:
-        If "cr1,port_2" -> "wg1,o0" is a connection, we add an edge cr1 -> wg1.
+        """Build a graph (adjacency list) where each node is just the component
+        name. For example: If "cr1,port_2" -> "wg1,o0" is a connection, we add
+        an edge cr1 -> wg1.
 
         connections: dict { "compA,portA" : "compB,portB" }
         directed: bool (False => treat them as undirected edges)
@@ -513,10 +504,10 @@ class TimeSim(Simulation):
         return graph
 
     def tarjan_scc(self, graph, max_size):
-        """
-        Compute the strongly connected components (SCCs) of a graph.
-        If an SCC is larger than max_size, it is split by iteratively removing
-        edges from its induced subgraph using a heuristic that aims for a balanced split.
+        """Compute the strongly connected components (SCCs) of a graph. If an
+        SCC is larger than max_size, it is split by iteratively removing edges
+        from its induced subgraph using a heuristic that aims for a balanced
+        split.
 
         :param graph: dict mapping node -> list of neighbor nodes.
         :param max_size: maximum allowed size for an SCC.
@@ -524,7 +515,8 @@ class TimeSim(Simulation):
         """
 
         def compute_scc_no_split(g):
-            """Standard Tarjan's algorithm to compute SCCs (without splitting)."""
+            """Standard Tarjan's algorithm to compute SCCs (without
+            splitting)."""
             index_counter = [0]
             stack = []
             on_stack = set()
@@ -560,11 +552,13 @@ class TimeSim(Simulation):
             return sccs
 
         def choose_edge_to_remove(subgraph, max_size):
-            """
-            Try removing each edge (temporarily) and compute the resulting SCCs.
-            Return the edge (as a tuple (u, idx, v)) whose removal minimizes a metric.
-            The metric here is a tuple: (number of one-node SCCs, -min_component_size)
-            so that we prefer fewer trivial SCCs and a larger minimum SCC size.
+            """Try removing each edge (temporarily) and compute the resulting
+            SCCs.
+
+            Return the edge (as a tuple (u, idx, v)) whose removal
+            minimizes a metric. The metric here is a tuple: (number of
+            one-node SCCs, -min_component_size) so that we prefer fewer
+            trivial SCCs and a larger minimum SCC size.
             """
             best_edge = None
             best_metric = None
@@ -593,11 +587,10 @@ class TimeSim(Simulation):
             return best_edge
 
         def split_large_scc(g, scc, max_size, max_iter=100):
-            """
-            For a given SCC (list of nodes) that is too large, build its induced subgraph
-            and iteratively remove edges (using a heuristic to select the edge)
-            until all resulting SCCs (computed on the modified subgraph) are of size <= max_size.
-            """
+            """For a given SCC (list of nodes) that is too large, build its
+            induced subgraph and iteratively remove edges (using a heuristic to
+            select the edge) until all resulting SCCs (computed on the modified
+            subgraph) are of size <= max_size."""
             # Build the induced subgraph for the nodes in scc.
             subgraph = {
                 node: [nbr for nbr in g.get(node, []) if nbr in scc] for node in scc
@@ -639,14 +632,14 @@ class TimeSim(Simulation):
         instances,
         active_components,
     ):
-        """
-        Construct a single netlist for the given set of SCC components (e.g. { 'cr1','wg1','cr2' }).
+        """Construct a single netlist for the given set of SCC components (e.g.
+        { 'cr1','wg1','cr2' }).
 
-        1) Keep only those instances in scc_components (all passive).
-        2) Keep only those connections that link two components in scc_components.
-        3) Keep original ports referencing these components.
-        4) For each removed passive->active edge, if the passive comp is in scc_components,
-        create a new external port.
+        1) Keep only those instances in scc_components (all passive). 2)
+        Keep only those connections that link two components in
+        scc_components. 3) Keep original ports referencing these
+        components. 4) For each removed passive->active edge, if the
+        passive comp is in scc_components, create a new external port.
         """
         # 1) Instances
         scc_instances = {}
@@ -713,13 +706,13 @@ class TimeSim(Simulation):
                                     while new_label in scc_ports:
                                         new_label = f"o{tempcheck}"
                                         tempcheck -= 1
-                                    scc_ports[new_label] = (
-                                        f"{k},{k_string.split(',')[1]}"
-                                    )
+                                    scc_ports[
+                                        new_label
+                                    ] = f"{k},{k_string.split(',')[1]}"
                                 else:
-                                    scc_ports[new_label] = (
-                                        f"{k},{k_string.split(',')[1]}"
-                                    )
+                                    scc_ports[
+                                        new_label
+                                    ] = f"{k},{k_string.split(',')[1]}"
                                 break
                     else:
                         new_label = f"o{total_check}"
@@ -751,13 +744,13 @@ class TimeSim(Simulation):
                                     while new_label in scc_ports:
                                         new_label = f"o{tempcheck}"
                                         tempcheck -= 1
-                                    scc_ports[new_label] = (
-                                        f"{k},{k_string.split(',')[1]}"
-                                    )
+                                    scc_ports[
+                                        new_label
+                                    ] = f"{k},{k_string.split(',')[1]}"
                                 else:
-                                    scc_ports[new_label] = (
-                                        f"{k},{k_string.split(',')[1]}"
-                                    )
+                                    scc_ports[
+                                        new_label
+                                    ] = f"{k},{k_string.split(',')[1]}"
 
                                 break
                     else:
@@ -789,13 +782,13 @@ class TimeSim(Simulation):
                                     while new_label in scc_ports:
                                         new_label = f"o{tempcheck}"
                                         tempcheck -= 1
-                                    scc_ports[new_label] = (
-                                        f"{v},{v_string.split(',')[1]}"
-                                    )
+                                    scc_ports[
+                                        new_label
+                                    ] = f"{v},{v_string.split(',')[1]}"
                                 else:
-                                    scc_ports[new_label] = (
-                                        f"{v},{v_string.split(',')[1]}"
-                                    )
+                                    scc_ports[
+                                        new_label
+                                    ] = f"{v},{v_string.split(',')[1]}"
 
                                 break
                     else:
@@ -826,10 +819,9 @@ class TimeSim(Simulation):
         max_size=5,
         directed=False,
     ):
-        """
-        1) Remove edges that touch active components, track them for new external ports.
-        2) Build a graph (component-level).
-        3) Run SCC.
+        """1) Remove edges that touch active components, track them for new
+        external ports. 2) Build a graph (component-level). 3) Run SCC.
+
         4) For each SCC, build a sub-netlist that:
         - has only those passive components
         - has top-level ports referencing them
@@ -839,9 +831,11 @@ class TimeSim(Simulation):
         Often, if everything is interconnected passively, you'll get 1 SCC.
         """
         # 1) Remove edges to active comps
-        filtered_conns, removed_edges, removed_connections = (
-            self.remove_active_edges_and_track_them(connections, active_components)
-        )
+        (
+            filtered_conns,
+            removed_edges,
+            removed_connections,
+        ) = self.remove_active_edges_and_track_them(connections, active_components)
 
         # 2) Remove top-level ports referencing active comps
         filtered_ports, removed_ports = self.remove_ports_to_active(

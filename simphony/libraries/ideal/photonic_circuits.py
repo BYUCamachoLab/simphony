@@ -1,27 +1,27 @@
 from simphony.component.pcell import PCell
-from simphony.simulation.simulation import SimulationParameters
 from simphony.component.port import Port
-
-from simphony.libraries.ideal.modulators import DirectedOpticalModulator, OpticalModulator
-
-from simphony.simulation.block_mode import BlockModeSimulationParameters 
-from simphony.libraries.old_ideal import waveguide, coupler
+from simphony.libraries.ideal.modulators import (
+    DirectedOpticalModulator,
+    OpticalModulator,
+)
 from simphony.libraries.ideal.s_parameters import optical_s_parameter_placeholder
-from inspect import isfunction
-import numpy as np
+from simphony.libraries.old_ideal import coupler, waveguide
+from simphony.simulation.simulation import SimulationParameters
+
+
 class MZI(PCell):
     r"""
-    o2 ---\        /---[ϕ]---\        /--- o3 
+    o2 ---\        /---[ϕ]---\        /--- o3
            --------           --------
            --------           --------
     o0 ---/        \---[ϕ]---/        \--- o1
 
     or if `partial` is true:
 
-    o2 ---[ϕ]---\        /--- o3 
+    o2 ---[ϕ]---\        /--- o3
                  --------
-                 --------            
-    o0 ---[ϕ]---/        \--- o1       
+                 --------
+    o0 ---[ϕ]---/        \--- o1
 
     """
     _arms = (
@@ -30,26 +30,10 @@ class MZI(PCell):
     )
 
     ports = [
-        Port(
-            name="o0",
-            type="optical",
-            directionality = "bidirectional"
-        ),
-        Port(
-            name="o1",
-            type="optical",
-            directionality = "bidirectional"
-        ),
-        Port(
-            name="o2",
-            type="optical",
-            directionality = "bidirectional"
-        ),
-        Port(
-            name="o3",
-            type="optical",
-            directionality = "bidirectional"
-        ),
+        Port(name="o0", type="optical", directionality="bidirectional"),
+        Port(name="o1", type="optical", directionality="bidirectional"),
+        Port(name="o2", type="optical", directionality="bidirectional"),
+        Port(name="o3", type="optical", directionality="bidirectional"),
         Port(
             name="e0",
             type="electrical",
@@ -100,11 +84,13 @@ class MZI(PCell):
         modulators: bool = True,
         partial: bool = False,
         # TODO: maybe inherit a getter or setter or just don't do group ids
-        group_id = "default", # Setting to None will disable grouping, not setting will use MZI class id
+        group_id="default",  # Setting to None will disable grouping, not setting will use MZI class id
     ):
-        """
-        `partial` builds only the arms and combiner, without the input splitter.
-        `modulators` controls whether each arm includes a tunable phase shifter.
+        """`partial` builds only the arms and combiner, without the input
+        splitter.
+
+        `modulators` controls whether each arm includes a tunable phase
+        shifter.
         """
         if splitter_settings is None:
             splitter_settings = {}
@@ -118,7 +104,7 @@ class MZI(PCell):
             top_phase_shifter_settings = {}
         if bot_phase_shifter_settings is None:
             bot_phase_shifter_settings = {}
-        
+
         self.netlist = {
             "instances": {
                 "combiner": "coupler",
@@ -140,14 +126,16 @@ class MZI(PCell):
             },
             "combiner": {
                 "sax_settings": combiner_settings,
-            }
+            },
         }
 
         if modulators:
-            self.netlist["instances"].update({
-                "top_mod": "modulator",
-                "bot_mod": "modulator",
-            })
+            self.netlist["instances"].update(
+                {
+                    "top_mod": "modulator",
+                    "bot_mod": "modulator",
+                }
+            )
             self.netlist["ports"]["e0"] = "top_mod,e0"
             self.netlist["ports"]["e1"] = "bot_mod,e0"
             self.settings["top_mod"] = top_phase_shifter_settings
@@ -173,6 +161,7 @@ class MZI(PCell):
                 self.models["modulator"] = OpticalModulator
 
         from simphony.simulation.simulation import SimulationMode
+
         if simulation_parameters.simulation_mode == SimulationMode.SAMPLE_MODE:
             pass
         elif simulation_parameters.simulation_mode == SimulationMode.BLOCK_MODE:
@@ -188,34 +177,39 @@ class MZI(PCell):
                 "o1": "output",
             }
 
-            self.models["coupler"] = optical_s_parameter_placeholder(coupler, coupler_directionality, simulation_parameters.mode_identifiers)
-            self.models["waveguide"] = optical_s_parameter_placeholder(waveguide, waveguide_directionality, simulation_parameters.mode_identifiers)
+            self.models["coupler"] = optical_s_parameter_placeholder(
+                coupler, coupler_directionality, simulation_parameters.mode_identifiers
+            )
+            self.models["waveguide"] = optical_s_parameter_placeholder(
+                waveguide,
+                waveguide_directionality,
+                simulation_parameters.mode_identifiers,
+            )
 
             # self.settings['top_wg'] = {"sax_settings": self.settings['top_wg']}
             # self.settings['bot_wg'] = {"sax_settings": self.settings['bot_wg']}
             # if not partial:
             #     self.settings['splitter'] = {"sax_settings": self.settings['splitter']}
-                
+
             # self.settings['combiner'] = {"sax_settings": self.settings['combiner']}
 
         elif simulation_parameters.simulation_mode == SimulationMode.S_PARAMETER:
             pass
         else:
-            raise ValueError(f"{self} has does not support the simulation type {simulation_parameters.simulation_mode}")
-        
+            raise ValueError(
+                f"{self} has does not support the simulation type {simulation_parameters.simulation_mode}"
+            )
 
         s_parameter_models_to_group = ["top_wg", "bot_wg", "splitter", "combiner"]
-        
+
         if partial:
             s_parameter_models_to_group.remove("splitter")
 
         if group_id == "default":
             group_id = id(MZI)
-        
+
         for instance_name in s_parameter_models_to_group:
             self.settings[instance_name]["group_id"] = group_id
-        
-        pass
 
 
 def mzi_lattice_filter(
@@ -244,37 +238,21 @@ def mzi_lattice_filter(
         `modulators` is true.
     """
     optical_ports = [
-        Port(
-            name="o0",
-            type="optical",
-            directionality = "bidirectional"
-        ),
-        Port(
-            name="o1",
-            type="optical",
-            directionality = "bidirectional"
-        ),
-        Port(
-            name="o2",
-            type="optical",
-            directionality = "bidirectional"
-        ),
-        Port(
-            name="o3",
-            type="optical",
-            directionality = "bidirectional"
-        )
+        Port(name="o0", type="optical", directionality="bidirectional"),
+        Port(name="o1", type="optical", directionality="bidirectional"),
+        Port(name="o2", type="optical", directionality="bidirectional"),
+        Port(name="o3", type="optical", directionality="bidirectional"),
     ]
 
-    electrical_ports = [
-        Port(
-            name=f"mzi{i}_e{j}",
-            type="electrical",
-            directionality = "input"
-        )
-        for i in range(order)
-        for j in (0, 1)
-    ] if modulators else []
+    electrical_ports = (
+        [
+            Port(name=f"mzi{i}_e{j}", type="electrical", directionality="input")
+            for i in range(order)
+            for j in (0, 1)
+        ]
+        if modulators
+        else []
+    )
 
     class MZILatticeFilter(PCell):
         ports = optical_ports + electrical_ports
@@ -287,11 +265,9 @@ def mzi_lattice_filter(
             coupling_coeffs: list = None,
             ### TODO: Add a way to adjust the phase modulator settings
             ### TODO: Implement method for import standard presets
-            # preset: str = None, 
-            
+            # preset: str = None,
         ):
-            """
-            """
+            """"""
             instances = {}
             connections = {}
             ports = {}
@@ -299,6 +275,7 @@ def mzi_lattice_filter(
 
             MZI_MODEL_NAME = "mzi"
             MZI_INSTANCE_NAME_BASE = MZI_MODEL_NAME
+
             def mzi_instance_name(index):
                 return f"{MZI_INSTANCE_NAME_BASE}{index}"
 
@@ -308,7 +285,6 @@ def mzi_lattice_filter(
                     "component": MZI_MODEL_NAME,
                     # "settings": {},
                 }
-
 
             connections = {
                 f"{mzi_instance_name(i)},{src}": f"{mzi_instance_name(i+1)},{dst}"
@@ -358,7 +334,6 @@ def mzi_lattice_filter(
             }
             self.settings[mzi_instance_name(0)]["partial"] = False
 
-            pass
             # self.instantiated_netlist = instantiate_netlist(netlist, models, settings={})
 
             # Grouping should happen when the instantiated_netlist is returned
@@ -369,6 +344,7 @@ def mzi_lattice_filter(
             #     netlist = group_instances(netlist, )
 
     return MZILatticeFilter
+
 
 def mzi_lattice_passband(
     order: int = 4,
@@ -399,26 +375,30 @@ def mzi_lattice_passband(
         Port(name="o1", type="optical", directionality="bidirectional"),
     ]
 
-    electrical_ports = [
-        Port(name=f"mzi{i}_e{j}", type="electrical", directionality="input")
-        for i in range(order)
-        for j in (0, 1)
-    ] if modulators else []
+    electrical_ports = (
+        [
+            Port(name=f"mzi{i}_e{j}", type="electrical", directionality="input")
+            for i in range(order)
+            for j in (0, 1)
+        ]
+        if modulators
+        else []
+    )
 
     class MZILatticePassband(PCell):
         ports = optical_ports + electrical_ports
-        
+
         def __init__(
             self,
             simulation_parameters: SimulationParameters,
             *,
-            mzi_delay_differences:list = None,
-            base_length: float = 10.0 
+            mzi_delay_differences: list = None,
+            base_length: float = 10.0,
         ):
             """Build a one-input passband cascade.
 
-            `mzi_delay_differences` are added to `base_length` for the top arm
-            of each full MZI stage.
+            `mzi_delay_differences` are added to `base_length` for the
+            top arm of each full MZI stage.
             """
 
             instances = {}
@@ -432,32 +412,36 @@ def mzi_lattice_passband(
                 raise ValueError(
                     "`mzi_delay_differences` must contain one value per MZI stage"
                 )
-            
+
             for i in range(order):
                 instances[f"mzi{i}"] = "mzi"
-                if i < order-1:
+                if i < order - 1:
                     connections[f"mzi{i},o1"] = f"mzi{i+1},o2"
                 self.settings[f"mzi{i}"] = {
                     "partial": False,
                     "modulators": modulators,
-                    "top_wg_settings":{"length":base_length + mzi_delay_differences[i]},
-                    "bot_wg_settings":{"length": base_length}
+                    "top_wg_settings": {
+                        "length": base_length + mzi_delay_differences[i]
+                    },
+                    "bot_wg_settings": {"length": base_length},
                 }
-                
+
             ports = {
                 "o0": f"mzi{0},o2",
                 "o1": f"mzi{order-1},o1",
             }
             if modulators:
-                ports.update({
-                    f"mzi{i}_e{j}": f"mzi{i},e{j}"
-                    for i in range(order)
-                    for j in (0, 1)
-                })
+                ports.update(
+                    {
+                        f"mzi{i}_e{j}": f"mzi{i},e{j}"
+                        for i in range(order)
+                        for j in (0, 1)
+                    }
+                )
             self.netlist = {
                 "instances": instances,
                 "ports": ports,
                 "connections": connections,
             }
-            
+
     return MZILatticePassband

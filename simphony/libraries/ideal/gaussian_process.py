@@ -15,26 +15,25 @@ from __future__ import annotations
 
 import jax
 import jax.numpy as jnp
-from scipy.constants import speed_of_light
 from sax import DEFAULT_MODES
+from scipy.constants import speed_of_light
 
 from simphony.component.component import GaussianProcessComponent
 from simphony.component.port import Port
+
+# Private helpers reused from s_parameters.py — no re-implementation needed.
+from simphony.libraries.ideal.s_parameters import (
+    _calculate_state_space_coefficients_from_sax_model,
+    _default_vector_fitting_parameters,
+    _get_filtered_sax_model,
+    _get_port_names_without_mode,
+)
 from simphony.signal.gaussian_process import GaussianProcessOpticalSignal
 from simphony.time_domain.stochastic.gaussian_process import (
     gaussian_process_response,
     white_noise_covariance,
 )
 from simphony.time_domain.vector_fitting.z_domain import state_space_response_discrete
-
-# Private helpers reused from s_parameters.py — no re-implementation needed.
-from simphony.libraries.ideal.s_parameters import (
-    _calculate_state_space_coefficients_from_sax_model,
-    _get_filtered_sax_model,
-    _get_port_names_without_mode,
-    _default_vector_fitting_parameters,
-)
-
 
 # ---------------------------------------------------------------------------
 # Source
@@ -140,7 +139,7 @@ class LTIGaussianProcessSystem(GaussianProcessComponent):
         sampling_frequency: float,
     ):
         self.A, self.B, self.C, self.D = state_space_matrices
-        self.input_ports = input_ports    # ["o0@TE", ...]
+        self.input_ports = input_ports  # ["o0@TE", ...]
         self.output_ports = output_ports  # ["o1@TE", ...]
         self.center_frequency = center_frequency
         self.sampling_frequency = sampling_frequency
@@ -170,7 +169,8 @@ class LTIGaussianProcessSystem(GaussianProcessComponent):
         B_shifted: jax.Array,
         K: int,
     ) -> jax.Array:
-        """h[k, n_out, n_in] via unit-impulse inputs through the state-space."""
+        """H[k, n_out, n_in] via unit-impulse inputs through the state-
+        space."""
         n_in = B_shifted.shape[1]
         cols = []
         for i in range(n_in):
@@ -207,9 +207,7 @@ class LTIGaussianProcessSystem(GaussianProcessComponent):
         out_port_names = list(dict.fromkeys(pm[0] for pm in out_pm))
 
         # Per-output-port accumulators: (L, T, M) for mean, (L, T, T, M, M) for cov.
-        out_mean_acc = {
-            p: jnp.zeros((L, T, M), dtype=complex) for p in out_port_names
-        }
+        out_mean_acc = {p: jnp.zeros((L, T, M), dtype=complex) for p in out_port_names}
         out_cov_acc = {
             p: jnp.zeros((L, T, T, M, M), dtype=complex) for p in out_port_names
         }
@@ -231,9 +229,7 @@ class LTIGaussianProcessSystem(GaussianProcessComponent):
             for col_idx, (port_name, mode) in enumerate(in_pm):
                 m_idx = self._mode_index(mode, simulation_parameters)
                 sig = inputs[port_name]  # GaussianProcessOpticalSignal
-                mu_x = mu_x.at[:, col_idx].set(
-                    sig.mean_amplitude[:, wl_idx, m_idx]
-                )
+                mu_x = mu_x.at[:, col_idx].set(sig.mean_amplitude[:, wl_idx, m_idx])
                 # Diagonal covariance block for this channel.
                 # sig.covariance shape: (L, T, T, M, M)
                 Cx = Cx.at[:, :, col_idx, col_idx].set(
@@ -255,17 +251,19 @@ class LTIGaussianProcessSystem(GaussianProcessComponent):
             # ---- 5. Split outputs back to per-port accumulators ----
             for row_idx, (port_name, mode) in enumerate(out_pm):
                 m_idx = self._mode_index(mode, simulation_parameters)
-                out_mean_acc[port_name] = out_mean_acc[port_name].at[
-                    wl_idx, :, m_idx
-                ].set(mu_y[:, row_idx])
+                out_mean_acc[port_name] = (
+                    out_mean_acc[port_name].at[wl_idx, :, m_idx].set(mu_y[:, row_idx])
+                )
 
                 for row_idx2, (port_name2, mode2) in enumerate(out_pm):
                     if port_name2 != port_name:
                         continue
                     m_idx2 = self._mode_index(mode2, simulation_parameters)
-                    out_cov_acc[port_name] = out_cov_acc[port_name].at[
-                        wl_idx, :, :, m_idx, m_idx2
-                    ].set(Cy[:, :, row_idx, row_idx2])
+                    out_cov_acc[port_name] = (
+                        out_cov_acc[port_name]
+                        .at[wl_idx, :, :, m_idx, m_idx2]
+                        .set(Cy[:, :, row_idx, row_idx2])
+                    )
 
         # Build output dict.
         outputs = {}
@@ -360,14 +358,16 @@ def gaussian_process_s_parameter(
             filtered_sax = _get_filtered_sax_model(
                 sax_model, port_directionality, default_modes
             )
-            (A, B, C, D), in_ports, out_ports = (
-                _calculate_state_space_coefficients_from_sax_model(
-                    filtered_sax,
-                    sax_settings,
-                    vf_params,
-                    simulation_parameters,
-                    delay_comp,
-                )
+            (
+                (A, B, C, D),
+                in_ports,
+                out_ports,
+            ) = _calculate_state_space_coefficients_from_sax_model(
+                filtered_sax,
+                sax_settings,
+                vf_params,
+                simulation_parameters,
+                delay_comp,
             )
 
             super().__init__(

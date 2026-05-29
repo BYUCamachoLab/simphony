@@ -2,7 +2,6 @@ import os
 import pickle
 
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 from jax import config
@@ -10,8 +9,8 @@ from jax import config
 config.update("jax_enable_x64", True)
 from simphony.libraries import siepic
 from simphony.time_domain.ideal import Modulator
-from simphony.time_domain.simulation import TimeResult, TimeSim
-from simphony.time_domain.utils import gaussian_pulse, smooth_rectangular_pulse
+from simphony.time_domain.simulation import TimeSim
+from simphony.time_domain.utils import smooth_rectangular_pulse
 
 # Let's assume your main code is in `my_module.main_code`:
 # from my_module.main_code import run_simulation
@@ -338,10 +337,8 @@ def run_simulation4():
 
 @pytest.mark.simulation
 def test_compare_simulation_results_active_MZI():
-    """
-    This test runs the simulation, then compares it to a known
-    'golden' result stored in a pickle file.
-    """
+    """This test runs the simulation, then compares it to a known 'golden'
+    result stored in a pickle file."""
 
     # 1) Run the simulation to get new results
     new_results = run_simulation()
@@ -377,10 +374,8 @@ def test_compare_simulation_results_active_MZI():
 
 @pytest.mark.simulation
 def test_compare_simulation_results_active_MZI_time_change():
-    """
-    This test runs the simulation, then compares it to a known
-    'golden' result stored in a pickle file.
-    """
+    """This test runs the simulation, then compares it to a known 'golden'
+    result stored in a pickle file."""
 
     # 1) Run the simulation to get new results
     new_results = run_simulation2()
@@ -416,10 +411,8 @@ def test_compare_simulation_results_active_MZI_time_change():
 
 @pytest.mark.simulation
 def test_compare_simulation_results_only_passive_also_port_swap():
-    """
-    This test runs the simulation, then compares it to a known
-    'golden' result stored in a pickle file.
-    """
+    """This test runs the simulation, then compares it to a known 'golden'
+    result stored in a pickle file."""
 
     # 1) Run the simulation to get new results
     new_results = run_simulation3()
@@ -455,10 +448,8 @@ def test_compare_simulation_results_only_passive_also_port_swap():
 
 @pytest.mark.simulation
 def test_compare_simulation_results_small_time_frame():
-    """
-    This test runs the simulation, then compares it to a known
-    'golden' result stored in a pickle file.
-    """
+    """This test runs the simulation, then compares it to a known 'golden'
+    result stored in a pickle file."""
 
     # 1) Run the simulation to get new results
     new_results = run_simulation4()

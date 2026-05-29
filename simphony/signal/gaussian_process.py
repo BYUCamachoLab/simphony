@@ -1,13 +1,12 @@
 """Gaussian process signal types for GaussianProcessSimulation."""
 
-from flax import struct
 import jax.numpy as jnp
+from flax import struct
 
 
 @struct.dataclass
 class GaussianProcessOpticalSignal:
-    """
-    Optical signal for Gaussian process simulation.
+    """Optical signal for Gaussian process simulation.
 
     Carries both the deterministic mean field and the stochastic covariance
     at every time step, enabling full second-order Gaussian state tracking.
@@ -27,5 +26,5 @@ class GaussianProcessOpticalSignal:
     """
 
     mean_amplitude: jnp.ndarray  # (T, L, M)
-    covariance: jnp.ndarray      # (L, T, T, M, M)
-    wavelength: jnp.ndarray      # (L,)
+    covariance: jnp.ndarray  # (L, T, T, M, M)
+    wavelength: jnp.ndarray  # (L,)

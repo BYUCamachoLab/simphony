@@ -6,16 +6,12 @@ to the average user."""
 
 import inspect
 import re
-from typing import Union
 
 import deprecation
 import jax.numpy as jnp
-import networkx as nx
 import sax
-import yaml
 from jax import Array
 from jax.typing import ArrayLike
-from jax.scipy.special import factorial
 from sax import get_ports
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import CubicSpline, interp1d
@@ -443,16 +439,17 @@ def dict_to_matrix(sdict: sax.SDict) -> Array:
 
     return smat
 
+
 # TODO: Maybe maybe not merge this with dict to matrix
 from typing import Sequence
+
 # import jax.numpy as jnp
 # from sax import sax
 # from sax.utils import get_ports
 
+
 def dict_to_rect_matrix(
-    sdict: sax.SDict,
-    input_ports: Sequence[str],
-    output_ports: Sequence[str]
+    sdict: sax.SDict, input_ports: Sequence[str], output_ports: Sequence[str]
 ) -> jnp.ndarray:
     r"""
     Converts an s-dict to a rectangular S-matrix of shape (f x N x M),
@@ -566,14 +563,13 @@ def resample(x: ArrayLike, xp: ArrayLike, sdict: sax.SDict) -> sax.SDict:
         new_sdict[k] = cs(x)
     return new_sdict
 
+
 def create_multimode_sax_model(models: dict):
-    """
-    This function takes individual s-parameter models or individual modes
+    """This function takes individual s-parameter models or individual modes
     and combines them into the sax-format for multimode models, assuming
-    complete orthogonality of modes (no cross polarization)
-    """
+    complete orthogonality of modes (no cross polarization)"""
     import inspect
- 
+
     # Build the union of parameters across all sub-models so SAX can inspect
     # the signature and forward global settings (e.g. wl) correctly.
     merged_params = {}
@@ -583,7 +579,7 @@ def create_multimode_sax_model(models: dict):
                 continue
             if name not in merged_params:
                 merged_params[name] = param
- 
+
     def multimode_model(**params):
         S_mm = {}
         for mode, model in models.items():
@@ -591,8 +587,8 @@ def create_multimode_sax_model(models: dict):
             for (p1, p2), val in S.items():
                 S_mm[(f"{p1}@{mode}", f"{p2}@{mode}")] = val
         return S_mm
- 
+
     # Replace **params with the merged explicit signature
     multimode_model.__signature__ = inspect.Signature(list(merged_params.values()))
- 
+
     return multimode_model

@@ -1,10 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import sax
 
 from simphony.libraries import siepic
-from simphony.time_domain import QuantumTimeSim
 from simphony.utils import dict_to_matrix
 
 netlist = {

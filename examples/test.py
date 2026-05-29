@@ -1,9 +1,10 @@
 from simphony.circuit.circuit import Circuit
 from simphony.libraries.ideal.photonic_circuits import mzi_lattice_filter
 from simphony.libraries.siepic import grating_coupler
+
 # from simphony.simulation.simulation import SimulationMode
-from simphony.simulation.block_mode import BlockModeSimulationParameters
 from simphony.simulation.sample_mode import SampleModeSimulationParameters
+
 # from simphony.simulation.s_parameter import SParameterSimulationParameters
 from simphony.libraries.ideal.sources import CWLaser
 from simphony.utils import create_multimode_sax_model
@@ -11,7 +12,7 @@ from functools import partial
 
 grating_coupler_models = {
     "TE": partial(grating_coupler, pol="te"),
-    "TM": partial(grating_coupler, pol="tm")
+    "TM": partial(grating_coupler, pol="tm"),
 }
 
 multimode_grating_coupler = create_multimode_sax_model(grating_coupler_models)
@@ -34,7 +35,7 @@ netlist = {
     "ports": {
         # "in": "gc1,o0",
         "gc_out": "gc2,o0",
-    }
+    },
 }
 
 models = {
@@ -44,12 +45,8 @@ models = {
 }
 
 s_parameter_settings = {
-    "lf1": {
-
-    },
-    "lf2": {
-
-    },
+    "lf1": {},
+    "lf2": {},
     "gc1": {
         # "pol": "te",
         "thickness": 230.0,
@@ -64,12 +61,8 @@ s_parameter_settings = {
 
 
 sample_mode_settings = {
-    "lf1": {
-
-    },
-    "lf2": {
-
-    },
+    "lf1": {},
+    "lf2": {},
     "gc1": {
         "sax_settings": {
             # "pol": "te",
@@ -79,7 +72,7 @@ sample_mode_settings = {
         "port_directionality": {
             "o0": "input",
             "o1": "output",
-        }
+        },
     },
     "gc2": {
         # "pol": "tm",
@@ -89,12 +82,8 @@ sample_mode_settings = {
 }
 
 block_mode_settings = {
-    "lf1": {
-
-    },
-    "lf2": {
-
-    },
+    "lf1": {},
+    "lf2": {},
     "gc1": {
         "sax_settings": {
             "pol": "te",
@@ -119,13 +108,22 @@ tracked_ports = {
 }
 
 circuit = Circuit(netlist, models)
-instantiated_circuit = circuit.instantiate(sample_mode_settings, SampleModeSimulationParameters(), tracked_ports=tracked_ports, directed=False)
+instantiated_circuit = circuit.instantiate(
+    sample_mode_settings,
+    SampleModeSimulationParameters(),
+    tracked_ports=tracked_ports,
+    directed=False,
+)
 
 
 instantiated_circuit.display()
 
-from simphony.simulation.sample_mode import SampleModeSimulation, SampleModeSimulationParameters
+from simphony.simulation.sample_mode import (
+    SampleModeSimulation,
+    SampleModeSimulationParameters,
+)
 import jax.numpy as jnp
+
 tracked_ports = {
     "gc1": "gc1,o1",
     "lf1": "lf1,o1",
@@ -133,8 +131,13 @@ tracked_ports = {
 }
 
 circuit = Circuit(netlist, models)
-sample_mode_simulation_parameters = SampleModeSimulationParameters(mode_identifiers=["TE", "TM"], optical_baseband_wavelengths=jnp.array([1.5e-6, 1.55e-6, 1.6e-6]))
-sample_mode_simulation = SampleModeSimulation(circuit, sample_mode_settings, tracked_ports, sample_mode_simulation_parameters)
+sample_mode_simulation_parameters = SampleModeSimulationParameters(
+    mode_identifiers=["TE", "TM"],
+    optical_baseband_wavelengths=jnp.array([1.5e-6, 1.55e-6, 1.6e-6]),
+)
+sample_mode_simulation = SampleModeSimulation(
+    circuit, sample_mode_settings, tracked_ports, sample_mode_simulation_parameters
+)
 sample_mode_simulation.circuit.display()
 sample_mode_simulation_result = sample_mode_simulation.run()
 # from simphony.libraries.ideal.modulators import OpticalModulator

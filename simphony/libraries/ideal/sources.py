@@ -1,25 +1,26 @@
-import jax
-from jax.typing import ArrayLike
-
-from simphony.component.component import SteadyStateComponent
-from simphony.component.component import BlockModeComponent, SampleModeComponent
-from simphony.signal.block_mode import BlockModeOpticalSignal, BlockModeElectricalSignal
-from simphony.signal.steady_state import SteadyStateOpticalSignal, SteadyStateElectricalSignal
-from simphony.signal.sample_mode import SampleModeOpticalSignal
-import jax.numpy as jnp
-import numpy as np # Used to avoid caching issues when generating random numbers
-from typing import Union
-from jaxtyping import Array, Float
-from simphony.simulation.sample_mode import SampleModeSimulationParameters
-from simphony.simulation.block_mode import BlockModeSimulationParameters
-
 # from scipy.ndimage import gaussian_filter1d
 # from scipy.signal import iirdesign
 # from scipy.signal import freqz
 # from scipy.signal import butter, lfilter, cheby1
 from typing import Callable
 
+import jax
+import jax.numpy as jnp
+import numpy as np  # Used to avoid caching issues when generating random numbers
+from jax.typing import ArrayLike
+from jaxtyping import Array, Float
+
+from simphony.component.component import (
+    BlockModeComponent,
+    SampleModeComponent,
+    SteadyStateComponent,
+)
 from simphony.component.port import Port
+from simphony.signal.block_mode import BlockModeElectricalSignal, BlockModeOpticalSignal
+from simphony.signal.sample_mode import SampleModeOpticalSignal
+from simphony.signal.steady_state import SteadyStateElectricalSignal
+from simphony.simulation.block_mode import BlockModeSimulationParameters
+from simphony.simulation.sample_mode import SampleModeSimulationParameters
 from simphony.simulation.simulation import SimulationParameters
 
 # def gaussian_kernel1d(sigma, truncate=4.0):
@@ -33,7 +34,6 @@ from simphony.simulation.simulation import SimulationParameters
 #     kernel = gaussian_kernel1d(sigma, truncate)
 #     return jnp.convolve(x, kernel, mode='same')
 
-import jax.numpy as jnp
 
 # def cubic_interp_1d(x: jnp.ndarray, new_len: int) -> jnp.ndarray:
 #     def catmull_rom(p0, p1, p2, p3, t):
@@ -118,9 +118,9 @@ class OpticalCombSource(SampleModeComponent, BlockModeComponent):
         return jnp.zeros((L,))
 
     def sample_mode_step(self, inputs, state, simulation_state, simulation_parameters):
-        phi = state   # accumulated phase, shape (L,)
-        L   = self.wavelength.shape[0]
-        M   = len(simulation_parameters.mode_identifiers)
+        phi = state  # accumulated phase, shape (L,)
+        L = self.wavelength.shape[0]
+        M = len(simulation_parameters.mode_identifiers)
 
         if self.linewidth == 0.0:
             # CW: constant unit amplitude, phase never changes.
@@ -128,10 +128,11 @@ class OpticalCombSource(SampleModeComponent, BlockModeComponent):
         else:
             # Noisy laser: grow a random-walk phase one step at a time using the
             # per-step PRNG key already provided by the simulator.
-            dt             = simulation_parameters.dt
-            delta_phi_std  = jnp.sqrt(2 * jnp.pi * self.linewidth * dt)
-            dphi           = delta_phi_std * jax.random.normal(
-                                simulation_state.prng_key, shape=(L,))
+            dt = simulation_parameters.dt
+            delta_phi_std = jnp.sqrt(2 * jnp.pi * self.linewidth * dt)
+            dphi = delta_phi_std * jax.random.normal(
+                simulation_state.prng_key, shape=(L,)
+            )
             new_phi = phi + dphi
 
         amplitude = jnp.zeros((L, M), dtype=complex).at[:, 0].set(jnp.exp(1j * new_phi))
@@ -164,28 +165,30 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
     mode_idx:
         Index of the optical mode that receives the source amplitude.
     """
+
     # delay_compensation = 0
     # optical_ports = ["o0"]
     ports = [
         Port(
-            name = "o0",
-            type = "optical",
-            directionality = "output",
+            name="o0",
+            type="optical",
+            directionality="output",
         ),
     ]
+
     def __init__(
         self,
         simulation_parameters,
         wavelength=1.55e-6,
         linewidth=0,
-        lineshape='lorentzian',
-        mode_idx = 0,
+        lineshape="lorentzian",
+        mode_idx=0,
     ):
         self.wavelength = wavelength
         self.linewidth = linewidth
         self.lineshape = lineshape
         self.mode_idx = mode_idx
-        
+
         if self.lineshape.lower() == "lorentzian":
             self.phase_noise = self.lorentzian_phase_noise
             self.sample_mode_step = self.sample_mode_step_lorentzian
@@ -199,30 +202,38 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
             # self.sample_mode_step = self.sample_mode_step_gaussian
             # self.sample_mode_initial_state = self.sample_mode_initial_state_gaussian
         else:
-            raise ValueError(f"Unrecognized name for lineshape parameter: {self.lineshape}")
+            raise ValueError(
+                f"Unrecognized name for lineshape parameter: {self.lineshape}"
+            )
 
     def lorentzian_phase_noise(self, simulation_parameters):
         key = jax.random.PRNGKey(seed=0)
-        delta_phi_std = jnp.sqrt(2*jnp.pi*self.linewidth*simulation_parameters.dt)
-        dphi = jax.random.normal(key, (simulation_parameters.num_time_steps,))*delta_phi_std
+        delta_phi_std = jnp.sqrt(2 * jnp.pi * self.linewidth * simulation_parameters.dt)
+        dphi = (
+            jax.random.normal(key, (simulation_parameters.num_time_steps,))
+            * delta_phi_std
+        )
         phi = jnp.cumsum(dphi)
-        
+
         return phi
-    
-    def sample_mode_step_lorentzian(self, inputs, state, simulation_state, simulation_parameters):
+
+    def sample_mode_step_lorentzian(
+        self, inputs, state, simulation_state, simulation_parameters
+    ):
         phi_prev = state
         key = simulation_state.prng_key
-        delta_phi_std = jnp.sqrt(2*jnp.pi*self.linewidth*simulation_parameters.dt)
-        dphi = jax.random.normal(key)*delta_phi_std
+        delta_phi_std = jnp.sqrt(2 * jnp.pi * self.linewidth * simulation_parameters.dt)
+        dphi = jax.random.normal(key) * delta_phi_std
         phi = dphi + phi_prev
-        
-        A_t = jnp.exp(1j*phi)
-        amplitude = jnp.zeros((1, len(simulation_parameters.mode_identifiers)), dtype=complex)
+
+        A_t = jnp.exp(1j * phi)
+        amplitude = jnp.zeros(
+            (1, len(simulation_parameters.mode_identifiers)), dtype=complex
+        )
         amplitude = amplitude.at[0, self.mode_idx].set(A_t)
         outputs = {
             "o0": SampleModeOpticalSignal(
-                amplitude=amplitude,
-                wavelength=jnp.array([self.wavelength])
+                amplitude=amplitude, wavelength=jnp.array([self.wavelength])
             ),
         }
 
@@ -243,7 +254,7 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
         # }
 
         return outputs, phi
-    
+
     # def gaussian_phase_noise(self, simulation_parameters):
     #     dt_prime = self.gaussian_window_period
     #     dt = simulation_parameters.sampling_period
@@ -260,7 +271,7 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
     #     phi = 2*jnp.pi*np.cumsum(f_instantaneous) * dt_prime
     #     phi = cubic_interp_1d(phi, N)
     #     return phi
-    
+
     # def sample_mode_step_gaussian(self, inputs, state, simulation_parameters):
     #     N = simulation_parameters.num_time_steps
     #     dt = simulation_parameters.sampling_period
@@ -270,101 +281,104 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
     #     iirdesign(sigma, -sigma, )
     #     return ...
 
-    def block_mode_response (
+    def block_mode_response(
         self,
-        inputs: dict={},
+        inputs: dict = {},
         simulation_parameters: BlockModeSimulationParameters = BlockModeSimulationParameters(),
     ):
         N = simulation_parameters.num_time_steps
         sampling_period = simulation_parameters.dt
         t = jnp.arange(N) * sampling_period
         linewidth = self.linewidth
-        
+
         phi = self.phase_noise(simulation_parameters)
 
-
         # Compute complex envelope
-        A_t = jnp.exp(1j*phi)
-        amplitude = jnp.zeros((A_t.shape[0], 1, len(simulation_parameters.mode_identifiers)), dtype=complex)
-        amplitude = amplitude.at[:, 0, self.mode_idx].set(A_t)       
+        A_t = jnp.exp(1j * phi)
+        amplitude = jnp.zeros(
+            (A_t.shape[0], 1, len(simulation_parameters.mode_identifiers)),
+            dtype=complex,
+        )
+        amplitude = amplitude.at[:, 0, self.mode_idx].set(A_t)
 
         outputs = {
             "o0": BlockModeOpticalSignal(
-                amplitude=amplitude,
-                wavelength=jnp.array([self.wavelength])
+                amplitude=amplitude, wavelength=jnp.array([self.wavelength])
             ),
         }
 
         return outputs
-    
+
     def sample_mode_initial_state_gaussian(self, simulation_parameters):
         truncate = 4.0
         radius = int(truncate * self.gaussian_window_sigma + 0.5)
         x = np.arange(-radius, radius + 1)
         g = np.exp(-0.5 * (x / self.gaussian_window_sigma) ** 2)
         g /= g.sum()
-        std_dev = np.sqrt(np.sum(g ** 2))
+        std_dev = np.sqrt(np.sum(g**2))
         return std_dev
-    
+
     def sample_mode_initial_state_lorentzian(self, simulation_parameters):
         phi_prev = 0
         return phi_prev
 
-        
+
 class OpticalSource(SampleModeComponent, BlockModeComponent):
     """Optical source driven by a user-provided envelope.
 
-    The source emits a `BlockModeOpticalSignal` on output port `o0`. Users can
-    either provide a concrete `envelope` or an `envelope_fn` that creates one
-    from the simulation time vector. Exactly one of those options must be
-    supplied.
+    The source emits a `BlockModeOpticalSignal` on output port `o0`.
+    Users can either provide a concrete `envelope` or an `envelope_fn`
+    that creates one from the simulation time vector. Exactly one of
+    those options must be supplied.
 
-    If the envelope length does not match `simulation_parameters.num_time_steps`,
-    it is truncated or padded with zeros so the emitted block has the simulation
-    length.
+    If the envelope length does not match
+    `simulation_parameters.num_time_steps`, it is truncated or padded
+    with zeros so the emitted block has the simulation length.
     """
+
     optical_ports = ["o0"]
 
     def __init__(
-        self, 
+        self,
         simulation_parameters,
         # wavelength = 1.55e-6,
         envelope: BlockModeOpticalSignal = None,
-        envelope_fn: Callable[[Float[Array, "n"]], BlockModeOpticalSignal] = None 
-    ):    
+        envelope_fn: Callable[[Float[Array, "n"]], BlockModeOpticalSignal] = None,
+    ):
         if envelope is not None and envelope_fn is not None:
             raise ValueError("Specify either evelope or envelope_fn, NOT both")
         if envelope is None and envelope_fn is None:
             raise ValueError("Parameter `envelope` or `envelope_fn` must be specified")
-        
+
         # self.wavelength = wavelength
         self.envelope = envelope
         self.envelope_fn = envelope_fn
-    
+
     def _calculate_envelope(self, simulation_parameters):
         N = simulation_parameters.num_time_steps
         dt = simulation_parameters.dt
-        t = jnp.arange(0, N, 1)*dt
+        t = jnp.arange(0, N, 1) * dt
 
         if self.envelope_fn:
             self.envelope = self.envelope_fn(t)
-        
+
         # Make envelope match the number of time steps, by truncating or appending zeros
         amplitude = self.envelope.amplitude
         T, L, M = amplitude.shape
         if amplitude.shape[0] < N:
-            amplitude = jnp.concatenate([amplitude, jnp.zeros((N-T, L, M), dtype=complex)], axis=0)
+            amplitude = jnp.concatenate(
+                [amplitude, jnp.zeros((N - T, L, M), dtype=complex)], axis=0
+            )
         elif amplitude.shape[0] > N:
             amplitude = amplitude[:N, :, :]
 
         # TODO: RETURN, DON'T MUTATE
         self.envelope = BlockModeOpticalSignal(
-            amplitude=amplitude,
-            wavelength=self.envelope.wavelength
+            amplitude=amplitude, wavelength=self.envelope.wavelength
         )
-    
-    def block_mode_response (
-        self, 
+
+    def block_mode_response(
+        self,
         inputs: dict,
         simulation_parameters: BlockModeSimulationParameters,
     ):
@@ -377,15 +391,17 @@ class OpticalSource(SampleModeComponent, BlockModeComponent):
             )
         }
         return outputs
-    
-    def sample_mode_initial_state(self, simulation_parameters: SampleModeSimulationParameters):
+
+    def sample_mode_initial_state(
+        self, simulation_parameters: SampleModeSimulationParameters
+    ):
         self._calculate_envelope(simulation_parameters)
 
         time_step = 0
         return jnp.array(time_step, dtype=int)
 
-    def sample_mode_step (
-        self, 
+    def sample_mode_step(
+        self,
         inputs: dict,
         state,
         simulation_state,
@@ -398,11 +414,12 @@ class OpticalSource(SampleModeComponent, BlockModeComponent):
                 wavelength=self.envelope.wavelength,
             )
         }
-        return outputs, state+1
-    
+        return outputs, state + 1
+
+
 class VoltageSource(
-    SteadyStateComponent, 
-    SampleModeComponent, 
+    SteadyStateComponent,
+    SampleModeComponent,
     BlockModeComponent,
 ):
     """Electrical source for steady-state, sample-mode, and Block mode runs.
@@ -423,6 +440,7 @@ class VoltageSource(
         Constant voltage used for steady-state simulations and as the Block mode
         default when no envelope is supplied.
     """
+
     ports = [
         Port(
             name="e0",
@@ -432,25 +450,24 @@ class VoltageSource(
     ]
 
     def __init__(
-        self, 
+        self,
         simulation_parameters: SimulationParameters,
         *,
         envelope: BlockModeOpticalSignal = None,
         envelope_fn: Callable[[Float[Array, "n"]], BlockModeElectricalSignal] = None,
         steady_state_voltage=1.0,
     ):
-        self.steady_state_voltage=steady_state_voltage
-        
-        
+        self.steady_state_voltage = steady_state_voltage
+
         if envelope is not None and envelope_fn is not None:
             raise ValueError("Specify either evelope or envelope_fn, NOT both")
         # if envelope is None and envelope_fn is None:
         #     raise ValueError("Parameter `envelope` or `envelope_fn` must be specified")
-        
+
         # self.wavelength = wavelength
         self.envelope = envelope
         self.envelope_fn = envelope_fn
-        
+
         # optical_ports = None
         # electrical_ports = ['e0']
         # logic_ports = None
@@ -459,18 +476,20 @@ class VoltageSource(
         #     electrical_ports=electrical_ports,
         #     logic_ports=logic_ports
         # )
-    
+
     def _calculate_envelope(self, simulation_parameters):
         N = simulation_parameters.num_time_steps
         dt = simulation_parameters.dt
-        t = jnp.arange(0, N, 1)*dt
+        t = jnp.arange(0, N, 1) * dt
 
         if self.envelope:
             pass
         elif self.envelope_fn:
             self.envelope = self.envelope_fn(t)
         else:
-            self.envelope = BlockModeElectricalSignal(voltage=np.ones((len(t),), dtype=complex)*self.steady_state_voltage) 
+            self.envelope = BlockModeElectricalSignal(
+                voltage=np.ones((len(t),), dtype=complex) * self.steady_state_voltage
+            )
 
         # Make envelope match the number of time steps, by truncating or appending zeros
         voltage = self.envelope.voltage
@@ -481,36 +500,34 @@ class VoltageSource(
         #     voltage = voltage[:N, :]
 
         return BlockModeElectricalSignal(voltage=voltage)
-    
+
     def steady_state(
-        self, 
+        self,
         inputs: dict,
         simulation_parameters: SimulationParameters,
     ):
-        outputs = {
-            "e0": SteadyStateElectricalSignal(voltage=self.steady_state_voltage)
-        }
+        outputs = {"e0": SteadyStateElectricalSignal(voltage=self.steady_state_voltage)}
         return outputs
 
     def block_mode_response(self, input_signal: ArrayLike, simulation_parameters):
         envelope = self._calculate_envelope(simulation_parameters)
-        outputs = {
-            "e0": envelope
-        }
+        outputs = {"e0": envelope}
         return outputs
-    
-    def sample_mode_step(self, inputs: dict, state: jax.Array, simulation_state, simulation_parameters):
+
+    def sample_mode_step(
+        self, inputs: dict, state: jax.Array, simulation_state, simulation_parameters
+    ):
         # TODO: Complete this to use the signal defined in settings
         return inputs, state
-    
+
     def sample_mode_initial_state(self, simulation_parameters):
         return jnp.array([0])
 
 
 class PRNG(
-    SteadyStateComponent, 
-    # SampleModeComponent, 
-    BlockModeComponent
+    SteadyStateComponent,
+    # SampleModeComponent,
+    BlockModeComponent,
 ):
     logic_ports = ["l0"]
 
@@ -524,18 +541,14 @@ class PRNG(
         #     electrical_ports=electrical_ports,
         #     logic_ports=logic_ports
         # )
-    
+
     @jax.jit
-    def steady_state(self, inputs: dict, default_output: int=0):
-        outputs = {
-            "l0": default_output
-        }
+    def steady_state(self, inputs: dict, default_output: int = 0):
+        outputs = {"l0": default_output}
         return outputs
 
     def block_mode_response(self, inputs: dict, **kwargs):
         pass
-
-
 
 
 # def gaussian_phase_noise(self, simulation_parameters):
@@ -548,15 +561,15 @@ class PRNG(
 #         indices = jnp.round(jnp.linspace(0, M - 1, N)).astype(int)
 #         gaussian_noise = _gaussian_noise[indices]
 #         pass
-        
+
 #         # sigma =  250*( 1e-15 / simulation_parameters.sampling_period)
 #         # # sigma = jnp.minimum(N, sigma)
-        
+
 
 #         # gaussian_noise = jax.random.normal(simulation_parameters.prng_key, shape=(N,))
 #         f_instantaneous = gaussian_filter1d_jax(gaussian_noise, sigma=sigma)
 
-#         # std_dev = jnp.std(f_instantaneous)        
+#         # std_dev = jnp.std(f_instantaneous)
 #         ## We need to determine the scale factor 1/jnp.std(f_instantaneos) a priori ##
 #         sigma_g = sigma
 #         truncate = 4.0
@@ -581,15 +594,15 @@ class PRNG(
 #         # indices = jnp.round(jnp.linspace(0, M - 1, N)).astype(int)
 #         # gaussian_noise = _gaussian_noise[indices]
 #         pass
-        
+
 #         sigma =  500*( 1e-15 / simulation_parameters.sampling_period)
 #         # sigma = jnp.minimum(N, sigma)
-        
+
 
 #         gaussian_noise = jax.random.normal(simulation_parameters.prng_key, shape=(N,))
 #         f_instantaneous = gaussian_filter1d_jax(gaussian_noise, sigma=sigma)
 
-#         # std_dev = jnp.std(f_instantaneous)        
+#         # std_dev = jnp.std(f_instantaneous)
 #         ## We need to determine the scale factor 1/jnp.std(f_instantaneos) a priori ##
 #         sigma_g = sigma
 #         truncate = 4.0

@@ -1,11 +1,8 @@
-from simphony.component.component import SampleModeComponent, BlockModeComponent, SParameterComponent
-from simphony.component.port import Port
-
 # We decided not to overcomplicate the sample mode simulator with this component
 # class OpticalDirectionalityTranslator(SampleModeComponent, BlockModeComponent, SParameterComponent):
 #     """
 #     It may be natural to link a bidirectional port to an input port of one component
-#     and an output port of another. One downside of this approach, is that it requires 
+#     and an output port of another. One downside of this approach, is that it requires
 #     every simphony simulator to update this Component with the appropriate repeator like
 #     functionality.
 #     """

@@ -7,8 +7,7 @@ def gaussian_pulse(t, t0, sigma, a=1.0) -> ArrayLike:
 
 
 def smooth_rectangular_pulse(t, t_start, t_end, width=None):
-    """
-    A useful function for testing time-domain components
+    """A useful function for testing time-domain components.
 
     t = np.linspace(0, 1e-10, 1000)
     pulse = smooth_rectangular_pulse(t, t_start=20e-12, t_end=40e-12)

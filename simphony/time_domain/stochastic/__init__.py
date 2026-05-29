@@ -1,4 +1,5 @@
-"""Stochastic (Gaussian process) simulation backend for time-domain photonic circuits."""
+"""Stochastic (Gaussian process) simulation backend for time-domain photonic
+circuits."""
 
 from simphony.time_domain.stochastic.gaussian_process import (
     autocorrelation_to_covariance,

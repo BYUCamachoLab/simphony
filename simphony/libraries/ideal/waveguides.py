@@ -1,7 +1,4 @@
-from jax.typing import ArrayLike
-
-from simphony.circuit.circuit import SteadyStateComponent, BlockModeComponent
-from simphony.time_domain import SSFM
+from simphony.circuit.circuit import BlockModeComponent, SteadyStateComponent
 
 
 class Waveguide(SteadyStateComponent, BlockModeComponent):

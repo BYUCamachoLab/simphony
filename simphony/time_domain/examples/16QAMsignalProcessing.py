@@ -1,19 +1,15 @@
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
-import sax
 from jax import config
 
 config.update("jax_enable_x64", True)
 
-import platform
 import time
-from math import log2
 
 from simphony.libraries import siepic
 from simphony.time_domain.ideal import Modulator
-from simphony.time_domain.TimeSim import TimeResult, TimeSim
-from simphony.time_domain.utils import gaussian_pulse, smooth_rectangular_pulse
+from simphony.time_domain.TimeSim import TimeSim
 
 T = 20e-11
 dt = 1e-14  # Total time duration (40 ps)
@@ -113,16 +109,15 @@ tic = time.time()
 time_sim.build_model(model_parameters=options)
 toc = time.time()
 build_time = toc - tic
-from math import log2, sqrt
 
 num_symbols = 400  # For example, 40 symbols so that 40*100 = 4000 time steps.
 hold_time = 10  # Hold each symbol for 70 time steps.
 
 
 def generate_16qam_piecewise_linear_signal(T, dt, num_symbols, hold_time):
-    """
-    Generate a 16-QAM signal with piecewise linear transitions where the hold time
-    is specified and the ramp time is calculated so that the overall number of time steps is maintained.
+    """Generate a 16-QAM signal with piecewise linear transitions where the
+    hold time is specified and the ramp time is calculated so that the overall
+    number of time steps is maintained.
 
     Parameters:
       T         : Total duration (s)
@@ -174,9 +169,9 @@ def generate_16qam_piecewise_linear_signal(T, dt, num_symbols, hold_time):
     symbols_Q = np.array(symbols_Q)
 
     def piecewise_linear_hold(symbols, hold_time, ramp_time):
-        """
-        For each pair of symbols, hold the symbol value for 'hold_time' steps,
-        then ramp linearly to the next symbol over 'ramp_time' steps.
+        """For each pair of symbols, hold the symbol value for 'hold_time'
+        steps, then ramp linearly to the next symbol over 'ramp_time' steps.
+
         For the final symbol, hold it for the full period.
         """
         output = []

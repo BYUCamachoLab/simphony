@@ -1,5 +1,5 @@
-"""
-Diagnostic analysis of has_wl_kwarg() in _calculate_state_space_coefficients_from_sax_model.
+"""Diagnostic analysis of has_wl_kwarg() in
+_calculate_state_space_coefficients_from_sax_model.
 
 The function is defined inside _calculate_state_space_coefficients_from_sax_model and
 determines whether a SAX model depends on wavelength. If it returns False the caller
@@ -12,21 +12,24 @@ by gaussian_process_s_parameter — to find exactly where it returns False incor
 """
 
 import sys
-sys.path.insert(0, '.')
 
-import inspect
+sys.path.insert(0, ".")
+
 import functools
+import inspect
+
 import sax
 from jax import config
+
 config.update("jax_enable_x64", True)
 
-from simphony.libraries.old_ideal import coupler, waveguide
 from simphony.libraries.ideal.s_parameters import _get_filtered_sax_model
-
+from simphony.libraries.old_ideal import coupler, waveguide
 
 # ---------------------------------------------------------------------------
 # Verbatim copy of has_wl_kwarg from s_parameters.py (line 996)
 # ---------------------------------------------------------------------------
+
 
 def has_wl_kwarg(model):
     sig = inspect.signature(model)
@@ -47,6 +50,7 @@ def has_wl_kwarg(model):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def report(label, model):
     sig = inspect.signature(model)
@@ -72,7 +76,9 @@ def report(label, model):
     print(f"  has **kwargs : {has_var_kw}")
     if has_var_kw:
         print(f"  **kwargs accepts wl=0.0 : {var_kw_accepts_wl}")
-    print(f"  >>> has_wl_kwarg() returns : {result}  {'✓' if result else '✗ WRONG — will be treated as constant!'}")
+    print(
+        f"  >>> has_wl_kwarg() returns : {result}  {'✓' if result else '✗ WRONG — will be treated as constant!'}"
+    )
     return result
 
 
@@ -80,9 +86,9 @@ def report(label, model):
 # 1. Baseline: raw model functions
 # ---------------------------------------------------------------------------
 
-print("\n" + "#"*60)
+print("\n" + "#" * 60)
 print("# 1. Raw SAX model functions")
-print("#"*60)
+print("#" * 60)
 
 report("waveguide (raw)", waveguide)
 report("coupler   (raw)", coupler)
@@ -92,9 +98,9 @@ report("coupler   (raw)", coupler)
 # 2. SAX circuit composed from raw models
 # ---------------------------------------------------------------------------
 
-print("\n" + "#"*60)
+print("\n" + "#" * 60)
 print("# 2. sax.circuit() output")
-print("#"*60)
+print("#" * 60)
 
 ring_netlist = {
     "instances": {"wg": "waveguide", "dc": "dc"},
@@ -113,9 +119,9 @@ report("ring_sax  (sax.circuit output)", ring_sax)
 # 3. _get_filtered_sax_model wrapper
 # ---------------------------------------------------------------------------
 
-print("\n" + "#"*60)
+print("\n" + "#" * 60)
 print("# 3. _get_filtered_sax_model() wrapper")
-print("#"*60)
+print("#" * 60)
 
 port_directionality = {"o0": "input", "o1": "output"}
 default_modes = ("TE", "TM")
@@ -134,7 +140,7 @@ print(f"  filtered  signature : {sig_filt}")
 # Show __wrapped__ chain if present
 obj = filtered
 depth = 0
-while hasattr(obj, '__wrapped__'):
+while hasattr(obj, "__wrapped__"):
     depth += 1
     print(f"  __wrapped__ depth {depth}: {obj.__wrapped__}")
     obj = obj.__wrapped__
@@ -150,9 +156,9 @@ print(f"  filtered.__wrapped__ : {getattr(filtered, '__wrapped__', 'N/A')}")
 # 4. Probe calling behaviour of the filtered model
 # ---------------------------------------------------------------------------
 
-print("\n" + "#"*60)
+print("\n" + "#" * 60)
 print("# 4. Calling behaviour of filtered model")
-print("#"*60)
+print("#" * 60)
 
 # Does it accept wl=0.0?
 try:
@@ -177,9 +183,9 @@ except Exception as e:
 # 5. Root cause: what inspect.signature sees for functools.wraps
 # ---------------------------------------------------------------------------
 
-print("\n" + "#"*60)
+print("\n" + "#" * 60)
 print("# 5. Root-cause analysis: inspect.signature vs functools.wraps")
-print("#"*60)
+print("#" * 60)
 
 # _get_filtered_sax_model uses @functools.wraps(sax_model) which copies
 # sax_model's __wrapped__ attribute. inspect.signature follows __wrapped__
@@ -192,28 +198,39 @@ print(f"  follow_wrapped=True  : {sig_follow}")
 print(f"  follow_wrapped=False : {sig_nofollow}")
 
 print("\nConclusion:")
-has_wl_follow   = "wl" in sig_follow.parameters
+has_wl_follow = "wl" in sig_follow.parameters
 has_wl_nofollow = "wl" in sig_nofollow.parameters
-has_var_kw_follow   = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig_follow.parameters.values())
-has_var_kw_nofollow = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig_nofollow.parameters.values())
-print(f"  follow=True  → 'wl' in params: {has_wl_follow},  **kwargs: {has_var_kw_follow}")
-print(f"  follow=False → 'wl' in params: {has_wl_nofollow}, **kwargs: {has_var_kw_nofollow}")
+has_var_kw_follow = any(
+    p.kind == inspect.Parameter.VAR_KEYWORD for p in sig_follow.parameters.values()
+)
+has_var_kw_nofollow = any(
+    p.kind == inspect.Parameter.VAR_KEYWORD for p in sig_nofollow.parameters.values()
+)
+print(
+    f"  follow=True  → 'wl' in params: {has_wl_follow},  **kwargs: {has_var_kw_follow}"
+)
+print(
+    f"  follow=False → 'wl' in params: {has_wl_nofollow}, **kwargs: {has_var_kw_nofollow}"
+)
 
 
 # ---------------------------------------------------------------------------
 # 6. Reproduce with a minimal stand-alone example
 # ---------------------------------------------------------------------------
 
-print("\n" + "#"*60)
+print("\n" + "#" * 60)
 print("# 6. Minimal reproduction")
-print("#"*60)
+print("#" * 60)
+
 
 def inner(wl=1.55, length=10.0):
     return {"result": wl * length}
 
+
 @functools.wraps(inner)
 def outer(**kwargs):
     return inner(**kwargs)
+
 
 print(f"  inner sig: {inspect.signature(inner)}")
 print(f"  outer sig: {inspect.signature(outer)}")
@@ -227,11 +244,13 @@ print("  sets __wrapped__ = ring_sax. inspect.signature follows __wrapped__")
 print("  and returns ring_sax's signature — which should have 'wl'.")
 print()
 
+
 # Now reproduce what _get_filtered_sax_model does exactly
 @functools.wraps(ring_sax)
 def filtered_manual(*args, **kwargs):
     sdict = ring_sax(*args, **kwargs)
     return {k: v for k, v in sdict.items()}
+
 
 # Override signature explicitly (as _get_filtered_sax_model does)
 filtered_manual.__signature__ = inspect.signature(ring_sax)
@@ -244,9 +263,9 @@ print(f"  has_wl_kwarg(filtered_manual) = {has_wl_kwarg(filtered_manual)}")
 # 7. The exact _get_filtered_sax_model implementation
 # ---------------------------------------------------------------------------
 
-print("\n" + "#"*60)
+print("\n" + "#" * 60)
 print("# 7. Does _get_filtered_sax_model set __signature__ explicitly?")
-print("#"*60)
+print("#" * 60)
 
 print(f"  filtered.__signature__ attr: {getattr(filtered, '__signature__', 'NOT SET')}")
 print()
@@ -255,12 +274,14 @@ print("  If __signature__ is set, it returns that and ignores __wrapped__.")
 print()
 
 # So the question is: what is filtered.__signature__?
-sig_explicit = getattr(filtered, '__signature__', None)
+sig_explicit = getattr(filtered, "__signature__", None)
 if sig_explicit is not None:
     print(f"  __signature__ is SET to: {sig_explicit}")
     print(f"  'wl' in __signature__.parameters: {'wl' in sig_explicit.parameters}")
-    has_var_kw = any(p.kind == inspect.Parameter.VAR_KEYWORD
-                     for p in sig_explicit.parameters.values())
+    has_var_kw = any(
+        p.kind == inspect.Parameter.VAR_KEYWORD
+        for p in sig_explicit.parameters.values()
+    )
     print(f"  **kwargs in __signature__: {has_var_kw}")
 else:
     print("  __signature__ is NOT explicitly set.")
@@ -270,14 +291,16 @@ else:
 # 8. Summary
 # ---------------------------------------------------------------------------
 
-print("\n" + "#"*60)
+print("\n" + "#" * 60)
 print("# 8. SUMMARY OF ROOT CAUSE")
-print("#"*60)
+print("#" * 60)
 print()
 sig_used = inspect.signature(filtered)
 params_used = sig_used.parameters
 has_wl_final = "wl" in params_used
-has_var_kw_final = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params_used.values())
+has_var_kw_final = any(
+    p.kind == inspect.Parameter.VAR_KEYWORD for p in params_used.values()
+)
 
 print(f"  inspect.signature(filtered) = {sig_used}")
 print(f"  'wl' in parameters          = {has_wl_final}")

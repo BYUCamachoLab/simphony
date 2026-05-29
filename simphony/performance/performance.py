@@ -1,25 +1,27 @@
 # TODO: Turn this directory into a proper module
-import importlib.resources as pkg_resources
-
-import numpy as np
-import jax.numpy as jnp
 import hashlib
-
+import importlib.resources as pkg_resources
 import os
-
 import pickle
+
+import jax.numpy as jnp
+import numpy as np
 
 # TODO: Add a global cache directory and logic for where to look
 
 LOCAL_CACHE_DIR = "./.simphony_cache/vector_fitting_cache"
 # GLOBAL_CACHE_DIR = ... # IS there any way that you can make this in the python module folder?
 # Replace 'your_package_name' with your actual package
-GLOBAL_CACHE_DIR = pkg_resources.files("simphony") / "performance" / "vector_fitting_cache"
+GLOBAL_CACHE_DIR = (
+    pkg_resources.files("simphony") / "performance" / "vector_fitting_cache"
+)
 os.makedirs(LOCAL_CACHE_DIR, exist_ok=True)
 CACHE_VERSION = "v1"
 
+
 def is_array(x):
     return isinstance(x, (np.ndarray, jnp.ndarray))
+
 
 def hash_array(arr):
     arr = np.asarray(arr)
@@ -30,6 +32,7 @@ def hash_array(arr):
     h.update(str(arr.dtype).encode())
 
     return h.hexdigest()
+
 
 def make_cache_key(*args, **kwargs):
     key_parts = []
@@ -50,11 +53,11 @@ def make_cache_key(*args, **kwargs):
             key_parts.append((k, "value", v))
 
     return tuple(key_parts)
+
+
 def hash_key(key_tuple):
-    return hashlib.blake2b(
-        str(key_tuple).encode(),
-        digest_size=16
-    ).hexdigest()
+    return hashlib.blake2b(str(key_tuple).encode(), digest_size=16).hexdigest()
+
 
 def persistent_cache(func):
     def wrapper(*args, **kwargs):
@@ -109,6 +112,7 @@ def persistent_cache(func):
         return result
 
     return wrapper
+
 
 # def persistent_cache(func):
 #     def wrapper(*args, **kwargs):
@@ -222,12 +226,12 @@ def persistent_cache(func):
 #     def wrapper(*args, **kwargs):
 #         save_global = kwargs.pop("save_global", True)
 #         # Now look
-        
+
 #         use_cache = kwargs.pop("use_cache", True)
 
 #         if not use_cache:
 #             return func(*args, **kwargs)
-        
+
 #         key_tuple = make_cache_key(*args, **kwargs)
 #         key = hash_key(key_tuple)
 
@@ -249,5 +253,3 @@ def persistent_cache(func):
 #         return result
 
 #     return wrapper
-
-

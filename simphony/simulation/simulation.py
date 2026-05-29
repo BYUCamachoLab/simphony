@@ -2,33 +2,32 @@
 
 from __future__ import annotations
 
-# import inspect
+from copy import deepcopy
+from dataclasses import field
+from enum import StrEnum
 
 import jax.numpy as jnp
+from flax import struct
 from jax.typing import ArrayLike
+from sax import DEFAULT_MODES
 from sax.saxtypes import Model
+
+# import inspect
 
 
 # from typing import TYPE_CHECKING
 # if TYPE_CHECKING:
 #     from simphony.circuit import Circuit
 
-from copy import deepcopy
-import jax 
-
-from flax import struct
-from dataclasses import field
-
-from sax import DEFAULT_MODES
-
-from enum import StrEnum
 
 class SimulationMode(StrEnum):
     """Names for supported simulator execution modes.
 
-    PCells and component factories use this enum to choose simulator-specific
-    internal designs without importing individual simulator classes.
+    PCells and component factories use this enum to choose simulator-
+    specific internal designs without importing individual simulator
+    classes.
     """
+
     S_PARAMETER = "s_parameter"
     SAMPLE_MODE = "sample_mode"
     BLOCK_MODE = "block_mode"
@@ -39,12 +38,14 @@ class SimulationMode(StrEnum):
     # TRANSIENT_SAMPLE = "transient_sample"
     # TRANSIENT_BLOCK = "transient_block"
 
+
 class SimDevice:
     """Base class for all source or measure devices."""
 
     # TODO: Add bandwidth option to classical
     def __init__(self, ports: list) -> None:
         self.ports = ports
+
 
 @struct.dataclass
 class SimulationParameters:
@@ -64,6 +65,7 @@ class SimulationParameters:
     seed:
         Integer seed used by simulations/components that create PRNG keys.
     """
+
     # def __init__(
     #     self,
     simulation_mode: SimulationMode = None
@@ -74,7 +76,7 @@ class SimulationParameters:
     # prng_key: Annotated[jax.Array, "shape=(2,), dtype=jax.uint32"]=field(default_factory=lambda: jax.random.PRNGKey(0))
     mode_identifiers: list = field(default_factory=lambda: DEFAULT_MODES)
     seed = 0
-    
+
     # prng_key: Annotated[jax.Array, "shape=(2,), dtype=jax.uint32"]=jax.random.key(0)
     # ):
     #     super().__setattr__('_locked', False)
@@ -86,6 +88,7 @@ class SimulationParameters:
     #         self.prng_key = jax.random.key(0)
     #     super().__setattr__('_locked', True)
 
+
 class Simulation:
     """Base class for Simphony simulation drivers."""
 
@@ -96,19 +99,19 @@ class Simulation:
     def run(self):
         """Run the simulation."""
         raise NotImplementedError
-    
+
     def _instantiate_components(self, settings):
         self.components = {}
         for instance_name in self.circuit.graph.nodes:
-            model_name = self.circuit.netlist['instances'][instance_name]['component']
+            model_name = self.circuit.netlist["instances"][instance_name]["component"]
             model = self.circuit.models[model_name]
             component_settings = settings[instance_name]
             self.components[instance_name] = model(**component_settings)
-    
+
     def _clear_settings(self):
         self.settings = {}
         for instance in self.circuit.graph.nodes:
-                self.settings[instance] = {}
+            self.settings[instance] = {}
 
     def reset_settings(self, use_default_settings: bool = True):
         """Reset per-instance settings.
@@ -129,8 +132,8 @@ class Simulation:
     def add_settings(self, settings: dict):
         """Merge additional per-instance settings into the simulation.
 
-        `settings` is keyed by instance name. Values are shallow-merged into the
-        current settings for each instance.
+        `settings` is keyed by instance name. Values are shallow-merged
+        into the current settings for each instance.
         """
         for instance, instance_settings in settings.items():
             self.settings[instance].update(instance_settings)

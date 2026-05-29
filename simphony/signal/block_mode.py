@@ -1,12 +1,10 @@
-from flax import struct
 import jax.numpy as jnp
-from typing import Union
+from flax import struct
 
 
 @struct.dataclass
 class BlockModeOpticalSignal:
-    """
-    Optical signal in block mode.
+    """Optical signal in block mode.
 
     amplitude: complex valued jnp.ndarray of shape (T, L, M)
         - T: time steps
@@ -16,21 +14,25 @@ class BlockModeOpticalSignal:
     wavelength: float valued jnp.ndarray of shape (L,)
         - Wavelengths corresponding to the second axis of amplitude
     """
-    amplitude: jnp.ndarray    # shape:(T, L, M) where T is number of time steps, L is number of wavelengths, and M is the number of modes
-    wavelength: jnp.ndarray       # shape: (L,)
+
+    amplitude: jnp.ndarray  # shape:(T, L, M) where T is number of time steps, L is number of wavelengths, and M is the number of modes
+    wavelength: jnp.ndarray  # shape: (L,)
+
 
 @struct.dataclass
 class BlockModeElectricalSignal:
-    """
-    Electrical signal in block mode
+    """Electrical signal in block mode.
 
     voltage: float valued jnp.ndaray of shap(T, ) where T is the number of time steps
     """
-    voltage: jnp.ndarray 
+
+    voltage: jnp.ndarray
+
 
 @struct.dataclass
 class BlockModeLogicSignal:
-    value: jnp.ndarray # shape:(T,) where T is the number of time steps
+    value: jnp.ndarray  # shape:(T,) where T is the number of time steps
+
 
 # def block_mode_optical_signal(
 #     field: Union[float, complex, list, jnp.ndarray] = 0.0 + 0.0j,
@@ -77,7 +79,7 @@ class BlockModeLogicSignal:
 #         elif isinstance(signal, BlockModeElectricalSignal):
 #             electrical_wls.append(signal.wl)
 #             # num_wls_per_port[port] = signal.wl.shape[0]
-    
+
 #     optical_wls = jnp.unique(jnp.concatenate(optical_wls))
 #     electrical_wls = jnp.unique(jnp.concatenate(electrical_wls))
 #     for port, signal in inputs.items():
@@ -112,4 +114,3 @@ class BlockModeLogicSignal:
 #         wl = wl[sort_idx]
 #         voltage = voltage[sort_idx]
 #         return BlockModeElectricalSignal(voltage=voltage, wl=wl)
-

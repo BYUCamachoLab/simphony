@@ -1,12 +1,10 @@
-from flax import struct
 import jax.numpy as jnp
-from typing import Union
+from flax import struct
 
 
 @struct.dataclass
 class SampleModeOpticalSignal:
-    """
-    Optical signal in sample mode.
+    """Optical signal in sample mode.
 
     amplitude: jnp.ndarray of shape (L, M)
         - L: number of carrier wavelengths
@@ -15,16 +13,20 @@ class SampleModeOpticalSignal:
     wavelength: jnp.ndarray of shape (L,)
         - Wavelengths corresponding to the second axis of amplitude
     """
-    amplitude: jnp.ndarray    # shape: (L,M) where L is number of wavelengths, M is the number of modes
-    wavelength: jnp.ndarray       # shape: (L,), corresponding wavelengths
+
+    amplitude: jnp.ndarray  # shape: (L,M) where L is number of wavelengths, M is the number of modes
+    wavelength: jnp.ndarray  # shape: (L,), corresponding wavelengths
+
 
 @struct.dataclass
 class SampleModeElectricalSignal:
-    voltage: float # TODO: Determine whether making this a float and not a jax array is appropriate
-    
+    voltage: float  # TODO: Determine whether making this a float and not a jax array is appropriate
+
+
 @struct.dataclass
 class SampleModeLogicSignal:
     value: jnp.ndarray
+
 
 # def sample_mode_optical_signal(
 #     field: Union[float, complex, list, jnp.ndarray] = 0.0 + 0.0j,
@@ -70,7 +72,7 @@ class SampleModeLogicSignal:
 #         elif isinstance(signal, SampleModeElectricalSignal):
 #             electrical_wls.append(signal.wl)
 #             # num_wls_per_port[port] = signal.wl.shape[0]
-    
+
 #     optical_wls = jnp.unique(jnp.concatenate(optical_wls))
 #     electrical_wls = jnp.unique(jnp.concatenate(electrical_wls))
 #     for port, signal in inputs.items():
@@ -105,7 +107,3 @@ class SampleModeLogicSignal:
 #         wl = wl[sort_idx]
 #         voltage = voltage[sort_idx]
 #         return SampleModeElectricalSignal(voltage=voltage, wl=wl)
-
-
-
-

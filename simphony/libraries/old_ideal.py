@@ -136,10 +136,8 @@ def MultiModeInterferometer(
     r: int = 2,
     s: int = 2,
 ) -> sax.SDict:
-    """
-    Return the S-dictionary for an r×s Multimode Interference coupler,
-    at reduced self-imaging length, with optional uniform loss.
-    """
+    """Return the S-dictionary for an r×s Multimode Interference coupler, at
+    reduced self-imaging length, with optional uniform loss."""
 
     # total ports
     N_size = r + s
@@ -183,9 +181,8 @@ def make_mmi_model(
     default_length: float = 10.0,
     default_loss: float = 0.0,
 ):
-    """
-    Factory that returns an MMI_model(recipient of no-args or wl/length/loss).
-    """
+    """Factory that returns an MMI_model(recipient of no-args or
+    wl/length/loss)."""
 
     def MMI_model(
         *,

@@ -1,6 +1,5 @@
 class Port:
-    """
-    Represents a port on a component.
+    """Represents a port on a component.
 
     Attributes:
         name (str): The name of the port.
@@ -11,18 +10,18 @@ class Port:
     """
 
     def __init__(
-        self, 
-        name: str, 
-        directionality: str = "bidirectional", 
+        self,
+        name: str,
+        directionality: str = "bidirectional",
         type: str = "optical",
-        position: str = None, 
-        location: float = None
+        position: str = None,
+        location: float = None,
     ):
         self.name = name
         self.type = type
         self.directionality = directionality
         self.position = position
         self.location = location
-    
+
     def __repr__(self):
         return f"<Port {self.name!r} ({self.type}, {self.directionality})>"

@@ -1,21 +1,16 @@
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import numpy as np
-import sax
 from jax import config
 
 config.update("jax_enable_x64", True)
-import pickle
-import time
 
-from scipy import signal
 
 from simphony.libraries import siepic
 from simphony.time_domain.ideal import Modulator
-from simphony.time_domain.pole_residue_model import BVF_Options, IIRModelBaseband
-from simphony.time_domain.simulation import TimeResult, TimeSim
-from simphony.time_domain.utils import gaussian_pulse, smooth_rectangular_pulse
-from simphony.utils import SPEED_OF_LIGHT, dict_to_matrix
+from simphony.time_domain.simulation import TimeSim
+from simphony.time_domain.utils import smooth_rectangular_pulse
+from simphony.utils import SPEED_OF_LIGHT
+
 # Simulation parameters
 T = 100e-11
 dt = 1e-14  # Time step (Total time duration is T)
@@ -49,10 +44,9 @@ netlist = {
         "wg4": "waveguide",
         "wg5": "waveguide",
         "wg6": "waveguide",
-       
     },
     "connections": {
-    #    "wg1,o1": " wg2,o0",
+        #    "wg1,o1": " wg2,o0",
         # "wg2,o1": "wg3,o0",
         # "wg3,o1": "wg4,o0",
         # "wg4,o1": "wg5,o0",
@@ -87,12 +81,17 @@ time_sim = TimeSim(
     models=models,
     settings=options,
 )
-result = time_sim.run(t, {
-    "o0": smooth_rectangular_pulse(t, 0.0, T+ 20.0e-11),
-    "o1" : jnp.zeros_like(t),
-}, carrier_freq=SPEED_OF_LIGHT/(center_wvl*1e-6), dt=dt)
+result = time_sim.run(
+    t,
+    {
+        "o0": smooth_rectangular_pulse(t, 0.0, T + 20.0e-11),
+        "o1": jnp.zeros_like(t),
+    },
+    carrier_freq=SPEED_OF_LIGHT / (center_wvl * 1e-6),
+    dt=dt,
+)
 
-result.plot_sim()   
+result.plot_sim()
 
 # circuit, _ = sax.circuit(
 #                             netlist=netlist,
@@ -111,14 +110,14 @@ result.plot_sim()
 # sorted_ports = sorted(netlist["ports"].keys(), key=lambda p: int(p.lstrip('o')))
 # freqs_hz = SPEED_OF_LIGHT / (wvl * 1e-6)    # wvl was in μm → convert to m
 
-# omega = 2 * np.pi * freqs_hz   
+# omega = 2 * np.pi * freqs_hz
 # idx         = np.argsort(omega)
 # omega_s     = omega[idx]
 # group_delay = -np.gradient(np.unwrap(np.angle(s_matrix[:, 0, 1])),omega_s)
 # plt.plot(wvl, group_delay*1e12)              # convert s → ps
 # plt.xlabel("Angular frequency ω (rad/s)")
 # plt.ylabel("Group delay")
-# plt.show() 
+# plt.show()
 # iir_model = IIRModelBaseband(
 #     wvl, center_wvl, s_matrix,order = 80, options=bvf_options
 # )
@@ -126,7 +125,7 @@ result.plot_sim()
 # poles = iir_model.poles
 # residues = iir_model.residues
 # D = iir_model.D
-# Ω = 2*np.pi * freqs / sampling_freq   
+# Ω = 2*np.pi * freqs / sampling_freq
 
 # z = np.exp(1j * Ω)
 
@@ -161,5 +160,3 @@ result.plot_sim()
 # plt.axis('equal')
 # plt.grid(True, ls='--', alpha=0.5)
 # plt.show()
-
-

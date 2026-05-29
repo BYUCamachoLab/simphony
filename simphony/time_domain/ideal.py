@@ -4,7 +4,6 @@ from queue import Queue
 
 import jax.numpy as jnp
 import numpy as np
-import sax
 from jax.typing import ArrayLike
 
 import simphony.libraries.ideal as fd
@@ -13,7 +12,7 @@ from simphony.time_domain.time_system import (
     SampleModeComponent,
     TimeSystem,
 )
-from simphony.utils import dict_to_matrix, mul_polar
+from simphony.utils import dict_to_matrix
 
 
 class TimeCoupler(TimeSystem):
@@ -29,7 +28,6 @@ class TimeCoupler(TimeSystem):
         )
         self.num_ports = 4
         self.ports = ["o0", "o1", "o2", "o3"]
-        pass
 
     def response(self, inputs: dict) -> dict:
         N = inputs["o0"].shape
@@ -328,7 +326,6 @@ class MMI(TimeSystem):
         self.s_dict_time = S
 
     def response(self, inputs: dict) -> dict:
-
         response = {}
         N = len(self.ports)
         for j, port in enumerate(self.ports):

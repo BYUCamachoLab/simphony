@@ -1,24 +1,25 @@
 """Gaussian process simulation for photonic circuits.
 
-Mirrors BlockModeSimulation but propagates GaussianProcessOpticalSignal objects
-(mean + covariance) instead of BlockModeOpticalSignal objects (mean only).
+Mirrors BlockModeSimulation but propagates GaussianProcessOpticalSignal
+objects (mean + covariance) instead of BlockModeOpticalSignal objects
+(mean only).
 """
 
 from __future__ import annotations
 
+from dataclasses import field
+
 import jax
 import jax.numpy as jnp
 import networkx as nx
-from copy import deepcopy
-from dataclasses import field
 from flax import struct
 
 from simphony.circuit.circuit import Circuit
 from simphony.simulation.simulation import (
     Simulation,
-    SimulationResult,
-    SimulationParameters,
     SimulationMode,
+    SimulationParameters,
+    SimulationResult,
 )
 
 
@@ -118,10 +119,9 @@ class GaussianProcessSimulation(Simulation):
         for instance_name in order:
             self._collect_component_inputs(instance_name)
             inputs = self.component_inputs[instance_name]
-            component = (
-                self._instantiated_circuit
-                .instantiated_flat_netlist['instances'][instance_name]['model']
-            )
+            component = self._instantiated_circuit.instantiated_flat_netlist[
+                "instances"
+            ][instance_name]["model"]
             outputs = component._gaussian_process_mode_response(
                 inputs, self.simulation_parameters
             )
@@ -129,18 +129,19 @@ class GaussianProcessSimulation(Simulation):
 
         input_signals: dict = {}
         output_signals: dict = {}
-        for tracked_name, designator in (
-            self._instantiated_circuit.port_lookup_table.items()
-        ):
+        for (
+            tracked_name,
+            designator,
+        ) in self._instantiated_circuit.port_lookup_table.items():
             instance_name, port_name = designator.split(",")
             if port_name in self.component_inputs.get(instance_name, {}):
-                input_signals[tracked_name] = (
-                    self.component_inputs[instance_name][port_name]
-                )
+                input_signals[tracked_name] = self.component_inputs[instance_name][
+                    port_name
+                ]
             if port_name in self.component_outputs.get(instance_name, {}):
-                output_signals[tracked_name] = (
-                    self.component_outputs[instance_name][port_name]
-                )
+                output_signals[tracked_name] = self.component_outputs[instance_name][
+                    port_name
+                ]
 
         return GaussianProcessSimulationResult(input_signals, output_signals)
 
@@ -153,9 +154,9 @@ class GaussianProcessSimulation(Simulation):
                 upstream, component
             )
             for _, edge in edge_data.items():
-                inputs[edge['dst_port']] = (
-                    self.component_outputs[upstream][edge['src_port']]
-                )
+                inputs[edge["dst_port"]] = self.component_outputs[upstream][
+                    edge["src_port"]
+                ]
         self.component_inputs[component] = inputs
 
     def _determine_gaussian_process_order(self, instantiated_circuit) -> list:

@@ -1,20 +1,10 @@
-import jax.numpy as jnp
-import matplotlib.pyplot as plt
-import numpy as np
-import sax
 from jax import config
 
 config.update("jax_enable_x64", True)
 
-from simphony.libraries import ideal, siepic
-from simphony.time_domain.pole_residue_model import IIRModelBaseband
-from simphony.time_domain.utils import gaussian_pulse, pole_residue_to_time_system
-
 
 def remove_active_connections(connections, active_components):
-    """
-    Remove all connections that involve any active component.
-    """
+    """Remove all connections that involve any active component."""
     filtered_connections = {}
     for k, v in connections.items():
         compA, portA = k.split(",")
@@ -30,9 +20,7 @@ def remove_active_connections(connections, active_components):
 
 
 def remove_active_ports(ports, active_components):
-    """
-    Remove ports that connect to active components.
-    """
+    """Remove ports that connect to active components."""
     filtered_ports = {}
     for port_label, comp_port_str in ports.items():
         comp, cport = comp_port_str.split(",")
@@ -42,12 +30,12 @@ def remove_active_ports(ports, active_components):
 
 
 def build_graph(connections, directed=False):
-    """
-    Build an adjacency list from the netlist connections.
-    Each (component, port) pair is treated as a graph node.
+    """Build an adjacency list from the netlist connections. Each (component,
+    port) pair is treated as a graph node.
 
-    If directed=False, each connection is stored as two directed edges (A->B, B->A).
-    If directed=True, only the forward direction is stored.
+    If directed=False, each connection is stored as two directed edges
+    (A->B, B->A). If directed=True, only the forward direction is
+    stored.
     """
     graph = {}
 
@@ -73,10 +61,10 @@ def build_graph(connections, directed=False):
 
 
 def tarjan_scc(graph):
-    """
-    Tarjan's SCC algorithm.
-    Returns a list of strongly connected components (SCCs),
-    where each SCC is a list of nodes [(comp, port), ...].
+    """Tarjan's SCC algorithm.
+
+    Returns a list of strongly connected components (SCCs), where each
+    SCC is a list of nodes [(comp, port), ...].
     """
     index_counter = [0]  # mutable counter
     stack = []
@@ -125,12 +113,9 @@ def tarjan_scc(graph):
 def find_sccs_for_passive_subnets(
     instances, connections, ports, active_components, directed=False
 ):
-    """
-    Main function that orchestrates:
-      1) Removal of active-component connections
-      2) Graph construction
-      3) Tarjan's SCC search
-      4) Grouping the results by component (optional)
+    """Main function that orchestrates: 1) Removal of active-component
+    connections 2) Graph construction 3) Tarjan's SCC search 4) Grouping the
+    results by component (optional)
 
     Returns:
       A list of sets, each set containing the (passive) components

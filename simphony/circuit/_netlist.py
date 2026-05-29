@@ -1,17 +1,19 @@
+"""_netlist module provides functionality for netlists that do not contain sax
+models.
+
+Really this module is only here to allow
+simphony.libraries.ideal.s_parameter access to this functionality, while
+still allowing simphony.libraries.ideal.s_parameter to be used in the
+public simphony.circuit.netlist module
 """
-_netlist module provides functionality for netlists that do not contain sax models.
-Really this module is only here to allow simphony.libraries.ideal.s_parameter access to this functionality,
-while still allowing simphony.libraries.ideal.s_parameter to be used in the public simphony.circuit.netlist module
-"""
-from sax import AnyNetlist, InstanceName, Ports, Connections, Models
-import sax
-from typing import TypeAlias, TypedDict
-from simphony.component.component import Component
-from typing_extensions import NotRequired
-import networkx as nx
-import jax.numpy as jnp
-import yaml
 from copy import deepcopy
+from typing import TypeAlias, TypedDict
+
+import sax
+from sax import Connections, InstanceName, Ports
+from typing_extensions import NotRequired
+
+from simphony.component.component import Component
 from simphony.component.pcell import PCell
 from simphony.simulation.simulation import SimulationParameters
 
@@ -20,16 +22,19 @@ ElaboratedInstances: TypeAlias = dict[InstanceName, Component]
 """A mapping from instance names to their instantiated component model."""
 
 InstantiatedFlatNetlist = TypedDict(
-        "Netlist",
-        {
-            "instances": ElaboratedInstances,
-            "connections": NotRequired[Connections], # TODO: Add simphony type for connections, since ours are more general
-            "ports": Ports,
-            # "nets": NotRequired[Nets],
-            # "placements": NotRequired[Placements],
-            # "settings": NotRequired[Settings],
-        },
-    )
+    "Netlist",
+    {
+        "instances": ElaboratedInstances,
+        "connections": NotRequired[
+            Connections
+        ],  # TODO: Add simphony type for connections, since ours are more general
+        "ports": Ports,
+        # "nets": NotRequired[Nets],
+        # "placements": NotRequired[Placements],
+        # "settings": NotRequired[Settings],
+    },
+)
+
 
 # TODO: Fix the order of arguments so that SimulationParameters is first
 def _instantiate_netlist(
@@ -40,9 +45,9 @@ def _instantiate_netlist(
     # directed: bool,
     # default_modes: tuple,
     # external_connections: dict = None
-)->InstantiatedFlatNetlist:
-    """
-    Generated instantiated netlist from netlist which does not contain sax models
+) -> InstantiatedFlatNetlist:
+    """Generated instantiated netlist from netlist which does not contain sax
+    models.
 
     TODO: if directed is true, implement simple rules to convert bidirectional components to directional ones
     Raise an error if the netlist is cyclic
@@ -51,7 +56,9 @@ def _instantiate_netlist(
     instantiated_recursive_netlist = sax.netlist(deepcopy(netlist))
     for _, subnetlist in instantiated_recursive_netlist.items():
         ## TODO: Actually add the settings to the netlist if desired
-        _add_settings_to_netlist(subnetlist, settings=settings) # Just to normalize, we will use the settings the user provided later
+        _add_settings_to_netlist(
+            subnetlist, settings=settings
+        )  # Just to normalize, we will use the settings the user provided later
     instantiated_recursive_netlist = sax.netlist(instantiated_recursive_netlist)
     instantiated_flat_netlist = sax.flatten_netlist(instantiated_recursive_netlist)
 
@@ -63,27 +70,37 @@ def _instantiate_netlist(
         uninstantiated_model = models[component_name]
 
         if issubclass(uninstantiated_model, PCell):
-            instance_data["model"] = uninstantiated_model(simulation_parameters, **instance_settings)
+            instance_data["model"] = uninstantiated_model(
+                simulation_parameters, **instance_settings
+            )
         elif issubclass(uninstantiated_model, Component):
-            instance_data["model"] = uninstantiated_model(simulation_parameters, **instance_settings)
-    
+            instance_data["model"] = uninstantiated_model(
+                simulation_parameters, **instance_settings
+            )
+
     TOP_LEVEL_NAME = "top_level"
     ## Get instantiated flat nelist from any pcells and splice them into instatiated_netlist issubclass(models['mzi'], PCell)
     ## When splicing in, make sure that there are no conflicts with model names
-    instantiated_recursive_netlist_no_pcells = sax.netlist(deepcopy(instantiated_flat_netlist), top_level_name=TOP_LEVEL_NAME)
+    instantiated_recursive_netlist_no_pcells = sax.netlist(
+        deepcopy(instantiated_flat_netlist), top_level_name=TOP_LEVEL_NAME
+    )
 
-    for instance_name, instance_data in instantiated_flat_netlist['instances'].items():
-        instantiated_model = instance_data['model']
+    for instance_name, instance_data in instantiated_flat_netlist["instances"].items():
+        instantiated_model = instance_data["model"]
         if isinstance(instantiated_model, PCell):
             ### TODO: Stitch the netlist
-            pcell_netlist = instantiated_model._instantiated_netlist(simulation_parameters)
-            
-            instantiated_recursive_netlist_no_pcells[instance_name] = pcell_netlist
-            instantiated_recursive_netlist_no_pcells[TOP_LEVEL_NAME]['instances'][instance_name] = {"component": instance_name}
+            pcell_netlist = instantiated_model._instantiated_netlist(
+                simulation_parameters
+            )
 
+            instantiated_recursive_netlist_no_pcells[instance_name] = pcell_netlist
+            instantiated_recursive_netlist_no_pcells[TOP_LEVEL_NAME]["instances"][
+                instance_name
+            ] = {"component": instance_name}
 
     ### TODO: Return a new, flat instantiated netlist with no pcells
     return sax.flatten_netlist(instantiated_recursive_netlist_no_pcells)
+
 
 def _add_settings_to_netlist(netlist, settings=None):
     if settings is None:

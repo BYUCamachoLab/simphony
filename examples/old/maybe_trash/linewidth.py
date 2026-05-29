@@ -3,17 +3,17 @@ import matplotlib.pyplot as plt
 from scipy.fftpack import fft, fftshift, fftfreq
 
 # === Parameters ===
-fs = 1e16               # Sampling frequency (Hz)
-T = 10e-12                # Total duration (s)
-N = int(T * fs)           # Number of samples
-t = np.arange(N) / fs     # Time array
-f0 = 193e12               # Carrier frequency (Hz)
-linewidth = 40e12          # Lorentzian FWHM (Hz)
+fs = 1e16  # Sampling frequency (Hz)
+T = 10e-12  # Total duration (s)
+N = int(T * fs)  # Number of samples
+t = np.arange(N) / fs  # Time array
+f0 = 193e12  # Carrier frequency (Hz)
+linewidth = 40e12  # Lorentzian FWHM (Hz)
 
 # === Phase noise model: Brownian motion ===
 # Phase variance grows linearly with time: var(phi) = π * linewidth * t
 # So, each time step gets Gaussian noise with std ~ sqrt(Δt * π * linewidth)
-delta_phi_std = np.sqrt(2*np.pi * linewidth / fs)
+delta_phi_std = np.sqrt(2 * np.pi * linewidth / fs)
 dphi = np.random.randn(N) * delta_phi_std
 phi = np.cumsum(dphi)  # Integrate to get phase
 
@@ -22,7 +22,7 @@ E_t = np.exp(1j * (2 * np.pi * f0 * t + phi))
 
 # === Compute spectrum ===
 E_f = fftshift(fft(E_t))
-freqs = fftshift(fftfreq(N, 1/fs))
+freqs = fftshift(fftfreq(N, 1 / fs))
 
 # === Power spectral density (normalized) ===
 psd = np.abs(E_f) ** 2
@@ -57,7 +57,6 @@ plt.tight_layout()
 plt.show()
 
 
-
 # import numpy as np
 # import matplotlib.pyplot as plt
 
@@ -68,7 +67,7 @@ plt.show()
 # num_samples = int(duration / dt)
 # t = np.arange(num_samples) * dt
 
-# carrier_freq = 193.1e12        
+# carrier_freq = 193.1e12
 # linewidth = 0                # Hz (FWHM)
 # rin_level = 1e-16             # 1/Hz
 
@@ -111,4 +110,3 @@ plt.show()
 
 # plt.tight_layout()
 # plt.show()
-

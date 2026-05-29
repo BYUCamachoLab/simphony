@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import cm
 from scipy.fftpack import fft, fftfreq, fftshift, ifft, ifftshift
 
 
@@ -102,7 +101,6 @@ def getTimeFromFrequency(frequency):
 
 # Equivalent function for getting pulse from spectrum
 def getPulseFromSpectrum(frequency, spectrum_amplitude):
-
     spectrumEnergy = getEnergy(frequency, spectrum_amplitude)
 
     time = getTimeFromFrequency(frequency)
@@ -148,7 +146,6 @@ class Fiber_config:
 
 
 def SSFM(fiber: Fiber_config, sim: SIM_config, pulse):
-
     # Initialize arrays to store pulse and spectrum throughout fiber
     pulseMatrix = np.zeros((fiber.nsteps + 1, sim.number_of_points)) * (1 + 0j)
     spectrumMatrix = np.copy(pulseMatrix)
@@ -217,4 +214,3 @@ pulseMatrix, spectrumMatrix = SSFM(fiber, sim_config, testPulse)
 plt.plot(t, np.abs(pulseMatrix[0, :]) ** 2)
 plt.plot(t, np.abs(pulseMatrix[-1, :]) ** 2)
 plt.show()
-pass

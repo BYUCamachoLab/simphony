@@ -15,10 +15,10 @@ phi_t = 2 * np.pi * sigma * t * Z
 
 # Plot
 plt.figure(figsize=(10, 4))
-plt.plot(t, phi_t, label=r'$\phi(t)$')
-plt.xlabel('Time (s)')
-plt.ylabel('Phase')
-plt.title('Phase noise with quadratic variance: Var[$\phi(t)$] ∝ $t^2$')
+plt.plot(t, phi_t, label=r"$\phi(t)$")
+plt.xlabel("Time (s)")
+plt.ylabel("Phase")
+plt.title("Phase noise with quadratic variance: Var[$\phi(t)$] ∝ $t^2$")
 plt.grid(True)
 plt.tight_layout()
 plt.show()
