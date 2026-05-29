@@ -5,6 +5,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.3](https://github.com/BYUCamachoLab/simphony/tree/v0.7.3) - <small>2025-10-27</small>
+
+Minor bug fixes.
+
+### Added
+-
+
+### Fixed
+- Bug with sax 15.0.0 and later where simphony fails to import get_ports.
+- Bug in SiPANN integration in which parameters passed to `angled_half_ring` were overwritten and `theta` parameter was missing.
+- Missing dependency for parsimonious.
+- Several pytest issues.
+- Syntax errors preventing `make patch`, `make minor`, and `make major` from running.
+- Bug with group delay that was ignored in lumerical file parser. Lumerical output files calculated with "include group delay" in the s-parameter matrix sweep dialogue were imported with incorrect phases due to ignoring group delay.
+
+### Changed
+-
+
+---
+
 ## [0.7.2](https://github.com/BYUCamachoLab/simphony/tree/v0.7.2) - <small>2024-01-09</small>
 
 Minor bug fixes.

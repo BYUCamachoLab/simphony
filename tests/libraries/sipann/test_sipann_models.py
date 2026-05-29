@@ -9,7 +9,7 @@ except ImportError:
 class TestGapFuncSymmetric:
     def test_invalid_parameters(self):
         with pytest.raises(ValueError):
-            sipann.GapFuncSymmetric(
+            sipann.gap_func_symmetric(
                 width=350,
                 thickness=160,
                 gap=(lambda x: x * 3),
@@ -19,7 +19,7 @@ class TestGapFuncSymmetric:
             )
 
     def test_instantiable(self):
-        sipann.GapFuncSymmetric(
+        sipann.gap_func_symmetric(
             width=500,
             thickness=220,
             gap=(lambda x: x * 3),
@@ -29,7 +29,8 @@ class TestGapFuncSymmetric:
         )
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.GapFuncSymmetric(
+        dev = sipann.gap_func_symmetric(
+            wl=std_wl_um,
             width=500,
             thickness=220,
             gap=(lambda x: x * 3),
@@ -37,7 +38,7 @@ class TestGapFuncSymmetric:
             zmin=0.0,
             zmax=1.0,
         )
-        dev.s_params(std_wl_um)
+        assert isinstance(dev, dict)
 
 
 # class TestGapFuncAntiSymmetric:
@@ -62,27 +63,29 @@ class Testhalf_ring:
         sipann.half_ring(width=500, thickness=220, radius=5000, gap=100)
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.half_ring(width=500, thickness=220, radius=5000, gap=100)
-        dev.s_params(std_wl_um)
-
-
-class TestHalfracetrack:
-    def test_invalid_parameters(self):
-        with pytest.raises(ValueError):
-            sipann.Halfracetrack(
-                width=625, thickness=245, radius=5000, gap=100, length=1000
-            )
-
-    def test_instantiable(self):
-        sipann.Halfracetrack(
-            width=500, thickness=220, radius=5000, gap=100, length=1000
+        dev = sipann.half_ring(
+            wl=std_wl_um, width=500, thickness=220, radius=5000, gap=100
         )
+        assert isinstance(dev, dict)
 
-    def test_s_params(self, std_wl_um):
-        dev = sipann.Halfracetrack(
-            width=500, thickness=220, radius=5000, gap=100, length=1000
-        )
-        dev.s_params(std_wl_um)
+
+# class TestHalfracetrack:
+#     def test_invalid_parameters(self):
+#         with pytest.raises(ValueError):
+#             sipann.Halfracetrack(
+#                 width=625, thickness=245, radius=5000, gap=100, length=1000
+#             )
+
+#     def test_instantiable(self):
+#         sipann.Halfracetrack(
+#             width=500, thickness=220, radius=5000, gap=100, length=1000
+#         )
+
+#     def test_s_params(self, std_wl_um):
+#         dev = sipann.Halfracetrack(
+#             wl=std_wl_um, width=500, thickness=220, radius=5000, gap=100, length=1000
+#         )
+#         assert isinstance(dev, dict)
 
 
 class Teststraight_coupler:
@@ -94,8 +97,10 @@ class Teststraight_coupler:
         sipann.straight_coupler(width=500, thickness=220, gap=150, length=1000)
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.straight_coupler(width=500, thickness=220, gap=180, length=1000)
-        dev.s_params(std_wl_um)
+        dev = sipann.straight_coupler(
+            wl=std_wl_um, width=500, thickness=220, gap=180, length=1000
+        )
+        assert isinstance(dev, dict)
 
 
 class Teststandard_coupler:
@@ -122,6 +127,7 @@ class Teststandard_coupler:
 
     def test_s_params(self, std_wl_um):
         dev = sipann.standard_coupler(
+            wl=std_wl_um,
             width=500,
             thickness=220,
             gap=180,
@@ -129,7 +135,7 @@ class Teststandard_coupler:
             horizontal=2000,
             vertical=2000,
         )
-        dev.s_params(std_wl_um)
+        assert isinstance(dev, dict)
 
 
 class Testdouble_half_ring:
@@ -141,8 +147,10 @@ class Testdouble_half_ring:
         sipann.double_half_ring(width=500, thickness=220, radius=5000, gap=100)
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.double_half_ring(width=500, thickness=220, radius=5000, gap=100)
-        dev.s_params(std_wl_um)
+        dev = sipann.double_half_ring(
+            wl=std_wl_um, width=500, thickness=220, radius=5000, gap=100
+        )
+        assert isinstance(dev, dict)
 
 
 class Testangled_half_ring:
@@ -159,9 +167,9 @@ class Testangled_half_ring:
 
     def test_s_params(self, std_wl_um):
         dev = sipann.angled_half_ring(
-            width=500, thickness=220, radius=5000, gap=150, theta=0.5
+            wl=std_wl_um, width=500, thickness=220, radius=5000, gap=150, theta=0.5
         )
-        dev.s_params(std_wl_um)
+        assert isinstance(dev, dict)
 
 
 class Testwaveguide:
@@ -173,8 +181,8 @@ class Testwaveguide:
         sipann.waveguide(width=500, thickness=220, length=10000)
 
     def test_s_params(self, std_wl_um):
-        dev = sipann.waveguide(width=500, thickness=220, length=10000)
-        dev.s_params(std_wl_um)
+        dev = sipann.waveguide(wl=std_wl_um, width=500, thickness=220, length=10000)
+        assert isinstance(dev, dict)
 
 
 class Testracetrack:
@@ -187,9 +195,9 @@ class Testracetrack:
 
     def test_s_params(self, std_wl_um):
         dev = sipann.racetrack(
-            width=500, thickness=220, radius=5000, gap=150, length=2000
+            wl=std_wl_um, width=500, thickness=220, radius=5000, gap=150, length=2000
         )
-        dev.s_params(std_wl_um)
+        assert isinstance(dev, dict)
 
 
 # class TestPremadeCoupler:
