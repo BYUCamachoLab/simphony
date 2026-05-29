@@ -5,6 +5,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.0rc0](https://github.com/BYUCamachoLab/simphony/tree/v0.8.0rc0) - <small>2026-05-29</small>
+
+Release candidate for archiving the current time-domain simulator implementation.
+
+### Added
+- Citation metadata for GitHub and Zenodo.
+- Release workflow handling for release-candidate GitHub prereleases.
+
+### Fixed
+-
+
+### Changed
+- Prepared the time-domain simulator branch for Zenodo DOI archival.
+
+---
+
 ## [0.7.3](https://github.com/BYUCamachoLab/simphony/tree/v0.7.3) - <small>2025-10-27</small>
 
 Minor bug fixes.
