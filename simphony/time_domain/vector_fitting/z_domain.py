@@ -1,4 +1,10 @@
+import gc
+import math
+
 import jax
+
+jax.config.update("jax_enable_x64", True)
+
 import jax.numpy as jnp
 from scipy.constants import speed_of_light
 from scipy.optimize import linear_sum_assignment
@@ -11,6 +17,11 @@ from time import time
 
 from simphony.conventions import PHYSICIST, ENGINEER
 from simphony.performance.performance import persistent_cache
+
+def _clear_vector_fitting_memory():
+    """Release local Python references and JAX compilation/device caches."""
+    gc.collect()
+    jax.clear_caches()
 
 # @jax.jit
 def _initial_poles(model_order, frequency, sampling_frequency, gamma, sign_convention):
@@ -31,37 +42,40 @@ def _phi_matrices(frequency, sampling_frequency, poles, sign_convention):
 
 def _lstsq_matrices(model_order, transfer_function, phi0, phi1):
     """
+    Build the reduced least-squares system used for pole relocation.
 
+    ``phi0`` is common to every input/output pair, so factor it once and then
+    orthogonalize each pair-specific block against that basis. This is the fast
+    vector fitting reduction, and it avoids constructing a dense diagonal
+    matrix for each transfer vector.
     """
-    # num_ports = transfer_function.shape[1]
     num_outputs = transfer_function.shape[1]
     num_inputs = transfer_function.shape[2]
-    # M = jnp.zeros(((num_ports**2) * (model_order), (model_order)), dtype=complex)
-    # B = jnp.zeros(((num_ports**2) * (model_order)), dtype=complex)
-    M = jnp.zeros(((num_inputs*num_outputs) * (model_order), (model_order)), dtype=complex)
-    B = jnp.zeros(((num_inputs*num_outputs) * (model_order)), dtype=complex)
-    
-    A1 = phi0
-    Q1, R11 = jnp.linalg.qr(A1)
-    
-    iter = 0
-    # for i in range(num_ports):
-    #     for j in range(num_ports):
-    for m in range(num_inputs):
-        for q in range(num_outputs):
-            D = jnp.diag(transfer_function[:, q, m])
-            A_block = jnp.hstack([phi0, -D @ phi1])            # never build the big matrix
-            Q, R = jnp.linalg.qr(A_block, mode='reduced')
-            
-            R11 = R[:model_order+1, :model_order+1]
-            R12 = R[:model_order+1, model_order+1:]
-            R22 = R[model_order+1:, model_order+1:]
-            Q2 = Q[:, model_order+1:]
+    num_pairs = num_inputs * num_outputs
+    dtype = jnp.result_type(transfer_function, phi0, phi1)
+    M = jnp.zeros((num_pairs * model_order, model_order), dtype=dtype)
+    B = jnp.zeros((num_pairs * model_order,), dtype=dtype)
 
-            V = transfer_function[:, q, m]
-            M = M.at[(iter) * (model_order) : (iter+1) * (model_order), :].set(R22)
-            B = B.at[(iter) * (model_order) : (iter+1) * (model_order)].set(Q2.conj().T @ V)
-            iter += 1
+    Q1, _ = jnp.linalg.qr(phi0, mode="reduced")
+    transfer_pairs = transfer_function.transpose(2, 1, 0).reshape(
+        num_pairs,
+        transfer_function.shape[0],
+    ).T
+
+    def process_pair(pair_index, carry):
+        M, B = carry
+        V = transfer_pairs[:, pair_index]
+        A2 = -phi1 * V[:, None]
+        R12 = Q1.conj().T @ A2
+        Q2, R22 = jnp.linalg.qr(A2 - Q1 @ R12, mode="reduced")
+        b_block = Q2.conj().T @ V
+        row_start = pair_index * model_order
+
+        M = jax.lax.dynamic_update_slice(M, R22, (row_start, 0))
+        B = jax.lax.dynamic_update_slice(B, b_block, (row_start,))
+        return M, B
+
+    M, B = jax.lax.fori_loop(0, num_pairs, process_pair, (M, B))
 
     return M, B
 
@@ -145,10 +159,15 @@ def pole_residue_response_discrete(frequency, center_frequency, sampling_frequen
         Frequency response with shape `(len(frequency), q, m)`.
     """
     z = jnp.exp(sign_convention*1j * 2 * jnp.pi * (frequency-center_frequency)/sampling_frequency)
-    frequency_response = feedthrough[None, :, :] + jnp.sum(
-    residues[None, :, :, :] / (z[:, None, None, None] - poles[None, :, None, None]),
-    axis=1
-)
+    response_shape = (z.shape[0], feedthrough.shape[0], feedthrough.shape[1])
+    initial_response = jnp.broadcast_to(feedthrough[None, :, :], response_shape)
+
+    def add_pole(frequency_response, pole_and_residue):
+        pole, residue = pole_and_residue
+        pole_response = residue[None, :, :] / (z[:, None, None] - pole)
+        return frequency_response + pole_response, None
+
+    frequency_response, _ = jax.lax.scan(add_pole, initial_response, (poles, residues))
     return frequency_response
 
 # @jax.jit
@@ -297,14 +316,14 @@ def vector_fitting_discrete(
 #             break
 
 
-def optimize_order(bias_fn, min_order, max_order):
+def optimize_order(error_fn, min_order, max_order):
     """Choose a model order by balancing fit error and complexity.
 
     Parameters
     ----------
-    bias_fn:
-        Callable accepting an integer model order and returning a tuple whose
-        first value is the mean squared error for that order.
+    error_fn:
+        Callable accepting an integer model order and returning its scalar mean
+        squared error.
     min_order:
         Minimum model order to consider.
     max_order:
@@ -312,41 +331,49 @@ def optimize_order(bias_fn, min_order, max_order):
 
     Returns
     -------
-    tuple
-        The full `bias_fn(best_order)` result for the selected order.
+    int
+        The selected model order.
     """ 
-    C_min, *_ = bias_fn(min_order)
-    C_max, *_ = bias_fn(max_order)
-    C_max_minus_1, *_ = bias_fn(max_order-1)
-    lambda_lower = jnp.abs(C_max_minus_1 - C_max)
-    lambda_upper = C_min - C_max
-    l = jnp.log10(lambda_lower)
-    u = jnp.log10(lambda_upper)
+    error_cache = {}
+
+    def cached_error(model_order):
+        model_order = int(model_order)
+        if model_order not in error_cache:
+            error_cache[model_order] = error_fn(model_order)
+        return error_cache[model_order]
+
+    C_min = cached_error(min_order)
+    C_max = cached_error(max_order)
+    C_max_minus_1 = cached_error(max_order-1)
+    lambda_lower = max(abs(C_max_minus_1 - C_max), float(jnp.finfo(float).tiny))
+    lambda_upper = max(C_min - C_max, lambda_lower)
+    l = math.log10(lambda_lower)
+    u = math.log10(lambda_upper)
     complexity_penalty = 10**(0.5*(u + l))
 
     # TODO: implement Golden Section Search
     # to minimize C - complexity_penalty * order
-    golden_ratio = (jnp.sqrt(5) - 1) / 2
+    golden_ratio = (math.sqrt(5) - 1) / 2
     a = min_order
     b = max_order
     c = int(b - golden_ratio * (b - a))
     d = int(a + golden_ratio * (b - a))
 
-    fc = bias_fn(c)[0] + complexity_penalty*d
-    fd = bias_fn(d)[0] + complexity_penalty*d
+    fc = cached_error(c) + complexity_penalty*c
+    fd = cached_error(d) + complexity_penalty*d
     while abs(b-a) > 1:
         if fc < fd:  # minimum is in [a, d]
             b, d, fd = d, c, fc
             c = int(b - golden_ratio * (b - a))
-            fc = bias_fn(c)[0] + complexity_penalty*c
+            fc = cached_error(c) + complexity_penalty*c
         else:        # minimum is in [c, b]
             a, c, fc = c, d, fd
             d = int(a + golden_ratio * (b - a))
-            fd = bias_fn(d)[0] + complexity_penalty*d
+            fd = cached_error(d) + complexity_penalty*d
 
     best_order = int(round((a + b) / 2))
 
-    return bias_fn(best_order)
+    return best_order
 
 
 # TODO: Cache the model order, not the model itself to save space
@@ -397,8 +424,8 @@ def optimize_order_vector_fitting_discrete(
         `(poles, residues, feedthrough, mean_squared_error)` for the selected
         order.
     """
-    def bias_fn(model_order):
-        poles, residues, feedthrough, mean_squared_error = vector_fitting_discrete(
+    def fit_order(model_order):
+        return vector_fitting_discrete(
                                                                 model_order, 
                                                                 transfer_function, 
                                                                 frequency, 
@@ -408,12 +435,25 @@ def optimize_order_vector_fitting_discrete(
                                                                 max_iterations=max_iterations,
                                                                 gamma=gamma,
                                                                 weight_threshold=weight_threshold,
-                                                                # use_cache=False, ### TODO: Decide whether this be necessary
+                                                                use_cache=False,
                                                             )
-        return mean_squared_error, poles, residues, feedthrough
+
+    def error_fn(model_order):
+        poles = residues = feedthrough = mean_squared_error = None
+        try:
+            poles, residues, feedthrough, mean_squared_error = fit_order(model_order)
+            return float(jax.device_get(mean_squared_error))
+        finally:
+            del poles, residues, feedthrough, mean_squared_error
+            _clear_vector_fitting_memory()
 
 
-    mean_squared_error, poles, residues, feedthrough = optimize_order(bias_fn, min_order, max_order)
+    best_order = optimize_order(error_fn, min_order, max_order)
+    try:
+        poles, residues, feedthrough, mean_squared_error = fit_order(best_order)
+    except Exception:
+        _clear_vector_fitting_memory()
+        raise
 
     return poles, residues, feedthrough, mean_squared_error
 

@@ -933,6 +933,7 @@ class InstantiatedCircuit:
         """
         if not isinstance(tracked_ports, dict):
             tracked_ports = {}
+        tracked_ports = deepcopy(tracked_ports)
         for ext_port_name, port_designator in circuit.netlist["top_level"]['ports'].items():
             tracked_ports.setdefault(ext_port_name, port_designator)
         
