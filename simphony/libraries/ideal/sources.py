@@ -2,13 +2,14 @@
 # from scipy.signal import iirdesign
 # from scipy.signal import freqz
 # from scipy.signal import butter, lfilter, cheby1
+from __future__ import annotations
+
 from typing import Callable
 
 import jax
 import jax.numpy as jnp
 import numpy as np  # Used to avoid caching issues when generating random numbers
 from jax.typing import ArrayLike
-from jaxtyping import Array, Float
 
 from simphony.component.component import (
     BlockModeComponent,
@@ -343,7 +344,7 @@ class OpticalSource(SampleModeComponent, BlockModeComponent):
         simulation_parameters,
         # wavelength = 1.55e-6,
         envelope: BlockModeOpticalSignal = None,
-        envelope_fn: Callable[[Float[Array, "n"]], BlockModeOpticalSignal] = None,
+        envelope_fn: Callable[[ArrayLike], BlockModeOpticalSignal] = None,
     ):
         if envelope is not None and envelope_fn is not None:
             raise ValueError("Specify either evelope or envelope_fn, NOT both")
@@ -454,7 +455,7 @@ class VoltageSource(
         simulation_parameters: SimulationParameters,
         *,
         envelope: BlockModeOpticalSignal = None,
-        envelope_fn: Callable[[Float[Array, "n"]], BlockModeElectricalSignal] = None,
+        envelope_fn: Callable[[ArrayLike], BlockModeElectricalSignal] = None,
         steady_state_voltage=1.0,
     ):
         self.steady_state_voltage = steady_state_voltage
