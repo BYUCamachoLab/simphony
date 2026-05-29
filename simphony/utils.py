@@ -569,17 +569,30 @@ def resample(x: ArrayLike, xp: ArrayLike, sdict: sax.SDict) -> sax.SDict:
 def create_multimode_sax_model(models: dict):
     """
     This function takes individual s-parameter models or individual modes
-    and combines them into the sax-format for multimode models, assuming 
+    and combines them into the sax-format for multimode models, assuming
     complete orthogonality of modes (no cross polarization)
     """
+    import inspect
+ 
+    # Build the union of parameters across all sub-models so SAX can inspect
+    # the signature and forward global settings (e.g. wl) correctly.
+    merged_params = {}
+    for model in models.values():
+        for name, param in inspect.signature(model).parameters.items():
+            if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
+                continue
+            if name not in merged_params:
+                merged_params[name] = param
+ 
     def multimode_model(**params):
         S_mm = {}
-
         for mode, model in models.items():
             S = model(**params)
             for (p1, p2), val in S.items():
                 S_mm[(f"{p1}@{mode}", f"{p2}@{mode}")] = val
-
         return S_mm
-
+ 
+    # Replace **params with the merged explicit signature
+    multimode_model.__signature__ = inspect.Signature(list(merged_params.values()))
+ 
     return multimode_model

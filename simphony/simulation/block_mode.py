@@ -1,11 +1,16 @@
+import logging
+from copy import deepcopy
+from dataclasses import field
+from time import time
+
+import jax
+import networkx as nx
+from flax import struct
+
 from simphony.simulation.simulation import Simulation, SimulationResult, SimulationParameters, SimulationMode
 from simphony.circuit.circuit import Circuit
-import networkx as nx
-from copy import deepcopy
-from flax import struct
-from dataclasses import field
-import jax
-from simphony.libraries.ideal.s_parameters import SParameterPlaceholder
+
+logger = logging.getLogger(__name__)
 
 @struct.dataclass
 class BlockModeSimulationParameters(SimulationParameters):
@@ -26,15 +31,15 @@ class BlockModeSimulationParameters(SimulationParameters):
     mode_identifiers:
         Inherited from `SimulationParameters`; labels for the optical modes
         represented on the last axis of a `BlockModeOpticalSignal`.
-    use_speed_up:
-        Enables implementation-specific acceleration paths where available.
+    use_state_space_optimization:
+        Enables optimized structured state-space updates where available.
     """
     simulation_mode: SimulationMode = field(default_factory=lambda:SimulationMode.BLOCK_MODE)    
     directed: bool = True
     dt: float = 1e-14
     num_time_steps: int = 1000
     optical_baseband_wavelengths: jax.Array = field(default_factory=lambda:jax.numpy.array([1.55e-6]))
-    use_optimized: bool = True
+    use_state_space_optimization: bool = True
 
 class BlockModeSimulationResult(SimulationResult):
     """Signals collected from a completed Block mode simulation.
@@ -83,9 +88,6 @@ class BlockModeSimulation(Simulation):
         settings,
         tracked_ports: dict = None,
         simulation_parameters = None,
-        # ports = None,
-        # circuit: Circuit,
-        # ports = None
     ):
 
         if settings is None:
@@ -94,17 +96,11 @@ class BlockModeSimulation(Simulation):
             simulation_parameters = BlockModeSimulationParameters()
 
         self.simulation_parameters = simulation_parameters
-        self.circuit = circuit
-        # self.flat_circuit = circuit.flatten()
-        self.settings = settings
-        self.tracked_ports = tracked_ports
+        self.circuit = deepcopy(circuit)
+        self.settings = deepcopy(settings)
+        self.tracked_ports = deepcopy(tracked_ports)
         self.component_inputs = {}
         self.component_outputs = {}
-        # if ports is None:
-        #     ports = self.circuit.netlist['top_level']['ports']
-
-        
-        # self.ports = ports
 
     def run(
         self,
@@ -115,15 +111,14 @@ class BlockModeSimulation(Simulation):
         topological order, and each component receives a full time block of input
         signals at once.
         """
-        # _add_directionality_settings_to_s_parameter_components(self.flat_circuit, self.settings)
+        self.component_inputs = {}
+        self.component_outputs = {}
+
+        tic = time()
         self._instantiated_circuit = self.circuit.instantiate(self.settings, self.simulation_parameters, tracked_ports=self.tracked_ports, directed=True)
-        # instantiated_circuit.display()
-        # simulation_result = BlockModeSimulationResult(self._instantiated_circuit)
-
-
         self.block_mode_order = self._determine_block_mode_order_nx_method(self._instantiated_circuit)
-        # self._instantiate_components(self.settings)
-        # print(len(self.block_mode_order))
+        logger.debug("Block mode execution order: %s", self.block_mode_order)
+
         for instance_name in self.block_mode_order:
             self._collect_component_inputs(instance_name)   
             inputs = self.component_inputs[instance_name]
@@ -141,6 +136,7 @@ class BlockModeSimulation(Simulation):
                 output_signals[tracked_port_name] = self.component_outputs[instance_name][port_name]
         simulation_result = BlockModeSimulationResult(input_signals, output_signals)
 
+        logger.debug("Block mode simulation completed in %.6f s", time() - tic)
         return simulation_result
     
     def _collect_component_inputs(self, component)->dict:
@@ -150,32 +146,11 @@ class BlockModeSimulation(Simulation):
             input_edges = self._instantiated_circuit.graph.get_edge_data(input_component, component)
             for edge_number, edge in input_edges.items():
                 inputs[edge['dst_port']] = self.component_outputs[input_component][edge['src_port']]
-                pass
         self.component_inputs[component] = inputs
     
     def _determine_block_mode_order_nx_method(self, instantiated_circuit):
-        """
-        Voltage signals at electrical ports are assumed to be constant
-        for SParameterSimulations, but they are not known a priori, unless
-        the voltage source is not dependent on an input signal.
-
-        Since steady-state connections are assumemd to be uni-directional, this function is
-        able to find the order in which electrical component voltages must
-        be calculated to find the proper steady state.
-        """
+        """Return the directed acyclic execution order for Block mode."""
         try:
             return list(nx.topological_sort(instantiated_circuit.graph))
         except nx.NetworkXUnfeasible:
-            raise ValueError("Failed to determine steady state order – circular dependencies detected")
-
-
-    # def _determine_block_mode_order(self):
-    #     """
-    #     Determine the order of components in block mode simulation.
-    #     """
-    #     graph = self.circuit.graph.copy()
-    #     try:
-    #         return list(nx.topological_sort(graph))
-    #     except nx.NetworkXUnfeasible:
-    #         raise ValueError("Failed to determine block order – circular dependencies detected")
-        
+            raise ValueError("Failed to determine Block mode order: circular dependencies detected")

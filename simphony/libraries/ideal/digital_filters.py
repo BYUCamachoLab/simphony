@@ -10,6 +10,7 @@ from dataclasses import replace
 from simphony.simulation.simulation import SimulationParameters
 from simphony.time_domain.vector_fitting.z_domain import state_space_response_discrete, state_space_response_discrete_optimized
 
+
 class OpticalDiscreteFilter( 
     SampleModeComponent,
     BlockModeComponent,
@@ -43,6 +44,7 @@ class OpticalDiscreteFilter(
         If for each mode, the a coefficients are of length 1, 
         then the filter will be optimized as a fir filter
         """
+        raise NotImplemented("Need to make sure this component matches the convention expected by the new sample mode and block mode simulators")
         # We need at least 1 filter for each mode
         b, a = jnp.atleast_2d(b), jnp.atleast_2d(a)
         self.filter_coefficients = b/a[:, 0], a/a[:, 0]
@@ -252,7 +254,6 @@ def discrete_state_space(
 
             for port, signal in inputs.items():
                 port_idx = self.port_order[port]
-                wavelength = inputs[port].wavelength
                 u = u.at[:, port_idx].set(signal.amplitude[:, self.mode])
             
             new_x = jnp.zeros_like(x)
@@ -272,12 +273,11 @@ def discrete_state_space(
 
             return outputs, new_x
 
-        # TODO: MAKE eveyrthing say input_signals and not inputs
         def block_mode_response(self, input_signals, simulation_parameters):
             """
             We assume that all signals are on a common mode
             """
-            #TODO: MAKE SURE THAT THE MATRIX ELEMENTS MATCH PORT ORDER
+            # TODO: Make sure that the matrix elements match port order.
             _input_amplitude = list(input_signals.values())[0].amplitude
             wavelengths = list(input_signals.values())[0].wavelength
             N = _input_amplitude.shape[0]
@@ -297,7 +297,7 @@ def discrete_state_space(
                 # TODO: modulate inputs based on the delta f
                 f = SPEED_OF_LIGHT/wl
                 delta_omega = 2*jnp.pi*(f - self.baseband_frequency) / self.sampling_frequency
-                if simulation_parameters.use_optimized:
+                if simulation_parameters.use_state_space_optimization:
                     _y, _ = state_space_response_discrete_optimized(jnp.exp(1j*delta_omega)*A, B, C, D, jnp.exp(1j*delta_omega), u[:, i, :])
                 else:
                     _y, _ = state_space_response_discrete(jnp.exp(1j*delta_omega)*A, jnp.exp(1j*delta_omega)*B, C, D, u[:, i, :])

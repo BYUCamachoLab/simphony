@@ -30,7 +30,7 @@ from simphony.utils import dict_to_matrix, dict_to_rect_matrix
 
 from simphony.component.pcell import PCell
 
-from simphony.libraries.ideal.digital_filters import OpticalDiscreteFilter
+
 from simphony.libraries.ideal.modulators import OpticalModulator
 
 from typing import Type
@@ -231,7 +231,7 @@ def optical_s_parameter(
 
             A, B, C, _ = self.state_space_matrices
             self._optimized_state_space_terms = None
-            if getattr(simulation_parameters, "use_optimized", True):
+            if simulation_parameters.use_state_space_optimization:
                 try:
                     self._optimized_state_space_terms = state_space_discrete_optimized_terms(A, B, C)
                 except ValueError:
@@ -259,9 +259,9 @@ def optical_s_parameter(
                 mode_idx = self.mode_indices[mode]
                 u = u.at[:, state_space_idx].set(input_signals[port_name].amplitude[:, mode_idx])
 
-            # Vectorised over all wavelengths — replaces the old Python for-loop that
-            # caused lax.scan to unroll L copies of the loop body into the XLA graph,
-            # making compilation memory O(L) instead of O(1).
+            # Vectorize over optical_baseband_wavelengths. This avoids
+            # unrolling L copies of the loop body into the XLA graph during
+            # lax.scan compilation.
             #
             # For each wavelength l:
             #   new_x[l] = phase_AB[l] * (A @ x[l] + B @ u[l])
@@ -275,7 +275,7 @@ def optical_s_parameter(
             phase_CD    = jnp.exp(1j * k * delta_omega)    # (L,)
 
             if (
-                getattr(simulation_parameters, "use_optimized", True)
+                simulation_parameters.use_state_space_optimization
                 and self._optimized_state_space_terms is not None
             ):
                 A_diag, residues = self._optimized_state_space_terms
