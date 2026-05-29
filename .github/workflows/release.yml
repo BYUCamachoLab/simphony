@@ -6,6 +6,9 @@ on:
     tags:
       - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Create Release
@@ -27,6 +30,13 @@ jobs:
       - name: Get version number
         id: get_version
         run: echo "VERSION=$(python3 -c "import simphony; print(simphony.__version__)")" >> $GITHUB_ENV
+      - name: Determine release type
+        run: |
+          if [[ "${VERSION}" == *rc* ]]; then
+            echo "PRERELEASE=true" >> "$GITHUB_ENV"
+          else
+            echo "PRERELEASE=false" >> "$GITHUB_ENV"
+          fi
       - name: Load Release text
         run: |
           {
@@ -35,6 +45,7 @@ jobs:
             echo EOF
           } >> "$GITHUB_ENV"
       - name: Publish to PyPI
+        if: env.PRERELEASE != 'true'
         uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           user: __token__
@@ -49,4 +60,4 @@ jobs:
           release_name: Simphony ${{ env.VERSION }}
           body: ${{ env.BODY }}
           draft: false
-          prerelease: false
+          prerelease: ${{ env.PRERELEASE }}
