@@ -1,13 +1,12 @@
 import jax
-
-jax.config.update("jax_enable_x64", True)
-from time import time
-
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy.constants import speed_of_light
 
 from simphony.simulation.jax_tools import python_based_while_loop
+
+jax.config.update("jax_enable_x64", True)
 
 
 # @jax.jit
@@ -42,9 +41,6 @@ def _lstsq_matrices(model_order, transfer_function, phi0, phi1):
     M = jnp.zeros(((num_ports**2) * (model_order), (model_order)), dtype=complex)
     B = jnp.zeros(((num_ports**2) * (model_order)), dtype=complex)
 
-    A1 = phi0
-    Q1, R11 = jnp.linalg.qr(A1)
-
     iter = 0
     for i in range(num_ports):
         for j in range(num_ports):
@@ -52,8 +48,6 @@ def _lstsq_matrices(model_order, transfer_function, phi0, phi1):
             A_block = jnp.hstack([phi0, -D @ phi1])  # never build the big matrix
             Q, R = jnp.linalg.qr(A_block, mode="reduced")
 
-            R11 = R[: model_order + 1, : model_order + 1]
-            R12 = R[: model_order + 1, model_order + 1 :]
             R22 = R[model_order + 1 :, model_order + 1 :]
             Q2 = Q[:, model_order + 1 :]
 
@@ -78,9 +72,6 @@ def _lstsq_matrices(model_order, transfer_function, phi0, phi1):
             # iter += 1
 
     return M, B
-
-
-import numpy as np
 
 
 def _full_lstsq_matrices(transfer_function, phi0, phi1):
@@ -395,9 +386,9 @@ def optimize_order(bias_fn, min_order, max_order):
     C_max_minus_1, *_ = bias_fn(max_order - 1)
     lambda_lower = jnp.abs(C_max_minus_1 - C_max)
     lambda_upper = C_min - C_max
-    l = jnp.log10(lambda_lower)
-    u = jnp.log10(lambda_upper)
-    complexity_penalty = 10 ** (0.5 * (u + l))
+    lower_log = jnp.log10(lambda_lower)
+    upper_log = jnp.log10(lambda_upper)
+    complexity_penalty = 10 ** (0.5 * (upper_log + lower_log))
 
     # TODO: implement Golden Section Search
     # to minimize C - complexity_penalty * order
@@ -490,10 +481,7 @@ def main():
     )
     residues = jnp.reshape(residues[1:], (10, 1, 1))
     feedthrough = jnp.zeros((1, 1), dtype=complex)
-    N = len(poles)
-
     f = jnp.linspace(0.001, 10 / (2 * jnp.pi), 100)
-    aortic_response = pole_residue_response(f, poles, residues, feedthrough)
 
     _mzi, info = sax.circuit(
         netlist={
@@ -531,7 +519,6 @@ def main():
     f_max = speed_of_light / 1.50e-6
     # f_min = speed_of_light / 1.565e-6
     # f_max = speed_of_light / 1.5350e-6
-    f_center = 0.5 * (f_min + f_max)
     frequency = jnp.linspace(f_min, f_max, 1000)
 
     plt.plot(
@@ -598,15 +585,12 @@ def main2():
     )
     residues = jnp.reshape(residues[1:], (10, 1, 1))
     feedthrough = jnp.zeros((1, 1), dtype=complex)
-    N = len(poles)
-
     f = jnp.linspace(0.001, 10 / (2 * jnp.pi), 100)
     response = pole_residue_response(f, poles, residues, feedthrough)
 
     poles1, residues1, feedthrough1, error = vector_fitting(
         10, response, f, max_iterations=5
     )
-    toc = time()
     H = pole_residue_response(f, poles1, residues1, feedthrough1)
     plt.plot(f, jnp.abs(H[:, 0, 0]) ** 2)
     plt.plot(f, jnp.abs(response[:, 0, 0]) ** 2, "r--")

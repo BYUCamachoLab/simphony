@@ -14,17 +14,17 @@ from simphony.time_domain.pole_residue_model import PoleResidueModel
 
 class TimeSystem(ABC):
     def __init__(self, optical_ports, electrical_ports, logic_ports) -> None:
-        if optical_ports == None:
+        if optical_ports is None:
             self.optical_ports = []
         else:
             self.optical_ports = optical_ports
 
-        if electrical_ports == None:
+        if electrical_ports is None:
             self.electrical_ports = []
         else:
             self.electrical_ports = electrical_ports
         # self.electrical_ports = electrical_ports
-        if logic_ports == None:
+        if logic_ports is None:
             self.logic_ports = []
         else:
             self.logic_ports = logic_ports
@@ -134,7 +134,7 @@ def my_dlsim(system, u, t=None, x0=None):
     return tout, yout, xout
 
 
-def my_dlsimworks(system, u, t=None, x0=None):
+def my_dlsimworks_jax(system, u, t=None, x0=None):
     out_samples = len(u)
     stoptime = (out_samples) * system.dt
 
@@ -302,8 +302,6 @@ class TimeSystemIIR:
         # if state_vector is not None:
         #      self.state_vector = state_vector
 
-        first_key = next(iter(inputs))
-        N = inputs[first_key].shape
         responses = {}
 
         input = jnp.hstack([value.reshape(-1, 1) for value in inputs.values()])

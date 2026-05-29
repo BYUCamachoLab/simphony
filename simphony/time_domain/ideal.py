@@ -108,6 +108,7 @@ class TimeWaveguide(TimeSystem):
             "o0": o0_response,
             "o1": o1_response,
         }
+        return response
 
         return response
 
@@ -173,6 +174,7 @@ class Modulator(SampleModeComponent, BlockModeComponent):
             "o0": o0_response,
             "o1": o1_response,
         }
+        return response
 
 
 class PhaseModulator(SampleModeComponent, BlockModeComponent):
@@ -303,14 +305,14 @@ class MMI(TimeSystem):
         for i in range(self.r):  # inputs 0 … r-1
             for j in range(self.s):  # outputs r … r+s-1
                 phi = phases[i, j + self.r]
-                s_dict_time[(f"o{i}", f"o{j+self.r}")] = (
+                s_dict_time[(f"o{i}", f"o{j + self.r}")] = (
                     amplitude / jnp.sqrt(self.s) * jnp.exp(1j * phi)
                 )
 
         for i in range(self.s):  # inputs r … r+s-1
             for j in range(self.r):  # outputs 0 … r-1
                 phi = phases[i + self.s, j]
-                s_dict_time[(f"o{i+self.r}", f"o{j}")] = (
+                s_dict_time[(f"o{i + self.r}", f"o{j}")] = (
                     amplitude / jnp.sqrt(self.r) * jnp.exp(1j * phi)
                 )
 
@@ -330,7 +332,7 @@ class MMI(TimeSystem):
         N = len(self.ports)
         for j, port in enumerate(self.ports):
             # sum over all inputs
-            resp = sum(inputs[f"o{l}"] * self.s_dict_time[j, l] for l in range(N))
+            resp = sum(inputs[f"o{idx}"] * self.s_dict_time[j, idx] for idx in range(N))
             response[port] = resp
         return response
 

@@ -41,9 +41,6 @@ def _lstsq_matrices(model_order, transfer_function, phi0, phi1):
     )
     B = jnp.zeros(((num_inputs * num_outputs) * (model_order)), dtype=complex)
 
-    A1 = phi0
-    Q1, R11 = jnp.linalg.qr(A1)
-
     iter = 0
     # for i in range(num_ports):
     #     for j in range(num_ports):
@@ -53,8 +50,6 @@ def _lstsq_matrices(model_order, transfer_function, phi0, phi1):
             A_block = jnp.hstack([phi0, -D @ phi1])  # never build the big matrix
             Q, R = jnp.linalg.qr(A_block, mode="reduced")
 
-            R11 = R[: model_order + 1, : model_order + 1]
-            R12 = R[: model_order + 1, model_order + 1 :]
             R22 = R[model_order + 1 :, model_order + 1 :]
             Q2 = Q[:, model_order + 1 :]
 
@@ -398,9 +393,9 @@ def optimize_order(bias_fn, min_order, max_order):
     C_max_minus_1, *_ = bias_fn(max_order - 1)
     lambda_lower = jnp.abs(C_max_minus_1 - C_max)
     lambda_upper = C_min - C_max
-    l = jnp.log10(lambda_lower)
-    u = jnp.log10(lambda_upper)
-    complexity_penalty = 10 ** (0.5 * (u + l))
+    lower_log = jnp.log10(lambda_lower)
+    upper_log = jnp.log10(lambda_upper)
+    complexity_penalty = 10 ** (0.5 * (upper_log + lower_log))
 
     # TODO: implement Golden Section Search
     # to minimize C - complexity_penalty * order
@@ -818,8 +813,6 @@ def state_space_frequency_response_discrete(A, B, C, D, f, f_center, dt):
 
 
 def main():
-    from time import time
-
     import sax
 
     from simphony.libraries import ideal
@@ -860,12 +853,9 @@ def main():
     sampling_frequency = 1e14
     model_order = 10
 
-    tic = time()
     poles, residues, feedthrough, error = optimize_order_vector_fitting_discrete(
         10, 50, s_params, frequency, f_center, sampling_frequency
     )
-    toc = time()
-    elapsed_time_1 = toc - tic
     model_order = len(poles)
     poles_eng, residues_eng, feedthrough_eng, erro = vector_fitting_discrete(
         model_order,
@@ -908,7 +898,7 @@ def main():
     plt.scatter(residues_eng[:, 0, 1].real, residues_eng[:, 0, 1].imag)
     plt.show()
 
-    H = pole_residue_response_discrete(
+    pole_residue_response_discrete(
         f,
         f_center,
         sampling_frequency,

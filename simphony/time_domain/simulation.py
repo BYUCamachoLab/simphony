@@ -1,33 +1,28 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
 import sax
 from jax import config, jit, lax
 from numpy.typing import ArrayLike
+from scipy.interpolate import interp1d
 
+from simphony.exceptions import UndefinedActiveComponent
+from simphony.simulation import Simulation, SimulationResult
+from simphony.time_domain.pole_residue_model import BVF_Options, IIRModelBaseband
 from simphony.time_domain.time_system import (
     BlockModeComponent,
     SampleModeComponent,
     TimeSystem,
     TimeSystemIIR,
 )
-from simphony.utils import SPEED_OF_LIGHT
+from simphony.utils import SPEED_OF_LIGHT, dict_to_matrix
 
 config.update("jax_enable_x64", True)
-
-from dataclasses import dataclass
-
-from scipy.interpolate import interp1d
-
-from simphony.exceptions import UndefinedActiveComponent
-from simphony.simulation import Simulation, SimulationResult
-from simphony.time_domain.pole_residue_model import BVF_Options, IIRModelBaseband
-from simphony.utils import dict_to_matrix
 
 if TYPE_CHECKING:
     from simphony.circuit.circuit import Circuit
@@ -390,8 +385,6 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
         )
 
     def _block_mode_run(self, t: ArrayLike, input_signals: dict) -> TimeResult:
-        graph = nx.DiGraph()
-
         # --------------------------------------------------------------
         # Turn self.td_netlist into a Networkx Graph
         # --------------------------------------------------------------
@@ -417,10 +410,7 @@ class TimeSim(SampleModeComponent, BlockModeComponent, Simulation):
         # Determine which exposed ports are Inputs and which are Outputs
         # --------------------------------------------------------------
 
-        exposed_ports = {
-            "inputs": [],
-            "outputs": [],
-        }
+        pass
 
     # ------------------------------------------------------------------
     # HELPER: build immutable/tuple wiring maps (hashable for jit)

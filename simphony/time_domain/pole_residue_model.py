@@ -63,7 +63,7 @@ class IIRModelBaseband(PoleResidueModel):
     def __init__(
         self, wvl_microns, center_wvl, s_params, sampling_period, order, options=None
     ):
-        if options == None:
+        if options is None:
             self.options = BVF_Options()
         else:
             self.options = options
@@ -226,8 +226,6 @@ class IIRModelBaseband(PoleResidueModel):
         return np.max(np.abs(self.S - self.compute_response()))
 
     def compute_time_response(self, sig=None, t=None):
-        c = 299792458
-
         sys = self.generate_sys_discrete()
 
         if t is None:
@@ -266,7 +264,7 @@ class IIRModelBaseband(PoleResidueModel):
                     # This allows us to implement the Fast Vector Fitting algorithm:
                     # https://scholar.googleusercontent.com/scholar?q=cache:u4aY-dn1tF8J:scholar.google.com/+piero+triverio+vector+fitting&hl=en&as_sdt=0,45
 
-                    Q1, R11 = np.linalg.qr(A1)
+                    Q1, _ = np.linalg.qr(A1)
                     R12 = Q1.conj().T @ A2
                     Q2, R22 = np.linalg.qr(A2 - Q1 @ R12)
 
