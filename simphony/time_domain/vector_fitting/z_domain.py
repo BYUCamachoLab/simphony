@@ -22,7 +22,7 @@ def _phi_matrices(frequency, sampling_frequency, poles, sign_convention):
     z = jnp.exp(sign_convention * 1j * 2 * jnp.pi * frequency / sampling_frequency)
     phi1 = 1 / (z[:, None] - poles[None, :])
 
-    unity_column = jnp.ones((len(z), 1))
+    unity_column = jnp.ones((len(z), 1), dtype=phi1.dtype)
 
     phi0 = jnp.hstack((unity_column, phi1))
 
@@ -36,28 +36,29 @@ def _lstsq_matrices(model_order, transfer_function, phi0, phi1):
     num_inputs = transfer_function.shape[2]
     # M = jnp.zeros(((num_ports**2) * (model_order), (model_order)), dtype=complex)
     # B = jnp.zeros(((num_ports**2) * (model_order)), dtype=complex)
+    dtype = jnp.result_type(transfer_function, phi0, phi1)
     M = jnp.zeros(
-        ((num_inputs * num_outputs) * (model_order), (model_order)), dtype=complex
+        ((num_inputs * num_outputs) * (model_order), (model_order)), dtype=dtype
     )
-    B = jnp.zeros(((num_inputs * num_outputs) * (model_order)), dtype=complex)
+    B = jnp.zeros(((num_inputs * num_outputs) * (model_order)), dtype=dtype)
 
     iter = 0
     # for i in range(num_ports):
     #     for j in range(num_ports):
     for m in range(num_inputs):
         for q in range(num_outputs):
-            D = jnp.diag(transfer_function[:, q, m])
-            A_block = jnp.hstack([phi0, -D @ phi1])  # never build the big matrix
+            weighted_phi1 = transfer_function[:, q, m, None] * phi1
+            A_block = jnp.concatenate([phi0, -weighted_phi1], axis=1)
             Q, R = jnp.linalg.qr(A_block, mode="reduced")
 
-            R22 = R[model_order + 1 :, model_order + 1 :]
-            Q2 = Q[:, model_order + 1 :]
+            pole_slice = slice(model_order + 1, None)
+            row_slice = slice(iter * model_order, (iter + 1) * model_order)
+            R22 = R[pole_slice, pole_slice]
+            Q2 = Q[:, pole_slice]
 
             V = transfer_function[:, q, m]
-            M = M.at[(iter) * (model_order) : (iter + 1) * (model_order), :].set(R22)
-            B = B.at[(iter) * (model_order) : (iter + 1) * (model_order)].set(
-                Q2.conj().T @ V
-            )
+            M = M.at[row_slice, :].set(R22)
+            B = B.at[row_slice].set(Q2.conj().T @ V)
             iter += 1
 
     return M, B
@@ -99,31 +100,22 @@ def _fit_to_poles(
     num_outputs = transfer_function.shape[1]
     num_inputs = transfer_function.shape[2]
     phi0, _ = _phi_matrices(frequency, sampling_frequency, poles, sign_convention)
-    # transfer_pairs = transfer_function.reshape(transfer_function.shape[0], -1)  # shape: (num_freq, num_ports*num_ports)
-    transfer_pairs = (
-        transfer_function.transpose(1, 2, 0).reshape(-1, transfer_function.shape[0]).T
+    dtype = jnp.result_type(transfer_function, phi0)
+    feedthrough = jnp.zeros((num_outputs, num_inputs), dtype=dtype)
+    residues = jnp.zeros(
+        (model_order, num_outputs, num_inputs),
+        dtype=dtype,
     )
-    # Define a function to solve lstsq for one port pair vector V (shape num_freq,)
 
-    def solve_lstsq(V):
-        sol, *_ = jnp.linalg.lstsq(phi0, V, rcond=None)
-        return sol  # shape (model_order + 1,)
-
-    # Vectorize over all port pairs (along axis=1)
-    solutions = jax.vmap(solve_lstsq, in_axes=1)(
-        transfer_pairs
-    )  # shape (num_ports*num_ports, model_order + 1)
-
-    # Reshape solutions back to (num_ports, num_ports, model_order + 1)
-    solutions = solutions.reshape((num_outputs, num_inputs, model_order + 1))
-
-    # Extract feedthrough (constant term)
-    feedthrough = solutions[:, :, 0]  # shape (num_ports, num_ports)
-
-    # Extract residues (remaining terms)
-    residues = solutions[:, :, 1:].transpose(
-        2, 0, 1
-    )  # shape (model_order, num_ports, num_ports)
+    for q in range(num_outputs):
+        for m in range(num_inputs):
+            solutions, *_ = jnp.linalg.lstsq(
+                phi0,
+                transfer_function[:, q, m],
+                rcond=None,
+            )
+            feedthrough = feedthrough.at[q, m].set(solutions[0])
+            residues = residues.at[:, q, m].set(solutions[1:])
 
     return residues, feedthrough
 
@@ -171,9 +163,20 @@ def pole_residue_response_discrete(
         * (frequency - center_frequency)
         / sampling_frequency
     )
-    frequency_response = feedthrough[None, :, :] + jnp.sum(
-        residues[None, :, :, :] / (z[:, None, None, None] - poles[None, :, None, None]),
-        axis=1,
+    initial_response = jnp.broadcast_to(
+        feedthrough,
+        (z.shape[0],) + feedthrough.shape,
+    )
+
+    def add_pole(response, pole_and_residue):
+        pole, residue = pole_and_residue
+        response = response + residue[None, :, :] / (z[:, None, None] - pole)
+        return response, None
+
+    frequency_response, _ = jax.lax.scan(
+        add_pole,
+        initial_response,
+        (poles, residues),
     )
     return frequency_response
 
@@ -189,18 +192,25 @@ def _mean_squared_error(
     feedthrough,
     sign_convention,
 ):
-    fit = pole_residue_response_discrete(
-        frequency,
-        center_frequency,
-        sampling_frequency,
-        poles,
-        residues,
-        feedthrough,
-        sign_convention=PHYSICIST,
-    )
-    error = jnp.mean(jnp.abs(transfer_function - fit) ** 2)
+    chunk_size = 2048
+    total_error = jnp.asarray(0.0, dtype=jnp.real(transfer_function).dtype)
 
-    return error
+    for start in range(0, transfer_function.shape[0], chunk_size):
+        stop = min(start + chunk_size, transfer_function.shape[0])
+        fit = pole_residue_response_discrete(
+            frequency[start:stop],
+            center_frequency,
+            sampling_frequency,
+            poles,
+            residues,
+            feedthrough,
+            sign_convention=sign_convention,
+        )
+        total_error = total_error + jnp.sum(
+            jnp.abs(transfer_function[start:stop] - fit) ** 2
+        )
+
+    return total_error / transfer_function.size
 
 
 # def state_space_discrete(poles, residues, feedthrough):
@@ -546,26 +556,18 @@ def state_space_discrete(poles, residues, feedthrough):
     """
     r, q, m = residues.shape
     M = r * m  # total number of states
+    dtype = jnp.result_type(poles, residues, feedthrough)
 
     # A: block-diagonal, replicate each pole m times
-    A = jnp.kron(jnp.diag(poles), jnp.eye(m, dtype=complex))
+    A = jnp.diag(jnp.repeat(poles, m)).astype(dtype)
 
     # B: each input excites its replicated states
-    B = jnp.zeros((M, m), dtype=complex)
-    for i in range(r):
-        for j in range(m):
-            B = B.at[i * m + j, j].set(1.0)
+    B = jnp.tile(jnp.eye(m, dtype=dtype), (r, 1))
 
     # C: map states to outputs using residues
-    C = jnp.zeros((q, M), dtype=complex)
-    for i in range(r):  # over poles
-        for j in range(m):  # over inputs
-            # state index for this replicated pole
-            idx = i * m + j
-            # residues[i, :, j] has shape (q,)
-            C = C.at[:, idx].set(residues[i, :, j])
+    C = jnp.transpose(residues, (1, 0, 2)).reshape(q, M).astype(dtype)
 
-    D = feedthrough
+    D = feedthrough.astype(dtype)
     return A, B, C, D
 
 
@@ -675,7 +677,11 @@ def state_space_step_discrete_optimized(A_diag, residues, D, update_constant, u,
     m = residues.shape[2]
     x_by_pole = x.reshape((x.shape[0], r, m))
     y = jnp.einsum("rqm,lrm->lq", residues, x_by_pole) + u @ D.T
-    x_next = update_constant[:, None] * (A_diag[None, :] * x + jnp.tile(u, (1, r)))
+    A_by_pole = A_diag.reshape((r, m))
+    x_next_by_pole = update_constant[:, None, None] * (
+        A_by_pole[None, :, :] * x_by_pole + u[:, None, :]
+    )
+    x_next = x_next_by_pole.reshape(x.shape)
     return y, x_next
 
 
@@ -685,10 +691,18 @@ def _state_space_response_discrete_optimized(
 ):
     r = residues.shape[0]
     m = residues.shape[2]
+    input_constant = jnp.asarray(input_constant)
+    if input_constant.shape == ():
+        input_constant_by_pole = input_constant
+    else:
+        input_constant_by_pole = input_constant.reshape((r, m))
+    A_by_pole = A_diag.reshape((r, m))
 
     def step(x, u_k):
-        y_k = jnp.einsum("iqm,im->q", residues, x.reshape((r, m))) + D @ u_k
-        x_next = A_diag * x + input_constant * jnp.tile(u_k, r)
+        x_by_pole = x.reshape((r, m))
+        y_k = jnp.einsum("iqm,im->q", residues, x_by_pole) + D @ u_k
+        x_next_by_pole = A_by_pole * x_by_pole + input_constant_by_pole * u_k[None, :]
+        x_next = x_next_by_pole.reshape(x.shape)
         return x_next, (y_k, x_next)
 
     _, (yout, xout) = jax.lax.scan(step, x0, u)
