@@ -1,4 +1,11 @@
+import gc
+import math
+
 import jax
+
+jax.config.update("jax_enable_x64", True)
+
+
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 from scipy.constants import speed_of_light
@@ -8,6 +15,12 @@ from simphony.conventions import ENGINEER, PHYSICIST
 from simphony.performance.performance import persistent_cache
 
 # from simphony.simulation.jax_tools import python_based_while_loop
+
+
+def _clear_vector_fitting_memory():
+    """Release local Python references and JAX compilation/device caches."""
+    gc.collect()
+    jax.clear_caches()
 
 
 # @jax.jit
@@ -22,7 +35,7 @@ def _phi_matrices(frequency, sampling_frequency, poles, sign_convention):
     z = jnp.exp(sign_convention * 1j * 2 * jnp.pi * frequency / sampling_frequency)
     phi1 = 1 / (z[:, None] - poles[None, :])
 
-    unity_column = jnp.ones((len(z), 1), dtype=phi1.dtype)
+    unity_column = jnp.ones((len(z), 1))
 
     phi0 = jnp.hstack((unity_column, phi1))
 
@@ -30,36 +43,44 @@ def _phi_matrices(frequency, sampling_frequency, poles, sign_convention):
 
 
 def _lstsq_matrices(model_order, transfer_function, phi0, phi1):
-    """"""
-    # num_ports = transfer_function.shape[1]
+    """Build the reduced least-squares system used for pole relocation.
+
+    ``phi0`` is common to every input/output pair, so factor it once and then
+    orthogonalize each pair-specific block against that basis. This is the fast
+    vector fitting reduction, and it avoids constructing a dense diagonal
+    matrix for each transfer vector.
+    """
     num_outputs = transfer_function.shape[1]
     num_inputs = transfer_function.shape[2]
-    # M = jnp.zeros(((num_ports**2) * (model_order), (model_order)), dtype=complex)
-    # B = jnp.zeros(((num_ports**2) * (model_order)), dtype=complex)
+    num_pairs = num_inputs * num_outputs
     dtype = jnp.result_type(transfer_function, phi0, phi1)
-    M = jnp.zeros(
-        ((num_inputs * num_outputs) * (model_order), (model_order)), dtype=dtype
+    M = jnp.zeros((num_pairs * model_order, model_order), dtype=dtype)
+    B = jnp.zeros((num_pairs * model_order,), dtype=dtype)
+
+    Q1, _ = jnp.linalg.qr(phi0, mode="reduced")
+    transfer_pairs = (
+        transfer_function.transpose(2, 1, 0)
+        .reshape(
+            num_pairs,
+            transfer_function.shape[0],
+        )
+        .T
     )
-    B = jnp.zeros(((num_inputs * num_outputs) * (model_order)), dtype=dtype)
 
-    iter = 0
-    # for i in range(num_ports):
-    #     for j in range(num_ports):
-    for m in range(num_inputs):
-        for q in range(num_outputs):
-            weighted_phi1 = transfer_function[:, q, m, None] * phi1
-            A_block = jnp.concatenate([phi0, -weighted_phi1], axis=1)
-            Q, R = jnp.linalg.qr(A_block, mode="reduced")
+    def process_pair(pair_index, carry):
+        M, B = carry
+        V = transfer_pairs[:, pair_index]
+        A2 = -phi1 * V[:, None]
+        R12 = Q1.conj().T @ A2
+        Q2, R22 = jnp.linalg.qr(A2 - Q1 @ R12, mode="reduced")
+        b_block = Q2.conj().T @ V
+        row_start = pair_index * model_order
 
-            pole_slice = slice(model_order + 1, None)
-            row_slice = slice(iter * model_order, (iter + 1) * model_order)
-            R22 = R[pole_slice, pole_slice]
-            Q2 = Q[:, pole_slice]
+        M = jax.lax.dynamic_update_slice(M, R22, (row_start, 0))
+        B = jax.lax.dynamic_update_slice(B, b_block, (row_start,))
+        return M, B
 
-            V = transfer_function[:, q, m]
-            M = M.at[row_slice, :].set(R22)
-            B = B.at[row_slice].set(Q2.conj().T @ V)
-            iter += 1
+    M, B = jax.lax.fori_loop(0, num_pairs, process_pair, (M, B))
 
     return M, B
 
@@ -100,22 +121,31 @@ def _fit_to_poles(
     num_outputs = transfer_function.shape[1]
     num_inputs = transfer_function.shape[2]
     phi0, _ = _phi_matrices(frequency, sampling_frequency, poles, sign_convention)
-    dtype = jnp.result_type(transfer_function, phi0)
-    feedthrough = jnp.zeros((num_outputs, num_inputs), dtype=dtype)
-    residues = jnp.zeros(
-        (model_order, num_outputs, num_inputs),
-        dtype=dtype,
+    # transfer_pairs = transfer_function.reshape(transfer_function.shape[0], -1)  # shape: (num_freq, num_ports*num_ports)
+    transfer_pairs = (
+        transfer_function.transpose(1, 2, 0).reshape(-1, transfer_function.shape[0]).T
     )
+    # Define a function to solve lstsq for one port pair vector V (shape num_freq,)
 
-    for q in range(num_outputs):
-        for m in range(num_inputs):
-            solutions, *_ = jnp.linalg.lstsq(
-                phi0,
-                transfer_function[:, q, m],
-                rcond=None,
-            )
-            feedthrough = feedthrough.at[q, m].set(solutions[0])
-            residues = residues.at[:, q, m].set(solutions[1:])
+    def solve_lstsq(V):
+        sol, *_ = jnp.linalg.lstsq(phi0, V, rcond=None)
+        return sol  # shape (model_order + 1,)
+
+    # Vectorize over all port pairs (along axis=1)
+    solutions = jax.vmap(solve_lstsq, in_axes=1)(
+        transfer_pairs
+    )  # shape (num_ports*num_ports, model_order + 1)
+
+    # Reshape solutions back to (num_ports, num_ports, model_order + 1)
+    solutions = solutions.reshape((num_outputs, num_inputs, model_order + 1))
+
+    # Extract feedthrough (constant term)
+    feedthrough = solutions[:, :, 0]  # shape (num_ports, num_ports)
+
+    # Extract residues (remaining terms)
+    residues = solutions[:, :, 1:].transpose(
+        2, 0, 1
+    )  # shape (model_order, num_ports, num_ports)
 
     return residues, feedthrough
 
@@ -163,21 +193,15 @@ def pole_residue_response_discrete(
         * (frequency - center_frequency)
         / sampling_frequency
     )
-    initial_response = jnp.broadcast_to(
-        feedthrough,
-        (z.shape[0],) + feedthrough.shape,
-    )
+    response_shape = (z.shape[0], feedthrough.shape[0], feedthrough.shape[1])
+    initial_response = jnp.broadcast_to(feedthrough[None, :, :], response_shape)
 
-    def add_pole(response, pole_and_residue):
+    def add_pole(frequency_response, pole_and_residue):
         pole, residue = pole_and_residue
-        response = response + residue[None, :, :] / (z[:, None, None] - pole)
-        return response, None
+        pole_response = residue[None, :, :] / (z[:, None, None] - pole)
+        return frequency_response + pole_response, None
 
-    frequency_response, _ = jax.lax.scan(
-        add_pole,
-        initial_response,
-        (poles, residues),
-    )
+    frequency_response, _ = jax.lax.scan(add_pole, initial_response, (poles, residues))
     return frequency_response
 
 
@@ -192,25 +216,18 @@ def _mean_squared_error(
     feedthrough,
     sign_convention,
 ):
-    chunk_size = 2048
-    total_error = jnp.asarray(0.0, dtype=jnp.real(transfer_function).dtype)
+    fit = pole_residue_response_discrete(
+        frequency,
+        center_frequency,
+        sampling_frequency,
+        poles,
+        residues,
+        feedthrough,
+        sign_convention=PHYSICIST,
+    )
+    error = jnp.mean(jnp.abs(transfer_function - fit) ** 2)
 
-    for start in range(0, transfer_function.shape[0], chunk_size):
-        stop = min(start + chunk_size, transfer_function.shape[0])
-        fit = pole_residue_response_discrete(
-            frequency[start:stop],
-            center_frequency,
-            sampling_frequency,
-            poles,
-            residues,
-            feedthrough,
-            sign_convention=sign_convention,
-        )
-        total_error = total_error + jnp.sum(
-            jnp.abs(transfer_function[start:stop] - fit) ** 2
-        )
-
-    return total_error / transfer_function.size
+    return error
 
 
 # def state_space_discrete(poles, residues, feedthrough):
@@ -380,14 +397,14 @@ def vector_fitting_discrete(
 #             break
 
 
-def optimize_order(bias_fn, min_order, max_order):
+def optimize_order(error_fn, min_order, max_order):
     """Choose a model order by balancing fit error and complexity.
 
     Parameters
     ----------
-    bias_fn:
-        Callable accepting an integer model order and returning a tuple whose
-        first value is the mean squared error for that order.
+    error_fn:
+        Callable accepting an integer model order and returning its scalar mean
+        squared error.
     min_order:
         Minimum model order to consider.
     max_order:
@@ -395,41 +412,49 @@ def optimize_order(bias_fn, min_order, max_order):
 
     Returns
     -------
-    tuple
-        The full `bias_fn(best_order)` result for the selected order.
+    int
+        The selected model order.
     """
-    C_min, *_ = bias_fn(min_order)
-    C_max, *_ = bias_fn(max_order)
-    C_max_minus_1, *_ = bias_fn(max_order - 1)
-    lambda_lower = jnp.abs(C_max_minus_1 - C_max)
-    lambda_upper = C_min - C_max
-    lower_log = jnp.log10(lambda_lower)
-    upper_log = jnp.log10(lambda_upper)
-    complexity_penalty = 10 ** (0.5 * (upper_log + lower_log))
+    error_cache = {}
+
+    def cached_error(model_order):
+        model_order = int(model_order)
+        if model_order not in error_cache:
+            error_cache[model_order] = error_fn(model_order)
+        return error_cache[model_order]
+
+    C_min = cached_error(min_order)
+    C_max = cached_error(max_order)
+    C_max_minus_1 = cached_error(max_order - 1)
+    lambda_lower = max(abs(C_max_minus_1 - C_max), float(jnp.finfo(float).tiny))
+    lambda_upper = max(C_min - C_max, lambda_lower)
+    l = math.log10(lambda_lower)
+    u = math.log10(lambda_upper)
+    complexity_penalty = 10 ** (0.5 * (u + l))
 
     # TODO: implement Golden Section Search
     # to minimize C - complexity_penalty * order
-    golden_ratio = (jnp.sqrt(5) - 1) / 2
+    golden_ratio = (math.sqrt(5) - 1) / 2
     a = min_order
     b = max_order
     c = int(b - golden_ratio * (b - a))
     d = int(a + golden_ratio * (b - a))
 
-    fc = bias_fn(c)[0] + complexity_penalty * d
-    fd = bias_fn(d)[0] + complexity_penalty * d
+    fc = cached_error(c) + complexity_penalty * c
+    fd = cached_error(d) + complexity_penalty * d
     while abs(b - a) > 1:
         if fc < fd:  # minimum is in [a, d]
             b, d, fd = d, c, fc
             c = int(b - golden_ratio * (b - a))
-            fc = bias_fn(c)[0] + complexity_penalty * c
+            fc = cached_error(c) + complexity_penalty * c
         else:  # minimum is in [c, b]
             a, c, fc = c, d, fd
             d = int(a + golden_ratio * (b - a))
-            fd = bias_fn(d)[0] + complexity_penalty * d
+            fd = cached_error(d) + complexity_penalty * d
 
     best_order = int(round((a + b) / 2))
 
-    return bias_fn(best_order)
+    return best_order
 
 
 # TODO: Cache the model order, not the model itself to save space
@@ -481,8 +506,8 @@ def optimize_order_vector_fitting_discrete(
         order.
     """
 
-    def bias_fn(model_order):
-        poles, residues, feedthrough, mean_squared_error = vector_fitting_discrete(
+    def fit_order(model_order):
+        return vector_fitting_discrete(
             model_order,
             transfer_function,
             frequency,
@@ -492,13 +517,24 @@ def optimize_order_vector_fitting_discrete(
             max_iterations=max_iterations,
             gamma=gamma,
             weight_threshold=weight_threshold,
-            # use_cache=False, ### TODO: Decide whether this be necessary
+            use_cache=False,
         )
-        return mean_squared_error, poles, residues, feedthrough
 
-    mean_squared_error, poles, residues, feedthrough = optimize_order(
-        bias_fn, min_order, max_order
-    )
+    def error_fn(model_order):
+        poles = residues = feedthrough = mean_squared_error = None
+        try:
+            poles, residues, feedthrough, mean_squared_error = fit_order(model_order)
+            return float(jax.device_get(mean_squared_error))
+        finally:
+            del poles, residues, feedthrough, mean_squared_error
+            _clear_vector_fitting_memory()
+
+    best_order = optimize_order(error_fn, min_order, max_order)
+    try:
+        poles, residues, feedthrough, mean_squared_error = fit_order(best_order)
+    except Exception:
+        _clear_vector_fitting_memory()
+        raise
 
     return poles, residues, feedthrough, mean_squared_error
 
@@ -556,18 +592,26 @@ def state_space_discrete(poles, residues, feedthrough):
     """
     r, q, m = residues.shape
     M = r * m  # total number of states
-    dtype = jnp.result_type(poles, residues, feedthrough)
 
     # A: block-diagonal, replicate each pole m times
-    A = jnp.diag(jnp.repeat(poles, m)).astype(dtype)
+    A = jnp.kron(jnp.diag(poles), jnp.eye(m, dtype=complex))
 
     # B: each input excites its replicated states
-    B = jnp.tile(jnp.eye(m, dtype=dtype), (r, 1))
+    B = jnp.zeros((M, m), dtype=complex)
+    for i in range(r):
+        for j in range(m):
+            B = B.at[i * m + j, j].set(1.0)
 
     # C: map states to outputs using residues
-    C = jnp.transpose(residues, (1, 0, 2)).reshape(q, M).astype(dtype)
+    C = jnp.zeros((q, M), dtype=complex)
+    for i in range(r):  # over poles
+        for j in range(m):  # over inputs
+            # state index for this replicated pole
+            idx = i * m + j
+            # residues[i, :, j] has shape (q,)
+            C = C.at[:, idx].set(residues[i, :, j])
 
-    D = feedthrough.astype(dtype)
+    D = feedthrough
     return A, B, C, D
 
 
@@ -677,59 +721,67 @@ def state_space_step_discrete_optimized(A_diag, residues, D, update_constant, u,
     m = residues.shape[2]
     x_by_pole = x.reshape((x.shape[0], r, m))
     y = jnp.einsum("rqm,lrm->lq", residues, x_by_pole) + u @ D.T
-    A_by_pole = A_diag.reshape((r, m))
-    x_next_by_pole = update_constant[:, None, None] * (
-        A_by_pole[None, :, :] * x_by_pole + u[:, None, :]
-    )
-    x_next = x_next_by_pole.reshape(x.shape)
+    x_next = update_constant[:, None] * (A_diag[None, :] * x + jnp.tile(u, (1, r)))
     return y, x_next
 
 
 @jax.jit
 def _state_space_response_discrete_optimized(
-    A_diag, residues, D, u, x0, input_constant
+    A_diag,
+    residues,
+    D,
+    update_constant,
+    u,
+    x0,
 ):
-    r = residues.shape[0]
-    m = residues.shape[2]
-    input_constant = jnp.asarray(input_constant)
-    if input_constant.shape == ():
-        input_constant_by_pole = input_constant
-    else:
-        input_constant_by_pole = input_constant.reshape((r, m))
-    A_by_pole = A_diag.reshape((r, m))
-
     def step(x, u_k):
-        x_by_pole = x.reshape((r, m))
-        y_k = jnp.einsum("iqm,im->q", residues, x_by_pole) + D @ u_k
-        x_next_by_pole = A_by_pole * x_by_pole + input_constant_by_pole * u_k[None, :]
-        x_next = x_next_by_pole.reshape(x.shape)
-        return x_next, (y_k, x_next)
+        y_k, x_next = state_space_step_discrete_optimized(
+            A_diag,
+            residues,
+            D,
+            update_constant,
+            u_k,
+            x,
+        )
+        return x_next, y_k
 
-    _, (yout, xout) = jax.lax.scan(step, x0, u)
-    return yout, xout
+    x_final, yout = jax.lax.scan(step, x0, u)
+    return yout, x_final
 
 
-def state_space_response_discrete_optimized(A, B, C, D, input_constant, u, x0=None):
-    """Fast discrete-time response for the structured vector-fitting
-    realization.
+def state_space_response_discrete_optimized(
+    A,
+    B,
+    C,
+    D,
+    update_constant,
+    u,
+    x0=None,
+):
+    """Simulate a structured state-space model for several wavelengths at once.
 
-    This assumes the ABCD matrices come from `state_space_discrete`, with:
-    - A diagonal/block-diagonal replicated-pole structure.
-    - B equal to the canonical replicated-input selector.
-    - C ordered so it can be reshaped into residues with shape (r, q, m).
-    - State ordering grouped by pole, then input.
+    Parameters
+    ----------
+    A, B, C, D:
+        State-space matrices generated by `state_space_discrete`.
+    update_constant:
+        Per-wavelength state-update multipliers with shape `(L,)`.
+    u:
+        Input samples with shape `(T, L, m)`.
+    x0:
+        Optional initial state with shape `(L, n)`. Defaults to zeros.
 
-    `input_constant` is just a multiplicative constant for the replicated input
-    branch. It is often a phase factor in baseband simulations, but the optimized
-    update does not require it to be unit magnitude.
-
-    This is not equivalent to `state_space_response_discrete` for arbitrary
-    state-space realizations for user-defined state space models. This method was
-    explicitly designed to be used for the pole-residue models generated from user
-    defined s-parameter matrices.
+    Returns
+    -------
+    tuple[jax.Array, jax.Array]
+        Output samples with shape `(T, L, q)` and the final state with shape
+        `(L, n)`.
     """
+    if u.ndim != 3:
+        raise ValueError("u must have shape (time_steps, wavelengths, inputs)")
+
     if x0 is None:
-        x0 = jnp.zeros((A.shape[0],), dtype=A.dtype)
+        x0 = jnp.zeros((u.shape[1], A.shape[0]), dtype=A.dtype)
 
     A_diag, residues = state_space_discrete_optimized_terms(
         A,
@@ -739,7 +791,12 @@ def state_space_response_discrete_optimized(A, B, C, D, input_constant, u, x0=No
     )
 
     return _state_space_response_discrete_optimized(
-        A_diag, residues, D, u, x0, input_constant
+        A_diag,
+        residues,
+        D,
+        update_constant,
+        u,
+        x0,
     )
 
 
@@ -827,6 +884,8 @@ def state_space_frequency_response_discrete(A, B, C, D, f, f_center, dt):
 
 
 def main():
+    from time import time
+
     import sax
 
     from simphony.libraries import ideal
@@ -867,9 +926,12 @@ def main():
     sampling_frequency = 1e14
     model_order = 10
 
+    tic = time()
     poles, residues, feedthrough, error = optimize_order_vector_fitting_discrete(
         10, 50, s_params, frequency, f_center, sampling_frequency
     )
+    toc = time()
+    elapsed_time_1 = toc - tic
     model_order = len(poles)
     poles_eng, residues_eng, feedthrough_eng, erro = vector_fitting_discrete(
         model_order,
@@ -912,7 +974,7 @@ def main():
     plt.scatter(residues_eng[:, 0, 1].real, residues_eng[:, 0, 1].imag)
     plt.show()
 
-    pole_residue_response_discrete(
+    H = pole_residue_response_discrete(
         f,
         f_center,
         sampling_frequency,

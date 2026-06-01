@@ -320,24 +320,33 @@ def discrete_state_space(
                     input_signals[port_name].amplitude[:, :, common_mode_index]
                 )
 
-            y = jnp.zeros((N, L, num_outputs), dtype=complex)
             A, B, C, D = self.state_space_matrices
-            for i, wl in enumerate(wavelengths):
-                # TODO: modulate inputs based on the delta f
-                f = SPEED_OF_LIGHT / wl
+            if simulation_parameters.use_state_space_optimization:
+                frequencies = SPEED_OF_LIGHT / wavelengths
                 delta_omega = (
-                    2 * jnp.pi * (f - self.baseband_frequency) / self.sampling_frequency
+                    2
+                    * jnp.pi
+                    * (frequencies - self.baseband_frequency)
+                    / self.sampling_frequency
                 )
-                if simulation_parameters.use_state_space_optimization:
-                    _y, _ = state_space_response_discrete_optimized(
-                        jnp.exp(1j * delta_omega) * A,
-                        B,
-                        C,
-                        D,
-                        jnp.exp(1j * delta_omega),
-                        u[:, i, :],
+                y, _ = state_space_response_discrete_optimized(
+                    A,
+                    B,
+                    C,
+                    D,
+                    jnp.exp(1j * delta_omega),
+                    u,
+                )
+            else:
+                y = jnp.zeros((N, L, num_outputs), dtype=complex)
+                for i, wl in enumerate(wavelengths):
+                    f = SPEED_OF_LIGHT / wl
+                    delta_omega = (
+                        2
+                        * jnp.pi
+                        * (f - self.baseband_frequency)
+                        / self.sampling_frequency
                     )
-                else:
                     _y, _ = state_space_response_discrete(
                         jnp.exp(1j * delta_omega) * A,
                         jnp.exp(1j * delta_omega) * B,
@@ -345,7 +354,7 @@ def discrete_state_space(
                         D,
                         u[:, i, :],
                     )
-                y = y.at[:, i, :].set(_y)
+                    y = y.at[:, i, :].set(_y)
 
             outputs = {}
             for i, out_port_name in enumerate(output_port_names):
