@@ -352,9 +352,10 @@ def mzi_lattice_passband(
 ):
     """Create a PCell class for a one-input MZI lattice passband filter.
 
-    The returned class builds a cascade of `MZI` stages where only `o0` and
-    `o1` are exposed as optical top-level ports. Each stage uses a common
-    bottom-arm length and a configurable top-arm delay difference.
+    The returned class builds a cascade of `MZI` stages with one primary input,
+    each stage's unused branch output, and the final cascade output exposed as
+    optical top-level ports. Each stage uses a common bottom-arm length and a
+    configurable top-arm delay difference.
 
     Parameters
     ----------
@@ -367,12 +368,20 @@ def mzi_lattice_passband(
     Returns
     -------
     type[PCell]
-        A parameterized component class. Constructor settings include
+        A parameterized component class exposing input `o0`, branch outputs
+        `mzi{i}_o3`, and final output `o1`. Constructor settings include
         `base_length` and `mzi_delay_differences`.
     """
     optical_ports = [
         Port(name="o0", type="optical", directionality="bidirectional"),
-        Port(name="o1", type="optical", directionality="bidirectional"),
+        *[
+            Port(
+                name=f"mzi{i}_o3",
+                type="optical",
+                directionality="bidirectional",
+            )
+            for i in range(order)
+        ],
     ]
 
     electrical_ports = (
@@ -386,7 +395,11 @@ def mzi_lattice_passband(
     )
 
     class MZILatticePassband(PCell):
-        ports = optical_ports + electrical_ports
+        ports = (
+            optical_ports
+            + electrical_ports
+            + [Port(name="o1", type="optical", directionality="bidirectional")]
+        )
 
         def __init__(
             self,
@@ -428,7 +441,7 @@ def mzi_lattice_passband(
 
             ports = {
                 "o0": f"mzi{0},o2",
-                "o1": f"mzi{order-1},o1",
+                **{f"mzi{i}_o3": f"mzi{i},o3" for i in range(order)},
             }
             if modulators:
                 ports.update(
@@ -438,6 +451,7 @@ def mzi_lattice_passband(
                         for j in (0, 1)
                     }
                 )
+            ports["o1"] = f"mzi{order - 1},o1"
             self.netlist = {
                 "instances": instances,
                 "ports": ports,
