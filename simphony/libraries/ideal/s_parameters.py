@@ -317,10 +317,10 @@ def optical_s_parameter(
                 simulation_parameters.use_state_space_optimization
                 and self._optimized_state_space_terms is not None
             ):
-                A_diag, residues = self._optimized_state_space_terms
+                A_diag, C = self._optimized_state_space_terms
                 y, new_x = state_space_step_discrete_optimized(
                     A_diag,
-                    residues,
+                    C,
                     D,
                     phase_AB,
                     u,

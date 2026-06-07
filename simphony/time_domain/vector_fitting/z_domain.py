@@ -699,28 +699,20 @@ def state_space_discrete_optimized_terms(A, B, C, check_structure=True):
             "ABCD matrices do not match the optimized state-space structure"
         )
 
-    M = A.shape[0]
-    m = B.shape[1]
-    r = M // m
-    q = C.shape[0]
-
     A_diag = jnp.diag(A)
-    residues = jnp.transpose(C.reshape(q, r, m), (1, 0, 2))
-    return A_diag, residues
+    return A_diag, C
 
 
 @jax.jit
-def state_space_step_discrete_optimized(A_diag, residues, D, update_constant, u, x):
+def state_space_step_discrete_optimized(A_diag, C, D, update_constant, u, x):
     """Run one batched sample update for the optimized pole-residue
     realization.
 
     `update_constant` may be any per-wavelength multiplier for the state
     update, not only a unit-magnitude phase.
     """
-    r = residues.shape[0]
-    m = residues.shape[2]
-    x_by_pole = x.reshape((x.shape[0], r, m))
-    y = jnp.einsum("rqm,lrm->lq", residues, x_by_pole) + u @ D.T
+    r = A_diag.shape[0] // u.shape[1]
+    y = x @ C.T + u @ D.T
     x_next = update_constant[:, None] * (A_diag[None, :] * x + jnp.tile(u, (1, r)))
     return y, x_next
 
@@ -728,7 +720,7 @@ def state_space_step_discrete_optimized(A_diag, residues, D, update_constant, u,
 @jax.jit
 def _state_space_response_discrete_optimized(
     A_diag,
-    residues,
+    C,
     D,
     update_constant,
     u,
@@ -737,7 +729,7 @@ def _state_space_response_discrete_optimized(
     def step(x, u_k):
         y_k, x_next = state_space_step_discrete_optimized(
             A_diag,
-            residues,
+            C,
             D,
             update_constant,
             u_k,
@@ -783,7 +775,7 @@ def state_space_response_discrete_optimized(
     if x0 is None:
         x0 = jnp.zeros((u.shape[1], A.shape[0]), dtype=A.dtype)
 
-    A_diag, residues = state_space_discrete_optimized_terms(
+    A_diag, C = state_space_discrete_optimized_terms(
         A,
         B,
         C,
@@ -792,7 +784,7 @@ def state_space_response_discrete_optimized(
 
     return _state_space_response_discrete_optimized(
         A_diag,
-        residues,
+        C,
         D,
         update_constant,
         u,
