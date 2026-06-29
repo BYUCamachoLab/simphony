@@ -13,6 +13,7 @@ from jax import lax
 from simphony.circuit.circuit import Circuit
 from simphony.circuit.netlist import generate_unique_string
 from simphony.component.component import SampleModeComponent
+from simphony.component.port import Port
 from simphony.signal.sample_mode import (
     SampleModeElectricalSignal,
     SampleModeLogicSignal,
@@ -29,6 +30,10 @@ from simphony.simulation.terminator import (
 from .simulation import Simulation, SimulationParameters, SimulationResult
 
 logger = logging.getLogger(__name__)
+
+
+def _terminator_ports(port_type: str, directionality: str):
+    return [Port(name="out", type=port_type, directionality=directionality)]
 
 
 class SampleModeSimulationResult(SimulationResult):
@@ -115,6 +120,14 @@ class SampleModeOpticalTerminator(OpticalTerminator, SampleModeComponent):
         }, state
 
 
+class SampleModeOpticalSinkTerminator(SampleModeOpticalTerminator):
+    ports = _terminator_ports("optical", "input")
+
+
+class SampleModeBidirectionalOpticalTerminator(SampleModeOpticalTerminator):
+    ports = _terminator_ports("optical", "bidirectional")
+
+
 class SampleModeElectricalTerminator(ElectricalTerminator, SampleModeComponent):
     def sample_mode_step(
         self,
@@ -127,6 +140,14 @@ class SampleModeElectricalTerminator(ElectricalTerminator, SampleModeComponent):
         return {"out": SampleModeElectricalSignal(voltage=0.0)}, state
 
 
+class SampleModeElectricalSinkTerminator(SampleModeElectricalTerminator):
+    ports = _terminator_ports("electrical", "input")
+
+
+class SampleModeBidirectionalElectricalTerminator(SampleModeElectricalTerminator):
+    ports = _terminator_ports("electrical", "bidirectional")
+
+
 class SampleModeLogicTerminator(LogicTerminator, SampleModeComponent):
     def sample_mode_step(
         self,
@@ -137,6 +158,27 @@ class SampleModeLogicTerminator(LogicTerminator, SampleModeComponent):
     ):
         """Compute the next state of the system."""
         return {"out": SampleModeLogicSignal(voltage=0)}, state
+
+
+class SampleModeLogicSinkTerminator(SampleModeLogicTerminator):
+    ports = _terminator_ports("logic", "input")
+
+
+class SampleModeBidirectionalLogicTerminator(SampleModeLogicTerminator):
+    ports = _terminator_ports("logic", "bidirectional")
+
+
+_TERMINATOR_MODEL_BY_PORT = {
+    ("optical", "input"): SampleModeOpticalTerminator,
+    ("optical", "output"): SampleModeOpticalSinkTerminator,
+    ("optical", "bidirectional"): SampleModeBidirectionalOpticalTerminator,
+    ("electrical", "input"): SampleModeElectricalTerminator,
+    ("electrical", "output"): SampleModeElectricalSinkTerminator,
+    ("electrical", "bidirectional"): SampleModeBidirectionalElectricalTerminator,
+    ("logic", "input"): SampleModeLogicTerminator,
+    ("logic", "output"): SampleModeLogicSinkTerminator,
+    ("logic", "bidirectional"): SampleModeBidirectionalLogicTerminator,
+}
 
 
 class SampleModeSimulation(Simulation):
@@ -343,63 +385,52 @@ class SampleModeSimulation(Simulation):
         )
 
     def insert_terminators(self):
-        """Attach terminator source components to unconnected input-like
-        ports."""
-        unconnected_ports = self.circuit.unconnected_ports(inputs_only=True)
-        optical_port_terminator_number = 0
-        electrical_port_terminator_number = 0
-        logic_port_terminator_number = 0
+        """Attach terminators to all unconnected signal ports."""
+        unconnected_ports = self.circuit.unconnected_ports(inputs_only=False)
+        terminator_numbers = {"optical": 0, "electrical": 0, "logic": 0}
         instance_separator = generate_unique_string(
             self.circuit.netlist["top_level"]["instances"].keys()
         )
         model_separator = generate_unique_string(self.circuit.models.keys())
         for instance_name, _ports in unconnected_ports.items():
             for unconnected_port in _ports:
-                if unconnected_port.type == "optical":
-                    terminator_instance_name = f"optical_terminator{instance_separator}{optical_port_terminator_number}"
-                    terminator_model_name = f"optical_terminator_{model_separator}"
-                    self.circuit.add_component(
+                terminator_model = _TERMINATOR_MODEL_BY_PORT.get(
+                    (unconnected_port.type, unconnected_port.directionality)
+                )
+                if terminator_model is None:
+                    continue
+
+                terminator_instance_number = terminator_numbers[unconnected_port.type]
+                terminator_instance_name = (
+                    f"{unconnected_port.type}_terminator"
+                    f"{instance_separator}{terminator_instance_number}"
+                )
+                terminator_model_name = (
+                    f"{unconnected_port.type}_terminator_for_"
+                    f"{unconnected_port.directionality}_{model_separator}"
+                )
+                self.circuit.add_component(
+                    terminator_instance_name,
+                    terminator_model_name,
+                    terminator_model,
+                )
+
+                if unconnected_port.directionality == "output":
+                    self.circuit.add_connection(
+                        instance_name,
+                        unconnected_port.name,
                         terminator_instance_name,
-                        terminator_model_name,
-                        SampleModeOpticalTerminator,
+                        "out",
                     )
+                else:
                     self.circuit.add_connection(
                         terminator_instance_name,
                         "out",
                         instance_name,
                         unconnected_port.name,
                     )
-                    optical_port_terminator_number += 1
-                elif unconnected_port.type == "electrical":
-                    terminator_instance_name = f"electrical_terminator{instance_separator}{electrical_port_terminator_number}"
-                    terminator_model_name = f"electrical_terminator_{model_separator}"
-                    self.circuit.add_component(
-                        terminator_instance_name,
-                        terminator_model_name,
-                        SampleModeElectricalTerminator,
-                    )
-                    self.circuit.add_connection(
-                        terminator_instance_name,
-                        "out",
-                        instance_name,
-                        unconnected_port.name,
-                    )
-                    electrical_port_terminator_number += 1
-                elif unconnected_port.type == "logic":
-                    terminator_instance_name = f"logic_terminator{instance_separator}{logic_port_terminator_number}"
-                    terminator_model_name = f"logic_terminator_{model_separator}"
-                    self.circuit.add_component(
-                        terminator_instance_name,
-                        terminator_model_name,
-                        SampleModeLogicTerminator,
-                    )
-                    self.circuit.add_connection(
-                        terminator_instance_name,
-                        "out",
-                        instance_name,
-                        unconnected_port.name,
-                    )
-                    logic_port_terminator_number += 1
+
+                terminator_numbers[unconnected_port.type] += 1
 
     def edge_lookup_tables(self):
         """Build predecessor and successor lookup tables keyed by instance
