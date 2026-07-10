@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use Simphony in your research, please cite it using the metadata from this file."
+title: "Simphony: A Simulator for Photonic Circuits"
+type: software
+version: "0.8.0rc0"
+date-released: "2026-05-29"
+authors:
+  - family-names: Ploeg
+    given-names: Sequoia
+  - family-names: Gunther
+    given-names: Hyrum
+  - family-names: Carver
+    given-names: Christian
+  - name: BYU CamachoLab
+abstract: "Simphony is a Python package for designing and simulating photonic integrated circuits."
+license: MIT
+repository-code: "https://github.com/BYUCamachoLab/simphony"
+url: "https://simphonyphotonics.readthedocs.io/en/stable/"
+keywords:
+  - photonics
+  - simulation
+  - circuits
+  - science
+  - engineering
+  - physics
+  - interconnect

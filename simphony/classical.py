@@ -1,4 +1,5 @@
 """Module for classical simulation."""
+
 import warnings
 from dataclasses import dataclass
 from functools import partial

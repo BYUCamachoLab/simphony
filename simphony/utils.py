@@ -12,7 +12,7 @@ import jax.numpy as jnp
 import sax
 from jax import Array
 from jax.typing import ArrayLike
-from sax.utils import get_ports
+from sax import get_ports
 from scipy.constants import c as SPEED_OF_LIGHT
 from scipy.interpolate import CubicSpline, interp1d
 
@@ -440,6 +440,53 @@ def dict_to_matrix(sdict: sax.SDict) -> Array:
     return smat
 
 
+# TODO: Maybe maybe not merge this with dict to matrix
+from typing import Sequence
+
+# import jax.numpy as jnp
+# from sax import sax
+# from sax.utils import get_ports
+
+
+def dict_to_rect_matrix(
+    sdict: sax.SDict, input_ports: Sequence[str], output_ports: Sequence[str]
+) -> jnp.ndarray:
+    r"""
+    Converts an s-dict to a rectangular S-matrix of shape (f x N x M),
+    where M = number of inputs, N = number of outputs.
+
+    Missing port-to-port entries are filled with zeros.
+
+    Parameters
+    ----------
+    sdict : sax.SDict
+        A dictionary of s-parameters.
+    input_ports : sequence of str
+        The ports corresponding to the "columns" of the matrix (inputs).
+    output_ports : sequence of str
+        The ports corresponding to the "rows" of the matrix (outputs).
+
+    Returns
+    -------
+    smat : jnp.ndarray
+        Rectangular matrix of s-parameters with shape (f x N x M)
+    """
+    # Determine the number of frequency points
+    arr = list(sdict.values())[0]
+    arr = jnp.asarray(arr).reshape(-1)
+    n_freq = len(arr)
+
+    smat = jnp.zeros((n_freq, len(output_ports), len(input_ports)), dtype=complex)
+
+    for (port_out, port_in), values in sdict.items():
+        if port_in in input_ports and port_out in output_ports:
+            i = output_ports.index(port_out)
+            j = input_ports.index(port_in)
+            smat = smat.at[:, i, j].set(values)
+
+    return smat
+
+
 def validate_model(model: sax.saxtypes.Model) -> bool:
     """Validates a model.
 
@@ -515,3 +562,33 @@ def resample(x: ArrayLike, xp: ArrayLike, sdict: sax.SDict) -> sax.SDict:
         cs = CubicSpline(xp, v)
         new_sdict[k] = cs(x)
     return new_sdict
+
+
+def create_multimode_sax_model(models: dict):
+    """This function takes individual s-parameter models or individual modes
+    and combines them into the sax-format for multimode models, assuming
+    complete orthogonality of modes (no cross polarization)"""
+    import inspect
+
+    # Build the union of parameters across all sub-models so SAX can inspect
+    # the signature and forward global settings (e.g. wl) correctly.
+    merged_params = {}
+    for model in models.values():
+        for name, param in inspect.signature(model).parameters.items():
+            if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
+                continue
+            if name not in merged_params:
+                merged_params[name] = param
+
+    def multimode_model(**params):
+        S_mm = {}
+        for mode, model in models.items():
+            S = model(**params)
+            for (p1, p2), val in S.items():
+                S_mm[(f"{p1}@{mode}", f"{p2}@{mode}")] = val
+        return S_mm
+
+    # Replace **params with the merged explicit signature
+    multimode_model.__signature__ = inspect.Signature(list(merged_params.values()))
+
+    return multimode_model

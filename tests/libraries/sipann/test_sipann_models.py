@@ -1,9 +1,6 @@
 import pytest
 
-try:
-    from simphony.libraries import sipann
-except ImportError:
-    SIPANN_AVAILABLE = False
+sipann = pytest.importorskip("simphony.libraries.sipann")
 
 
 class TestGapFuncSymmetric:

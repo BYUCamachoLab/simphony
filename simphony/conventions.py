@@ -1,0 +1,2 @@
+PHYSICIST = -1.0
+ENGINEER = 1.0
