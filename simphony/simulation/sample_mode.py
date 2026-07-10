@@ -110,12 +110,14 @@ class SampleModeOpticalTerminator(OpticalTerminator, SampleModeComponent):
         simulation_parameters: SampleModeSimulationParameters,
     ):
         """Compute the next state of the system."""
+        wavelengths = simulation_parameters.optical_baseband_wavelengths
         return {
             "out": SampleModeOpticalSignal(
                 amplitude=jnp.zeros(
-                    (1, len(simulation_parameters.mode_identifiers)), dtype=complex
+                    (wavelengths.shape[0], len(simulation_parameters.mode_identifiers)),
+                    dtype=complex,
                 ),
-                wavelength=jnp.array([1.55e-6]),
+                wavelength=wavelengths,
             )
         }, state
 
