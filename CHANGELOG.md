@@ -5,6 +5,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## Unreleased
+
+### Added
+- `BlockModeSimulationParameters.backward_pass`: an optional second, backward
+  pass that propagates reflections back through the circuit.
+  `BlockModeSimulationResult.backward_signals` holds the backward waves at
+  tracked ports.
+- `fuse_s_parameters` / `s_parameter_group_settings` on `Circuit.instantiate`
+  and `BlockModeSimulation` fuse adjacent SAX elements into a single element
+  (block mode only). The `s_parameter_group` setting controls which elements
+  may fuse (`-1` never fuses).
+- Backward responses for `DirectedOpticalModulator`, `ModeConverter`, and the
+  mode (de)multiplexers.
+
+### Changed
+- `SParameterElement` (made by `optical_s_parameter`) is now the only class
+  that interprets SAX models. It implements the block-mode response directly,
+  including mode indexing, and receives a per-instance port directionality
+  after the circuit is flattened. It is no longer expanded into a PCell of
+  state-space models, mode multiplexers, and mode converters.
+- `Circuit.instantiate` reads `simulation_parameters.directed` instead of
+  taking a `directed` argument; `fuse_models` is replaced by
+  `fuse_s_parameters`.
+- `MZI` takes `s_parameter_group` instead of `group_id`.
+- S-parameter instances are no longer renamed `sparameter_groupN~...` after
+  instantiation.
+
+### Removed
+- `optical_s_parameter_placeholder`, `SParameterPlaceholder`, `SParameterGroup`,
+  and `s_parameter_netlist_to_pcell`.
+
+### Fixed
+- Partially specified `vector_fitting_parameters` are completed with defaults
+  in every simulation mode (previously a `KeyError` in block mode).
+
+---
+
 ## [0.8.0rc0](https://github.com/BYUCamachoLab/simphony/tree/v0.8.0rc0) - <small>2026-05-29</small>
 
 Release candidate for archiving the current time-domain simulator implementation.

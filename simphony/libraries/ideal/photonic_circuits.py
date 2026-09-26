@@ -4,7 +4,7 @@ from simphony.libraries.ideal.modulators import (
     DirectedOpticalModulator,
     OpticalModulator,
 )
-from simphony.libraries.ideal.s_parameters import optical_s_parameter_placeholder
+from simphony.libraries.ideal.s_parameters import optical_s_parameter
 from simphony.libraries.old_ideal import coupler, waveguide
 from simphony.simulation.simulation import SimulationParameters
 
@@ -24,6 +24,7 @@ class MZI(PCell):
     o0 ---[ϕ]---/        \--- o1
 
     """
+
     _arms = (
         ("bot", "o1", "o0"),
         ("top", "o3", "o2"),
@@ -83,14 +84,17 @@ class MZI(PCell):
         bot_phase_shifter_settings: dict = None,
         modulators: bool = True,
         partial: bool = False,
-        # TODO: maybe inherit a getter or setter or just don't do group ids
-        group_id="default",  # Setting to None will disable grouping, not setting will use MZI class id
+        s_parameter_group: int = 0,
     ):
         """`partial` builds only the arms and combiner, without the input
         splitter.
 
         `modulators` controls whether each arm includes a tunable phase
         shifter.
+
+        `s_parameter_group` is applied to the splitter, combiner, and arm
+        waveguides. Adjacent S-parameter elements sharing a group can be fused
+        in block mode (`fuse_s_parameters=True`); `-1` disables fusing.
         """
         if splitter_settings is None:
             splitter_settings = {}
@@ -177,10 +181,10 @@ class MZI(PCell):
                 "o1": "output",
             }
 
-            self.models["coupler"] = optical_s_parameter_placeholder(
+            self.models["coupler"] = optical_s_parameter(
                 coupler, coupler_directionality, simulation_parameters.mode_identifiers
             )
-            self.models["waveguide"] = optical_s_parameter_placeholder(
+            self.models["waveguide"] = optical_s_parameter(
                 waveguide,
                 waveguide_directionality,
                 simulation_parameters.mode_identifiers,
@@ -205,11 +209,8 @@ class MZI(PCell):
         if partial:
             s_parameter_models_to_group.remove("splitter")
 
-        if group_id == "default":
-            group_id = id(MZI)
-
         for instance_name in s_parameter_models_to_group:
-            self.settings[instance_name]["group_id"] = group_id
+            self.settings[instance_name]["s_parameter_group"] = s_parameter_group
 
 
 def mzi_lattice_filter(

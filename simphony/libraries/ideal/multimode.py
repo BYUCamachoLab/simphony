@@ -58,6 +58,16 @@ class ModeConverter(
             ),
         }
 
+        # Backward pass: a wave arriving at "out" is converted back.
+        if "out" in inputs:
+            backward = inputs["out"].amplitude
+            outputs["in"] = BlockModeOpticalSignal(
+                amplitude=jnp.zeros_like(backward)
+                .at[:, :, input_mode_index]
+                .set(backward[:, :, output_mode_index]),
+                wavelength=inputs["out"].wavelength,
+            )
+
         return outputs
 
 
@@ -110,6 +120,18 @@ def mode_multiplexer(
                     amplitude=shaped_output_amplitude, wavelength=wavelengths
                 )
 
+            # Backward pass: route each mode arriving at the output back to
+            # its input port.
+            if output_port_name in input_signals:
+                backward = input_signals[output_port_name]
+                for mode_no, in_port_name in enumerate(input_port_names):
+                    outputs[in_port_name] = BlockModeOpticalSignal(
+                        amplitude=jnp.zeros_like(backward.amplitude)
+                        .at[:, :, mode_no]
+                        .set(backward.amplitude[:, :, mode_no]),
+                        wavelength=backward.wavelength,
+                    )
+
             return outputs
 
     return ModeMultiplexer
@@ -157,6 +179,18 @@ def mode_demultiplexer(
                 )
                 outputs[p] = BlockModeOpticalSignal(
                     amplitude=output_amplitude, wavelength=wl
+                )
+
+            # Backward pass: recombine the modes arriving at the output ports.
+            backward = jnp.zeros_like(input_amplitude)
+            has_backward = False
+            for i, p in enumerate(self.output_port_names):
+                if p in inputs:
+                    has_backward = True
+                    backward = backward.at[:, :, i].add(inputs[p].amplitude[:, :, i])
+            if has_backward:
+                outputs[self.input_port_name] = BlockModeOpticalSignal(
+                    amplitude=backward, wavelength=wl
                 )
 
             return outputs

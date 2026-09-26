@@ -1,4 +1,27 @@
+"""Simphony components that interpret SAX S-parameter models.
+
+`SParameterElement` is the single class Simphony uses to interpret a SAX
+model. Raw SAX callables placed in a `Circuit` (or in a PCell's `models`) are
+wrapped with `optical_s_parameter`, which returns a `SParameterElement`
+subclass whose class-level `ports` are derived from the SAX model.
+
+The same element serves every simulator:
+
+- `SParameterSimulation` calls `s_parameters`, which returns the full SAX
+  S-dict.
+- `SampleModeSimulation` and `BlockModeSimulation` vector-fit the S-matrix
+  into a discrete state-space model and do the port/mode indexing
+  themselves.
+
+The circuit assigns each element instance a port directionality after the
+netlist is flattened (see `simphony.circuit.circuit.InstantiatedCircuit`).
+Directionality only defines which way is the simulator's forward pass; the
+underlying SAX model keeps all of its bidirectional information.
+"""
+
+import functools
 import inspect
+import warnings
 from copy import deepcopy
 
 import jax
@@ -8,23 +31,13 @@ from jax.typing import ArrayLike
 from sax import DEFAULT_MODES
 from scipy.constants import speed_of_light
 
-# from simphony.circuit.netlist import InstantiatedFlatNetlist, instantiate_netlist
-from simphony.circuit._netlist import InstantiatedFlatNetlist
-from simphony.circuit.netlist import (
-    add_settings_to_netlist,
-    generate_valid_separator,
-    sanitize_instance_names,
+from simphony.component.component import (
+    BlockModeComponent,
+    SampleModeComponent,
+    SParameterComponent,
 )
-from simphony.component.component import SampleModeComponent, SParameterComponent
-from simphony.component.pcell import PCell
-from simphony.component.placeholder import Placeholder
 from simphony.component.port import Port
-from simphony.libraries.ideal.digital_filters import discrete_state_space
-from simphony.libraries.ideal.multimode import (
-    ModeConverter,
-    mode_demultiplexer,
-    mode_multiplexer,
-)
+from simphony.signal.block_mode import BlockModeOpticalSignal
 from simphony.signal.sample_mode import SampleModeOpticalSignal
 from simphony.simulation.simulation import SimulationMode, SimulationParameters
 from simphony.time_domain.vector_fitting.z_domain import (
@@ -32,28 +45,12 @@ from simphony.time_domain.vector_fitting.z_domain import (
     optimize_order_vector_fitting_discrete,
     state_space_discrete,
     state_space_discrete_optimized_terms,
+    state_space_response_discrete,
+    state_space_response_discrete_optimized,
     state_space_step_discrete_optimized,
     vector_fitting_discrete,
 )
 from simphony.utils import dict_to_rect_matrix
-
-# from simphony.simulation.s_parameter import SParameterSimulation
-# from simphony.simulation.sample_mode import SampleModeSimulation
-# from simphony.simulation.block_mode import BlockModeSimulation
-
-
-INPUT_SUFFIX = "in"
-OUTPUT_SUFFIX = "out"
-MULTIPLEXER_SUFFIX = "_mux"
-DEMULTIPLEXER_SUFFIX = "_demux"
-DEMULTIPLEXER_IN_PORT_NAME = "in_port"
-DEMULTIPLEXER_OUT_PORT_SUFFIX = "_port"
-MULTIPLEXER_IN_PORT_SUFFIX = "_port"
-MULTIPLEXER_OUT_PORT_NAME = "out_port"
-MODE_CONVERTER_MODEL_NAME = "mode_converter"
-MODE_CONVERTER_INSTANCE_SUFFIX = "_converter"
-STATE_SPACE_MODEL_NAME_BASE = "state_space"
-STATE_SPACE_INSTANCE_NAME_BASE = STATE_SPACE_MODEL_NAME_BASE
 
 _default_vector_fitting_parameters = {
     "model_order": None,
@@ -61,21 +58,358 @@ _default_vector_fitting_parameters = {
     "max_model_order": 50,
     "num_frequency_samples": 1000,
     "center_wavelength": 1.55e-6,
-    # "center_wavelength": 1.52e-6,
     "spectral_range": (1.5e-6, 1.6e-6),
-    # NOTE: Currently, a user CAN change the spectral range parameter (the default is set by )
 }
 
+S_PARAMETER_ELEMENT_SETTING_KEYS = {
+    "sax_settings",
+    "vector_fitting_parameters",
+    "delay_compensation",
+    "apply_phase_correction",
+    "port_directionality",
+    "s_parameter_group",
+}
+"""Settings understood by `SParameterElement`. When an instance's settings
+contain none of these keys, they are interpreted as SAX settings."""
 
-class SParameterElement(SParameterComponent, SampleModeComponent):
-    """The following component factory should be implemented when writing a
-    simulator that interprets s-parameter elements using the default settings
-    in the SParameterGroup PCell.
+NO_S_PARAMETER_GROUP = -1
+"""`s_parameter_group` value that prevents an element from being fused."""
 
-    By default, SParameterGroup will expand each element within it into
-    this model. If more flexibility and control is needed, feel free to
-    write your own design in SParameterGroup
+
+def normalize_vector_fitting_parameters(vector_fitting_parameters=None) -> dict:
+    """Return a complete copy of `vector_fitting_parameters`.
+
+    Missing keys are filled from the defaults. A fixed `model_order`
+    disables the model-order search (`min_model_order` and
+    `max_model_order` become `None`).
     """
+    parameters = deepcopy(_default_vector_fitting_parameters)
+    parameters.update(deepcopy(vector_fitting_parameters or {}))
+    if parameters["model_order"] is not None:
+        parameters["min_model_order"] = None
+        parameters["max_model_order"] = None
+    return parameters
+
+
+class SParameterElement(SParameterComponent, SampleModeComponent, BlockModeComponent):
+    """A Simphony component that interprets a SAX S-parameter model.
+
+    Do not subclass this directly; use `optical_s_parameter` to create a
+    subclass for a specific SAX model.
+
+    Instance settings
+    -----------------
+    sax_settings:
+        Keyword arguments passed to the SAX model.
+    vector_fitting_parameters:
+        Partial or complete vector-fitting parameters, merged over the
+        defaults (`model_order`, `min_model_order`, `max_model_order`,
+        `num_frequency_samples`, `center_wavelength`, `spectral_range`).
+    delay_compensation:
+        Sample mode only. Number of samples of artificial delay to remove from
+        the fitted model. Ignored (with a warning) in block mode.
+    apply_phase_correction:
+        Sample mode only. Whether the delay compensation phase is applied to
+        the outputs.
+    port_directionality:
+        Mapping from port name to `"input"`, `"output"`, or
+        `"bidirectional"`. Overrides the factory default and any direction
+        inferred from the netlist.
+    s_parameter_group:
+        Integer used when fusing adjacent elements in block mode. Only
+        adjacent elements with the same group fuse; `-1` never fuses.
+    """
+
+    _sax_model = None
+    _default_modes = DEFAULT_MODES
+    ports = []
+
+    def __repr__(self):
+        return f"<{type(self).__name__} (SParameterElement obj)>"
+
+    def __init__(self, simulation_parameters: SimulationParameters, **settings):
+        unknown = set(settings) - S_PARAMETER_ELEMENT_SETTING_KEYS
+        if unknown:
+            raise TypeError(
+                f"{type(self).__name__} got unknown settings {sorted(unknown)}. "
+                "SAX model keyword arguments must go under 'sax_settings' when "
+                f"any of {sorted(S_PARAMETER_ELEMENT_SETTING_KEYS)} is given."
+            )
+        self.sax_model = type(self)._sax_model
+        self.settings = deepcopy(settings)
+        self.settings.setdefault("sax_settings", {})
+        self.settings["vector_fitting_parameters"] = (
+            normalize_vector_fitting_parameters(
+                self.settings.get("vector_fitting_parameters")
+            )
+        )
+        self.settings.setdefault("delay_compensation", 0)
+        self.settings.setdefault("apply_phase_correction", True)
+        self.settings.setdefault("port_directionality", {})
+        self.settings.setdefault("s_parameter_group", 0)
+
+        if self.settings["apply_phase_correction"]:
+            self._k = self.settings["delay_compensation"]
+        else:
+            self._k = 0
+
+        self._state_space_cache = {}
+        self.set_port_directionality(self.settings["port_directionality"])
+
+    # ------------------------------------------------------------------ ports
+    @property
+    def port_directionality(self) -> dict:
+        return {p.name: p.directionality for p in self.ports}
+
+    def set_port_directionality(self, port_directionality: dict):
+        """Set the directionality of this instance's ports.
+
+        Ports not named in `port_directionality` keep their current
+        directionality. This only affects this instance, not the class.
+        """
+        unknown = set(port_directionality) - {p.name for p in self.ports}
+        if unknown:
+            raise ValueError(
+                f"{type(self).__name__} has no ports named {sorted(unknown)}"
+            )
+        self.ports = [
+            Port(
+                name=p.name,
+                type=p.type,
+                directionality=port_directionality.get(p.name, p.directionality),
+            )
+            for p in self.ports
+        ]
+        self._create_port_lookup_table()
+        self._state_space_cache = {}
+
+    # ---------------------------------------------------------- S-parameters
+    def s_parameters(
+        self,
+        inputs: dict,
+        wl: ArrayLike = 1.55e-6,
+    ):
+        if _has_wl_kwarg(self.sax_model):
+            return self.sax_model(wl=wl, **self.settings["sax_settings"])
+        return self.sax_model(**self.settings["sax_settings"])
+
+    # ------------------------------------------------------------ state space
+    def _state_space(self, simulation_parameters):
+        """Vector-fit the SAX model (memoized) for the active simulator.
+
+        In block mode without the backward pass, only the forward
+        `S[output <- input]` relationships are fitted. Otherwise, the
+        relationships allowed by the port directionality are fitted; for
+        block mode with the backward pass this is the full S-matrix.
+
+        Returns a dict with the state-space matrices `A, B, C, D`, and
+        `inputs`/`outputs`: lists of `(port_name, mode_index)` for each
+        state-space column/row.
+        """
+        block_mode = simulation_parameters.simulation_mode == SimulationMode.BLOCK_MODE
+        if block_mode and getattr(simulation_parameters, "backward_pass", False):
+            directionality = {p.name: "bidirectional" for p in self.ports}
+        else:
+            directionality = self.port_directionality
+
+        if block_mode:
+            if self.settings["delay_compensation"] != 0:
+                warnings.warn(
+                    f"{type(self).__name__}: delay_compensation is ignored in "
+                    "block mode simulations"
+                )
+            delay_compensation = 0
+        else:
+            delay_compensation = self.settings["delay_compensation"]
+
+        mode_identifiers = tuple(simulation_parameters.mode_identifiers)
+        key = (
+            tuple(sorted(directionality.items())),
+            delay_compensation,
+            float(simulation_parameters.dt),
+            mode_identifiers,
+        )
+        if key in self._state_space_cache:
+            return self._state_space_cache[key]
+
+        filtered_model = _get_filtered_sax_model(
+            self.sax_model, directionality, mode_identifiers
+        )
+        (
+            (A, B, C, D),
+            input_ports,
+            output_ports,
+        ) = _calculate_state_space_coefficients_from_sax_model(
+            filtered_model,
+            self.settings["sax_settings"],
+            self.settings["vector_fitting_parameters"],
+            simulation_parameters,
+            delay_compensation=delay_compensation,
+        )
+
+        def port_mode_indices(port_modes):
+            indices = []
+            for port_mode in port_modes:
+                port, mode = port_mode.split("@")
+                indices.append((port, _mode_index(mode, mode_identifiers)))
+            return indices
+
+        state_space = {
+            "A": A,
+            "B": B,
+            "C": C,
+            "D": D,
+            "inputs": port_mode_indices(input_ports),
+            "outputs": port_mode_indices(output_ports),
+            "input_ports": input_ports,
+            "output_ports": output_ports,
+        }
+        self._state_space_cache[key] = state_space
+        return state_space
+
+    def _baseband_delta_omega(self, simulation_parameters):
+        """Per-wavelength rotation (rad/sample) from the fit center."""
+        wl_center = self.settings["vector_fitting_parameters"]["center_wavelength"]
+        wls = simulation_parameters.optical_baseband_wavelengths
+        return (
+            2
+            * jnp.pi
+            * speed_of_light
+            * (1.0 / wls - 1.0 / wl_center)
+            * simulation_parameters.dt
+        )
+
+    # ------------------------------------------------------------ block mode
+    def block_mode_response(self, input_signals: dict, simulation_parameters):
+        """Evaluate the fitted state-space model over a full time block.
+
+        Every `(port, mode)` pair of the fitted model is a separate
+        state-space input/output. Missing input signals are treated as zero.
+        Outputs are returned for every port the fitted model can emit on;
+        entries for input ports are backward-travelling waves (reflections).
+        """
+        state_space = self._state_space(simulation_parameters)
+        A, B, C, D = (state_space[k] for k in "ABCD")
+
+        wls = simulation_parameters.optical_baseband_wavelengths
+        T = simulation_parameters.num_time_steps
+        L = wls.shape[0]
+        M = len(simulation_parameters.mode_identifiers)
+
+        u = jnp.zeros((T, L, len(state_space["inputs"])), dtype=complex)
+        for column, (port, mode_idx) in enumerate(state_space["inputs"]):
+            signal = input_signals.get(port)
+            if signal is not None:
+                u = u.at[:, :, column].set(signal.amplitude[:, :, mode_idx])
+
+        update_constant = jnp.exp(
+            1j * self._baseband_delta_omega(simulation_parameters)
+        )
+        if simulation_parameters.use_state_space_optimization:
+            y, _ = state_space_response_discrete_optimized(
+                A, B, C, D, update_constant, u
+            )
+        else:
+
+            def single_wavelength(phase, u_l):
+                y_l, _ = state_space_response_discrete(phase * A, phase * B, C, D, u_l)
+                return y_l
+
+            y = jax.vmap(single_wavelength, in_axes=(0, 1), out_axes=1)(
+                update_constant, u
+            )
+
+        amplitudes = {}
+        for row, (port, mode_idx) in enumerate(state_space["outputs"]):
+            amplitude = amplitudes.get(port, jnp.zeros((T, L, M), dtype=complex))
+            amplitudes[port] = amplitude.at[:, :, mode_idx].set(y[:, :, row])
+
+        return {
+            port: BlockModeOpticalSignal(amplitude=amplitude, wavelength=wls)
+            for port, amplitude in amplitudes.items()
+        }
+
+    # ----------------------------------------------------------- sample mode
+    def sample_mode_initial_state(self, simulation_parameters):
+        state_space = self._state_space(simulation_parameters)
+        A, B, C, D = (state_space[k] for k in "ABCD")
+        self.state_space_matrices = (A, B, C, D)
+        self.state_space_input_indices = {
+            tuple(p.split("@")): i for i, p in enumerate(state_space["input_ports"])
+        }
+        self.state_space_output_indices = {
+            tuple(p.split("@")): i for i, p in enumerate(state_space["output_ports"])
+        }
+        self._sample_mode_inputs = state_space["inputs"]
+        self._sample_mode_outputs = state_space["outputs"]
+
+        self._optimized_state_space_terms = None
+        if simulation_parameters.use_state_space_optimization:
+            try:
+                self._optimized_state_space_terms = (
+                    state_space_discrete_optimized_terms(A, B, C)
+                )
+            except ValueError:
+                self._optimized_state_space_terms = None
+
+        L = len(simulation_parameters.optical_baseband_wavelengths)
+        return jnp.zeros((L, A.shape[1]), dtype=complex)
+
+    def sample_mode_step(
+        self,
+        input_signals: dict,
+        state: jax.Array,
+        simulation_state,
+        simulation_parameters,
+    ):
+        """Compute the next state of the system.
+
+        For each wavelength `l` (vectorized over wavelengths):
+            new_x[l] = phase_AB[l] * (A @ x[l] + B @ u[l])
+            y[l]     = phase_CD[l] * (C @ x[l] + D @ u[l])
+        """
+        x = state
+        A, B, C, D = self.state_space_matrices
+
+        L = len(simulation_parameters.optical_baseband_wavelengths)
+        M = len(simulation_parameters.mode_identifiers)
+        u = jnp.zeros((L, len(self._sample_mode_inputs)), dtype=complex)
+        for column, (port_name, mode_idx) in enumerate(self._sample_mode_inputs):
+            u = u.at[:, column].set(input_signals[port_name].amplitude[:, mode_idx])
+
+        delta_omega = self._baseband_delta_omega(simulation_parameters)
+        phase_AB = jnp.exp(1j * delta_omega)
+        phase_CD = jnp.exp(1j * self._k * delta_omega)
+
+        if (
+            simulation_parameters.use_state_space_optimization
+            and self._optimized_state_space_terms is not None
+        ):
+            A_diag, C_opt = self._optimized_state_space_terms
+            y, new_x = state_space_step_discrete_optimized(
+                A_diag, C_opt, D, phase_AB, u, x
+            )
+            y = phase_CD[:, None] * y
+        else:
+            new_x = phase_AB[:, None] * (x @ A.T + u @ B.T)
+            y = phase_CD[:, None] * (x @ C.T + u @ D.T)
+
+        output_signals = {
+            port_name: SampleModeOpticalSignal(
+                amplitude=jnp.zeros((L, M), dtype=complex),
+                wavelength=simulation_parameters.optical_baseband_wavelengths,
+            )
+            for port_name in self._output_optical_port_names
+        }
+        for row, (port_name, mode_idx) in enumerate(self._sample_mode_outputs):
+            if port_name not in output_signals:
+                continue
+            signal = output_signals[port_name]
+            output_signals[port_name] = signal.replace(
+                amplitude=signal.amplitude.at[:, mode_idx].set(y[:, row])
+            )
+
+        return output_signals, new_x
 
 
 def optical_s_parameter(
@@ -83,1015 +417,209 @@ def optical_s_parameter(
     port_directionality: dict = None,
     default_modes: list | tuple | str = DEFAULT_MODES,
 ) -> type[SParameterElement]:
-    """Wrap a SAX optical model as a Simphony S-parameter component class.
-
-    The returned class can be used in circuit netlists like any other component.
-    In S-parameter simulations it calls the original `sax_model`; in time-domain
-    simulations it can use vector fitting settings to approximate the frequency
-    response with a discrete state-space model.
+    """Wrap a SAX optical model as a Simphony `SParameterElement` class.
 
     Parameters
     ----------
     sax_model:
         Callable SAX model returning an `SDict`.
     port_directionality:
-        Optional mapping from port name to `"input"`, `"output"`, or
-        `"bidirectional"`. Unspecified ports default to `"bidirectional"`.
-        Directional simulators such as Block mode need enough directionality
-        information to orient the netlist.
+        Optional default mapping from port name to `"input"`, `"output"`, or
+        `"bidirectional"`. Unspecified ports default to `"bidirectional"`, in
+        which case directed simulators infer the direction from the netlist.
+        Instance settings may override these defaults.
     default_modes:
-        Mode label or labels assigned when the SAX model does not encode
-        explicit multimode port names. These labels are replicated across the
-        model's optical relationships.
+        Mode label or labels used when the SAX model does not encode
+        explicit multimode port names.
 
     Returns
     -------
     type[SParameterElement]
-        A component class whose constructor accepts settings such as
-        `sax_settings`, `port_directionality`, `vector_fitting_parameters`, and
-        `delay_compensation`.
+        A component class; see `SParameterElement` for its settings.
     """
-    pcell_port_names = _get_port_names_without_mode(sax_model)
-
-    port_directionality = deepcopy(port_directionality)
-    if port_directionality is None:
-        port_directionality = {}
-
-    for port_name in pcell_port_names:
-        port_directionality.setdefault(port_name, "bidirectional")
-
-    # default_port_directionality = port_directionality
+    port_names = sorted(_get_port_names_without_mode(sax_model))
+    port_directionality = dict(port_directionality or {})
+    unknown = set(port_directionality) - set(port_names)
+    if unknown:
+        raise ValueError(f"SAX model has no ports named {sorted(unknown)}")
 
     if isinstance(default_modes, str):
         default_modes = [default_modes]
 
-    default_modes = tuple(default_modes)
-
-    BaseSParameterElement = SParameterElement  # Freeze the instance
-
-    class SpecificSParameterElement(BaseSParameterElement):
-        _sax_model = staticmethod(sax_model)
-        ports = [
-            Port(
-                name=port_name,
-                type="optical",
-                directionality=port_directionality[port_name],
-            )
-            for port_name in pcell_port_names
-        ]
-
-        def __init__(
-            self,
-            simulation_parameters: SimulationParameters,
-            # Rename kwargs to be more accurate
-            **kwargs,
-            # sax_settings: dict = None,
-            # vector_fitting_parameters = None,
-            # delay_compensation: int = 0,
-            # port_directionality = {},
-        ):
-            """
-            TODO: Add documentation for each of the kwargs
-            """
-            # The following lines are helpful for debugging (I am just freezing the references)
-            _ = sax_model
-            _ = port_directionality
-            _ = default_modes
-
-            self.sax_model = _get_filtered_sax_model(
-                sax_model,
-                port_directionality=port_directionality,
-                default_modes=default_modes,
-            )
-
-            self.settings = kwargs
-
-            self.settings.setdefault("sax_settings", {})
-            self.settings.setdefault("group_id", None)
-            self.settings.setdefault(
-                "vector_fitting_parameters", _default_vector_fitting_parameters
-            )
-            self.settings.setdefault("delay_compensation", 0)
-            self.settings.setdefault("apply_phase_correction", True)
-            self.settings.setdefault("port_directionality", {})
-
-            if (
-                "vector_fitting_parameters" in self.settings
-                and not self.settings["vector_fitting_parameters"] is None
-            ):
-                for k, v in _default_vector_fitting_parameters.items():
-                    self.settings["vector_fitting_parameters"].setdefault(
-                        k, _default_vector_fitting_parameters[k]
-                    )
-
-                if (
-                    not self.settings["vector_fitting_parameters"]["model_order"]
-                    is None
-                ):
-                    self.settings["vector_fitting_parameters"]["min_model_order"] = None
-                    self.settings["vector_fitting_parameters"]["max_model_order"] = None
-
-            if self.settings["apply_phase_correction"]:
-                self._k = self.settings["delay_compensation"]
-            else:
-                self._k = 0
-
-            # self.sax_model = sax_model
-            # self.sax_settings = self.settings.setdefault('sax_settings', {})
-            # self.vector_fitting_parameters = self.settings.setdefault('vector_fitting_parameters', default_vector_fitting_parameters)
-            # self.delay_compensation = self.settings.setdefault('delay_compensation', 0)
-            # self.port_directionality = self.settings.setdefault('port_directionality', {})
-
-        def s_parameters(
-            self,
-            inputs: dict,
-            wl: ArrayLike = 1.55e-6,
-        ):
-            return sax_model(wl=wl, **self.settings["sax_settings"])
-
-        def sample_mode_initial_state(self, simulation_parameters):
-            """May be overwritten by user.
-
-            Returns the initial the state of the system. Called by the
-            sample mode simulator after
-            `set_sample_mode_simulation_parameters`
-            """
-            sax_settings = self.settings["sax_settings"]
-            vector_fitting_parameters = self.settings["vector_fitting_parameters"]
-            (
-                self.state_space_matrices,
-                _state_space_input_ports,
-                _state_space_output_ports,
-            ) = _calculate_state_space_coefficients_from_sax_model(
-                self.sax_model,
-                sax_settings,
-                vector_fitting_parameters,
-                simulation_parameters,
-                delay_compensation=self.settings["delay_compensation"],
-            )
-            self.state_space_input_indices = {
-                tuple(p.split("@")): i for i, p in enumerate(_state_space_input_ports)
-            }
-            self.state_space_output_indices = {
-                tuple(p.split("@")): i for i, p in enumerate(_state_space_output_ports)
-            }
-            self.mode_indices = {
-                mode: i for i, mode in enumerate(simulation_parameters.mode_identifiers)
-            }
-            # A, B, C, D = self.state_space_matrices
-            # import matplotlib.pyplot as plt
-            # u = jnp.ones((1000, 2), dtype=complex)
-            # response, _ = state_space_response_discrete(A, B, C, D, u)
-            # plt.plot(response)
-
-            A, B, C, _ = self.state_space_matrices
-            self._optimized_state_space_terms = None
-            if simulation_parameters.use_state_space_optimization:
-                try:
-                    self._optimized_state_space_terms = (
-                        state_space_discrete_optimized_terms(A, B, C)
-                    )
-                except ValueError:
-                    self._optimized_state_space_terms = None
-
-            L = len(simulation_parameters.optical_baseband_wavelengths)
-            x = jnp.zeros(
-                (
-                    L,
-                    A.shape[1],
-                ),
-                dtype=complex,
-            )
-            return x
-
-        def sample_mode_step(
-            self,
-            input_signals: dict,
-            state: jax.Array,
-            simulation_state,
-            simulation_parameters,
-        ):
-            """Compute the next state of the system."""
-            # TODO: Add the delay compensation logic
-            # k = self.settings['delay_compensation']
-            k = self._k
-            x = state
-            A, B, C, D = self.state_space_matrices
-
-            L = len(simulation_parameters.optical_baseband_wavelengths)
-            M = len(simulation_parameters.mode_identifiers)
-            u = jnp.zeros((L, len(self.state_space_input_indices)), dtype=complex)
-
-            wl_center = self.settings["vector_fitting_parameters"]["center_wavelength"]
-            for (
-                port_name,
-                mode,
-            ), state_space_idx in self.state_space_input_indices.items():
-                mode_idx = self.mode_indices[mode]
-                u = u.at[:, state_space_idx].set(
-                    input_signals[port_name].amplitude[:, mode_idx]
+    name = getattr(sax_model, "__name__", "sax_model")
+    return type(
+        f"SParameterElement_{name}",
+        (SParameterElement,),
+        {
+            "_sax_model": staticmethod(sax_model),
+            "_default_modes": tuple(default_modes),
+            "ports": [
+                Port(
+                    name=port_name,
+                    type="optical",
+                    directionality=port_directionality.get(port_name, "bidirectional"),
                 )
-
-            # Vectorize over optical_baseband_wavelengths. This avoids
-            # unrolling L copies of the loop body into the XLA graph during
-            # lax.scan compilation.
-            #
-            # For each wavelength l:
-            #   new_x[l] = phase_AB[l] * (A @ x[l] + B @ u[l])
-            #   y[l]     = phase_CD[l] * (C @ x[l] + D @ u[l])
-            #
-            # (x @ A.T)[l] == A @ x[l]  for 1-D row slices, so batched matmul works.
-            sampling_frequency = 1.0 / simulation_parameters.dt
-            wls = simulation_parameters.optical_baseband_wavelengths  # (L,)
-            delta_omega = (
-                2
-                * jnp.pi
-                * speed_of_light
-                * (1.0 / wls - 1.0 / wl_center)
-                / sampling_frequency
-            )  # (L,)
-            phase_AB = jnp.exp(1j * delta_omega)  # (L,)
-            phase_CD = jnp.exp(1j * k * delta_omega)  # (L,)
-
-            if (
-                simulation_parameters.use_state_space_optimization
-                and self._optimized_state_space_terms is not None
-            ):
-                A_diag, C = self._optimized_state_space_terms
-                y, new_x = state_space_step_discrete_optimized(
-                    A_diag,
-                    C,
-                    D,
-                    phase_AB,
-                    u,
-                    x,
-                )
-                y = phase_CD[:, None] * y
-            else:
-                new_x = phase_AB[:, None] * (x @ A.T + u @ B.T)  # (L, n_states)
-                y = phase_CD[:, None] * (x @ C.T + u @ D.T)  # (L, n_outputs)
-
-            output_signals = {}
-            for port_name in self._output_optical_port_names:
-                output_signals[port_name] = SampleModeOpticalSignal(
-                    amplitude=jnp.zeros((L, M), dtype=complex),
-                    wavelength=simulation_parameters.optical_baseband_wavelengths,
-                )
-
-            for (
-                port_name,
-                mode,
-            ), state_space_idx in self.state_space_output_indices.items():
-                mode_idx = self.mode_indices[mode]
-                signal = output_signals[port_name]
-                amplitude = signal.amplitude.at[:, mode_idx].set(y[:, state_space_idx])
-                output_signals[port_name] = signal.replace(
-                    amplitude=amplitude, wavelength=signal.wavelength
-                )
-
-            return output_signals, new_x
-
-    return SpecificSParameterElement
+                for port_name in port_names
+            ],
+        },
+    )
 
 
-# def sax_model_to_component(
-#     sax_model: sax.Model,
-#     port_directionality: dict = None,
-#     default_modes: list|tuple|str = DEFAULT_MODES,
-# ):
-#     port_names = _get_port_names_without_mode(sax_model)
+def wrap_sax_settings(instance_names, get_model, settings: dict) -> dict:
+    """Interpret plain SAX keyword settings of `SParameterElement` instances.
 
-#     port_directionality = deepcopy(port_directionality)
-#     if port_directionality is None:
-#         port_directionality = {}
-
-#     for port_name in port_names:
-#         port_directionality.setdefault(port_name, "bidirectional")
-
-#     # default_port_directionality = port_directionality
-
-
-#     if isinstance(default_modes, str):
-#         default_modes = [default_modes]
-
-#     default_modes = tuple(default_modes)
-#     BaseSParameterElement = SParameterElement
-#     class SpecificSParameterElement(BaseSParameterElement):
-
-#         def s_parameters(
-#             self,
-#             inputs: dict,
-#             wl: ArrayLike=1.55e-6,
-#         ):
-#             pass
-
-#         def sample_mode_initial_state(self, simulation_parameters):
-#             """
-#             May be overwritten by user.
-#             Returns the initial the state of the system.
-#             Called by the sample mode simulator after `set_sample_mode_simulation_parameters`
-#             """
-#             return 0
-
-#         def sample_mode_step(self, inputs: dict,  state: jax.Array, simulation_parameters):
-#             """Compute the next state of the system."""
-#             raise NotImplementedError
-
-
-class SParameterGroup(PCell):
-    """Base PCell for circuits assembled from S-parameter elements.
-
-    Users normally create concrete subclasses through
-    `s_parameter_netlist_to_pcell` rather than inheriting from this
-    class directly. The generated class exposes the netlist's top-level
-    optical ports and expands the internal S-parameter models into the
-    representation required by the active simulator.
+    Settings of an `SParameterElement` instance that contain none of the
+    `S_PARAMETER_ELEMENT_SETTING_KEYS` are treated as SAX settings and moved
+    under `"sax_settings"`. Returns a new settings dict.
     """
+    settings = dict(settings)
+    for instance_name in instance_names:
+        model = get_model(instance_name)
+        if not (inspect.isclass(model) and issubclass(model, SParameterElement)):
+            continue
+        instance_settings = settings.get(instance_name, {})
+        if not S_PARAMETER_ELEMENT_SETTING_KEYS & set(instance_settings):
+            settings[instance_name] = {"sax_settings": dict(instance_settings)}
+    return settings
 
 
-def s_parameter_netlist_to_pcell(
-    netlist: dict,
-    models: dict,
-    port_directionality: dict = None,
-    default_modes: list | tuple | str = DEFAULT_MODES,
-    fuse_models: bool = False,
-) -> type[PCell]:
-    """Create a PCell class from a netlist of SAX S-parameter models.
-
-    The returned PCell lets a SAX-style netlist be used as a Simphony component.
-    At instantiation time the PCell chooses an internal representation for the
-    active simulator. For Block mode, it filters the SAX relationships according
-    to port directionality, vector-fits each S-parameter element, and builds a
-    directed state-space subcircuit.
+# ------------------------------------------------------------------- fusing
+def fused_sax_model(members: dict, netlist: dict, mode_identifiers):
+    """Build one SAX model for a group of connected `SParameterElement`s.
 
     Parameters
     ----------
+    members:
+        Mapping from member instance name to the instantiated element.
     netlist:
-        SAX-style netlist dictionary with `instances`, `connections`, and
-        top-level `ports`.
-    models:
-        Mapping from model name to SAX model callable.
-    port_directionality:
-        Nested mapping from instance name to port directionality, for example
-        `{"mzi": {"o0": "input", "o1": "output"}}`. Top-level PCell port
-        directionality is inferred from the instance ports named in
-        `netlist["ports"]`.
-    default_modes:
-        Optical mode labels used when SAX models do not explicitly encode mode
-        names.
-    fuse_models:
-        Preserve per-instance `group_id` settings when true. When false,
-        instance `group_id` values are cleared before expansion.
+        SAX netlist (`instances`, `connections`, `ports`) of the group, keyed
+        by the (sanitized) member instance names.
+    mode_identifiers:
+        Modes the member models are expanded to.
 
-    Returns
-    -------
-    type[PCell]
-        A generated PCell class. Constructor settings are passed per instance
-        and should include entries such as `sax_settings` and
-        `vector_fitting_parameters` for Block mode use.
+    Each member's `sax_settings` are bound, so the returned model only takes
+    `wl`. Members are used unfiltered, so reflections inside the group are
+    kept.
     """
-    # pcell_port_names = _get_port_names_without_mode(sax_model)
+    models = {}
+    for instance_name, element in members.items():
+        member_model = functools.partial(
+            element.sax_model, **element.settings["sax_settings"]
+        )
+        if not _has_wl_kwarg(element.sax_model):
+            member_model = _ignore_wl(member_model)
+        models[instance_name] = _multimode_model(member_model, mode_identifiers)
 
-    pcell_port_names = netlist["ports"].keys()
+    netlist = {
+        "instances": {k: k for k in netlist["instances"]},
+        "connections": netlist["connections"],
+        "ports": netlist["ports"],
+    }
+    circuit, _ = sax.circuit(netlist, models)
 
-    def _get_pcell_port_directionality(port_directionality):
-        pcell_port_directionality = {}
-        for port_name in pcell_port_names:
-            true_instance_name, true_port_name = netlist["ports"][port_name].split(",")
-            pcell_port_directionality[port_name] = port_directionality[
-                true_instance_name
-            ][true_port_name]
+    def fused_model(wl=1.55):
+        return circuit(wl=wl)
 
-        return pcell_port_directionality
+    return fused_model
 
-    pcell_port_directionality = _get_pcell_port_directionality(port_directionality)
 
-    if isinstance(default_modes, str):
-        default_modes = [default_modes]
-    default_modes = tuple(default_modes)
+def merge_vector_fitting_parameters(group_label, members: dict) -> dict:
+    """Merge member vector-fitting parameters for a fused element.
 
-    default_port_directionality = port_directionality
-    default_pcell_port_directionality = pcell_port_directionality
-
-    # Freeze the instances
-    netlist = netlist
-    models = models
-    # settings = settings
-
-    _SParameterGroup = SParameterGroup  # Freeze the reference
-
-    class SpecificSParameterGroup(_SParameterGroup):
-        ports = [
-            Port(
-                name=port_name,
-                type="optical",
-                directionality=pcell_port_directionality[port_name],
+    `spectral_range` is the union (covering interval) of the members'
+    ranges, and the model order is searched between the smallest minimum and
+    largest maximum order (a fixed `model_order=n` counts as `n..n`).
+    `num_frequency_samples` and `center_wavelength` must be identical, as
+    must `apply_phase_correction`.
+    """
+    parameters = [
+        (name, element.settings["vector_fitting_parameters"])
+        for name, element in members.items()
+    ]
+    for key in ("num_frequency_samples", "center_wavelength"):
+        values = {name: p[key] for name, p in parameters}
+        if len(set(values.values())) > 1:
+            raise ValueError(
+                f"Cannot fuse S-parameter group {group_label}: members disagree on "
+                f"vector_fitting_parameters['{key}']: {values}"
             )
-            for port_name in pcell_port_names
-        ]
+    apply_phase_correction = {
+        name: element.settings["apply_phase_correction"]
+        for name, element in members.items()
+    }
+    if len(set(apply_phase_correction.values())) > 1:
+        raise ValueError(
+            f"Cannot fuse S-parameter group {group_label}: members disagree on "
+            f"apply_phase_correction: {apply_phase_correction}"
+        )
 
-        def __init__(
-            self,
-            simulation_parameters: SimulationParameters,
-            settings: dict = None,
-            port_directionality: dict = None,  # TODO: Figure out if this needs to be here
-        ):
-            if port_directionality is None:
-                port_directionality = default_port_directionality
-                pcell_port_directionality = default_pcell_port_directionality
-            else:
-                pcell_port_directionality = _get_pcell_port_directionality(
-                    port_directionality
-                )
+    def order_bounds(p):
+        if p["model_order"] is not None:
+            return p["model_order"], p["model_order"]
+        return p["min_model_order"], p["max_model_order"]
 
-            # TODO: Make the way to edit these parameters more clear (add documentation to SParameterPlaceholder and how to use sax models)
-            # TODO: Allow different models to edit "spectral_range" (by overwriting the simulation parameters)
-            # TODO: Perhaps models can't overwrite simulation parameters spectral range, but can add additional pockets
-            # "spectral_range": simulation_parameters.spectral_range,
-            # "center_frequency": speed_of_light / simulation_parameters.center_wavelength,
-            # "sampling_frequency": 1 / simulation_parameters.dt
+    bounds = [order_bounds(p) for _, p in parameters]
+    min_order = min(b[0] for b in bounds)
+    max_order = max(b[1] for b in bounds)
+    ranges = [p["spectral_range"] for _, p in parameters]
 
-            designs = {
-                # SimulationMode._SIMPHONY_PREPROCESSING: _simphony_preprocessing,
-                # SimulationMode.S_PARAMETER: _s_parameter_design,
-                SimulationMode.BLOCK_MODE: _block_mode_design,
-                # SimulationMode.SAMPLE_MODE: _sample_mode_design,
-            }
+    merged = deepcopy(parameters[0][1])
+    merged["spectral_range"] = (
+        min(min(r) for r in ranges),
+        max(max(r) for r in ranges),
+    )
+    if min_order == max_order:
+        merged.update(model_order=min_order, min_model_order=None, max_model_order=None)
+    else:
+        merged.update(
+            model_order=None, min_model_order=min_order, max_model_order=max_order
+        )
+    return merged
 
-            for _settings in settings.values():
-                if not fuse_models:
-                    _settings["group_id"] = None
-                # This normalization should have been done previously
-                # _settings.set("vector_fitting_parameters", default_vector_fitting_parameters)
-                # _settings.setdefault("sax_settings", {})
 
-            # TODO: Implement the fusing based on group id
+# ------------------------------------------------------------------ helpers
+def _ignore_wl(model):
+    @functools.wraps(model)
+    def wrapped(wl=1.55, **kwargs):
+        return model(**kwargs)
 
-            if simulation_parameters.simulation_mode in designs:
-                design = designs[simulation_parameters.simulation_mode]
-            else:
-                design = _default_design
+    return wrapped
 
-            internal_port_directionality = port_directionality
-            external_port_directionality = pcell_port_directionality
-            self.netlist, self.models, self.settings = design(
-                netlist,
-                models,
-                settings,
-                simulation_parameters,
-                internal_port_directionality,
-                external_port_directionality,
-            )
 
-    return SpecificSParameterGroup
+def _multimode_model(model, modes):
+    def wrapped(wl=1.55):
+        return sax.multimode(model(wl=wl), modes=tuple(modes))
+
+    return wrapped
+
+
+def _mode_index(mode, mode_identifiers) -> int:
+    if mode in mode_identifiers:
+        return mode_identifiers.index(mode)
+    normalized = [_normalize_mode_name(m) for m in mode_identifiers]
+    return normalized.index(_normalize_mode_name(mode))
+
+
+def _has_wl_kwarg(model) -> bool:
+    try:
+        if "wl" in inspect.signature(model).parameters:
+            return True
+    except (TypeError, ValueError):
+        pass
+    try:
+        model(wl=0.0)
+        return True
+    except TypeError:
+        return False
 
 
 def _get_port_names_without_mode(sax_model):
     sdict = sax.multimode(sax_model())
     port_names = set()
     for in_portmode, out_portmode in sdict.keys():
-        in_port, _ = in_portmode.split("@")
-        out_port, _ = out_portmode.split("@")
-        port_names.add(in_port)
-        port_names.add(out_port)
-
+        port_names.add(in_portmode.split("@")[0])
+        port_names.add(out_portmode.split("@")[0])
     return port_names
-
-
-# def _s_parameter_design(
-#     netlist,
-#     models,
-#     settings,
-#     simulation_parameters,
-#     internal_port_directionality,
-#     external_port_directionality,
-# ):
-#     """
-#     `port_directionality`: As of 03-16-26, Simphony makes a "best guess" for sax models that have ambiguous port directionality.
-#     For best results, convert sax models to a Simphony Component first
-#     TODO: Link to a tutorial on how to convert sax models to simphony Components
-#     """
-#     # if not delay_compensation == 0:
-#     #     warnings.warn(f"A nonzero delay compensation is invalid in S-Parameter simulations. Will be ignored.")
-
-#     # TODO: PROPERLY FILTER SAX MODEL WITH THE DEFAULT MODES SPECIFIED in simulation_parameters.mode_identifiers
-#     class SaxModelComponent(SParameterComponent):
-#         ports = [
-#             Port(
-#                 name=port_name,
-#                 type="optical",
-#                 directionality = "bidirectional"
-#             )
-
-#             for port_name in sax.get_ports(sax_model())
-#         ]
-
-#         def __init__(
-#             self,
-#             simulation_mode: SimulationMode,
-#             **kwargs,
-#         ):
-#             self.sax_settings = kwargs
-
-#         def s_parameters(self, inputs, wl: ArrayLike=1.55e-6,):
-#             return sax_model(wl*1e6, **sax_settings)
-
-
-#     # Create a class that will be the base component
-#     # Extend s-paraemeters to all of the default_modes using sax
-#     instances = {
-#         "sax_model": "sax_model",
-#     }
-#     connections = {}
-#     ports = {port.name:f"sax_model,{port.name}" for port in SaxModelComponent.ports}
-#     models = {
-#         "sax_model": SaxModelComponent,
-#     }
-
-#     netlist = {
-#         "instances": instances,
-#         "connections": connections,
-#         "ports": ports,
-#     }
-
-#     settings = {
-#         "sax_model": {**sax_settings}
-#     }
-
-#     return netlist, models, settings
-
-
-# def _sample_mode_design(
-#     netlist,
-#     models,
-#     settings,
-#     simulation_parameters,
-#     internal_port_directionality,
-#     external_port_directionality,
-# ):
-#     """
-#     The sample mode design is an alteration of the block mode design
-#     """
-#     block_mode_sax_model, block_mode_port_directionality, in_suffix, out_suffix = _bidirectional_ports_to_unidirectional_ports(sax_model, port_directionality)
-#     block_mode_netlist, block_mode_models = _block_mode_netlist_and_models(block_mode_sax_model, block_mode_port_directionality, simulation_parameters.mode_identifiers)
-
-#     _netlist = ...
-#     _models = ...
-
-#     return _netlist, _models, settings
-
-
-def _default_design(
-    netlist,
-    models,
-    original_settings,
-    simulation_parameters,
-    internal_port_directionality,
-    external_port_directionality,
-):
-    _netlist = netlist
-    _models = {}
-    for instance_name, instance_data in _netlist["instances"].items():
-        model_name = instance_data["component"]
-        instance_data["component"] = instance_name
-        model = models[model_name]
-        _models[instance_name] = optical_s_parameter(
-            model,
-            internal_port_directionality[instance_name],
-            simulation_parameters.mode_identifiers,
-        )
-    # _models = {k:optical_s_parameter(v, internal_port_directionality[k], simulation_parameters.mode_identifiers) for k,v in models.items()}
-    _settings = original_settings
-    return _netlist, _models, _settings
-
-
-def _block_mode_design(
-    netlist,
-    models,
-    original_settings,
-    simulation_parameters,
-    internal_port_directionality,
-    external_port_directionality,
-) -> InstantiatedFlatNetlist:
-    """Creates a directed, non recursive circuit design for a multimodal,
-    transient block mode simulation of an s-parameter circuit."""
-    for port_name, directionality in external_port_directionality.items():
-        if directionality == "bidirectional":
-            raise ValueError(
-                f"Port {port_name} must be directed in block mode simulation"
-            )
-
-    # if not delay_compensation == 0:
-    #     warnings.warn(f"A nonzero delay compensation is invalid in block mode simulations. Will be ignored.")
-
-    # TODO: This is really important
-    # PROBLEM: The filtered sax models are not guarenteed to have the same directionality across instances
-    # Solution: Make a new filtered_sax_model for each instance and update the netlist accordingly
-
-    filtered_sax_models = {}
-    filtered_port_designators = set()
-    filtered_netlist = deepcopy(netlist)
-
-    instance_names = filtered_netlist["instances"].keys()
-    for instance_name in instance_names:
-        model_name = filtered_netlist["instances"][instance_name]["component"]
-        model = models[model_name]
-        port_directionality = internal_port_directionality[instance_name]
-        filtered_sax_model = _get_filtered_sax_model(
-            model, port_directionality, simulation_parameters.mode_identifiers
-        )
-        filtered_sax_models[instance_name] = filtered_sax_model
-        filtered_port_designators.update(
-            [
-                f"{instance_name},{p}"
-                for p in _get_port_names_without_mode(filtered_sax_model)
-            ]
-        )
-        filtered_netlist["instances"][instance_name]["component"] = instance_name
-
-    # # TODO: Make it so that I don't have to build a circuit / sanitize the netlist, that takes forever
-    # # Honestly, I think that I
-    # # TODO: Remove unnecessary ports from netlist by terminating them.
-    # for external_port_name, internal_instance_port in sanitized_netlist["ports"].items():
-    #     instance_name, internal_port_name = internal_instance_port.split(",")
-    #     model_name = sanitized_netlist['instances'][instance_name]['component']
-    #     filtered_sax_model = filtered_sax_models[model_name]
-    #     pass
-
-    ports = filtered_netlist["ports"]
-    ports_to_remove = []
-    for ext_port, port_designator in ports.items():
-        if not port_designator in filtered_port_designators:
-            ports_to_remove.append(ext_port)
-    for port in ports_to_remove:
-        ports.pop(port)
-
-    new_separator = generate_valid_separator(netlist["instances"].keys())
-    sanitized_netlist = sanitize_instance_names(
-        filtered_netlist, old_separator="~", new_separator=new_separator
-    )
-
-    _dummy_sax_model, _ = sax.circuit(sanitized_netlist, filtered_sax_models)
-    dummy_sax_model = _get_filtered_sax_model(
-        _dummy_sax_model,
-        external_port_directionality,
-        simulation_parameters.mode_identifiers,
-    )
-    filter_bank_input_port_modes, filter_bank_output_port_modes = _get_port_mode_luts(
-        dummy_sax_model
-    )
-    # dummy_sax_model()
-    # filtered_sax_model = _get_filtered_sax_model(sax_model, port_directionality, simulation_parameters.mode_identifiers)
-    _netlist, _models = _block_mode_netlist_and_models(
-        filtered_netlist,
-        filtered_sax_models,
-        external_port_directionality,
-        simulation_parameters.mode_identifiers,
-        filter_bank_input_port_modes,
-        filter_bank_output_port_modes,
-    )
-
-    # input_port_modes, output_port_modes = _get_port_mode_luts
-
-    # print(f"Building Model For {sax_model}")
-
-    settings = {}
-    for instance_name, _settings in original_settings.items():
-        vector_fitting_parameters = _settings["vector_fitting_parameters"]
-        sax_settings = _settings["sax_settings"]
-        model_name = netlist["instances"][instance_name]["component"]
-        # sax_model = filtered_sax_models[model_name]
-        sax_model = filtered_sax_models[instance_name]
-
-        # TODO: Make sure that the port modes in these vectors are mapping correctly
-        (A, B, C, D), _, _ = _calculate_state_space_coefficients_from_sax_model(
-            sax_model,
-            sax_settings,
-            vector_fitting_parameters,
-            simulation_parameters,
-            delay_compensation=0,
-        )
-        f_b = speed_of_light / vector_fitting_parameters["center_wavelength"]
-        f_s = 1 / simulation_parameters.dt
-
-        settings.update(
-            {
-                _state_space_instance_name(instance_name): {
-                    "A": A,
-                    "B": B,
-                    "C": C,
-                    "D": D,
-                    "baseband_frequency": f_b,
-                    "sampling_frequency": f_s,
-                }
-            }
-        )
-
-    ## TODO: Fill in empty settings..s
-    common_mode = simulation_parameters.mode_identifiers[0]
-
-    settings.update(
-        {
-            _mode_converter_instance_name(port, mode, INPUT_SUFFIX): {
-                "input_mode": mode,
-                "output_mode": common_mode,
-            }
-            for port, modes in filter_bank_input_port_modes.items()
-            for mode in modes
-        }
-    )
-    settings.update(
-        {
-            _mode_converter_instance_name(port, mode, OUTPUT_SUFFIX): {
-                "input_mode": common_mode,
-                "output_mode": mode,
-            }
-            for port, modes in filter_bank_output_port_modes.items()
-            for mode in modes
-        }
-    )
-    settings.update(
-        {
-            _demultiplexer_instance_name(port): {}
-            for port in filter_bank_input_port_modes.keys()
-        }
-    )
-    settings.update(
-        {
-            _multiplexer_instance_name(port): {}
-            for port in filter_bank_output_port_modes.keys()
-        }
-    )
-
-    # instantiated_flat_netlist = _instantiate_netlist(netlist, models, settings)
-
-    return _netlist, _models, settings
-
-
-def _block_mode_netlist_and_models(
-    netlist,
-    filtered_sax_models,
-    port_directionality,
-    default_modes,
-    filter_bank_input_port_modes,
-    filter_bank_output_port_modes,
-):
-    """Returns a dicts defining the instances, connections, and ports of the
-    subcircuit as well as a dict of uninstantiated models."""
-    old_netlist = netlist
-    old_connections = netlist["connections"]
-    old_instances = netlist["instances"]
-    old_ports = netlist["ports"]
-
-    netlist = {}
-    connections = {}
-    instances = {}
-    ports = {}
-    models = {}
-
-    # The Plan:
-    # 1) Make a dummy sax component out of the netlist
-    # 2) Use dummy sax component to make the Mode demux and mux architecture
-    # 3) replace dummy sax component with the filter bank
-
-    for instance_name, instance_data in old_netlist["instances"].items():
-        model_name = instance_data["component"]
-        sax_model = filtered_sax_models[model_name]
-        input_port_modes, output_port_modes = _get_port_mode_luts(sax_model)
-        (
-            state_space_input_port_names,
-            state_space_output_port_names,
-        ) = _state_space_port_names(input_port_modes, output_port_modes)
-        DiscreteStateSpace = discrete_state_space(
-            len(state_space_input_port_names),
-            len(state_space_output_port_names),
-            input_port_names=state_space_input_port_names,
-            output_port_names=state_space_output_port_names,
-        )
-        state_space_instance_name = _state_space_instance_name(instance_name)
-        state_space_model_name = _state_space_model_name(model_name)
-        models[state_space_model_name] = DiscreteStateSpace
-        instances[state_space_instance_name] = state_space_model_name
-
-    mode_demultiplexers = {}
-    # filter_bank_input_port_names = []
-    for input_port, modes in filter_bank_input_port_modes.items():
-        mode_demultiplexers[input_port] = mode_demultiplexer(
-            modes,
-            input_port_name=DEMULTIPLEXER_IN_PORT_NAME,
-            output_port_suffix=DEMULTIPLEXER_OUT_PORT_SUFFIX,
-        )
-        # filter_bank_input_port_names += [_state_space_port_name(input_port, mode) for mode in modes]
-
-    mode_multiplexers = {}
-    # filter_bank_output_port_names = []
-    for output_port, modes in filter_bank_output_port_modes.items():
-        mode_multiplexers[output_port] = mode_multiplexer(
-            modes,
-            output_port_name=MULTIPLEXER_OUT_PORT_NAME,
-            input_port_suffix=MULTIPLEXER_IN_PORT_SUFFIX,
-        )
-        # filter_bank_output_port_names += [_state_space_port_name(output_port, mode) for mode in modes]
-
-    # CHECKPOINT
-    # TODO: Finish from this point on
-    models[MODE_CONVERTER_MODEL_NAME] = ModeConverter
-
-    # Add connections between filters in the filter bank
-    for src, dst in old_connections.items():
-        src_instance_name, src_port_name = src.split(",")
-        dst_instance_name, dst_port_name = dst.split(",")
-
-        src_state_space_instance_name = _state_space_instance_name(src_instance_name)
-        dst_state_space_instance_name = _state_space_instance_name(dst_instance_name)
-        for mode in default_modes:
-            src_state_space_port_name = _state_space_port_name(src_port_name, mode)
-            dst_state_space_port_name = _state_space_port_name(dst_port_name, mode)
-            connections[
-                src_state_space_instance_name + "," + src_state_space_port_name
-            ] = (dst_state_space_instance_name + "," + dst_state_space_port_name)
-
-    # for ext_port_name, modes in filter_bank_input_port_modes.items():
-    #     pass
-
-    # Input Side Demultiplexers and Mode Converters
-    for port, demux in mode_demultiplexers.items():
-        demux_model_name = _demultiplexer_model_name(port)
-        models[demux_model_name] = demux
-        demux_instance_name = _demultiplexer_instance_name(port)
-        instances[demux_instance_name] = demux_model_name
-
-        modes = filter_bank_input_port_modes[port]
-        for mode in modes:
-            mode_converter_instance_name = _mode_converter_instance_name(
-                port, mode, INPUT_SUFFIX
-            )
-            instances[mode_converter_instance_name] = MODE_CONVERTER_MODEL_NAME
-            demux_output = (
-                demux_instance_name + "," + mode + DEMULTIPLEXER_OUT_PORT_SUFFIX
-            )
-            converter_input = mode_converter_instance_name + "," + "in"
-            converter_output = mode_converter_instance_name + "," + "out"
-
-            sax_instance_name, sax_port_name = old_ports[port].split(",")
-            state_space_input = (
-                _state_space_instance_name(sax_instance_name)
-                + ","
-                + _state_space_port_name(sax_port_name, mode)
-            )
-            connections[demux_output] = converter_input
-            connections[
-                converter_output
-            ] = state_space_input  # This line for one of the converters is connecting an output to a state space output
-
-        ports[port] = demux_instance_name + "," + DEMULTIPLEXER_IN_PORT_NAME
-
-    # Output Side Multiplexers and Mode Converters
-    for port, mux in mode_multiplexers.items():
-        mux_model_name = _multiplexer_model_name(port)
-        models[mux_model_name] = mux
-        mux_instance_name = _multiplexer_instance_name(port)
-        instances[mux_instance_name] = mux_model_name
-
-        modes = filter_bank_output_port_modes[port]
-        for mode in modes:
-            mode_converter_instance_name = _mode_converter_instance_name(
-                port, mode, OUTPUT_SUFFIX
-            )
-            instances[mode_converter_instance_name] = MODE_CONVERTER_MODEL_NAME
-            mux_input = mux_instance_name + "," + mode + MULTIPLEXER_IN_PORT_SUFFIX
-            converter_input = mode_converter_instance_name + "," + "in"
-            converter_output = mode_converter_instance_name + "," + "out"
-
-            sax_instance_name, sax_port_name = old_ports[port].split(",")
-            state_space_output = (
-                _state_space_instance_name(sax_instance_name)
-                + ","
-                + _state_space_port_name(sax_port_name, mode)
-            )
-
-            connections[state_space_output] = converter_input
-            connections[converter_output] = mux_input
-
-        ports[port] = mux_instance_name + "," + MULTIPLEXER_OUT_PORT_NAME
-
-    netlist = {
-        "instances": instances,
-        "connections": connections,
-        "ports": ports,
-    }
-
-    add_settings_to_netlist(netlist)
-
-    # # TODO: Remove the following lines for testing
-    # import gravis as gv
-    # graph = netlist_to_graph(netlist, models)
-    # gv.d3(graph).display()
-
-    return netlist, models
-
-
-def _mode_converter_instance_name(port, mode, direction) -> str:
-    return port + "_" + mode + MODE_CONVERTER_INSTANCE_SUFFIX + "_" + direction
-
-
-def _demultiplexer_model_name(
-    port,
-):
-    return port + DEMULTIPLEXER_SUFFIX
-
-
-def _demultiplexer_instance_name(
-    port,
-):
-    return _demultiplexer_model_name(port)
-
-
-def _multiplexer_model_name(
-    port,
-):
-    return port + MULTIPLEXER_SUFFIX
-
-
-def _multiplexer_instance_name(
-    port,
-):
-    return _multiplexer_model_name(port)
-
-
-def _state_space_model_name(
-    sax_model_name,
-):
-    return sax_model_name + "_" + STATE_SPACE_MODEL_NAME_BASE
-
-
-def _state_space_instance_name(
-    sax_instance_name,
-):
-    return sax_instance_name + "_" + STATE_SPACE_INSTANCE_NAME_BASE
-
-
-def _state_space_port_name(
-    port,
-    mode,
-):
-    return port + "_" + mode
-
-
-def _state_space_port_names(
-    input_port_modes,
-    output_port_modes,
-):
-    input_port_names = []
-    for input_port, modes in input_port_modes.items():
-        input_port_names += [_state_space_port_name(input_port, mode) for mode in modes]
-
-    output_port_names = []
-    for output_port, modes in output_port_modes.items():
-        output_port_names += [
-            _state_space_port_name(output_port, mode) for mode in modes
-        ]
-    return input_port_names, output_port_names
-
-
-# def _get_filtered_sax_model(
-#     sax_model: sax.Model,
-#     port_directionality,
-#     default_modes,
-# ):
-#     input_ports_to_remove = {port_name for port_name, direction in port_directionality.items() if direction=='output'}
-#     output_ports_to_remove = {port_name for port_name, direction in port_directionality.items() if direction=='input'}
-
-#     def filtered_sax_model(**kwargs):
-#         """
-#         The port_directionality field allows us to ignore data
-#         in the sdict and select only the relationships necessary
-#         for the specified directionality
-#         """
-#         sdict = sax_model(**kwargs)
-#         # print(sdict.keys())
-#         # print()
-#         sdict = sax.multimode(sdict, modes=default_modes)
-#         # print(sdict.keys())
-#         # print()
-#         # print()
-
-#         def is_allowed(key):
-#             dst, src = key
-#             src_port, _ = src.split("@")
-#             dst_port, _ = dst.split("@")
-#             src_valid = not src_port in input_ports_to_remove
-#             dst_valid = not dst_port in output_ports_to_remove
-#             return src_valid and dst_valid
-
-#         sdict = {k:v for k, v in sdict.items() if is_allowed(k)}
-
-#         return sdict
-
-#     return filtered_sax_model
-
-import functools
-import inspect
 
 
 def _get_filtered_sax_model(
@@ -1099,12 +627,14 @@ def _get_filtered_sax_model(
     port_directionality,
     default_modes,
 ):
+    """Return a multimode SAX model keeping only relationships allowed by
+    `port_directionality` (no waves into output ports, none out of input
+    ports)."""
     input_ports_to_remove = {
         port_name
         for port_name, direction in port_directionality.items()
         if direction == "output"
     }
-
     output_ports_to_remove = {
         port_name
         for port_name, direction in port_directionality.items()
@@ -1113,28 +643,18 @@ def _get_filtered_sax_model(
 
     @functools.wraps(sax_model)
     def filtered_sax_model(*args, **kwargs):
-        """The port_directionality field allows us to ignore data in the sdict
-        and select only the relationships necessary for the specified
-        directionality."""
-        sdict = sax_model(*args, **kwargs)
-
-        sdict = sax.multimode(sdict, modes=default_modes)
+        sdict = sax.multimode(sax_model(*args, **kwargs), modes=default_modes)
 
         def is_allowed(key):
             dst, src = key
-            src_port, _ = src.split("@")
-            dst_port, _ = dst.split("@")
-
-            src_valid = src_port not in input_ports_to_remove
-            dst_valid = dst_port not in output_ports_to_remove
-
-            return src_valid and dst_valid
+            return (
+                src.split("@")[0] not in input_ports_to_remove
+                and dst.split("@")[0] not in output_ports_to_remove
+            )
 
         return {k: v for k, v in sdict.items() if is_allowed(k)}
 
-    # preserve original signature
     filtered_sax_model.__signature__ = inspect.signature(sax_model)
-
     return filtered_sax_model
 
 
@@ -1180,79 +700,6 @@ def _get_port_mode_luts(
     return input_port_modes, output_port_modes
 
 
-# def _get_port_mode_luts(
-#     sax_model: sax.Model,
-# ):
-#     input_port_modes = {}
-#     output_port_modes = {}
-#     for o, i in sax_model().keys():
-#         in_port, in_mode = i.split('@')
-#         out_port, out_mode = o.split('@')
-#         input_port_modes.setdefault(in_port, set()).add(in_mode)
-#         output_port_modes.setdefault(out_port, set()).add(out_mode)
-
-#     return input_port_modes, output_port_modes
-
-
-def _bidirectional_ports_to_unidirectional_ports(
-    sax_model: sax.ModelMM, port_directionality
-):
-    """The resulting port names are the orginal port names appended with a
-    string unique to all substrings in the original port names.
-
-    In order to find the original port name, just remove the out_suffix
-    and in_suffix substrings from the dict keys.
-    """
-    port_names = port_directionality.keys()
-    unique_word = "_"
-
-    for port_name in port_names:
-        while unique_word in port_name:
-            unique_word += "_"
-
-    in_suffix = unique_word + INPUT_SUFFIX
-    out_suffix = unique_word + OUTPUT_SUFFIX
-
-    unidirectional_port_directionality = {}
-    valid_input_ports = set()
-    valid_output_ports = set()
-    for port_name, directionality in port_directionality.items():
-        in_port_name = port_name + in_suffix
-        out_port_name = port_name + out_suffix
-        if directionality == "bidirectional":
-            unidirectional_port_directionality[in_port_name] = "input"
-            unidirectional_port_directionality[out_port_name] = "output"
-            valid_input_ports.add(in_port_name)
-            valid_output_ports.add(out_port_name)
-        elif directionality == "input":
-            # in_port_name = port_name + f"{unique_word}in"
-            unidirectional_port_directionality[in_port_name] = "input"
-            valid_input_ports.add(in_port_name)
-        elif directionality == "output":
-            # out_port_name = port_name + f"{unique_word}out"
-            unidirectional_port_directionality[out_port_name] = "output"
-            valid_output_ports.add(out_port_name)
-
-    def unidirectional_sax_model(**kwargs):
-        valid_input_ports
-        valid_output_ports
-        in_suffix
-        out_suffix
-        sdict = sax_model(**kwargs)
-        new_sdict = {
-            (src + out_suffix, dst + in_suffix): v for (src, dst), v in sdict.items()
-        }
-
-        return new_sdict
-
-    return (
-        unidirectional_sax_model,
-        unidirectional_port_directionality,
-        in_suffix,
-        out_suffix,
-    )
-
-
 def _calculate_state_space_coefficients_from_sax_model(
     sax_model,
     sax_settings,
@@ -1260,59 +707,39 @@ def _calculate_state_space_coefficients_from_sax_model(
     simulation_parameters,
     delay_compensation=0,
 ):
-    """Returns A, B, C, D, input_ports, output_ports For D[i, j],
-    output_ports[i] <- input_ports[j]"""
+    """Returns (A, B, C, D), input_ports, output_ports.
+
+    For D[i, j], output_ports[i] <- input_ports[j]. Port names have the
+    form "port@mode".
+    """
+    vector_fitting_parameters = normalize_vector_fitting_parameters(
+        vector_fitting_parameters
+    )
     input_port_modes, output_port_modes = _get_port_mode_luts(
         sax_model, simulation_parameters.mode_identifiers
     )
-    sax_model_signature = inspect.signature(sax_model).parameters
-    constant_over_wavelength = False
+    input_ports = [
+        f"{port}@{mode}" for port, modes in input_port_modes.items() for mode in modes
+    ]
+    output_ports = [
+        f"{port}@{mode}" for port, modes in output_port_modes.items() for mode in modes
+    ]
 
-    def has_wl_kwarg(model):
-        sig = inspect.signature(model)
-        if "wl" in sig.parameters:
-            return True
-        try:
-            model(wl=0.0)
-            return True
-        except TypeError:
-            return False
-
-    if not has_wl_kwarg(sax_model):
-        constant_over_wavelength = True
-    elif False:
-        # Check if the model is constant over the bandwidth with respect to wavelength
-        pass
-
-    if constant_over_wavelength:
+    if not _has_wl_kwarg(sax_model):
         if not delay_compensation == 0:
             raise ValueError(
                 "delay compensation cannot be applied to a 0 delay element"
             )
 
         sdict = sax_model(**sax_settings)
-        # TODO: Fix Block Mode Simulator so that this is deterministic
-        input_ports = [
-            f"{port}@{mode}"
-            for port, modes in input_port_modes.items()
-            for mode in modes
-        ]
-        output_ports = [
-            f"{port}@{mode}"
-            for port, modes in output_port_modes.items()
-            for mode in modes
-        ]
         S = dict_to_rect_matrix(
             sdict, input_ports=input_ports, output_ports=output_ports
         )
-        # Order r = 1 model
-        r = 1
         m = len(input_ports)
-        M = r * m
         q = len(output_ports)
-        A = jnp.zeros((M, M), dtype=complex)
-        B = jnp.zeros((M, m), dtype=complex)
-        C = jnp.zeros((q, M), dtype=complex)
+        A = jnp.zeros((m, m), dtype=complex)
+        B = jnp.zeros((m, m), dtype=complex)
+        C = jnp.zeros((q, m), dtype=complex)
         D = S[0, :, :]
 
         return (A, B, C, D), input_ports, output_ports
@@ -1320,29 +747,15 @@ def _calculate_state_space_coefficients_from_sax_model(
     f_min = speed_of_light / max(vector_fitting_parameters["spectral_range"])
     f_max = speed_of_light / min(vector_fitting_parameters["spectral_range"])
     f_center = speed_of_light / vector_fitting_parameters["center_wavelength"]
-    # f_center = 192.9e12
     frequency = jnp.linspace(
         f_min, f_max, vector_fitting_parameters["num_frequency_samples"]
     )
     sdict = sax_model(wl=1e6 * speed_of_light / frequency, **sax_settings)
 
-    # TODO: Fix Block Mode Simulator so that this is deterministic
-    input_ports = [
-        f"{port}@{mode}" for port, modes in input_port_modes.items() for mode in modes
-    ]
-    output_ports = [
-        f"{port}@{mode}" for port, modes in output_port_modes.items() for mode in modes
-    ]
     s_params = dict_to_rect_matrix(
         sdict, input_ports=input_ports, output_ports=output_ports
     )
-    min_order = vector_fitting_parameters["min_model_order"]
-    max_order = vector_fitting_parameters["max_model_order"]
-    # Checkpoint
     sampling_frequency = 1 / simulation_parameters.dt
-
-    ### TODO: REMOVE THIS LINE USED FOR TESTING
-    # vector_fitting_parameters["model_order"] = 20
 
     Omega = 2 * jnp.pi * (frequency - f_center) / sampling_frequency
     s_params = jnp.exp(-1j * delay_compensation * Omega)[:, None, None] * s_params
@@ -1353,8 +766,8 @@ def _calculate_state_space_coefficients_from_sax_model(
             feedthrough,
             mean_squared_error,
         ) = optimize_order_vector_fitting_discrete(
-            min_order,
-            max_order,
+            vector_fitting_parameters["min_model_order"],
+            vector_fitting_parameters["max_model_order"],
             s_params,
             frequency,
             f_center,
@@ -1374,111 +787,3 @@ def _calculate_state_space_coefficients_from_sax_model(
     A, B, C, D = state_space_discrete(poles, residues, feedthrough)
 
     return (A, B, C, D), input_ports, output_ports
-
-
-class SParameterPlaceholder(Placeholder):
-    """Placeholder base class for SAX models inside PCell expansion.
-
-    `optical_s_parameter_placeholder` creates concrete subclasses of
-    this class when a raw SAX callable needs to travel through
-    PCell/netlist processing before being converted into a simulator-
-    specific component.
-    """
-
-
-def optical_s_parameter_placeholder(
-    sax_model: sax.Model,
-    port_directionality: dict = None,
-    default_modes: list | tuple | str = DEFAULT_MODES,
-) -> type[SParameterPlaceholder]:
-    """Wrap a SAX optical model as a placeholder component class.
-
-    Unlike `optical_s_parameter`, this factory does not create a component that
-    directly evaluates an S-parameter response. It records the SAX model, ports,
-    directionality, and settings so later PCell expansion can convert the model
-    into the representation needed by the selected simulator.
-
-    Parameters
-    ----------
-    sax_model:
-        Callable SAX model returning an `SDict`.
-    port_directionality:
-        Optional mapping from port name to `"input"`, `"output"`, or
-        `"bidirectional"`. Unspecified ports default to `"bidirectional"`.
-    default_modes:
-        Mode label or labels assigned when the SAX model omits explicit
-        multimode port names.
-
-    Returns
-    -------
-    type[SParameterPlaceholder]
-        A generated placeholder class whose instances store settings such as
-        `sax_settings`, `port_directionality`, `vector_fitting_parameters`, and
-        `delay_compensation`.
-    """
-    pcell_port_names = _get_port_names_without_mode(sax_model)
-
-    port_directionality = deepcopy(port_directionality)
-    if port_directionality is None:
-        port_directionality = {}
-
-    for port_name in pcell_port_names:
-        port_directionality.setdefault(port_name, "bidirectional")
-
-    # default_port_directionality = port_directionality
-
-    if isinstance(default_modes, str):
-        default_modes = [default_modes]
-    default_modes = tuple(default_modes)
-
-    BaseSParameterSax = SParameterPlaceholder  # Freeze the reference
-
-    class SpecificSParameterPlaceholder(BaseSParameterSax):
-        ports = [
-            Port(
-                name=port_name,
-                type="optical",
-                directionality=port_directionality[port_name],
-            )
-            for port_name in pcell_port_names
-        ]
-
-        def __init__(
-            self,
-            simulation_parameters: SimulationParameters,
-            # Rename kwargs to be more accurate
-            **kwargs,
-            # sax_settings: dict = None,
-            # vector_fitting_parameters = None,
-            # delay_compensation: int = 0,
-            # port_directionality = {},
-        ):
-            """
-            TODO: Add documentation for each of the kwargs
-            """
-            # default_vector_fitting_parameters = {
-            #     "model_order": None,
-            #     "min_model_order": 2,
-            #     "max_model_order": 100,
-            #     "num_frequency_samples": 1000,
-            #     "center_wavelength": 1.55e-6,
-            #     "spectral_range": (1.5e-6, 1.6e-6),
-            #     # NOTE: Currently, a user CAN change the spectral range parameter (the default is set by )
-            # }
-            self.sax_model = sax_model
-            self.settings = kwargs
-            self.settings.setdefault("sax_settings", {})
-            self.settings.setdefault("group_id", None)
-            self.settings.setdefault(
-                "vector_fitting_parameters", _default_vector_fitting_parameters
-            )
-            self.settings.setdefault("delay_compensation", 0)
-            self.settings.setdefault("port_directionality", {})
-            self.settings.setdefault("apply_phase_correction", True)
-            # self.sax_model = sax_model
-            # self.sax_settings = self.settings.setdefault('sax_settings', {})
-            # self.vector_fitting_parameters = self.settings.setdefault('vector_fitting_parameters', default_vector_fitting_parameters)
-            # self.delay_compensation = self.settings.setdefault('delay_compensation', 0)
-            # self.port_directionality = self.settings.setdefault('port_directionality', {})
-
-    return SpecificSParameterPlaceholder

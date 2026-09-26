@@ -14,7 +14,6 @@ from sax.netlists import convert_nets_to_connections
 
 from simphony.circuit.netlist import (
     add_settings_to_netlist,
-    graph_to_netlist,
     instantiated_flat_netlist_to_graph,
     netlist_to_graph,
     remove_instances_from_netlist,
@@ -25,26 +24,15 @@ from simphony.libraries._internal.port_label import (
     PortLabel,
 )
 from simphony.libraries.ideal.s_parameters import (
-    SParameterPlaceholder,
-    optical_s_parameter_placeholder,
-    s_parameter_netlist_to_pcell,
+    NO_S_PARAMETER_GROUP,
+    S_PARAMETER_ELEMENT_SETTING_KEYS,
+    SParameterElement,
+    fused_sax_model,
+    merge_vector_fitting_parameters,
+    optical_s_parameter,
+    wrap_sax_settings,
 )
-
-# from simphony.component.component import Component
-# from simphony.component.pcell import PCell
-from simphony.simulation.simulation import SimulationParameters
-
-# import sax
-# from jax.typing import ArrayLike
-# from sax.saxtypes import Model as SaxModel
-
-# from simphony.signal import optical_signal, complete_steady_state_inputs
-
-
-# import re
-
-
-# from simphony.utils import dict_to_matrix
+from simphony.simulation.simulation import SimulationMode, SimulationParameters
 
 COMPONENT_COLOR_DEFAULT = "black"
 COMPONENT_COLOR_SPARAM = "blue"
@@ -53,12 +41,7 @@ COMPONENT_COLOR_ELECTRICAL = "red"
 COMPONENT_COLOR_OPTOELECTRICAL = "purple"
 COMPONENT_COLOR_LOGIC = "gray"
 
-S_PARAMETER_SETTING_KEYS = {
-    "group_id",
-    "vector_fitting_parameters",
-    "delay_compensation",
-    "port_directionality",
-}
+S_PARAMETER_SETTING_KEYS = S_PARAMETER_ELEMENT_SETTING_KEYS
 
 
 # -----------------------------------------------------------------
@@ -218,7 +201,7 @@ class Circuit:
             self.models[model_name] = model
 
             if not inspect.isclass(self.models[model_name]):
-                s_parameter = optical_s_parameter_placeholder(self.models[model_name])
+                s_parameter = optical_s_parameter(self.models[model_name])
                 self.models[model_name] = s_parameter
 
             self.models[model_name]._create_port_lookup_table()
@@ -550,14 +533,14 @@ class Circuit:
         settings: dict,
         simulation_parameters: SimulationParameters,
         tracked_ports: dict = None,
-        directed: bool = False,
-        fuse_models: bool = False,
-        # default_modes,
+        fuse_s_parameters: bool = False,
+        s_parameter_group_settings: dict = None,
     ):
         """Instantiate the circuit for a specific simulation run.
 
-        Instantiation applies per-instance settings, expands PCells, converts
-        placeholders as needed, inserts tracked-port labels, and returns a flat
+        Instantiation applies per-instance settings, expands PCells, assigns
+        port directionality to `SParameterElement` instances, optionally
+        fuses adjacent `SParameterElement` instances, and returns a flat
         circuit whose instances hold concrete component objects.
 
         Parameters
@@ -566,26 +549,29 @@ class Circuit:
             Per-instance constructor settings.
         simulation_parameters:
             Simulation mode and shared parameters used during component
-            construction.
+            construction. `simulation_parameters.directed` decides whether
+            ambiguous `SParameterElement` port directions are inferred from
+            connection order.
         tracked_ports:
             Optional mapping from user-facing names to `"instance,port"`
             designators to expose in simulation results.
-        directed:
-            Whether connection order may be used to infer directionality for
-            ambiguous placeholders.
-        fuse_models:
-            Whether to preserve compatible S-parameter model groups during
-            consolidation.
+        fuse_s_parameters:
+            Block mode only. Fuse each group of adjacent `SParameterElement`
+            instances sharing an `s_parameter_group` into a single element
+            whose response is computed by SAX.
+        s_parameter_group_settings:
+            Optional mapping from `s_parameter_group` id to settings for the
+            fused elements of that group, e.g.
+            `{0: {"vector_fitting_parameters": {"max_model_order": 80}}}`.
+            Merged key-by-key over the settings derived from the members.
         """
         return InstantiatedCircuit(
             self,
             settings,
             simulation_parameters,
             tracked_ports=tracked_ports,
-            directed=directed,
-            fuse_models=fuse_models
-            # directed,
-            # default_modes
+            fuse_s_parameters=fuse_s_parameters,
+            s_parameter_group_settings=s_parameter_group_settings,
         )
 
     def get_subnetlist(self, subcircuit: str):
@@ -610,7 +596,7 @@ class Circuit:
         for model in self.models:
             component = self.models[model]
             if not inspect.isclass(component):
-                s_parameter = optical_s_parameter_placeholder(component)
+                s_parameter = optical_s_parameter(component)
                 self.models[model] = s_parameter
 
     def _get_ports_from_subcircuit(self, subcircuit: str):
@@ -773,16 +759,21 @@ class FlatCircuit:
         self,
         settings: dict,
         simulation_parameters: SimulationParameters,
-        directed: bool = False,
-        fuse_models: bool = False,
+        tracked_ports: dict = None,
+        fuse_s_parameters: bool = False,
+        s_parameter_group_settings: dict = None,
     ):
-        """Instantiate the flattened circuit for a simulation run."""
+        """Instantiate the flattened circuit for a simulation run.
+
+        See `Circuit.instantiate`.
+        """
         return InstantiatedCircuit(
             self,
             settings,
             simulation_parameters,
-            directed=directed,
-            fuse_models=fuse_models,
+            tracked_ports=tracked_ports,
+            fuse_s_parameters=fuse_s_parameters,
+            s_parameter_group_settings=s_parameter_group_settings,
         )
 
     def _sanitize_netlist(self, netlist, separator) -> Tuple[dict, dict]:
@@ -844,112 +835,45 @@ class FlatCircuit:
     # def _determine_block_mode_order(self):
 
 
-# TODO: Put these functions in the instantiated circuit class as methods
-# def _recover_s_parameter_placeholder_settings(
-#     instantiated_circuit,
-#     settings,
-# ):
-#     ...
+def _assign_s_parameter_directionality(instantiated_flat_netlist, directed=False):
+    """Assign a port directionality to every `SParameterElement` instance.
 
+    Precedence, per port:
 
-def _add_directionality_settings_to_s_parameter_placeholders(
-    # self,
-    instantiated_circuit,
-    settings,
-    directed=False,
-):
+    1. the instance's `port_directionality` setting;
+    2. a non-bidirectional default given to `optical_s_parameter`;
+    3. if `directed`, the connection order in the flat netlist: a port that
+       only appears as a connection value (destination) is an `"input"`;
+       every other port (a connection key, or unconnected) is an `"output"`;
+    4. otherwise `"bidirectional"`.
+
+    Directionality only tells directed simulators which way is the forward
+    pass; the element keeps its full S-matrix.
     """
-    Important: Currently, simphony assumes all ports with an ambiguous directionality are source nodes (input) if the corresponding instance
-    appears in the values of the connection dict in the netlist. Otherwise (if the port is unconnected or in the keys of the connections dict)
-    we label the port as "output". This convention is used assuming elsewhere, for example, the _insert_port_labels function depends on this
-    assumption.
-    """
-    netlist = instantiated_circuit.instantiated_flat_netlist
-    # models = flat_circuit.models
-    for instance_name, instance_data in netlist["instances"].items():
-        # component_class = models[instance_data['component']]
-        component = netlist["instances"][instance_name]["model"]
-        if isinstance(component, SParameterPlaceholder):
-            if not instance_name in settings:
-                settings[instance_name] = component.settings
-            # if not "sax_settings" in settings[instance_name].keys():
-            #     settings[instance_name] = {"sax_settings": settings[instance_name]}
-            # TODO: DOUBLE CHECK DEFAULT DICTIONARY CONSTRUCTION FOR EDGE CASES
-            if directed:
-                default_directionalities = {
-                    p.name: "output"
-                    if f"{instance_name},{p.name}" in netlist["connections"].keys()
-                    else "input"
-                    for p in component.ports
-                }
-                default_directionalities = {
-                    k: d
-                    if not (
-                        f"{instance_name},{k}" in netlist["connections"].keys()
-                        or not f"{instance_name},{k}" in netlist["connections"].values()
-                    )
-                    else "output"
-                    for k, d in default_directionalities.items()
-                }
+    connections = instantiated_flat_netlist["connections"]
+    sources = set(connections.keys())
+    destinations = set(connections.values())
+
+    for instance_name, instance_data in instantiated_flat_netlist["instances"].items():
+        element = instance_data["model"]
+        if not isinstance(element, SParameterElement):
+            continue
+
+        explicit = element.settings.get("port_directionality", {})
+        factory_default = {p.name: p.directionality for p in type(element).ports}
+        directionality = {}
+        for port in element.ports:
+            designator = f"{instance_name},{port.name}"
+            if port.name in explicit:
+                directionality[port.name] = explicit[port.name]
+            elif factory_default[port.name] != "bidirectional":
+                directionality[port.name] = factory_default[port.name]
+            elif directed:
+                is_input = designator in destinations and designator not in sources
+                directionality[port.name] = "input" if is_input else "output"
             else:
-                default_directionalities = {
-                    p.name: "bidirectional" for p in component.ports
-                }
-
-            settings[instance_name][
-                "port_directionality"
-            ] = default_directionalities | settings[instance_name].get(
-                "port_directionality", {}
-            )
-
-
-# def find_clipped_edges(full_graph, subgraph_nodes):
-#     subgraph_nodes = set(subgraph_nodes)
-#     clipped = []
-
-#     for u, v, key, data in full_graph.edges(keys=True, data=True):
-#         if (u in subgraph_nodes) != (v in subgraph_nodes):
-#             clipped.append((u, v, key, data))
-
-#     return clipped
-
-
-def find_clipped_edges(full_graph, subgraph_nodes):
-    subgraph_nodes = set(subgraph_nodes)
-    clipped = []
-
-    for u, v, key, data in full_graph.edges(keys=True, data=True):
-        if (u in subgraph_nodes) != (v in subgraph_nodes):
-            clipped.append((u, v, key, data))
-
-    # Remove bidirectional duplicates
-    unique_clipped = []
-    seen = set()
-
-    for u, v, key, data in clipped:
-        normalized = frozenset(
-            {
-                (u, data["src_port"]),
-                (v, data["dst_port"]),
-            }
-        )
-
-        if normalized not in seen:
-            seen.add(normalized)
-            unique_clipped.append((u, v, key, data))
-
-    return unique_clipped
-
-
-# def _normalize_settings(model, instance_name, settings):
-#     original_model = model._sax_model
-#     model_params = inspect.signature(original_model).parameters
-#     instance_settings = settings[instance_name]
-#     if any(setting in model_params for setting in instance_settings):
-#         settings[instance_name] = {"sax_settings": instance_settings}
-#     else:
-#         settings[instance_name].setdefault("sax_settings", {})
-#         warnings.warn(f"Sax settings were not specified and inside settings do not match model function call for {instance_name}. Appending an empty sax_setting dictionary for that component.")
+                directionality[port.name] = "bidirectional"
+        element.set_port_directionality(directionality)
 
 
 class InstantiatedCircuit:
@@ -969,18 +893,13 @@ class InstantiatedCircuit:
         circuit: Circuit | FlatCircuit,
         settings: dict,
         simulation_parameters: SimulationParameters,
-        # consolidate_s_parameter_components = True, # I have decided that this will just be the thing to do
         tracked_ports: dict = None,
-        directed=False,  # TODO: Implement bidirectional interpretation of ambiguous s parameter models
-        fuse_models=False,
-        # directed: bool,
-        # default_modes,
+        fuse_s_parameters: bool = False,
+        s_parameter_group_settings: dict = None,
     ):
         """Instantiate components and prepare simulator lookup structures.
 
-        When `directed` is true, unspecified directionalities of
-        `SParameterPlaceholder` objects may be inferred from connection
-        order in the netlist.
+        See `Circuit.instantiate` for the parameters.
         """
         if not isinstance(tracked_ports, dict):
             tracked_ports = {}
@@ -990,10 +909,8 @@ class InstantiatedCircuit:
         ].items():
             tracked_ports.setdefault(ext_port_name, port_designator)
 
-        # TODO: I was mutating the inputs so I deep copied them. TODO: assess this for efficiency
         circuit = deepcopy(circuit)
         settings = deepcopy(settings)
-        # simulation_parameters = deepcopy(simulation_parameters)
         simulation_parameters = deepcopy(simulation_parameters)
 
         if isinstance(circuit, FlatCircuit):
@@ -1004,42 +921,35 @@ class InstantiatedCircuit:
         netlist = self.circuit.netlist
         models = self.circuit.models
 
-        from simphony.libraries.ideal.s_parameters import SParameterPlaceholder
+        settings = wrap_sax_settings(
+            netlist["instances"].keys(),
+            lambda instance: models[netlist["instances"][instance]["component"]],
+            settings,
+        )
 
-        # Reinterpret Sax Settings to optical_s_parameter Component settings
-        # for instance_name, instance_settings in settings.items():
-        for instance_name in netlist["instances"].keys():
-            model = models[netlist["instances"][instance_name]["component"]]
-            if (
-                issubclass(model, SParameterPlaceholder)
-                and not "sax_settings" in settings[instance_name].keys()
-            ):
-                settings[instance_name] = {"sax_settings": settings[instance_name]}
-
-        # gv.d3(netlist_to_graph(netlist, models)).display()
         tracked_ports = self._insert_port_label_placeholders(
             netlist, settings, models, tracked_ports
         )
-        # gv.d3(netlist_to_graph(netlist, models)).display()
 
         from simphony.circuit.netlist import instantiate_netlist
 
         self.instantiated_flat_netlist = instantiate_netlist(
             netlist, models, settings, simulation_parameters
         )
+        self.simulation_parameters = simulation_parameters
+        self.settings = settings
+
+        _assign_s_parameter_directionality(
+            self.instantiated_flat_netlist,
+            directed=bool(simulation_parameters.directed),
+        )
         self.graph = instantiated_flat_netlist_to_graph(
             self.instantiated_flat_netlist, include_ports=False
         )
-        self.simulation_parameters = simulation_parameters
 
-        _add_directionality_settings_to_s_parameter_placeholders(
-            self, settings, directed=directed
-        )
-        self.settings = settings
+        if fuse_s_parameters:
+            self._fuse_s_parameter_elements(s_parameter_group_settings)
 
-        # gv.d3(instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist)).display()
-        self._consolidate_s_parameter_components(fuse_models)
-        # gv.d3(instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist)).display()
         (
             self.instantiated_flat_netlist,
             self.port_lookup_table,
@@ -1049,17 +959,6 @@ class InstantiatedCircuit:
             self.instantiated_flat_netlist, include_ports=False
         )
 
-    # def display(self, inline=True):
-
-    #     # graph.add_edge("lf1~mzi1~bot_mod", "lf1~mzi2~bot_mod", directed=True, color="red", hover="Hi!", tooltip="delay = 12 ps")
-    #     # graph.add_edge("lf1~mzi2~bot_mod", "lf1~mzi1~bot_mod", directed=True, color="red", hover="Hi!", tooltip="delay = 12 ps")
-    #     graph = instantiated_flat_netlist_to_graph(self.instantiated_flat_netlist, include_ports=True)
-    #     fig = gv.d3(graph, edge_hover_tooltip=True)
-
-    #     fig.display(inline=True)
-
-    #     # fig = gv.d3(self.graph.to_undirected())
-    #     # fig.display(inline=True)
     def display(self, inline=True):
         """Display the instantiated flat circuit graph."""
         graph = instantiated_flat_netlist_to_graph(
@@ -1074,142 +973,186 @@ class InstantiatedCircuit:
         fig = Sigma(safe_graph, node_size=safe_graph.degree, node_color="club")
         display(fig)
 
-    def _consolidate_s_parameter_components(self, fuse_models):
-        """Because Simphony Circuits will likely be composed of mostly sax-s-
-        parameter elements, we include this extra functionality to optimize the
-        placement of s-parameter models.
+    def _s_parameter_fusion_groups(self):
+        """Return the groups of `SParameterElement` instances to fuse.
 
-        This method will find all of the strongly connected s-parameter
-        components and pass each subnetlist into a PCell factory. How
-        the subnetlists are handled further will depend on how this
-        subnetlist is interpreted by the PCell factory and how it
-        handles different siulation modes
+        Two elements belong to the same group when they are connected to each
+        other and share the same `s_parameter_group` (which must not be
+        `-1`). Groups with a single member are not returned. Groups are
+        returned in a deterministic order, each as a sorted list.
         """
-        # TODO: Replace all of the sugraphs with SParameterGroupPlaceholder Components, to ease the stitching process
-        # TODO: make a way to iterate over these new SParameterGroupPlaceholder instance names and subgraph
+        instances = self.instantiated_flat_netlist["instances"]
 
-        s_parameter_only_graph = deepcopy(self.graph)
-        for node in self.graph.nodes():
-            model = self.instantiated_flat_netlist["instances"][node]["model"]
-            if not isinstance(model, SParameterPlaceholder):
-                s_parameter_only_graph.remove_node(node)
+        def group_id(instance_name):
+            element = instances[instance_name]["model"]
+            if not isinstance(element, SParameterElement):
+                return None
+            gid = element.settings["s_parameter_group"]
+            return None if gid == NO_S_PARAMETER_GROUP else gid
 
-        subgraphs = [
-            s_parameter_only_graph.subgraph(c).copy()
-            for c in nx.weakly_connected_components(s_parameter_only_graph)
-        ]
-        TOP_LEVEL_NAME = "top_level"
+        adjacency = nx.Graph()
+        adjacency.add_nodes_from(n for n in instances if group_id(n) is not None)
+        for src, dst in self.instantiated_flat_netlist["connections"].items():
+            a, b = src.split(",")[0], dst.split(",")[0]
+            if (
+                a != b
+                and a in adjacency
+                and b in adjacency
+                and group_id(a) == group_id(b)
+            ):
+                adjacency.add_edge(a, b)
 
-        clipped_netlist = remove_instances_from_netlist(
-            self.instantiated_flat_netlist, s_parameter_only_graph.nodes()
+        return sorted(
+            (sorted(c) for c in nx.connected_components(adjacency) if len(c) > 1),
+            key=lambda members: members[0],
         )
-        instantiated_recursive_netlist = sax.netlist(
-            clipped_netlist, top_level_name=TOP_LEVEL_NAME
-        )
 
-        for j, subgraph in enumerate(subgraphs):
-            if j == 1:
-                pass
-            # The following line is likely leading to duplicate connections, since bidirectional connections
-            # are represented with two different connections (since nx.multidigraph doesn't have "bidirectional connections")
-            clipped_edges = find_clipped_edges(self.graph, subgraph)
+    def _fuse_s_parameter_elements(self, s_parameter_group_settings=None):
+        """Fuse adjacent `SParameterElement` instances into single elements.
 
-            # ports = [src for (src, dst, key, data) in clipped_edges] # Use the clipped edges to determine the ports
-            # TODO: IMPORTANT, when determining the ports, right now it only looks at clipped edges
-            # This causes some important ports to be ignored leading to them disappearing in the pcell's ports
-            # ports = {f"o{i}":f"{src},{data["src_port"]}" if src in subgraph else f"{dst},{data["dst_port"]}" for i, (src, dst, key, data) in enumerate(clipped_edges)}
-            # subnetlist = graph_to_netlist(subgraph, port=ports)
+        Each group found by `_s_parameter_fusion_groups` is replaced by one
+        `SParameterElement` whose SAX model is the SAX circuit of its
+        members. Its ports are the members' external ports, named
+        `"{member}__{port}"`, with the directionality already assigned to
+        them. `fused.members` maps each member to `{port: fused_port}`.
 
-            subnetlist = graph_to_netlist(subgraph)
-            models = {
-                subnetlist["instances"][node][
-                    "component"
-                ]: self.instantiated_flat_netlist["instances"][node]["model"].sax_model
-                for node in subgraph.nodes()
+        Only supported in block mode.
+        """
+        simulation_parameters = self.simulation_parameters
+        if simulation_parameters.simulation_mode != SimulationMode.BLOCK_MODE:
+            raise NotImplementedError(
+                "Fusing S-parameter elements is only supported in block mode "
+                f"simulations, not {simulation_parameters.simulation_mode}"
+            )
+        s_parameter_group_settings = s_parameter_group_settings or {}
+
+        netlist = self.instantiated_flat_netlist
+        instances = netlist["instances"]
+        was_acyclic = nx.is_directed_acyclic_graph(self.graph)
+
+        used_names = set(instances)
+        group_counters = {}
+        fused_names = {}
+        for members in self._s_parameter_fusion_groups():
+            member_set = set(members)
+            elements = {m: instances[m]["model"] for m in members}
+            gid = elements[members[0]].settings["s_parameter_group"]
+
+            k = group_counters.get(gid, 0)
+            group_counters[gid] = k + 1
+            fused_name = f"s_parameter_group_{gid}_{k}"
+            while fused_name in used_names:
+                fused_name += "_"
+            used_names.add(fused_name)
+
+            internal_connections = {
+                src: dst
+                for src, dst in netlist["connections"].items()
+                if src.split(",")[0] in member_set and dst.split(",")[0] in member_set
             }
-            port_designators = set()
-            for instance_name, instance_data in subnetlist["instances"].items():
-                model_name = instance_data["component"]
-                # Changed this line on Friday 05-08-26
-                sdict = sax.multimode(
-                    models[model_name](), self.simulation_parameters.mode_identifiers
-                )
-                single_mode_ports = sorted(
-                    {p.split("@")[0] for edge in sdict.keys() for p in edge}
-                )
-                port_designators.update(
-                    [f"{instance_name},{p}" for p in single_mode_ports]
-                )
-
-            # external_port_designators = {f"{src},{data["src_port"]}" if src in subgraph else f"{dst},{data["dst_port"]}" for (src, dst, key, data) in clipped_edges}
-            internal_port_designators = set()
-            for src_designator, dst_designator in subnetlist["connections"].items():
-                internal_port_designators.add(src_designator)
-                internal_port_designators.add(dst_designator)
-
-            external_port_designators = port_designators - internal_port_designators
-            ports = {
-                f"o{i}": ep_designator
-                for i, ep_designator in enumerate(external_port_designators)
-            }
-            subnetlist["ports"] = ports
-            port_directionality = {
-                node: self.settings[node]["port_directionality"]
-                for node in subgraph.nodes()
-            }
-            # default_modes = {node: self.instantiated_flat_netlist['instances'][node]['model'].default_modes for node in subgraph.nodes()}
-
-            # _settings = {k: self.settings[k] for k in subnetlist['instances'].keys() if k in self.settings}
-
-            # We need to add the settings determined by the s_parameter_placeholder objects
-            _settings = {
-                k: self.instantiated_flat_netlist["instances"][k]["model"].settings
-                for k in subnetlist["instances"].keys()
-            }
-
-            s_parameter_pcell = s_parameter_netlist_to_pcell(
-                subnetlist,
-                models,
-                port_directionality,
-                self.simulation_parameters.mode_identifiers,
-                fuse_models=fuse_models,
+            internal_ends = set(internal_connections) | set(
+                internal_connections.values()
             )
 
-            # TODO: The following lines of code are repeated elsewhere and it would be good to wrap them up in a function
-            instantiated_s_parameter_pcell = s_parameter_pcell(
-                self.simulation_parameters, settings=_settings
+            # SAX needs identifier-like instance names; alias the members.
+            alias = {m: f"member{i}" for i, m in enumerate(members)}
+            fused_ports = {}
+            directionality = {}
+            member_port_map = {m: {} for m in members}
+            for m in members:
+                for port in elements[m].ports:
+                    designator = f"{m},{port.name}"
+                    if designator in internal_ends:
+                        continue
+                    fused_port = f"{m}__{port.name}"
+                    fused_ports[designator] = fused_port
+                    directionality[fused_port] = port.directionality
+                    member_port_map[m][port.name] = fused_port
+
+            def alias_designator(designator):
+                instance, port = designator.split(",")
+                return f"{alias[instance]},{port}"
+
+            group_netlist = {
+                "instances": {alias[m]: alias[m] for m in members},
+                "connections": {
+                    alias_designator(src): alias_designator(dst)
+                    for src, dst in internal_connections.items()
+                },
+                "ports": {
+                    fused_port: alias_designator(designator)
+                    for designator, fused_port in fused_ports.items()
+                },
+            }
+            model = fused_sax_model(
+                {alias[m]: elements[m] for m in members},
+                group_netlist,
+                simulation_parameters.mode_identifiers,
             )
-            pcell_netlist = instantiated_s_parameter_pcell._instantiated_netlist(
-                self.simulation_parameters
+            model.__name__ = fused_name
+
+            fused_settings = {
+                "vector_fitting_parameters": merge_vector_fitting_parameters(
+                    fused_name, elements
+                ),
+                "apply_phase_correction": elements[members[0]].settings[
+                    "apply_phase_correction"
+                ],
+                "s_parameter_group": gid,
+            }
+            override = deepcopy(s_parameter_group_settings.get(gid, {}))
+            vf_override = override.pop("vector_fitting_parameters", {})
+            if vf_override.keys() & {"min_model_order", "max_model_order"}:
+                vf_override.setdefault("model_order", None)
+            fused_settings["vector_fitting_parameters"].update(vf_override)
+            fused_settings.update(override)
+
+            fused_class = optical_s_parameter(
+                model,
+                directionality,
+                default_modes=simulation_parameters.mode_identifiers,
             )
+            fused_element = fused_class(simulation_parameters, **fused_settings)
+            fused_element.members = member_port_map
 
-            s_parameter_group = f"sparameter_group{j}"
-            instantiated_recursive_netlist[s_parameter_group] = pcell_netlist
-            instantiated_recursive_netlist[TOP_LEVEL_NAME]["instances"][
-                s_parameter_group
-            ] = {"component": s_parameter_group}
+            # Splice the fused element into the netlist.
+            for m in members:
+                del instances[m]
+            instances[fused_name] = {
+                "component": fused_name,
+                "settings": fused_settings,
+                "model": fused_element,
+            }
 
-            port_lut = {v: k for k, v in ports.items()}
-            # TODO: Make sure this isn't creating the duplicate connections that may be in clipped edges
-            for src, dst, key, data in clipped_edges:
-                src_port = data["src_port"]
-                dst_port = data["dst_port"]
-                if src in s_parameter_only_graph.nodes:
-                    src_port = port_lut[f"{src},{src_port}"]
-                    src = s_parameter_group
-                elif dst in s_parameter_only_graph.nodes:
-                    dst_port = port_lut[f"{dst},{dst_port}"]
-                    dst = s_parameter_group
+            def remap(designator):
+                return f"{fused_name},{fused_ports[designator]}"
 
-                src_connection = f"{src},{src_port}"
-                dst_connection = f"{dst},{dst_port}"
-                instantiated_recursive_netlist[TOP_LEVEL_NAME]["connections"][
-                    src_connection
-                ] = dst_connection
+            netlist["connections"] = {
+                (remap(src) if src in fused_ports else src): (
+                    remap(dst) if dst in fused_ports else dst
+                )
+                for src, dst in netlist["connections"].items()
+                if src not in internal_connections
+            }
+            netlist["ports"] = {
+                name: remap(d) if d in fused_ports else d
+                for name, d in netlist["ports"].items()
+            }
+            fused_names[fused_name] = members
 
-        self.instantiated_flat_netlist = sax.flatten_netlist(
-            instantiated_recursive_netlist
-        )
+        self.graph = instantiated_flat_netlist_to_graph(netlist, include_ports=False)
+        if was_acyclic and not nx.is_directed_acyclic_graph(self.graph):
+            cycle_nodes = {u for u, _, _ in nx.find_cycle(self.graph)}
+            offenders = {
+                name: members
+                for name, members in fused_names.items()
+                if name in cycle_nodes
+            }
+            raise ValueError(
+                "Fusing S-parameter elements created a feedback loop through "
+                f"{offenders}. Set 's_parameter_group' to -1 (or a different "
+                "group) on one of the members to break the loop."
+            )
 
     def _insert_port_label_placeholders(self, netlist, settings, models, tracked_ports):
         # First, we will take care of the tracked ports that are not connected to anything else
@@ -1253,9 +1196,9 @@ class InstantiatedCircuit:
                 netlist["connections"][
                     tracked_port_designator
                 ] = f"{port_label_instance_name},port1"
-                new_tracked_ports[
-                    tracked_port_name
-                ] = f"{port_label_instance_name},port1"
+                new_tracked_ports[tracked_port_name] = (
+                    f"{port_label_instance_name},port1"
+                )
             elif tracked_port.directionality == "input":
                 netlist["connections"][
                     f"{port_label_instance_name},out"
@@ -1323,9 +1266,9 @@ class InstantiatedCircuit:
                     netlist["connections"][
                         other_designator
                     ] = f"{port_label_instance_name},{port_names[1]}"
-                    new_tracked_ports[
-                        tracked_ext_port_name
-                    ] = f"{port_label_instance_name},{port_names[0]}"
+                    new_tracked_ports[tracked_ext_port_name] = (
+                        f"{port_label_instance_name},{port_names[0]}"
+                    )
 
                 else:
                     netlist["connections"][
@@ -1334,9 +1277,9 @@ class InstantiatedCircuit:
                     netlist["connections"][
                         f"{port_label_instance_name},{port_names[1]}"
                     ] = other_designator
-                    new_tracked_ports[
-                        tracked_ext_port_name
-                    ] = f"{port_label_instance_name},{port_names[0]}"
+                    new_tracked_ports[tracked_ext_port_name] = (
+                        f"{port_label_instance_name},{port_names[0]}"
+                    )
 
             if tracked_port.directionality == "bidirectional":
                 insert_port_label(

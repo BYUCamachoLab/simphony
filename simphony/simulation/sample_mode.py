@@ -268,7 +268,6 @@ class SampleModeSimulation(Simulation):
             self.settings,
             self.simulation_parameters,
             tracked_ports=self.tracked_ports,
-            directed=False,
         )
         self._predecessors_map, self._successors_map = self.edge_lookup_tables()
         port_lookup_table = self._instantiated_circuit.port_lookup_table

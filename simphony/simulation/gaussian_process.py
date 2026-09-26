@@ -111,7 +111,6 @@ class GaussianProcessSimulation(Simulation):
             self.settings,
             self.simulation_parameters,
             tracked_ports=self.tracked_ports,
-            directed=True,
         )
 
         order = self._determine_gaussian_process_order(self._instantiated_circuit)

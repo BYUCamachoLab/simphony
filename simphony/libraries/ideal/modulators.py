@@ -83,19 +83,27 @@ class DirectedOpticalModulator(BlockModeComponent):
         self.effective_index = effective_index
 
     def block_mode_response(self, input_signals, simulation_parameters):
-        outputs = {}
-        input_amplitude = input_signals["o0"].amplitude
-        wavelengths = input_signals["o0"].wavelength
-        N = input_amplitude.shape[0]
-        L = input_amplitude.shape[1]
-        M = len(
-            simulation_parameters.mode_identifiers
-        )  # Currently, ignores all but the first mode
+        """Modulate the forward wave `o0 -> o1`.
 
+        A backward wave arriving at `o1` (block-mode backward pass) is
+        modulated by the same voltage-dependent transfer and emitted from
+        `o0`.
+        """
         voltage = input_signals["e0"].voltage
+        outputs = {
+            "o1": self._modulate(input_signals["o0"], voltage, simulation_parameters)
+        }
+        if "o1" in input_signals:
+            outputs["o0"] = self._modulate(
+                input_signals["o1"], voltage, simulation_parameters
+            )
+        return outputs
 
-        output_amplitude = jnp.zeros((N, L, M), dtype=complex)
+    def _modulate(self, signal, voltage, simulation_parameters):
+        input_amplitude = signal.amplitude
+        L = input_amplitude.shape[1]
 
+        output_amplitude = jnp.zeros_like(input_amplitude, dtype=complex)
         for m, mode in enumerate(simulation_parameters.mode_identifiers):
             phase_op = jnp.polyval(self.phase_coefficients[m], voltage)
             absorption_dB = jnp.polyval(self.absorption_coefficients[m], voltage)
@@ -111,11 +119,9 @@ class DirectedOpticalModulator(BlockModeComponent):
                 * input_amplitude[:, :, m]
             )
 
-        outputs["o1"] = BlockModeOpticalSignal(
-            amplitude=output_amplitude, wavelength=wavelengths
+        return BlockModeOpticalSignal(
+            amplitude=output_amplitude, wavelength=signal.wavelength
         )
-
-        return outputs
 
 
 class OpticalModulator(

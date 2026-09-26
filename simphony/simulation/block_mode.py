@@ -39,6 +39,15 @@ class BlockModeSimulationParameters(SimulationParameters):
         represented on the last axis of a `BlockModeOpticalSignal`.
     use_state_space_optimization:
         Enables optimized structured state-space updates where available.
+    backward_pass:
+        If true, run a second, backward pass after the forward pass. The
+        backward-travelling waves emitted on input ports during the forward
+        pass (reflections) are propagated back through the circuit in reverse
+        order, accumulating the reflections of every earlier stage. The
+        result is first order in back-reflection: waves reflected back into
+        the forward direction during the backward pass are discarded. S-parameter
+        elements fit their full S-matrix when this is enabled, and only
+        their forward `S[output <- input]` block otherwise.
     """
 
     simulation_mode: SimulationMode = field(
@@ -51,6 +60,7 @@ class BlockModeSimulationParameters(SimulationParameters):
         default_factory=lambda: jax.numpy.array([1.55e-6])
     )
     use_state_space_optimization: bool = True
+    backward_pass: bool = False
 
 
 class BlockModeSimulationResult(SimulationResult):
@@ -64,11 +74,17 @@ class BlockModeSimulationResult(SimulationResult):
     output_signals:
         Signals observed on tracked ports when the tracked port corresponds to a
         component output.
+    backward_signals:
+        Backward-travelling waves observed on tracked ports. Only populated
+        when `BlockModeSimulationParameters.backward_pass` is true. On a tracked
+        input port this is the total wave travelling back out of the circuit
+        (the reflection seen by whatever drives that port).
     """
 
-    def __init__(self, input_signals, output_signals):
+    def __init__(self, input_signals, output_signals, backward_signals=None):
         self.input_signals = input_signals
         self.output_signals = output_signals
+        self.backward_signals = backward_signals if backward_signals else {}
 
 
 class BlockModeSimulation(Simulation):
@@ -77,7 +93,10 @@ class BlockModeSimulation(Simulation):
 
     The simulator instantiates the circuit with the provided settings, determines
     a topological execution order, calls each component's block-mode response, and
-    returns the signals available at tracked or top-level ports.
+    returns the signals available at tracked or top-level ports. When
+    `simulation_parameters.backward_pass` is true, a second pass propagates
+    backward-travelling waves in reverse order (see
+    `BlockModeSimulationParameters`).
 
     Parameters
     ----------
@@ -94,6 +113,13 @@ class BlockModeSimulation(Simulation):
         default.
     simulation_parameters:
         Shared `BlockModeSimulationParameters`. If omitted, defaults are used.
+    fuse_s_parameters:
+        Fuse adjacent SAX S-parameter elements (sharing an
+        `s_parameter_group` setting) into single elements before simulating.
+        This reduces the number of vector fits.
+    s_parameter_group_settings:
+        Optional mapping from `s_parameter_group` id to settings (for example
+        `vector_fitting_parameters`) for the fused elements of that group.
     """
 
     def __init__(
@@ -102,6 +128,8 @@ class BlockModeSimulation(Simulation):
         settings,
         tracked_ports: dict = None,
         simulation_parameters=None,
+        fuse_s_parameters: bool = False,
+        s_parameter_group_settings: dict = None,
     ):
         if settings is None:
             settings = {}
@@ -112,8 +140,13 @@ class BlockModeSimulation(Simulation):
         self.circuit = deepcopy(circuit)
         self.settings = deepcopy(settings)
         self.tracked_ports = deepcopy(tracked_ports)
+        self.fuse_s_parameters = fuse_s_parameters
+        self.s_parameter_group_settings = deepcopy(s_parameter_group_settings)
         self.component_inputs = {}
         self.component_outputs = {}
+        self.forward_reflections = {}
+        self.backward_inputs = {}
+        self.backward_outputs = {}
 
     def run(
         self,
@@ -126,13 +159,17 @@ class BlockModeSimulation(Simulation):
         """
         self.component_inputs = {}
         self.component_outputs = {}
+        self.forward_reflections = {}
+        self.backward_inputs = {}
+        self.backward_outputs = {}
 
         tic = time()
         self._instantiated_circuit = self.circuit.instantiate(
             self.settings,
             self.simulation_parameters,
             tracked_ports=self.tracked_ports,
-            directed=True,
+            fuse_s_parameters=self.fuse_s_parameters,
+            s_parameter_group_settings=self.s_parameter_group_settings,
         )
         self.block_mode_order = self._determine_block_mode_order_nx_method(
             self._instantiated_circuit
@@ -142,14 +179,25 @@ class BlockModeSimulation(Simulation):
         for instance_name in self.block_mode_order:
             self._collect_component_inputs(instance_name)
             inputs = self.component_inputs[instance_name]
-            component = self._instantiated_circuit.instantiated_flat_netlist[
-                "instances"
-            ][instance_name]["model"]
+            component = self._component(instance_name)
             outputs = component._block_mode_response(inputs, self.simulation_parameters)
-            self.component_outputs[instance_name] = outputs
+            self.component_outputs[instance_name] = {
+                port: signal
+                for port, signal in outputs.items()
+                if not _is_backward_port(component, port)
+            }
+            self.forward_reflections[instance_name] = {
+                port: signal
+                for port, signal in outputs.items()
+                if _is_backward_port(component, port)
+            }
+
+        if self.simulation_parameters.backward_pass:
+            self._run_backward_pass()
 
         input_signals = {}
         output_signals = {}
+        backward_signals = {}
         for (
             tracked_port_name,
             tracked_port_designator,
@@ -163,10 +211,22 @@ class BlockModeSimulation(Simulation):
                 output_signals[tracked_port_name] = self.component_outputs[
                     instance_name
                 ][port_name]
-        simulation_result = BlockModeSimulationResult(input_signals, output_signals)
+            for backward in (self.backward_outputs, self.backward_inputs):
+                if port_name in backward.get(instance_name, {}):
+                    backward_signals[tracked_port_name] = backward[instance_name][
+                        port_name
+                    ]
+        simulation_result = BlockModeSimulationResult(
+            input_signals, output_signals, backward_signals
+        )
 
         logger.debug("Block mode simulation completed in %.6f s", time() - tic)
         return simulation_result
+
+    def _component(self, instance_name):
+        return self._instantiated_circuit.instantiated_flat_netlist["instances"][
+            instance_name
+        ]["model"]
 
     def _collect_component_inputs(self, component) -> dict:
         inputs = {}
@@ -183,6 +243,48 @@ class BlockModeSimulation(Simulation):
                 ]
         self.component_inputs[component] = inputs
 
+    def _run_backward_pass(self):
+        """Propagate backward-travelling waves in reverse topological order.
+
+        For each component, the backward waves arriving at its output ports
+        are the backward waves leaving the downstream input ports they are
+        connected to. The component is evaluated with those arrivals (plus
+        the non-optical inputs of the forward pass, e.g. modulator drive
+        voltages; forward optical inputs are omitted so forward reflections
+        are not counted twice). The backward waves it emits on its input
+        ports are added to its forward-pass reflections.
+        """
+        graph = self._instantiated_circuit.graph
+        for instance_name in reversed(self.block_mode_order):
+            component = self._component(instance_name)
+            arrivals = {}
+            for _, downstream, edge in graph.out_edges(instance_name, data=True):
+                signal = self.backward_outputs.get(downstream, {}).get(edge["dst_port"])
+                if signal is not None:
+                    arrivals[edge["src_port"]] = signal
+            self.backward_inputs[instance_name] = arrivals
+
+            emitted = dict(self.forward_reflections[instance_name])
+            if arrivals:
+                inputs = {
+                    port: signal
+                    for port, signal in self.component_inputs[instance_name].items()
+                    if component._port_lookup_table[port].type != "optical"
+                }
+                inputs.update(arrivals)
+                outputs = component._block_mode_response(
+                    inputs, self.simulation_parameters
+                )
+                for port, signal in outputs.items():
+                    if not _is_backward_port(component, port):
+                        continue  # Re-reflection into the forward direction
+                    if port in emitted:
+                        signal = signal.replace(
+                            amplitude=signal.amplitude + emitted[port].amplitude
+                        )
+                    emitted[port] = signal
+            self.backward_outputs[instance_name] = emitted
+
     def _determine_block_mode_order_nx_method(self, instantiated_circuit):
         """Return the directed acyclic execution order for Block mode."""
         try:
@@ -191,3 +293,14 @@ class BlockModeSimulation(Simulation):
             raise ValueError(
                 "Failed to determine Block mode order: circular dependencies detected"
             )
+
+
+def _is_backward_port(component, port_name) -> bool:
+    """True if a signal on `port_name` leaving `component` travels backward.
+
+    That is the case for optical input ports (not bidirectional ones).
+    """
+    port = component._port_lookup_table.get(port_name)
+    return (
+        port is not None and port.type == "optical" and port.directionality == "input"
+    )
