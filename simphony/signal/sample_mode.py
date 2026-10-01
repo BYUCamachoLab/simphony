@@ -1,3 +1,12 @@
+"""Sample-mode signals: the value of a signal at one time step.
+
+Each class lists its per-sample *data fields* in `_data_fields`; other fields
+(such as `wavelength`) are metadata. Generic components such as decimators and
+interpolators use this to handle any signal type.
+"""
+
+from typing import ClassVar
+
 import jax.numpy as jnp
 from flax import struct
 
@@ -14,18 +23,47 @@ class SampleModeOpticalSignal:
         - Wavelengths corresponding to the second axis of amplitude
     """
 
-    amplitude: jnp.ndarray  # shape: (L,M) where L is number of wavelengths, M is the number of modes
+    _data_fields: ClassVar[tuple] = ("amplitude",)
+
+    amplitude: (
+        jnp.ndarray
+    )  # shape: (L,M) where L is number of wavelengths, M is the number of modes
     wavelength: jnp.ndarray  # shape: (L,), corresponding wavelengths
 
 
 @struct.dataclass
 class SampleModeElectricalSignal:
+    _data_fields: ClassVar[tuple] = ("voltage",)
+
     voltage: float  # TODO: Determine whether making this a float and not a jax array is appropriate
 
 
 @struct.dataclass
 class SampleModeLogicSignal:
+    _data_fields: ClassVar[tuple] = ("value",)
+
     value: jnp.ndarray
+
+
+@struct.dataclass
+class SampleModeVectorSignal:
+    """Arbitrary vector-valued signal at one time step.
+
+    value: jnp.ndarray of any shape, defined by the producing component.
+    start: index along axis 0 of `value` at which the vector begins when
+        `value` is stored as a circular buffer (0 = already in order). This
+        lets a component update one entry per step instead of shifting the
+        whole array; consumers call `ordered()` when they need the order.
+    """
+
+    _data_fields: ClassVar[tuple] = ("value", "start")
+
+    value: jnp.ndarray
+    start: jnp.ndarray = 0
+
+    def ordered(self) -> jnp.ndarray:
+        """`value` rotated so that axis 0 starts at `start`."""
+        return jnp.roll(jnp.asarray(self.value), -self.start, axis=0)
 
 
 # def sample_mode_optical_signal(

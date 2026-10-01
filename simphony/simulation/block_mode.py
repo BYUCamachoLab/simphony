@@ -4,10 +4,12 @@ from dataclasses import field
 from time import time
 
 import jax
+import jax.numpy as jnp
 import networkx as nx
 from flax import struct
 
 from simphony.circuit.circuit import Circuit
+from simphony.circuit.rates import infer_sample_rates, local_parameters
 from simphony.simulation.simulation import (
     Simulation,
     SimulationMode,
@@ -39,6 +41,10 @@ class BlockModeSimulationParameters(SimulationParameters):
         represented on the last axis of a `BlockModeOpticalSignal`.
     use_state_space_optimization:
         Enables optimized structured state-space updates where available.
+    time_offset:
+        Time, in seconds, of the first sample. Multirate simulations give each
+        rate region its own copy of the parameters, with that region's `dt`,
+        `num_time_steps` and `time_offset` (see `simphony.circuit.rates`).
     backward_pass:
         If true, run a second, backward pass after the forward pass. The
         backward-travelling waves emitted on input ports during the forward
@@ -60,6 +66,7 @@ class BlockModeSimulationParameters(SimulationParameters):
         default_factory=lambda: jax.numpy.array([1.55e-6])
     )
     use_state_space_optimization: bool = True
+    time_offset: float = 0.0
     backward_pass: bool = False
 
 
@@ -174,13 +181,17 @@ class BlockModeSimulation(Simulation):
         self.block_mode_order = self._determine_block_mode_order_nx_method(
             self._instantiated_circuit
         )
+        self._setup_rates()
         logger.debug("Block mode execution order: %s", self.block_mode_order)
 
         for instance_name in self.block_mode_order:
             self._collect_component_inputs(instance_name)
             inputs = self.component_inputs[instance_name]
             component = self._component(instance_name)
-            outputs = component._block_mode_response(inputs, self.simulation_parameters)
+            outputs = component._block_mode_response(
+                inputs, self._local_parameters[instance_name]
+            )
+            self._check_time_axis(instance_name, outputs)
             self.component_outputs[instance_name] = {
                 port: signal
                 for port, signal in outputs.items()
@@ -219,9 +230,49 @@ class BlockModeSimulation(Simulation):
         simulation_result = BlockModeSimulationResult(
             input_signals, output_signals, backward_signals
         )
+        simulation_result.sample_periods = {
+            name: self.rate_schedule.port_domain(*designator.split(",")).dt
+            for name, designator in self._instantiated_circuit.port_lookup_table.items()
+        }
 
         logger.debug("Block mode simulation completed in %.6f s", time() - tic)
         return simulation_result
+
+    def _setup_rates(self):
+        """Infer each region's sample rate; give every component the
+        simulation parameters of its own region (see simphony.circuit.rates)."""
+        self.rate_schedule = infer_sample_rates(
+            self._instantiated_circuit, self.simulation_parameters
+        )
+        self._local_parameters = {}
+        for instance_name in self.block_mode_order:
+            domain = self.rate_schedule.instance_domain(instance_name)
+            self._local_parameters[instance_name] = local_parameters(
+                self.simulation_parameters, domain
+            )
+            if instance_name in self.rate_schedule.rate_changers:
+                self._component(instance_name).input_parameters = local_parameters(
+                    self.simulation_parameters,
+                    self.rate_schedule.input_domain(instance_name),
+                )
+
+    def _check_time_axis(self, instance_name, outputs):
+        """Enforce the block-mode convention: axis 0 of every data field is
+        time, with the length of the port's rate region."""
+        for port, signal in outputs.items():
+            fields = getattr(type(signal), "_data_fields", ())
+            expected = self.rate_schedule.port_domain(
+                instance_name, port
+            ).num_time_steps
+            for field_name in fields:
+                value = getattr(signal, field_name)
+                length = jnp.shape(value)[0] if jnp.ndim(value) else None
+                if length != expected:
+                    raise ValueError(
+                        f"{instance_name},{port}: {type(signal).__name__}.{field_name} has "
+                        f"shape {jnp.shape(value)}; block-mode data fields must have "
+                        f"time on axis 0 with {expected} samples for this rate region"
+                    )
 
     def _component(self, instance_name):
         return self._instantiated_circuit.instantiated_flat_netlist["instances"][
@@ -273,7 +324,7 @@ class BlockModeSimulation(Simulation):
                 }
                 inputs.update(arrivals)
                 outputs = component._block_mode_response(
-                    inputs, self.simulation_parameters
+                    inputs, self._local_parameters[instance_name]
                 )
                 for port, signal in outputs.items():
                     if not _is_backward_port(component, port):

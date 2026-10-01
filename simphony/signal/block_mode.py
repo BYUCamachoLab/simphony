@@ -1,3 +1,15 @@
+"""Block-mode signals.
+
+Convention: every *data field* of a block-mode signal (listed in the class's
+`_data_fields`) has time on axis 0, with length equal to the number of time
+steps of the region of the circuit the signal lives in. Other fields (such as
+`wavelength`) are per-signal metadata. The block-mode simulator checks this
+convention after every component response, and the generic multirate helpers
+in `simphony.signal.utils` rely on it.
+"""
+
+from typing import ClassVar
+
 import jax.numpy as jnp
 from flax import struct
 
@@ -15,7 +27,11 @@ class BlockModeOpticalSignal:
         - Wavelengths corresponding to the second axis of amplitude
     """
 
-    amplitude: jnp.ndarray  # shape:(T, L, M) where T is number of time steps, L is number of wavelengths, and M is the number of modes
+    _data_fields: ClassVar[tuple] = ("amplitude",)
+
+    amplitude: (
+        jnp.ndarray
+    )  # shape:(T, L, M) where T is number of time steps, L is number of wavelengths, and M is the number of modes
     wavelength: jnp.ndarray  # shape: (L,)
 
 
@@ -26,12 +42,31 @@ class BlockModeElectricalSignal:
     voltage: float valued jnp.ndaray of shap(T, ) where T is the number of time steps
     """
 
+    _data_fields: ClassVar[tuple] = ("voltage",)
+
     voltage: jnp.ndarray
 
 
 @struct.dataclass
 class BlockModeLogicSignal:
+    _data_fields: ClassVar[tuple] = ("value",)
+
     value: jnp.ndarray  # shape:(T,) where T is the number of time steps
+
+
+@struct.dataclass
+class BlockModeVectorSignal:
+    """Arbitrary vector-valued signal in block mode.
+
+    value: jnp.ndarray of shape (T, ...)
+        Time on axis 0; the remaining axes are defined by the component that
+        produces the signal (for example `(T, N, M)` for N-point spectra of M
+        modes).
+    """
+
+    _data_fields: ClassVar[tuple] = ("value",)
+
+    value: jnp.ndarray
 
 
 # def block_mode_optical_signal(

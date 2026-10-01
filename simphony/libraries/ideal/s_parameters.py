@@ -232,6 +232,19 @@ class SParameterElement(SParameterComponent, SampleModeComponent, BlockModeCompo
         if key in self._state_space_cache:
             return self._state_space_cache[key]
 
+        span = speed_of_light / min(
+            self.settings["vector_fitting_parameters"]["spectral_range"]
+        ) - speed_of_light / max(
+            self.settings["vector_fitting_parameters"]["spectral_range"]
+        )
+        if span * simulation_parameters.dt > 1:
+            warnings.warn(
+                f"{type(self).__name__}: the fitted spectral range ({span / 1e12:.3g} THz) "
+                f"is wider than the sample rate of its region "
+                f"({1 / simulation_parameters.dt / 1e12:.3g} THz, e.g. after a "
+                "decimator); the z-domain model will alias. Narrow `spectral_range` "
+                "or move the element to a faster region."
+            )
         filtered_model = _get_filtered_sax_model(
             self.sax_model, directionality, mode_identifiers
         )

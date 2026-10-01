@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from simulation.simulation import SimulationMode
 
 import inspect
+from fractions import Fraction
 from typing import Tuple
 
 import jax
@@ -20,6 +21,11 @@ from jax.typing import ArrayLike
 from scipy.constants import speed_of_light
 
 from simphony.signal.block_mode import BlockModeElectricalSignal, BlockModeOpticalSignal
+from simphony.signal.sample_mode import (
+    SampleModeElectricalSignal,
+    SampleModeLogicSignal,
+    SampleModeOpticalSignal,
+)
 
 
 class Signal:  ## TODO: Make an actual base class
@@ -168,15 +174,20 @@ class BlockModeComponent(Component):
         raise NotImplementedError
 
     def _block_mode_response(self, input_signals, simulation_parameters):
+        # Rate changers receive their output-domain parameters; their inputs
+        # live in the input domain (`input_parameters`, set by the simulator).
+        input_parameters = getattr(self, "input_parameters", simulation_parameters)
         for port_name, port in self._input_port_lookup_table.items():
-            input_signals.setdefault(
-                port_name, self._default_input_signal(simulation_parameters, port.type)
-            )
+            if port_name not in input_signals:
+                input_signals[port_name] = self._default_input_signal(
+                    input_parameters, port.type
+                )
         outputs = self.block_mode_response(input_signals, simulation_parameters)
 
         baseband_wls = simulation_parameters.optical_baseband_wavelengths
         time_steps = (
             jnp.arange(simulation_parameters.num_time_steps) * simulation_parameters.dt
+            + simulation_parameters.time_offset
         )
 
         for port, signal in outputs.items():
@@ -272,6 +283,30 @@ class SampleModeComponent(Component):
         """
         raise NotImplementedError
 
+    def sample_mode_output_template(self, port, simulation_parameters):
+        """Return a zero-valued signal with the shape this port emits.
+
+        The sample-mode simulator uses it as the port's output before the
+        component first fires. The default covers optical, electrical and
+        logic ports; components with other port types (e.g. `"vector"`) must
+        override it. Return `None` to inherit the template of the signal
+        feeding the component (used by rate changers).
+        """
+        if port.type == "optical":
+            wl = simulation_parameters.optical_baseband_wavelengths
+            M = len(simulation_parameters.mode_identifiers)
+            return SampleModeOpticalSignal(
+                jnp.zeros((wl.shape[0], M), dtype=complex), wl
+            )
+        if port.type == "electrical":
+            return SampleModeElectricalSignal(0.0)
+        if port.type == "logic":
+            return SampleModeLogicSignal(0)
+        raise NotImplementedError(
+            f"{type(self).__name__} must implement sample_mode_output_template "
+            f"for port {port.name!r} of type {port.type!r}"
+        )
+
     def _sample_mode_initial_state(
         self, simulation_parameters: SampleModeSimulationParameters
     ):
@@ -325,13 +360,41 @@ class SampleModeComponent(Component):
             )
             new_amplitude = new_amplitude.at[closest_idx].add(
                 amplitude
-                * jnp.exp(-1j * 2 * jnp.pi * f_diff[:, None] / f_s * time_step)
+                * jnp.exp(
+                    -1j
+                    * 2
+                    * jnp.pi
+                    * f_diff[:, None]
+                    * (time_step / f_s + simulation_parameters.time_offset)
+                )
             )
             outputs[port_name] = signal.replace(
                 amplitude=new_amplitude, wavelength=baseband_wls
             )
 
         return outputs, (time_step + 1, output_state)
+
+
+class RateChanger(Component):
+    """Mixin for components whose output ports run at a different sample rate
+    than their input ports (decimators, interpolators, ...).
+
+    `rate_ratio` is (output sample rate) / (input sample rate), an exact
+    `Fraction`. Input ports form the component's "in" rate domain and output
+    ports its "out" domain; `phase_shift` is the delay, in input or output
+    samples as documented by the subclass, that the component adds to the
+    sampling instants of the "out" domain (e.g. a decimator's sample offset).
+
+    Multirate simulators give a rate changer the local simulation parameters
+    of its *output* domain; `input_parameters` holds those of its input domain.
+    """
+
+    rate_ratio: Fraction = Fraction(1)
+
+    def output_phase(self, input_phase, input_period):
+        """Phase (time of the first output sample, in units of the reference
+        dt) of the output domain, given the input domain's phase and period."""
+        return input_phase
 
 
 class SParameterComponent(Component):

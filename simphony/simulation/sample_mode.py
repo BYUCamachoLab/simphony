@@ -11,6 +11,7 @@ from flax import struct
 from jax import lax
 
 from simphony.circuit.circuit import Circuit
+from simphony.circuit.rates import infer_sample_rates, local_parameters
 from simphony.circuit.netlist import generate_unique_string
 from simphony.component.component import SampleModeComponent
 from simphony.component.port import Port
@@ -71,6 +72,10 @@ class SampleModeSimulationParameters(SimulationParameters):
         Number of sample updates to run.
     use_state_space_optimization:
         Enables optimized structured state-space updates where available.
+    time_offset:
+        Time, in seconds, of the first sample. Multirate simulations give each
+        rate region its own copy of the parameters, with that region's `dt`,
+        `num_time_steps` and `time_offset` (see `simphony.circuit.rates`).
     time_batch_size:
         Optional number of time steps per scan chunk. Component state is
         carried between chunks and tracked outputs are concatenated.
@@ -88,6 +93,7 @@ class SampleModeSimulationParameters(SimulationParameters):
     dt: float = 1e-14
     num_time_steps: int = 50
     use_state_space_optimization: bool = True
+    time_offset: float = 0.0
     time_batch_size: Optional[int] = None
     # random_seed = 0
 
@@ -205,6 +211,11 @@ class SampleModeSimulation(Simulation):
         Shared `SampleModeSimulationParameters`. Defaults are used when omitted.
     """
 
+    max_schedule_runs = 64
+    """Multirate: largest number of distinct firing patterns per hyperperiod
+    that is compiled as a static schedule; beyond it, slow components are
+    gated with `lax.cond` on every tick instead."""
+
     def __init__(
         self,
         circuit: Circuit,
@@ -281,6 +292,22 @@ class SampleModeSimulation(Simulation):
         ) in self._instantiated_circuit.instantiated_flat_netlist["instances"].items():
             self.components[instance_name] = instance_data["model"]
 
+        self.rate_schedule = infer_sample_rates(
+            self._instantiated_circuit, self.simulation_parameters
+        )
+        if self.rate_schedule.is_multirate:
+            return self._run_multirate(use_jit=use_jit, time_batch_size=time_batch_size)
+
+        # Single-rate circuit: every component runs on every step.
+        current_outputs = self._multirate_initial_outputs(
+            {n: self.simulation_parameters for n in self.components}
+        )
+        for n in self.rate_schedule.rate_changers:
+            self.components[n].input_parameters = self.simulation_parameters
+            self.components[n]._input_template = self._upstream_template(
+                n, current_outputs
+            )
+
         initial_states = {}
         for instance_name, instance in self.components.items():
             initial_states[instance_name] = instance._sample_mode_initial_state(
@@ -300,7 +327,6 @@ class SampleModeSimulation(Simulation):
                 tracked_input_map[tracked_port_name] = (src_inst, src_port)
                 break
 
-        current_outputs = self._initial_outputs()
         tic = time()
         simulation_state = SampleModeSimulationState(
             prng_key=jax.random.PRNGKey(self.simulation_parameters.seed)
@@ -327,6 +353,273 @@ class SampleModeSimulation(Simulation):
             input_signals=stacked_tracked["inputs"],
             output_signals=stacked_tracked["outputs"],
         )
+
+    # ------------------------------------------------------------- multirate
+    def _run_multirate(self, use_jit=True, time_batch_size=None):
+        """Run a circuit whose regions have different sample rates.
+
+        The circuit advances on a base tick (gcd of all sample periods). A
+        component whose region has period P ticks and phase p is only
+        evaluated on ticks t with t % P == p; in between, its outputs and
+        state are held. The inner scan covers one hyperperiod H (lcm of all
+        periods), with each tracked port recorded only on its own samples; the
+        outer scan repeats it num_ticks / H times. Tracked signals therefore
+        have one entry per sample of their own region.
+        """
+        schedule = self.rate_schedule
+        params = self.simulation_parameters
+        H = schedule.hyperperiod
+        components = self.components
+
+        local = {
+            n: local_parameters(params, schedule.instance_domain(n)) for n in components
+        }
+        for n in schedule.rate_changers:
+            components[n].input_parameters = local_parameters(
+                params, schedule.input_domain(n)
+            )
+        timing = {
+            n: (
+                schedule.instance_domain(n).period_ticks,
+                schedule.instance_domain(n).phase_ticks,
+            )
+            for n in components
+        }
+
+        outputs0 = self._multirate_initial_outputs(local)
+        for n in schedule.rate_changers:
+            components[n]._input_template = self._upstream_template(n, outputs0)
+        states0 = {
+            n: c._sample_mode_initial_state(local[n]) for n, c in components.items()
+        }
+        sim_state0 = SampleModeSimulationState(prng_key=jax.random.PRNGKey(params.seed))
+
+        # Output structure of every component (abstract evaluation), used to
+        # give the held outputs of non-firing components the same types.
+        out_shapes = {}
+        for n, c in components.items():
+            inputs = self._get_inputs(n, outputs0)
+            out_shapes[n] = jax.eval_shape(
+                lambda c=c, n=n, inputs=inputs: c._sample_mode_step(
+                    inputs, states0[n], sim_state0, local[n]
+                )[0]
+            )
+            for port, shape in out_shapes[n].items():
+                template = outputs0[n].get(port)
+                if template is None:
+                    outputs0[n][port] = jax.tree_util.tree_map(
+                        lambda s: jnp.zeros(s.shape, s.dtype), shape
+                    )
+                else:
+                    outputs0[n][port] = jax.tree_util.tree_map(
+                        lambda t, s: jnp.broadcast_to(jnp.asarray(t, s.dtype), s.shape),
+                        template,
+                        shape,
+                    )
+
+        tracked = {}
+        for name, designator in self._instantiated_circuit.port_lookup_table.items():
+            inst, port = designator.split(",", 1)
+            tracked[("outputs", name)] = (inst, port)
+            for src_inst, src_port in self._predecessors_map.get((inst, port), []):
+                tracked[("inputs", name)] = (src_inst, src_port)
+                break
+        track_timing = {}
+        buffers0 = {}
+        for key, (inst, port) in tracked.items():
+            domain = schedule.port_domain(inst, port)
+            P, phase = domain.period_ticks, domain.phase_ticks
+            track_timing[key] = (inst, port, P, phase)
+            buffers0[key] = jax.tree_util.tree_map(
+                lambda x, P=P: jnp.zeros((H // P,) + jnp.shape(x), jnp.result_type(x)),
+                outputs0[inst][port],
+            )
+
+        def make_tick_step(firing=None, writing=None):
+            """One base tick. With `firing`/`writing` (static sets of the
+            components that fire and tracked ports that record on every tick
+            of a run), no conditionals are needed; with None, each slow
+            component is gated with `lax.cond` on the (traced) tick."""
+
+            def tick_step(carry, tick):
+                outputs, states, sim_state, buffers = carry
+                prng_key = sim_state.prng_key
+                inputs = {n: self._get_inputs(n, outputs) for n in components}
+                new_outputs = dict(outputs)
+                new_states = dict(states)
+                for n, c in components.items():
+                    # Split for every component on every tick, so that noise
+                    # sequences do not depend on the rate schedule.
+                    prng_key, subkey = jax.random.split(prng_key)
+                    step_state = replace(sim_state, prng_key=subkey)
+                    P, phase = timing[n]
+
+                    def fire(c=c, n=n, step_state=step_state):
+                        return c._sample_mode_step(
+                            inputs[n], states[n], step_state, local[n]
+                        )
+
+                    if firing is not None:
+                        if n not in firing:
+                            continue
+                        outs, st = fire()
+                    elif P == 1:
+                        outs, st = fire()
+                    else:
+                        held = {k: outputs[n][k] for k in out_shapes[n]}
+
+                        def hold(held=held, n=n):
+                            return held, states[n]
+
+                        outs, st = jax.lax.cond(tick % P == phase, fire, hold)
+                    new_states[n] = st
+                    new_outputs[n] = outputs[n] | outs
+                new_buffers = dict(buffers)
+                for key, (inst, port, P, phase) in track_timing.items():
+                    value = new_outputs[inst][port]
+                    index = tick // P
+
+                    def write(b, value=value, index=index):
+                        return jax.tree_util.tree_map(
+                            lambda B, v: B.at[index].set(v), b, value
+                        )
+
+                    if writing is not None:
+                        if key in writing:
+                            new_buffers[key] = write(buffers[key])
+                    else:
+                        new_buffers[key] = jax.lax.cond(
+                            tick % P == phase, write, lambda b: b, buffers[key]
+                        )
+                sim_state = replace(sim_state, prng_key=prng_key)
+                return (new_outputs, new_states, sim_state, new_buffers), None
+
+            return tick_step
+
+        # Split the hyperperiod into runs of consecutive ticks on which the
+        # same components fire (e.g. a /256 decimator: tick 0, then 255
+        # fast-only ticks). Each run is a scan with a static firing set.
+        runs = []
+        for t in range(H):
+            pattern = (
+                frozenset(n for n, (P, ph) in timing.items() if t % P == ph),
+                frozenset(
+                    k for k, (_, _, P, ph) in track_timing.items() if t % P == ph
+                ),
+            )
+            if runs and runs[-1][2] == pattern:
+                runs[-1][1] = t + 1
+            else:
+                runs.append([t, t + 1, pattern])
+        static_schedule = len(runs) <= self.max_schedule_runs
+
+        def hyperperiod_step(carry, _):
+            outputs, states, sim_state = carry
+            inner = (outputs, states, sim_state, buffers0)
+            if static_schedule:
+                for start, end, (firing, writing) in runs:
+                    step = make_tick_step(firing, writing)
+                    if end - start == 1:
+                        inner, _ = step(inner, jnp.asarray(start))
+                    else:
+                        inner, _ = lax.scan(step, inner, jnp.arange(start, end))
+            else:
+                inner, _ = lax.scan(make_tick_step(), inner, jnp.arange(H))
+            outputs, states, sim_state, buffers = inner
+            return (outputs, states, sim_state), buffers
+
+        num_hyperperiods = schedule.num_ticks // H
+        batch = None
+        if time_batch_size is not None:
+            if int(time_batch_size) % H:
+                raise ValueError(
+                    f"time_batch_size must be a multiple of the hyperperiod ({H} ticks)"
+                )
+            batch = int(time_batch_size) // H
+
+        tic = time()
+        _, stacked = self._run_time_batches(
+            system_step=hyperperiod_step,
+            carry=(outputs0, states0, sim_state0),
+            num_time_steps=num_hyperperiods,
+            time_batch_size=batch,
+            use_jit=use_jit,
+        )
+        logger.debug(
+            "Multirate sample mode simulation completed in %.6f s", time() - tic
+        )
+
+        signals = {"inputs": {}, "outputs": {}}
+        for (kind, name), value in stacked.items():
+            signals[kind][name] = jax.tree_util.tree_map(
+                lambda x: x.reshape((-1,) + x.shape[2:]), value
+            )
+        result = SampleModeSimulationResult(
+            input_signals=signals["inputs"], output_signals=signals["outputs"]
+        )
+        result.sample_periods = {
+            name: schedule.port_domain(*tracked[("outputs", name)]).dt
+            for (kind, name) in tracked
+            if kind == "outputs"
+        }
+        result.time_offsets = {
+            name: schedule.port_domain(*tracked[("outputs", name)]).time_offset
+            for (kind, name) in tracked
+            if kind == "outputs"
+        }
+        return result
+
+    def _multirate_initial_outputs(self, local):
+        """Initial (pre-first-firing) value of every output port, in each
+        port's own rate region. Components may return `None` to inherit the
+        template of the signal that feeds them (rate changers, FFTs)."""
+        schedule = self.rate_schedule
+        outputs = {n: {} for n in self.components}
+        pending = []
+        for n, c in self.components.items():
+            for port in c.ports:
+                port_params = local_parameters(
+                    self.simulation_parameters, schedule.port_domain(n, port.name)
+                )
+                get_template = getattr(
+                    c,
+                    "sample_mode_output_template",
+                    lambda *a: SampleModeComponent.sample_mode_output_template(c, *a),
+                )
+                try:
+                    template = get_template(port, port_params)
+                except NotImplementedError:
+                    if port.directionality == "input":
+                        continue  # input-only ports never feed anything
+                    raise
+                if template is not None:
+                    outputs[n][port.name] = template
+                elif port.directionality != "input":
+                    pending.append((n, port.name))
+        while pending:
+            progress = False
+            for n, port in list(pending):
+                template = self._upstream_template(n, outputs)
+                if template is not None:
+                    outputs[n][port] = template
+                    pending.remove((n, port))
+                    progress = True
+            if not progress:
+                raise ValueError(
+                    f"Cannot determine the output signal type of {pending}: their inputs "
+                    "are unconnected or form a loop of type-inheriting components"
+                )
+        return outputs
+
+    def _upstream_template(self, instance, outputs):
+        """Template of the signal feeding the first connected input port."""
+        for port in self.components[instance].ports:
+            if port.directionality == "output":
+                continue
+            for src, src_port in self._predecessors_map.get((instance, port.name), []):
+                if src_port in outputs.get(src, {}):
+                    return outputs[src][src_port]
+        return None
 
     def _make_scan_runner(self, system_step, chunk_length, use_jit):
         if use_jit:
@@ -522,26 +815,3 @@ class SampleModeSimulation(Simulation):
                 inputs[port.name] = current_outputs[src_node][src_port]
 
         return inputs
-
-    def _initial_outputs(self):
-        wl = self.simulation_parameters.optical_baseband_wavelengths
-        modes = self.simulation_parameters.mode_identifiers
-        initial_outputs = {}
-        for inst_name, model in self.components.items():
-            initial_outputs[inst_name] = {}
-            for port_name, port in model._port_lookup_table.items():
-                if port.type == "optical":
-                    amplitude = jnp.zeros((wl.shape[0], len(modes)), dtype=complex)
-                    initial_outputs[inst_name][port_name] = SampleModeOpticalSignal(
-                        amplitude, wl
-                    )
-                elif port.type == "electrical":
-                    voltage = 0.0
-                    initial_outputs[inst_name][port_name] = SampleModeElectricalSignal(
-                        voltage
-                    )
-                elif port.type == "logic":
-                    value = 0
-                    initial_outputs[inst_name][port_name] = SampleModeLogicSignal(value)
-
-        return initial_outputs

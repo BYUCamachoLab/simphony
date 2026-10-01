@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+- Multirate simulation. `Decimator(factor, offset)` and `Interpolator(factor,
+  offset, mode="hold"|"zeros")` (Simulink-style sample offsets) resample any
+  signal type. `simphony.circuit.rates.infer_sample_rates` derives every
+  region's sample period and phase from the graph, and both simulators hand
+  each component the `dt`, `num_time_steps` and new `time_offset` of its own
+  region (including `SParameterElement` z-domain fits, which warn when their
+  band exceeds the local sample rate). Sample mode evaluates and records slow
+  regions only on their own samples, using a static per-hyperperiod schedule.
+- Vector signals (`SampleModeVectorSignal`, `BlockModeVectorSignal`, port type
+  `"vector"`), a `_data_fields` declaration on every signal class, and
+  `simphony.signal.utils` (`decimate_block`, `upsample_block`, ...). Block-mode
+  data fields must have time on axis 0; the simulator enforces it.
+- `SampleBuffer`, `FFT`, `BufferedFFT`, `StridedBuffer` and the
+  `SpectrumAnalyzer` PCell, plus `examples/multirate_spectrum_analyzer.ipynb`.
 - `BlockModeSimulationParameters.backward_pass`: an optional second, backward
   pass that propagates reflections back through the circuit.
   `BlockModeSimulationResult.backward_signals` holds the backward waves at
