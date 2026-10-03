@@ -75,6 +75,10 @@ contain none of these keys, they are interpreted as SAX settings."""
 NO_S_PARAMETER_GROUP = -1
 """`s_parameter_group` value that prevents an element from being fused."""
 
+MIN_FIT_OVERSAMPLING = 1.5
+"""A vector-fitted element warns when its region's sample rate is less than
+this many times the fitted spectral range."""
+
 
 def normalize_vector_fitting_parameters(vector_fitting_parameters=None) -> dict:
     """Return a complete copy of `vector_fitting_parameters`.
@@ -232,19 +236,26 @@ class SParameterElement(SParameterComponent, SampleModeComponent, BlockModeCompo
         if key in self._state_space_cache:
             return self._state_space_cache[key]
 
-        span = speed_of_light / min(
-            self.settings["vector_fitting_parameters"]["spectral_range"]
-        ) - speed_of_light / max(
-            self.settings["vector_fitting_parameters"]["spectral_range"]
-        )
-        if span * simulation_parameters.dt > 1:
-            warnings.warn(
-                f"{type(self).__name__}: the fitted spectral range ({span / 1e12:.3g} THz) "
-                f"is wider than the sample rate of its region "
-                f"({1 / simulation_parameters.dt / 1e12:.3g} THz, e.g. after a "
-                "decimator); the z-domain model will alias. Narrow `spectral_range` "
-                "or move the element to a faster region."
+        # Only wavelength-dependent models are vector-fitted; a model without
+        # a `wl` argument becomes a constant feedthrough matrix directly.
+        if _has_wl_kwarg(self.sax_model):
+            span = speed_of_light / min(
+                self.settings["vector_fitting_parameters"]["spectral_range"]
+            ) - speed_of_light / max(
+                self.settings["vector_fitting_parameters"]["spectral_range"]
             )
+            oversampling = 1 / (span * simulation_parameters.dt)
+            if oversampling < MIN_FIT_OVERSAMPLING:
+                warnings.warn(
+                    f"{type(self).__name__}: the sample rate of this element's region "
+                    f"({1 / simulation_parameters.dt / 1e12:.3g} THz) is only "
+                    f"{oversampling:.2f}x the fitted spectral range "
+                    f"({span / 1e12:.3g} THz); the z-domain vector fit is unreliable "
+                    f"below {MIN_FIT_OVERSAMPLING}x"
+                    + (", and below 1x the z-domain model will alias" if oversampling < 1 else "")
+                    + ". Narrow `spectral_range` or run the element at a higher "
+                    "sample rate (e.g. move it to a faster region)."
+                )
         filtered_model = _get_filtered_sax_model(
             self.sax_model, directionality, mode_identifiers
         )

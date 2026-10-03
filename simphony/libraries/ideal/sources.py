@@ -18,7 +18,10 @@ from simphony.component.component import (
 )
 from simphony.component.port import Port
 from simphony.signal.block_mode import BlockModeElectricalSignal, BlockModeOpticalSignal
-from simphony.signal.sample_mode import SampleModeOpticalSignal
+from simphony.signal.sample_mode import (
+    SampleModeElectricalSignal,
+    SampleModeOpticalSignal,
+)
 from simphony.signal.steady_state import SteadyStateElectricalSignal
 from simphony.simulation.block_mode import BlockModeSimulationParameters
 from simphony.simulation.sample_mode import SampleModeSimulationParameters
@@ -320,7 +323,9 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
         return std_dev
 
     def sample_mode_initial_state_lorentzian(self, simulation_parameters):
-        phi_prev = 0
+        # A float, like the phase the step returns: multirate scheduling gates
+        # components with `lax.cond`, which needs both branches to agree on dtype.
+        phi_prev = jnp.asarray(0.0)
         return phi_prev
 
 
@@ -518,11 +523,27 @@ class VoltageSource(
     def sample_mode_step(
         self, inputs: dict, state: jax.Array, simulation_state, simulation_parameters
     ):
-        # TODO: Complete this to use the signal defined in settings
-        return inputs, state
+        """Emit the voltage of the current sample on `e0`.
+
+        The state is the sample counter n; the sample time is
+        `time_offset + n * dt` of the source's rate region. `envelope_fn` is
+        evaluated at that time, a concrete `envelope` is indexed by n (its last
+        value is held once it runs out), and with neither the source emits
+        `steady_state_voltage`.
+        """
+        n = state
+        if self.envelope_fn is not None:
+            t = simulation_parameters.time_offset + n * simulation_parameters.dt
+            voltage = jnp.asarray(self.envelope_fn(jnp.atleast_1d(t)).voltage)[0]
+        elif self.envelope is not None:
+            samples = jnp.asarray(self.envelope.voltage)
+            voltage = samples[jnp.minimum(n, samples.shape[0] - 1)]
+        else:
+            voltage = self.steady_state_voltage
+        return {"e0": SampleModeElectricalSignal(voltage=voltage)}, n + 1
 
     def sample_mode_initial_state(self, simulation_parameters):
-        return jnp.array([0])
+        return jnp.asarray(0)
 
 
 class PRNG(

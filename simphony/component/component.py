@@ -25,6 +25,7 @@ from simphony.signal.sample_mode import (
     SampleModeElectricalSignal,
     SampleModeLogicSignal,
     SampleModeOpticalSignal,
+    SampleModeTemperatureSignal,
 )
 
 
@@ -287,8 +288,8 @@ class SampleModeComponent(Component):
         """Return a zero-valued signal with the shape this port emits.
 
         The sample-mode simulator uses it as the port's output before the
-        component first fires. The default covers optical, electrical and
-        logic ports; components with other port types (e.g. `"vector"`) must
+        component first fires. The default covers optical, electrical, logic
+        and temperature ports; components with other port types (e.g. `"vector"`) must
         override it. Return `None` to inherit the template of the signal
         feeding the component (used by rate changers).
         """
@@ -302,6 +303,8 @@ class SampleModeComponent(Component):
             return SampleModeElectricalSignal(0.0)
         if port.type == "logic":
             return SampleModeLogicSignal(0)
+        if port.type == "temperature":
+            return SampleModeTemperatureSignal(0.0)
         raise NotImplementedError(
             f"{type(self).__name__} must implement sample_mode_output_template "
             f"for port {port.name!r} of type {port.type!r}"

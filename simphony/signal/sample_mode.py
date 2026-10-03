@@ -46,6 +46,19 @@ class SampleModeLogicSignal:
 
 
 @struct.dataclass
+class SampleModeTemperatureSignal:
+    """Temperature (or temperature rise) at one time step, in kelvin.
+
+    Carried by ports of type `"temperature"`, e.g. the monitor output of a
+    component that models self-heating, or the input of a thermal controller.
+    """
+
+    _data_fields: ClassVar[tuple] = ("temperature",)
+
+    temperature: float
+
+
+@struct.dataclass
 class SampleModeVectorSignal:
     """Arbitrary vector-valued signal at one time step.
 
