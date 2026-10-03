@@ -75,7 +75,9 @@ class SimulationParameters:
     # num_time_steps:int =int(1e4)
     # prng_key: Annotated[jax.Array, "shape=(2,), dtype=jax.uint32"]=field(default_factory=lambda: jax.random.PRNGKey(0))
     mode_identifiers: list = field(default_factory=lambda: DEFAULT_MODES)
-    seed = 0
+    # A dataclass field (static, not traced) so that `dataclasses.replace` and
+    # the per-region copies made by multirate simulations keep it.
+    seed: int = struct.field(pytree_node=False, default=0)
 
     # prng_key: Annotated[jax.Array, "shape=(2,), dtype=jax.uint32"]=jax.random.key(0)
     # ):
