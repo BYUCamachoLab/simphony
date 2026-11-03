@@ -223,7 +223,7 @@ def _mean_squared_error(
         poles,
         residues,
         feedthrough,
-        sign_convention=PHYSICIST,
+        sign_convention=sign_convention,
     )
     error = jnp.mean(jnp.abs(transfer_function - fit) ** 2)
 
@@ -330,7 +330,9 @@ def vector_fitting_discrete(
         )
         mask = jnp.abs(current_poles) > 1
         # current_poles = current_poles.at[mask].set(1 / current_poles[mask])
-        current_poles = jnp.where(mask, 1 / current_poles, current_poles)
+        # Reflect across the unit circle with 1/conj(p): keeps the pole angle (its frequency) and
+        # inverts its radius. 1/p would also negate the angle, moving complex baseband poles to -f.
+        current_poles = jnp.where(mask, 1 / jnp.conj(current_poles), current_poles)
 
         return (current_poles, weight_error, iteration + 1)
 

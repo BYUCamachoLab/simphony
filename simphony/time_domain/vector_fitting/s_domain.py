@@ -14,6 +14,10 @@ def _initial_poles(model_order, frequency, alpha):
     f = 1 * jnp.linspace(jnp.min(frequency), jnp.max(frequency), model_order // 2)
     poles = (-0.1 + 1j) * (2 * jnp.pi * f)
     poles = jnp.concatenate([poles, poles.conj()])
+    if model_order % 2:
+        # odd order: one real pole, damped like the complex pairs, so len(poles) == model_order
+        real_pole = -0.1 * 2 * jnp.pi * jnp.max(jnp.abs(frequency))
+        poles = jnp.concatenate([poles, jnp.array([real_pole], dtype=poles.dtype)])
     return poles
 
 
@@ -37,15 +41,16 @@ def _lstsq_matrices(model_order, transfer_function, phi0, phi1):
     Fast Vector Fitting algorithm:
     https://scholar.googleusercontent.com/scholar?q=cache:u4aY-dn1tF8J:scholar.google.com/+piero+triverio+vector+fitting&hl=en&as_sdt=0,45
     """
-    num_ports = transfer_function.shape[1]
-    M = jnp.zeros(((num_ports**2) * (model_order), (model_order)), dtype=complex)
-    B = jnp.zeros(((num_ports**2) * (model_order)), dtype=complex)
+    num_outputs = transfer_function.shape[1]
+    num_inputs = transfer_function.shape[2]
+    M = jnp.zeros(((num_outputs * num_inputs) * (model_order), (model_order)), dtype=complex)
+    B = jnp.zeros(((num_outputs * num_inputs) * (model_order)), dtype=complex)
 
     iter = 0
-    for i in range(num_ports):
-        for j in range(num_ports):
-            D = jnp.diag(transfer_function[:, i, j])
-            A_block = jnp.hstack([phi0, -D @ phi1])  # never build the big matrix
+    for i in range(num_outputs):
+        for j in range(num_inputs):
+            # diag(H) @ phi1 is a row scaling; building the dense N x N diag costs O(N^2) memory
+            A_block = jnp.hstack([phi0, -transfer_function[:, i, j][:, None] * phi1])
             Q, R = jnp.linalg.qr(A_block, mode="reduced")
 
             R22 = R[model_order + 1 :, model_order + 1 :]
@@ -236,7 +241,8 @@ def _weight_error(frequency, poles_prev, weight_coeffs):
 # @jax.jit
 def _fit_to_poles(transfer_function, frequency, poles):
     model_order = poles.shape[0]
-    num_ports = transfer_function.shape[1]
+    num_outputs = transfer_function.shape[1]
+    num_inputs = transfer_function.shape[2]
     phi0, _ = _phi_matrices(frequency, poles)
     transfer_pairs = transfer_function.reshape(
         transfer_function.shape[0], -1
@@ -254,7 +260,7 @@ def _fit_to_poles(transfer_function, frequency, poles):
     )  # shape (num_ports*num_ports, model_order + 1)
 
     # Reshape solutions back to (num_ports, num_ports, model_order + 1)
-    solutions = solutions.reshape((num_ports, num_ports, model_order + 1))
+    solutions = solutions.reshape((num_outputs, num_inputs, model_order + 1))
 
     # Extract feedthrough (constant term)
     feedthrough = solutions[:, :, 0]  # shape (num_ports, num_ports)
@@ -362,6 +368,11 @@ def vector_fitting(
 
         return (current_poles, weight_error, iteration + 1)
 
+    # Fit in normalized frequency (max |f| = 1): with f in Hz the basis columns 1/(s - p) are ~1e-14 next to the
+    # unity column and the least-squares problems are numerically singular. Results are rescaled to the caller's units.
+    frequency_scale = jnp.max(jnp.abs(frequency))
+    frequency = frequency / frequency_scale
+
     initial_poles = _initial_poles(model_order, frequency, alpha)
     initial_state = (initial_poles, jnp.inf, 0)
     # final_poles, *_ = jax.lax.while_loop(poles_not_converged, relocate_poles, initial_state)
@@ -373,7 +384,8 @@ def vector_fitting(
     error = _mean_squared_error(
         transfer_function, frequency, final_poles, residues, feedthrough
     )
-    return final_poles, residues, feedthrough, error
+    # r/(j2pi f/c - p) = (c r)/(j2pi f - c p): poles and residues scale with c, the feedthrough does not
+    return final_poles * frequency_scale, residues * frequency_scale, feedthrough, error
 
 
 def optimize_order(bias_fn, min_order, max_order):

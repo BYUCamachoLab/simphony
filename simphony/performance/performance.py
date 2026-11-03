@@ -16,7 +16,7 @@ GLOBAL_CACHE_DIR = (
     pkg_resources.files("simphony") / "performance" / "vector_fitting_cache"
 )
 os.makedirs(LOCAL_CACHE_DIR, exist_ok=True)
-CACHE_VERSION = "v1"
+CACHE_VERSION = "v2"  # v2: z-domain pole flip and error-convention fixes (see time_domain/vector_fitting/FIXES.md)
 
 
 def is_array(x):
