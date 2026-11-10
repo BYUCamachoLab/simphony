@@ -535,57 +535,61 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
 
 
 class OpticalSource(SampleModeComponent, BlockModeComponent):
-    """Optical source driven by a user-provided envelope.
+    """Optical source that plays back a user-provided envelope.
 
-    The source emits a `BlockModeOpticalSignal` on output port `o0`.
-    Users can either provide a concrete `envelope` or an `envelope_fn`
-    that creates one from the simulation time vector. Exactly one of
-    those options must be supplied.
+    The source emits the envelope on output port `o0`. Supply either a concrete
+    `envelope` (a `BlockModeOpticalSignal` with amplitude of shape (T, L, M)) or
+    an `envelope_fn` that builds one from the time vector of the source's rate
+    region. Exactly one of the two must be given.
 
-    If the envelope length does not match
-    `simulation_parameters.num_time_steps`, it is truncated or padded
-    with zeros so the emitted block has the simulation length.
+    An envelope shorter than the simulation is padded with zeros, and a longer
+    one is truncated. This makes the source the natural way to split a long
+    directed circuit into stages: record the outputs of one stage and replay
+    them into the next.
     """
 
-    optical_ports = ["o0"]
+    ports = [Port(name="o0", type="optical", directionality="output")]
 
     def __init__(
         self,
         simulation_parameters,
-        # wavelength = 1.55e-6,
         envelope: BlockModeOpticalSignal = None,
         envelope_fn: Callable[[ArrayLike], BlockModeOpticalSignal] = None,
     ):
         if envelope is not None and envelope_fn is not None:
-            raise ValueError("Specify either evelope or envelope_fn, NOT both")
+            raise ValueError("Specify either envelope or envelope_fn, NOT both")
         if envelope is None and envelope_fn is None:
             raise ValueError("Parameter `envelope` or `envelope_fn` must be specified")
 
-        # self.wavelength = wavelength
         self.envelope = envelope
         self.envelope_fn = envelope_fn
 
-    def _calculate_envelope(self, simulation_parameters):
+    def _calculate_envelope(self, simulation_parameters) -> BlockModeOpticalSignal:
+        """Envelope with exactly `num_time_steps` samples (not cached)."""
         N = simulation_parameters.num_time_steps
-        dt = simulation_parameters.dt
-        t = jnp.arange(0, N, 1) * dt
-
-        if self.envelope_fn:
-            self.envelope = self.envelope_fn(t)
-
-        # Make envelope match the number of time steps, by truncating or appending zeros
-        amplitude = self.envelope.amplitude
-        T, L, M = amplitude.shape
-        if amplitude.shape[0] < N:
-            amplitude = jnp.concatenate(
-                [amplitude, jnp.zeros((N - T, L, M), dtype=complex)], axis=0
+        if self.envelope_fn is not None:
+            t = simulation_parameters.time_offset + (
+                jnp.arange(N) * simulation_parameters.dt
             )
-        elif amplitude.shape[0] > N:
-            amplitude = amplitude[:N, :, :]
+            envelope = self.envelope_fn(t)
+        else:
+            envelope = self.envelope
 
-        # TODO: RETURN, DON'T MUTATE
-        self.envelope = BlockModeOpticalSignal(
-            amplitude=amplitude, wavelength=self.envelope.wavelength
+        amplitude = jnp.asarray(envelope.amplitude)
+        if amplitude.ndim != 3:
+            raise ValueError(
+                "OpticalSource envelope amplitude must have shape (T, L, M), got "
+                f"{amplitude.shape}"
+            )
+        T, L, M = amplitude.shape
+        if T < N:
+            amplitude = jnp.concatenate(
+                [amplitude, jnp.zeros((N - T, L, M), dtype=amplitude.dtype)], axis=0
+            )
+        elif T > N:
+            amplitude = amplitude[:N]
+        return BlockModeOpticalSignal(
+            amplitude=amplitude, wavelength=jnp.atleast_1d(envelope.wavelength)
         )
 
     def block_mode_response(
@@ -593,23 +597,13 @@ class OpticalSource(SampleModeComponent, BlockModeComponent):
         inputs: dict,
         simulation_parameters: BlockModeSimulationParameters,
     ):
-        self._calculate_envelope(simulation_parameters)
-
-        outputs = {
-            "o0": BlockModeOpticalSignal(
-                amplitude=self.envelope.amplitude,
-                wavelength=self.envelope.wavelength,
-            )
-        }
-        return outputs
+        return {"o0": self._calculate_envelope(simulation_parameters)}
 
     def sample_mode_initial_state(
         self, simulation_parameters: SampleModeSimulationParameters
     ):
-        self._calculate_envelope(simulation_parameters)
-
-        time_step = 0
-        return jnp.array(time_step, dtype=int)
+        self._sample_envelope = self._calculate_envelope(simulation_parameters)
+        return jnp.array(0, dtype=int)
 
     def sample_mode_step(
         self,
@@ -618,11 +612,12 @@ class OpticalSource(SampleModeComponent, BlockModeComponent):
         simulation_state,
         simulation_parameters: SampleModeSimulationParameters,
     ):
-        current_time_step = state
+        amplitude = self._sample_envelope.amplitude
+        n = jnp.minimum(state, amplitude.shape[0] - 1)
         outputs = {
             "o0": SampleModeOpticalSignal(
-                amplitude=self.envelope.amplitude[current_time_step],
-                wavelength=self.envelope.wavelength,
+                amplitude=amplitude[n],
+                wavelength=self._sample_envelope.wavelength,
             )
         }
         return outputs, state + 1

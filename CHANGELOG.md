@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+- `ElectricalFIRFilter(taps, delay_compensation=0|"group")` in
+  `simphony.libraries.ideal.electrical_circuits`: an FIR filter on electrical
+  signals (block and sample mode). Behind an `Interpolator` it models a DAC:
+  zero-order hold or zero-stuffing followed by the driver or pulse-shaping
+  response (pass an IIR response as its truncated impulse response).
+- `OpticalSource` uses the `ports` API, so it works in the current
+  simulators, and no longer overwrites `self.envelope` when padding or
+  truncating. Its `envelope_fn` receives the time vector of its rate region.
+  It replays recorded outputs of one simulation stage into the next.
 - Multirate simulation. `Decimator(factor, offset)` and `Interpolator(factor,
   offset, mode="hold"|"zeros")` (Simulink-style sample offsets) resample any
   signal type. `simphony.circuit.rates.infer_sample_rates` derives every
