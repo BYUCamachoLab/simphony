@@ -228,7 +228,14 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
     lineshape:
         ``"lorentzian"``, ``"gaussian"`` or ``"voigt"``.
     mode_idx:
-        Index of the optical mode that receives the source amplitude.
+        Index of the optical mode that receives the source amplitude (ignored when
+        `jones` is given).
+    jones:
+        Optional Jones vector over the simulated modes (one complex entry per entry
+        of `mode_identifiers`): the field is split between the modes with these
+        amplitudes and relative phases, e.g. ``[1, 0]`` for TE only or
+        ``[1, 1j]`` for an equal superposition with a quarter-wave phase. It is
+        normalised to unit total power. Default ``None``: all power in `mode_idx`.
     noise_bandwidth:
         ``"gaussian"`` only: cutoff f_c of the frequency noise, in Hz.
     correlation_time:
@@ -267,6 +274,7 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
         linewidth=None,
         lineshape="lorentzian",
         mode_idx=0,
+        jones=None,
         noise_bandwidth=None,
         correlation_time=None,
         seed=0,
@@ -299,6 +307,18 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
         self.wavelength = wavelength
         self.lineshape = lineshape
         self.mode_idx = mode_idx
+        if jones is not None:
+            jones = jnp.asarray(jones, dtype=complex).ravel()
+            norm = jnp.sqrt(jnp.sum(jnp.abs(jones) ** 2))
+            if float(norm) == 0:
+                raise ValueError("jones must have a non-zero entry")
+            if jones.shape[0] != len(simulation_parameters.mode_identifiers):
+                raise ValueError(
+                    f"jones has {jones.shape[0]} entries but the simulation has "
+                    f"{len(simulation_parameters.mode_identifiers)} modes"
+                )
+            jones = jones / norm
+        self.jones = jones
         self.noise_bandwidth = noise_bandwidth
         self.correlation_time = correlation_time
         self.seed = int(seed)
@@ -388,7 +408,10 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
         amplitude = jnp.zeros(
             (1, len(simulation_parameters.mode_identifiers)), dtype=complex
         )
-        amplitude = amplitude.at[0, self.mode_idx].set(jnp.exp(1j * phi))
+        if self.jones is None:
+            amplitude = amplitude.at[0, self.mode_idx].set(jnp.exp(1j * phi))
+        else:
+            amplitude = self.jones[None, :] * jnp.exp(1j * phi)
         return {
             "o0": SampleModeOpticalSignal(
                 amplitude=amplitude, wavelength=jnp.array([self.wavelength])
@@ -523,7 +546,10 @@ class CWLaser(SampleModeComponent, BlockModeComponent):
             (A_t.shape[0], 1, len(simulation_parameters.mode_identifiers)),
             dtype=complex,
         )
-        amplitude = amplitude.at[:, 0, self.mode_idx].set(A_t)
+        if self.jones is None:
+            amplitude = amplitude.at[:, 0, self.mode_idx].set(A_t)
+        else:
+            amplitude = A_t[:, None, None] * self.jones[None, None, :]
 
         outputs = {
             "o0": BlockModeOpticalSignal(

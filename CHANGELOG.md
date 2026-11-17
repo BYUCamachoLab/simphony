@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+- `CWLaser(jones=...)`: an optional Jones vector over the simulated modes
+  splits the laser's (unit-power, normalised) field between modes with given
+  amplitudes and relative phases, in sample and block mode. Default `None`
+  keeps all power in `mode_idx`.
 - `ElectricalFIRFilter(taps, delay_compensation=0|"group")` in
   `simphony.libraries.ideal.electrical_circuits`: an FIR filter on electrical
   signals (block and sample mode). Behind an `Interpolator` it models a DAC:
