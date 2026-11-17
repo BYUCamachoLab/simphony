@@ -40,8 +40,10 @@ from simphony.component.port import Port
 from simphony.signal.block_mode import BlockModeOpticalSignal
 from simphony.signal.sample_mode import SampleModeOpticalSignal
 from simphony.simulation.simulation import SimulationMode, SimulationParameters
+from simphony.time_domain.vector_fitting.s_domain import vector_fitting_continuous
 from simphony.time_domain.vector_fitting.z_domain import (
     PHYSICIST,
+    bilinear_transform,
     optimize_order_vector_fitting_discrete,
     state_space_discrete,
     state_space_discrete_optimized_terms,
@@ -59,7 +61,10 @@ _default_vector_fitting_parameters = {
     "num_frequency_samples": 1000,
     "center_wavelength": 1.55e-6,
     "spectral_range": (1.5e-6, 1.6e-6),
+    "fitter": "z",
 }
+"""`fitter` is "z" (z-domain vector fitting, the default) or "s_bilinear" (continuous s-domain vector
+fitting at baseband, then the bilinear transform at the region's sample period; needs `model_order`)."""
 
 S_PARAMETER_ELEMENT_SETTING_KEYS = {
     "sax_settings",
@@ -553,14 +558,14 @@ def merge_vector_fitting_parameters(group_label, members: dict) -> dict:
     `spectral_range` is the union (covering interval) of the members'
     ranges, and the model order is searched between the smallest minimum and
     largest maximum order (a fixed `model_order=n` counts as `n..n`).
-    `num_frequency_samples` and `center_wavelength` must be identical, as
+    `num_frequency_samples`, `center_wavelength` and `fitter` must be identical, as
     must `apply_phase_correction`.
     """
     parameters = [
         (name, element.settings["vector_fitting_parameters"])
         for name, element in members.items()
     ]
-    for key in ("num_frequency_samples", "center_wavelength"):
+    for key in ("num_frequency_samples", "center_wavelength", "fitter"):
         values = {name: p[key] for name, p in parameters}
         if len(set(values.values())) > 1:
             raise ValueError(
@@ -783,6 +788,25 @@ def _calculate_state_space_coefficients_from_sax_model(
 
     Omega = 2 * jnp.pi * (frequency - f_center) / sampling_frequency
     s_params = jnp.exp(-1j * delay_compensation * Omega)[:, None, None] * s_params
+    fitter = vector_fitting_parameters["fitter"]
+    if fitter == "s_bilinear":
+        if vector_fitting_parameters["model_order"] is None:
+            raise ValueError("fitter 's_bilinear' needs an explicit model_order")
+        # s = -j omega (physicist) maps by the bilinear transform onto z = e^{-j Omega}, the convention used below
+        s_poles, s_residues, s_feedthrough, _ = vector_fitting_continuous(
+            vector_fitting_parameters["model_order"],
+            s_params,
+            frequency,
+            f_center,
+            sign_convention=PHYSICIST,
+        )
+        poles, residues, feedthrough = bilinear_transform(
+            s_poles, s_residues, s_feedthrough, sampling_frequency
+        )
+        A, B, C, D = state_space_discrete(poles, residues, feedthrough)
+        return (A, B, C, D), input_ports, output_ports
+    if fitter != "z":
+        raise ValueError(f"unknown fitter {fitter!r}; use 'z' or 's_bilinear'")
     if vector_fitting_parameters["model_order"] is None:
         (
             poles,

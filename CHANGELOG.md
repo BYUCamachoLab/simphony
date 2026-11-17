@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+- `vector_fitting_parameters["fitter"]` for `SParameterElement`: `"z"`
+  (default, unchanged) or `"s_bilinear"`, a continuous s-domain fit at
+  baseband mapped to each rate region's sample period with the bilinear
+  transform (needs `model_order`). Fused groups must agree on `fitter`.
 - Continuous-time tools for fitted models:
   `s_domain.state_space_continuous`,
   `s_domain.state_space_frequency_response_continuous`,

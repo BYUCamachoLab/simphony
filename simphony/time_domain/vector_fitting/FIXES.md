@@ -18,6 +18,9 @@ with si_nitride's venv (identical numbers to the other branch: z K = 44 MAE −5
 | 6 | s_domain | only square S matrices supported | handle q outputs × m inputs, like z_domain |
 | 7 | performance.py | old cached fits would be reused | `CACHE_VERSION` "v1" → "v2" |
 | 8 | s_domain | `vector_fitting` failed with frequency in Hz | normalize frequency internally, rescale results |
+| 9 | s_parameters.py | (new) s-domain models in circuits | `fitter="s_bilinear"` |
+| 10 | both + new common.py | s and z interfaces differed | unified s interface; shared helpers; full-QR least squares |
+| 11 | both + common.py | (new) no continuous-time solver; no state-space discretization | `state_space_response_continuous`; `continuous_to_discrete_state_space`; `bilinear_transform` moved to z_domain |
 
 ## 1. Memory: dense diagonal in `_lstsq_matrices` (both files)
 
@@ -119,6 +122,117 @@ still work in whatever units they are given.
 
 **Verified.** The MAE is −48.3 dB with frequency in THz, GHz and Hz.
 
+## 9. New: `fitter="s_bilinear"` for sample- and block-mode elements (2026-11-03)
+
+This is an addition, not a bug fix. It lets the same circuit be run with s-domain models for the z-vs-s comparison.
+
+**What.** `vector_fitting_parameters` takes a new key, `fitter`:
+- `"z"` is the default, so existing code is unchanged.
+- `"s_bilinear"`, in `_calculate_state_space_coefficients_from_sax_model` (`libraries/ideal/s_parameters.py`):
+  1. Fits the delay-compensated data with `s_domain.vector_fitting_continuous` (centre `f_center`, `PHYSICIST`).
+     The model order must be given; there is no order search for s here.
+  2. Maps the fit to discrete time at the region's sampling frequency with `bilinear_transform` (now in `z_domain`, §11). This is
+     the plain transform, s = (2/T)(z − 1)/(z + 1), with no prewarping.
+  3. Builds the state space with `state_space_discrete`.
+
+Originally s_domain was engineer-convention only, so the fit was made to conj(S) and conjugated back. Since §10 the
+fit is made directly in the physicist convention (s = −jω), which the bilinear transform maps onto simphony's
+z = e^{−jΩ} with no conjugation.
+
+Fused S-parameter groups require their members to agree on `fitter`.
+
+**Properties.**
+- The model is exact at the fit centre: s = 0 maps to z = 1.
+- It is stable and keeps a passive continuous fit passive. The imaginary axis maps onto the unit circle.
+- The frequency axis is warped: f_digital = arctan(π f T)/(π T).
+
+**Tested** in `tests/test_s_bilinear_fitter.py`:
+- the discrete model equals the continuous fit evaluated at the warped frequency, to 1e-10;
+- it is exact at the carrier;
+- all poles lie inside the unit circle;
+- the error grows away from the carrier while the z fit's does not.
+
+The 43 block-mode and multirate tests still pass.
+
+## 10. Unified s- and z-domain interfaces (2026-11-10)
+
+`s_domain.py` now mirrors `z_domain.py` section for section, minus the sampling frequency. Helpers that do not
+depend on the domain moved to a new `common.py`.
+
+**s_domain API** (old name → new):
+
+| Old | New |
+|---|---|
+| `vector_fitting(order, H, baseband_f, max_iterations, alpha, weight_threshold)` | `vector_fitting_continuous(order, H, f, center_frequency, sign_convention=PHYSICIST, max_iterations=10, alpha=0.01, weight_threshold=0.0)` |
+| `vector_fitting_optimize_order(...)` | `optimize_order_vector_fitting_continuous(min, max, H, f, center_frequency, sign_convention=PHYSICIST, ...)` |
+| `pole_residue_response(baseband_f, p, r, d)` | `pole_residue_response_continuous(f, center_frequency, p, r, d, sign_convention=PHYSICIST)` |
+| `bilinear_transform(p, r, d, sampling_period)` | `bilinear_transform(p, r, d, sampling_frequency)` |
+| none | `state_space_continuous`, `state_space_frequency_response_continuous` |
+
+- **Centre frequency and convention.** s = sc·j2π(f − f_c), matching z = exp(sc·j2π(f − f_c)/f_s). z = e^{sT}
+  then holds in either convention, Re p < 0 means stable in both, and `bilinear_transform` needs no convention
+  argument. Poles and residues are in rad/s, relative to `center_frequency`.
+- **Default convention is now `PHYSICIST`** (was engineer-only). To reproduce an old engineer fit, pass
+  `sign_convention=ENGINEER`.
+- **CVF starting poles.** `model_order` poles spread linearly over the band, with a common damping of
+  `alpha · 2π max|f − f_c|`. `alpha` is now used. This replaces the conjugate pairs, so odd orders need no special
+  case. On a two-ring all-pass test (800 GHz band, off-centre) the new start matched or beat the old one at every
+  order (20, 30, 40) and iteration count (2–20).
+- **`jax.lax.while_loop`** replaces `python_based_while_loop`, and the fit is `@persistent_cache`d like the z fit.
+- **Removed:** `_full_lstsq_matrices`, `_enforce_conjugacy`, the commented-out `_lstsq_matrices` variants, the old
+  tuple-returning `optimize_order`, and the `main`/`main2` demos in both files.
+
+**common.py** holds `_lstsq_matrices`, `_fit_to_poles(H, phi0)`, `_weight_error(phi1, w)`,
+`_relocate_poles(p, w)` (the eigenvalue step), `optimize_order` (z's cached, int-returning version, re-exported by
+both modules) and `_state_space` (the replicated-pole ABCD realization, identical in both domains). Each domain
+keeps its own `_phi_matrices`, `_initial_poles` and stability flip: `1/conj(p)` for z, `−conj(p)` for s.
+
+**Least squares: full QR per pair, in both domains.** z's `_lstsq_matrices` factored phi0 once and orthogonalized
+each pair block with one classical Gram–Schmidt pass (`A2 − Q1 Q1ᴴ A2`). Once a fit nears machine precision, that
+pass loses orthogonality and the relocation drifts. Sharing it made s fits on the two-ring test fall from −255 dB to
+−73 dB over 20 iterations, at N = 30. A second projection pass (CGS2) only partly helped. A Householder QR of
+`[phi0, −H·phi1]` per pair (the old s version, still with row scaling instead of a dense diag) is stable. z fits did
+not show the drift (they plateau near −125 dB on that test with every variant). On a seeded 2×3 z problem the
+full-QR z fit equals the old one to 5e-15 in poles and 2e-14 in residues; only the order `eig` returns them in
+changed. `CACHE_VERSION` was therefore **not** bumped. Cached z fits are the same models.
+
+**z_domain:** `state_space_frequency_response_discrete` gains `sign_convention=PHYSICIST`, resolving its TODO. The
+default keeps the old behaviour. It is also vectorized (batched `solve` instead of a per-frequency `inv`).
+
+**Tested:**
+- `tests/test_s_domain_vector_fitting.py`:
+  - exact 2×3, order-7 model recovered in both conventions, with frequency in Hz around 193.4 THz (poles to 1e-8);
+  - the physicist fit of H equals the conjugate of the engineer fit of conj(H);
+  - moving `center_frequency` by Δf shifts the poles by −sc·j2πΔf;
+  - the state-space response matches the pole-residue response;
+  - the order search stays within its bounds.
+- `tests/test_z_domain_vector_fitting.py`: the z state-space frequency response matches the pole-residue response
+  in both conventions.
+- z regression: fits on a fixed problem are unchanged, as above.
+- 136 tests pass. Not run: sipann and plugins, whose optional dependencies `SiPANN` and `parsimonious` are not
+  installed.
+
+## 11. New: continuous-time simulation and state-space discretization (2026-11-10)
+
+Additions for driving fitted models with waveforms without the simulator class
+(`time_domain_paper/code/reservoir_application/gm_vector_fitting_z_vs_s.ipynb`).
+
+- **`s_domain.state_space_response_continuous(A, B, C, D, u, sampling_frequency, x0=None, interpolation="linear")`.**
+  The continuous counterpart of `z_domain.state_space_response_discrete`. It solves dx/dt = Ax + Bu exactly between
+  samples for piecewise-linear (`"linear"`, as `scipy.signal.lsim`) or piecewise-constant (`"zero"`) input. Only
+  the input is sampled; the model is not approximated.
+- **`z_domain.continuous_to_discrete_state_space(A, B, C, D, sampling_frequency, method="bilinear")`.** The
+  `scipy.signal.cont2discrete` conversions (`"bilinear"` Tustin, `"zoh"`, `"foh"`) for complex baseband models.
+  Its B is dense, so the `_optimized` discrete path does not apply to the result.
+- **`bilinear_transform` moved from `s_domain` to `z_domain`**, unchanged: conversions to a sampling period live
+  with the discrete-time code. Its one caller, `libraries/ideal/s_parameters.py`, was updated.
+- **`common._hold_matrices(A, B, T, hold)`**: the shared ZOH/FOH matrix exponential behind both functions.
+
+Tests: the conversions match `cont2discrete` for every method. The bilinear state space has the same frequency
+response as `bilinear_transform` + `state_space_discrete`. The continuous response matches `lsim` for both
+interpolations and the analytic step response of a single pole. 21 tests pass in the three vector-fitting test
+files.
+
 ## Numerical audit (no change needed)
 
 Each step was checked on the paper-matched lattice (K = 44) against 50-digit `mpmath` references
@@ -143,10 +257,6 @@ Each step was checked on the paper-matched lattice (K = 44) against 50-digit `mp
 
 ## Noticed but not changed
 
-- **`s_domain._initial_poles` builds conjugate pairs.** That is classic real vector fitting, not CVF. At baseband,
-  half the starting poles mirror the band. In the lattice comparison this makes the shipped s fitter converge much
-  more slowly (MAE −26 dB at iteration 2 vs −47.5 dB for a CVF-style non-conjugate start), though it reaches the same
-  final error. Changing the default starting poles would change existing results, so I left it as a decision for you.
-- **`z_domain.state_space_frequency_response_discrete` hard-codes z = e^{−jωT}** (physicist), as its own TODO notes.
-- **`s_domain._initial_poles` ignores its `alpha` argument** (the damping is fixed at −0.1).
-- **Unused `Q1, R11 = jnp.linalg.qr(phi0)`** in both `_lstsq_matrices`; it costs one extra QR per iteration.
+Resolved in §10: the conjugate-pair s starting poles, the ignored `alpha`, and the hard-coded convention in
+`state_space_frequency_response_discrete`. The unused-QR note was stale: z's `_lstsq_matrices` used Q1 for its
+projection. Since §10 both domains use one full QR per pair instead.
