@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+- Continuous-time tools for fitted models:
+  `s_domain.state_space_continuous`,
+  `s_domain.state_space_frequency_response_continuous`,
+  `s_domain.state_space_response_continuous` (exact response to
+  piecewise-linear or piecewise-constant input, like `scipy.signal.lsim`), and
+  `z_domain.continuous_to_discrete_state_space` (bilinear, ZOH, FOH).
 - `CWLaser(jones=...)`: an optional Jones vector over the simulated modes
   splits the laser's (unit-power, normalised) field between modes with given
   amplitudes and relative phases, in sample and block mode. Default `None`
@@ -47,6 +53,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mode (de)multiplexers.
 
 ### Changed
+- `time_domain.vector_fitting.s_domain` mirrors `z_domain` section for section,
+  and domain-independent helpers live in the new `vector_fitting.common`.
+  Renamed: `vector_fitting` → `vector_fitting_continuous(order, H, f,
+  center_frequency, sign_convention=PHYSICIST, ...)`,
+  `vector_fitting_optimize_order` →
+  `optimize_order_vector_fitting_continuous`, `pole_residue_response` →
+  `pole_residue_response_continuous`. s fits now take frequency in Hz about a
+  centre frequency, default to the **physicist** convention (pass
+  `sign_convention=ENGINEER` to reproduce old fits), start from CVF poles
+  spread over the band (`alpha` is now used), and are persistently cached.
+  `bilinear_transform(p, r, d, sampling_frequency)` moved to `z_domain` and
+  takes a sampling frequency. See `vector_fitting/FIXES.md` §10–11.
+- Both domains solve the pole-relocation least squares with a full QR per
+  input/output pair (s fits near machine precision no longer drift). Cached z
+  fits are unchanged, so `CACHE_VERSION` is not bumped.
+- `z_domain.state_space_frequency_response_discrete` takes `sign_convention`
+  and is vectorized.
 - `SParameterElement` (made by `optical_s_parameter`) is now the only class
   that interprets SAX models. It implements the block-mode response directly,
   including mode indexing, and receives a per-instance port directionality
@@ -60,6 +83,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instantiation.
 
 ### Removed
+- From the vector-fitting modules: `_full_lstsq_matrices`, `_enforce_conjugacy`,
+  the tuple-returning s `optimize_order`, and the `main`/`main2` demos.
 - `optical_s_parameter_placeholder`, `SParameterPlaceholder`, `SParameterGroup`,
   and `s_parameter_netlist_to_pcell`.
 
