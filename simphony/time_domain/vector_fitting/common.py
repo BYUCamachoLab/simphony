@@ -113,6 +113,17 @@ def _fit_to_poles(transfer_function, phi0):
 def optimize_order(error_fn, min_order, max_order):
     """Choose a model order by balancing fit error and complexity.
 
+    Golden-section search over the order minimising MSE(order) + lambda * order, with the complexity penalty lambda
+    set from the errors at the ends of the range (geometric mean of |C(max - 1) - C(max)| and C(min) - C(max)),
+    following Rosenthal & Vick, "Estimating the Optimal Polynomial Order for the Vector Fitting Algorithm", EMC
+    Europe 2023, https://doi.org/10.1109/EMCEurope57790.2023.10274284.
+
+    The search assumes this objective has a single valley in [min_order, max_order]. Responses with many fringes or
+    resonances have a plateau-then-cliff error curve that violates this below the cliff, so the bounds matter:
+    `order_estimation.estimate_order_bounds` estimates them a priori from the Loewner singular values of the data
+    (Mayo & Antoulas 2007, https://doi.org/10.1016/j.laa.2007.03.008; Lefteriu & Antoulas 2010,
+    https://doi.org/10.1109/TCAD.2009.2034500), and `SParameterElement` uses that estimate when the bounds are unset.
+
     Parameters
     ----------
     error_fn:

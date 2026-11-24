@@ -240,8 +240,11 @@ def optimize_order_vector_fitting_discrete(
 ):
     """Fit a discrete pole-residue model while selecting the model order.
 
-    This wraps `vector_fitting_discrete` with `optimize_order`, searching between
-    `min_order` and `max_order`. With `passivity_enforcement` set (a dict of keyword
+    This wraps `vector_fitting_discrete` with `optimize_order` (golden-section search; Rosenthal & Vick, EMC Europe
+    2023, https://doi.org/10.1109/EMCEurope57790.2023.10274284), searching between `min_order` and `max_order`.
+    Choose the bounds with `order_estimation.estimate_order_bounds` (Loewner singular values of the data; see its
+    references): the search is only reliable in a range past the order where the fit can first follow the response.
+    With `passivity_enforcement` set (a dict of keyword
     options for `enforce_passivity_discrete`, possibly empty), each candidate order
     is scored by its error after passivity enforcement, so that the search accounts
     for the in-band change enforcement makes. The returned model is the fit at the

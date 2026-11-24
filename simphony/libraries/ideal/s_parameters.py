@@ -93,7 +93,12 @@ bound left as None (the default) is estimated a priori from the data (`order_est
 count of normalised Loewner singular values above `min_order_tolerance` (default 1e-3, about a -60 dB maximum fit
 error) for the minimum, and above `max_order_tolerance` (default 1e-6, about the data's accuracy floor) for the
 maximum. This puts the search past the error cliff of responses with many fringes or resonances, where the search is
-well conditioned. An explicit `min_model_order` below the estimate is used as given, with a warning."""
+well conditioned. An explicit `min_model_order` below the estimate is used as given, with a warning.
+
+References: golden-section order search, Rosenthal & Vick, EMC Europe 2023,
+https://doi.org/10.1109/EMCEurope57790.2023.10274284; Loewner order estimation, Mayo & Antoulas 2007,
+https://doi.org/10.1016/j.laa.2007.03.008, and Lefteriu & Antoulas 2010, https://doi.org/10.1109/TCAD.2009.2034500
+(full list in `simphony.time_domain.vector_fitting.order_estimation`)."""
 
 S_PARAMETER_ELEMENT_SETTING_KEYS = {
     "sax_settings",

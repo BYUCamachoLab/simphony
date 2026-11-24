@@ -22,6 +22,23 @@ the spread of the dominant paths in the impulse response, is the time-bandwidth 
 the Loewner sampling (enough points per cycle) and is reported, but it is not used as a bound: for resonant
 responses the impulse response decays exponentially, which costs only about two poles per resonance, and the rule
 would demand far more.
+
+References
+----------
+- Mayo, A. J. and Antoulas, A. C., "A framework for the solution of the generalized realization problem",
+  Linear Algebra and its Applications 425(2-3), 2007. https://doi.org/10.1016/j.laa.2007.03.008
+  (the Loewner matrix of frequency data has rank equal to the degree of the underlying rational function).
+- Lefteriu, S. and Antoulas, A. C., "A new approach to modeling multiport systems from frequency-domain data",
+  IEEE Trans. Computer-Aided Design 29(1), 14-27, 2010. https://doi.org/10.1109/TCAD.2009.2034500
+  (Loewner modelling of multiport data; order read from the singular-value drop; tangential projections).
+- Moon, S.-J. and Cangellaris, A. C., "Order estimation for time-domain vector fitting", IEEE EPEPS 2009,
+  69-72. https://doi.org/10.1109/EPEPS.2009.5338474 (order from the response's time-bandwidth product).
+- Rosenthal, M. and Vick, R., "Estimating the Optimal Polynomial Order for the Vector Fitting Algorithm",
+  EMC Europe 2023, 1-6. https://doi.org/10.1109/EMCEurope57790.2023.10274284 (the golden-section order search
+  these bounds feed; see `common.optimize_order`).
+- Grivet-Talocia, S. and Bandinu, M., "Improving the convergence of vector fitting for equivalent circuit
+  extraction from noisy frequency responses", IEEE Trans. EMC 48(1), 104-120, 2006.
+  https://doi.org/10.1109/TEMC.2006.870814 (an alternative: growing the order until an error target is met).
 """
 from typing import NamedTuple
 
@@ -97,6 +114,12 @@ def loewner_singular_values(transfer_function, frequency, center_frequency, samp
 def estimate_order_bounds(transfer_function, frequency, center_frequency, sampling_frequency,
                           sign_convention=PHYSICIST, min_tolerance=1e-3, max_tolerance=1e-6, max_points_per_set=500):
     """A-priori (min, max) model order for vector fitting of `transfer_function` (num_frequency, q, m).
+
+    Used by `SParameterElement` for the golden-section order search when `min_model_order` / `max_model_order` are
+    unset. Brief rationale: the search is only reliable where its objective has one valley, which for responses with
+    many fringes or resonances means starting past the order where the fit can first follow the response; the
+    Loewner singular values (Mayo & Antoulas 2007; Lefteriu & Antoulas 2010) give that order from the data alone. See
+    the module docstring for the method and references.
 
     min: Loewner singular values above `min_tolerance` (1e-3 ~ a -60 dB maximum fit error); max: above
     `max_tolerance` (1e-6 ~ the data's accuracy floor), capped by the Loewner rank limit and half the number of
