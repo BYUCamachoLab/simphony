@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cutting planes, poles fixed), and `vector_fitting_parameters["passivity"]`
   = `None` (default) | `"check"` | `"enforce"` for `SParameterElement`. See
   `vector_fitting/FIXES.md` §12.
+- `vector_fitting_parameters["passivity_aware_order"]` (default `False`): with
+  `passivity="enforce"` and a searched order, score each candidate order by its
+  error after enforcement (`optimize_order_vector_fitting_discrete(...,
+  passivity_enforcement=...)`). `vector_fitting_parameters["passivity_options"]`
+  passes options to `enforce_passivity_discrete`.
 - `vector_fitting_parameters["fitter"]` for `SParameterElement`: `"z"`
   (default, unchanged) or `"s_bilinear"`, a continuous s-domain fit at
   baseband mapped to each rate region's sample period with the bilinear

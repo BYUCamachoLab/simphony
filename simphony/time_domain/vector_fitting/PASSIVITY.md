@@ -88,6 +88,12 @@ the whole circle. Here d = c − c⁰ is the correction.
 - **What each value does** (`_apply_passivity`, `s_parameters.py:854`). `"check"` warns if the model isn't
   passive. `"enforce"` corrects it, and warns only if correction fails. Unknown values raise.
 - **Fused groups** must agree on `passivity` (`s_parameters.py:578`).
+- **Order search.** With `model_order=None` and `passivity="enforce"`, `"passivity_aware_order"` (default `False`,
+  opt-in) scores each candidate order by its error *after* enforcement. That's `passivity_enforcement` in
+  `optimize_order_vector_fitting_discrete`. Without it the search favours orders that are accurate only until
+  enforced.
+- **Options.** `"passivity_options"` (a dict) is passed to `enforce_passivity_discrete`, for example
+  `{"out_of_band_weight": 1e-5}`.
 - **Not persistently cached.** `persistent_cache` keys on arguments only, so it would return stale results after
   code changes. The cost is 1–6 s per element.
 

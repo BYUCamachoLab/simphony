@@ -236,11 +236,16 @@ def optimize_order_vector_fitting_discrete(
     max_iterations=10,
     gamma=0.95,
     weight_threshold=0.0,
+    passivity_enforcement=None,
 ):
     """Fit a discrete pole-residue model while selecting the model order.
 
     This wraps `vector_fitting_discrete` with `optimize_order`, searching between
-    `min_order` and `max_order`.
+    `min_order` and `max_order`. With `passivity_enforcement` set (a dict of keyword
+    options for `enforce_passivity_discrete`, possibly empty), each candidate order
+    is scored by its error after passivity enforcement, so that the search accounts
+    for the in-band change enforcement makes. The returned model is the fit at the
+    selected order before enforcement; the caller enforces it.
 
     Parameters
     ----------
@@ -264,13 +269,32 @@ def optimize_order_vector_fitting_discrete(
         Initial pole radius used by `vector_fitting_discrete`.
     weight_threshold:
         Pole-relocation convergence threshold.
+    passivity_enforcement:
+        `None` (score candidates by their fitted error) or a dict of options for
+        `simphony.time_domain.vector_fitting.passivity.enforce_passivity_discrete`
+        (score them by their error after enforcement).
 
     Returns
     -------
     tuple
         `(poles, residues, feedthrough, mean_squared_error)` for the selected
-        order.
+        order (`mean_squared_error` of the fit before enforcement).
     """
+
+    def _enforced(poles, residues, feedthrough):
+        # imported here: passivity.py is independent of this module, and the order search is its only user here
+        from simphony.time_domain.vector_fitting.passivity import enforce_passivity_discrete
+
+        fit_omega = 2 * jnp.pi * (frequency - center_frequency) / sampling_frequency
+        new_residues, new_feedthrough, _ = enforce_passivity_discrete(
+            poles,
+            residues,
+            feedthrough,
+            fit_omega,
+            sign_convention=sign_convention,
+            **passivity_enforcement,
+        )
+        return jnp.asarray(new_residues), jnp.asarray(new_feedthrough)
 
     def fit_order(model_order):
         return vector_fitting_discrete(
@@ -290,6 +314,18 @@ def optimize_order_vector_fitting_discrete(
         poles = residues = feedthrough = mean_squared_error = None
         try:
             poles, residues, feedthrough, mean_squared_error = fit_order(model_order)
+            if passivity_enforcement is not None:
+                residues, feedthrough = _enforced(poles, residues, feedthrough)
+                mean_squared_error = _mean_squared_error(
+                    transfer_function,
+                    frequency,
+                    center_frequency,
+                    sampling_frequency,
+                    poles,
+                    residues,
+                    feedthrough,
+                    sign_convention,
+                )
             return float(jax.device_get(mean_squared_error))
         finally:
             del poles, residues, feedthrough, mean_squared_error

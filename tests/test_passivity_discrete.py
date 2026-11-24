@@ -19,6 +19,7 @@ from simphony.time_domain.vector_fitting.passivity import (
     passivity_assessment_discrete,
 )
 from simphony.time_domain.vector_fitting.z_domain import (
+    optimize_order_vector_fitting_discrete,
     pole_residue_response_discrete,
     vector_fitting_discrete,
 )
@@ -151,3 +152,47 @@ def test_s_parameter_element_options():
     with pytest.raises(ValueError, match="passivity"):
         _dc_element("always")
 
+
+def _dc_data():
+    f = np.linspace(speed_of_light / 1.6e-6, speed_of_light / 1.5e-6, 1000)
+    sdict = directional_coupler(wl=1e6 * speed_of_light / f)
+    S = np.stack([np.stack([np.asarray(sdict[(o, i)]) for i in DC_PORTS], -1) for o in DC_PORTS], -2)
+    return jnp.asarray(S), jnp.asarray(f)
+
+
+def _enforced_mse(S, f, poles, residues, feedthrough):
+    new_r, new_d, info = enforce_passivity_discrete(poles, residues, feedthrough, 2 * np.pi * (np.asarray(f) - F0) / FS)
+    H = pole_residue_response_discrete(f, F0, FS, poles, new_r, new_d, sign_convention=PHYSICIST)
+    return float(np.mean(np.abs(np.asarray(S) - np.asarray(H)) ** 2)), info
+
+
+def test_order_search_scored_after_enforcement():
+    # Scoring candidates after enforcement must not end worse (after enforcement) than the plain search, and the
+    # plain search (passivity_enforcement=None) is unchanged by the new option.
+    S, f = _dc_data()
+    kw = dict(sign_convention=PHYSICIST, use_cache=False)
+    plain = optimize_order_vector_fitting_discrete(4, 24, S, f, F0, FS, **kw)
+    plain_again = optimize_order_vector_fitting_discrete(4, 24, S, f, F0, FS, passivity_enforcement=None, **kw)
+    np.testing.assert_array_equal(np.asarray(plain[0]), np.asarray(plain_again[0]))
+    aware = optimize_order_vector_fitting_discrete(4, 24, S, f, F0, FS, passivity_enforcement={}, **kw)
+    mse_plain, _ = _enforced_mse(S, f, *plain[:3])
+    mse_aware, info = _enforced_mse(S, f, *aware[:3])
+    assert info["passive"]
+    assert mse_aware <= mse_plain * (1 + 1e-9)
+
+
+def test_element_passivity_options_and_aware_order():
+    params = BlockModeSimulationParameters(dt=1 / FS, num_time_steps=8, mode_identifiers=("te",))
+    model = optical_s_parameter(directional_coupler)
+
+    def build(**vf):
+        element = model(params, sax_settings={}, vector_fitting_parameters=vf)
+        return element._state_space(params)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        build(model_order=16, passivity="enforce", passivity_options={"margin": 1e-3})
+        build(min_model_order=4, max_model_order=12, passivity="enforce")                    # plain (default)
+        build(min_model_order=4, max_model_order=12, passivity="enforce", passivity_aware_order=True)
+    with pytest.raises(TypeError):
+        build(model_order=16, passivity="enforce", passivity_options={"no_such_option": 1})

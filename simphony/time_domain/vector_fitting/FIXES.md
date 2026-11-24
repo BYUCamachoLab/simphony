@@ -318,6 +318,24 @@ the same ridge. The algorithm is otherwise unchanged. On that front end, enforce
 (in-band σ_max 0.914 → 0.924) in 1.9 s. A regression test, `test_dual_solve_with_rank_deficient_cut_matrix`,
 covers it, and 168 tests pass.
 
+**Follow-up (2026-11-24): passivity-aware order selection and enforcement options.**
+- **The problem.** With `model_order=None`, the golden-section search chose the order by fitted error before
+  enforcement ran. It favoured high orders that fit well in band but have large out-of-band gain, and enforcement
+  then changed them the most. For example, a SiEPIC y-branch block at dt = 2.5 ps: order 8 has −58 dB error fitted
+  and −27 dB after enforcement, while order 2 is passive at −29 dB.
+- **The fix, in `optimize_order_vector_fitting_discrete`.** A new argument, `passivity_enforcement` (`None`, or a
+  dict of options for `enforce_passivity_discrete`), scores each candidate order by its mean-squared error after
+  enforcement. It still returns the fit before enforcement; the caller enforces it.
+- **New element keys.**
+  - `"passivity_aware_order"` (default `False`, opt-in) turns this on when the order is searched and
+    `passivity="enforce"`. The study found it changed the order in only 2 of 10 cases, and made one worse.
+  - `"passivity_options"` (default `None`) passes enforcement options (`out_of_band_weight`, `margin`, ...) both to
+    the search and to the final enforcement.
+  - Fused groups must agree on both.
+- **Unchanged.** A fixed order, or `passivity` other than `"enforce"`, behaves exactly as before.
+- **Tests.** Two new tests, and 170 pass. A study of the effect on the selected order, the error and the time is in
+  `time_domain_paper/passivity_order/passivity_order.ipynb`.
+
 ## Noticed but not changed
 
 Resolved in §10: the conjugate-pair s starting poles, the ignored `alpha`, and the hard-coded convention in
