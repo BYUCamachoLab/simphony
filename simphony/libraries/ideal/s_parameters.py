@@ -40,6 +40,10 @@ from simphony.component.port import Port
 from simphony.signal.block_mode import BlockModeOpticalSignal
 from simphony.signal.sample_mode import SampleModeOpticalSignal
 from simphony.simulation.simulation import SimulationMode, SimulationParameters
+from simphony.time_domain.vector_fitting.passivity import (
+    enforce_passivity_discrete,
+    passivity_assessment_discrete,
+)
 from simphony.time_domain.vector_fitting.s_domain import vector_fitting_continuous
 from simphony.time_domain.vector_fitting.z_domain import (
     PHYSICIST,
@@ -62,9 +66,14 @@ _default_vector_fitting_parameters = {
     "center_wavelength": 1.55e-6,
     "spectral_range": (1.5e-6, 1.6e-6),
     "fitter": "z",
+    "passivity": None,
 }
 """`fitter` is "z" (z-domain vector fitting, the default) or "s_bilinear" (continuous s-domain vector
-fitting at baseband, then the bilinear transform at the region's sample period; needs `model_order`)."""
+fitting at baseband, then the bilinear transform at the region's sample period; needs `model_order`).
+
+`passivity` is None (default: no check), "check" (warn if the discrete model has sigma_max > 1 anywhere on the
+unit circle, i.e. anywhere in the simulated band) or "enforce" (perturb its residues to make it passive; see
+`simphony.time_domain.vector_fitting.passivity`)."""
 
 S_PARAMETER_ELEMENT_SETTING_KEYS = {
     "sax_settings",
@@ -113,7 +122,8 @@ class SParameterElement(SParameterComponent, SampleModeComponent, BlockModeCompo
     vector_fitting_parameters:
         Partial or complete vector-fitting parameters, merged over the
         defaults (`model_order`, `min_model_order`, `max_model_order`,
-        `num_frequency_samples`, `center_wavelength`, `spectral_range`).
+        `num_frequency_samples`, `center_wavelength`, `spectral_range`,
+        `fitter`, `passivity`).
     delay_compensation:
         Sample mode only. Number of samples of artificial delay to remove from
         the fitted model. Ignored (with a warning) in block mode.
@@ -558,14 +568,14 @@ def merge_vector_fitting_parameters(group_label, members: dict) -> dict:
     `spectral_range` is the union (covering interval) of the members'
     ranges, and the model order is searched between the smallest minimum and
     largest maximum order (a fixed `model_order=n` counts as `n..n`).
-    `num_frequency_samples`, `center_wavelength` and `fitter` must be identical, as
+    `num_frequency_samples`, `center_wavelength`, `fitter` and `passivity` must be identical, as
     must `apply_phase_correction`.
     """
     parameters = [
         (name, element.settings["vector_fitting_parameters"])
         for name, element in members.items()
     ]
-    for key in ("num_frequency_samples", "center_wavelength", "fitter"):
+    for key in ("num_frequency_samples", "center_wavelength", "fitter", "passivity"):
         values = {name: p[key] for name, p in parameters}
         if len(set(values.values())) > 1:
             raise ValueError(
@@ -803,11 +813,9 @@ def _calculate_state_space_coefficients_from_sax_model(
         poles, residues, feedthrough = bilinear_transform(
             s_poles, s_residues, s_feedthrough, sampling_frequency
         )
-        A, B, C, D = state_space_discrete(poles, residues, feedthrough)
-        return (A, B, C, D), input_ports, output_ports
-    if fitter != "z":
+    elif fitter != "z":
         raise ValueError(f"unknown fitter {fitter!r}; use 'z' or 's_bilinear'")
-    if vector_fitting_parameters["model_order"] is None:
+    elif vector_fitting_parameters["model_order"] is None:
         (
             poles,
             residues,
@@ -832,6 +840,37 @@ def _calculate_state_space_coefficients_from_sax_model(
             sign_convention=PHYSICIST,
         )
 
+    passivity = vector_fitting_parameters["passivity"]
+    if passivity is not None:
+        poles, residues, feedthrough = _apply_passivity(
+            passivity, poles, residues, feedthrough, Omega, input_ports, output_ports
+        )
+
     A, B, C, D = state_space_discrete(poles, residues, feedthrough)
 
     return (A, B, C, D), input_ports, output_ports
+
+
+def _apply_passivity(passivity, poles, residues, feedthrough, fit_omega, input_ports, output_ports):
+    """`vector_fitting_parameters["passivity"]`: "check" warns, "enforce" corrects (poles kept)."""
+    if passivity not in ("check", "enforce"):
+        raise ValueError(f"unknown passivity option {passivity!r}; use None, 'check' or 'enforce'")
+    ports = f"{len(output_ports)}x{len(input_ports)} model ({', '.join(input_ports)} -> {', '.join(output_ports)})"
+    if passivity == "check":
+        report = passivity_assessment_discrete(poles, residues, feedthrough, sign_convention=PHYSICIST)
+        if not report.is_passive:
+            warnings.warn(
+                f"{ports} is not passive: sigma_max = {report.max_singular_value:.6g} at "
+                f"Omega = {report.max_omega:+.4f} rad/sample ({len(report.violation_omegas)} violation peaks). "
+                "Use vector_fitting_parameters['passivity'] = 'enforce' to correct it."
+            )
+        return poles, residues, feedthrough
+    new_residues, new_feedthrough, info = enforce_passivity_discrete(
+        poles, residues, feedthrough, fit_omega, sign_convention=PHYSICIST
+    )
+    if not info["passive"]:
+        warnings.warn(
+            f"{ports}: passivity enforcement stopped at sigma_max = {info['max_singular_value']:.6g} "
+            f"(was {info['max_singular_value_before']:.6g}) after {info['iterations']} iterations."
+        )
+    return poles, jnp.asarray(new_residues), jnp.asarray(new_feedthrough)

@@ -21,6 +21,7 @@ with si_nitride's venv (identical numbers to the other branch: z K = 44 MAE −5
 | 9 | s_parameters.py | (new) s-domain models in circuits | `fitter="s_bilinear"` |
 | 10 | both + new common.py | s and z interfaces differed | unified s interface; shared helpers; full-QR least squares |
 | 11 | both + common.py | (new) no continuous-time solver; no state-space discretization | `state_space_response_continuous`; `continuous_to_discrete_state_space`; `bilinear_transform` moved to z_domain |
+| 12 | new passivity.py, s_parameters.py | (new) z fits are not checked for passivity anywhere on the unit circle | `passivity_assessment_discrete`; `enforce_passivity_discrete` (cutting planes); `vector_fitting_parameters["passivity"]` |
 
 ## 1. Memory: dense diagonal in `_lstsq_matrices` (both files)
 
@@ -254,6 +255,68 @@ Each step was checked on the paper-matched lattice (K = 44) against 50-digit `mp
 * **Relaxed SK.** The paper's eq. (9) frees the denominator constant (relaxed SK, Gustavsen 2006); simphony fixes it
   to 1. A relaxed variant (normalization row Σ_f σ(f) = N, weighted by ‖H‖/N) gained 1–2.5 dB in the first s-domain
   iterations but ended 0.3–0.5 dB worse in both domains. Not worth changing.
+
+## 12. New: passivity assessment and enforcement for z-domain fits (2026-11-16)
+
+A z model H(z) = D + Σ Rₙ/(z − pₙ) is the simulator's whole band, Ω ∈ [−π, π), including the part outside the
+fitted spectral range, where nothing constrains the fit. A scattering model is passive when it is stable and
+σ_max(H(e^{jΩ})) ≤ 1 on the whole circle. The models are complex baseband, so the full circle is searched.
+
+**`passivity.passivity_assessment_discrete(poles, residues, feedthrough, sign_convention)`.** Samples σ_max on a
+uniform grid (default max(4096, 64 r) points) plus points clustered at each pole's angle (±8 widths of
+2(1 − |p|)), and refines every local maximum above 0.999 with a bounded scalar search. Returns a
+`PassivityReport` (max σ and where, violation peaks, the grid). This is a grid check; an exact algebraic check is
+planned.
+
+**`passivity.enforce_passivity_discrete(poles, residues, feedthrough, fit_omega, ...)`.** Poles fixed; residues
+and D change. It solves the convex problem
+
+  min mean_fit |ΔH|² + w · mean_circle |ΔH|²  subject to  σ_max(H + ΔH) ≤ 1 − margin on the whole circle
+
+(defaults w = 1e-3, margin = 1e-4). The constraint is convex (a spectral norm of something affine in the
+residues), and for unit u, v, Re(uᴴXv) ≤ σ_max(X). So Re(uᴴ H_new(Ω) v) ≤ 1 − margin, with (u, v) the singular
+vectors of the current model at a violation, is an **exact** necessary condition, valid for every later
+iterate. The method is Kelley's cutting planes: assess, add cuts at the violation peaks and in the violation bands,
+re-solve, keep all cuts. Classic residue perturbation re-linearizes σ around each iterate and discards the old
+constraints; on the SiEPIC half ring that cycled around σ ≈ 1.04 for 30+ iterations, because the linearization
+underestimates σ (σ is convex) and each correction raised new peaks next to the constrained frequencies.
+
+Every S-parameter entry shares the poles and the objective weights the entries equally, so each cut is a
+pole-basis vector times a rank-one u vᴴ. The quadratic program is solved through its dual, a non-negative least
+squares problem whose size is the number of cuts, with M_lk = ½ Re[(ψ_lᴴ G⁻¹ ψ_k)(u_lᴴ u_k)(v_kᴴ v_l)]. If at
+most 1 + 1e-3 remains after the iterations, the model is finally scaled by 1/σ_max (exact).
+
+**`SParameterElement`.** `vector_fitting_parameters["passivity"]`: `None` (default, unchanged), `"check"`
+(warn if not passive) or `"enforce"`. It applies after either fitter (`"z"`, `"s_bilinear"`), on the
+delay-compensated model (a pure delay has unit magnitude). Fused groups must agree on it. Results are not
+persistently cached.
+
+**Measured** (dt = 10 fs, band 1.5–1.6 µm, Ω ∈ [−0.38, 0.41]):
+
+| model | data σ_max in band | fit σ_max on circle | iterations | cuts | in-band change | time |
+|---|---|---|---|---|---|---|
+| SiEPIC y-branch (3×3, order 12) | 0.9957 | 0.9958 (passive) | 0 | 0 | 0 | 0.03 s |
+| SiEPIC directional coupler (4×4, order 16) | 1.0023 | 1.0028 | 1 | 73 | 6.3e-4 | 0.7 s |
+| SiEPIC half ring (4×4, order 16) | 1.0062 | 1.0476 (out of band, Ω = −0.53) | 14 | 643 | 2.0e-3 | 4.2 s |
+| Green Machine, Lumerical (8×8, order 90) | 1.0071 | 1.0073 | 5 | 361 | 1.2e-3 | 5.9 s |
+
+All end below 1 on a 200 000-point re-check. Note that the data themselves are not passive (σ up to 1.007), so
+some in-band change is unavoidable.
+
+**Tested** in `tests/test_passivity_discrete.py`: the single-pole peak |a|/(1 − |p|) is found at the right Ω in
+both conventions; the assessment matches `pole_residue_response_discrete`; a passive model is returned unchanged;
+an out-of-band resonance with gain 1.5 is removed with < 1 % in-band change, in both conventions; the real
+directional-coupler fit becomes passive on a 200 000-point grid with < 0.2 % change; the `SParameterElement`
+options warn, enforce and reject unknown values. 162 tests pass.
+
+**Follow-up (2026-11-17): dual solve factorization.** The dual matrix M has rank at most 2 (r+1) q m, the number
+of real coefficients. Once the cuts outnumber that, M is singular, and rounding can push its null-space
+eigenvalues below the 1e-12 ridge. `np.linalg.cholesky(M)` then raised "Matrix is not positive definite". This
+happened on the FMCW example's 5×1 front end at dt = 2.5 ps (order 16): 321 cuts against 170 coefficients, with an
+original σ_max of 19. The solve now lives in `_solve_dual` and factors M with `eigh`, flooring the eigenvalues at
+the same ridge. The algorithm is otherwise unchanged. On that front end, enforcement now converges to σ_max = 1.0000
+(in-band σ_max 0.914 → 0.924) in 1.9 s. A regression test, `test_dual_solve_with_rank_deficient_cut_matrix`,
+covers it, and 168 tests pass.
 
 ## Noticed but not changed
 

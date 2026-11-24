@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+- Passivity for z-domain fits: `vector_fitting.passivity` with
+  `passivity_assessment_discrete` (σ_max on the whole unit circle, densest at
+  the pole angles) and `enforce_passivity_discrete` (residue perturbation by
+  cutting planes, poles fixed), and `vector_fitting_parameters["passivity"]`
+  = `None` (default) | `"check"` | `"enforce"` for `SParameterElement`. See
+  `vector_fitting/FIXES.md` §12.
 - `vector_fitting_parameters["fitter"]` for `SParameterElement`: `"z"`
   (default, unchanged) or `"s_bilinear"`, a continuous s-domain fit at
   baseband mapped to each rate region's sample period with the bilinear
