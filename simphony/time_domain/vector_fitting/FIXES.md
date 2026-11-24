@@ -336,6 +336,28 @@ covers it, and 168 tests pass.
 - **Tests.** Two new tests, and 170 pass. A study of the effect on the selected order, the error and the time is in
   `time_domain_paper/passivity_order/passivity_order.ipynb`.
 
+**Follow-up (2026-11-24): a-priori order bounds (`order_estimation.py`).**
+- **The problem.** The golden-section search is reliable only where MSE(n) + λ·n has one valley. Responses with many
+  fringes or resonances have a plateau-then-cliff error curve, and fixed defaults (2..50) or an arbitrary range
+  leave false valleys below the cliff. Example: a 1 mm discriminator over 1515–1585 nm got order 24 at −7 dB.
+- **The estimate, `estimate_order_bounds`.**
+  - It counts the normalised singular values of Loewner matrices built from the data on the unit circle: above
+    `min_order_tolerance` (default 1e-3) for the minimum, and above `max_order_tolerance` (default 1e-6) for the
+    maximum, capped by the data size.
+  - Multiport data use random scalar projections uᴴHv, so the count is the number of distinct poles (vector
+    fitting's order), not the McMillan degree.
+  - Delay × bandwidth (Moon & Cangellaris) sizes the sampling and is reported, but it isn't a bound: it overestimates
+    resonant responses badly (250 cycles for a ring that needs order 17).
+  - It takes under 0.5 s per element.
+- **Element behaviour.**
+  - `min_model_order` / `max_model_order` now default to `None`, meaning estimated.
+  - Explicit bounds are used as given, and a minimum below the estimate warns.
+  - Fused groups estimate any bound a member leaves unset.
+- **Wide-band results.** The search inside the estimated range reached −37 dB (1 mm discriminator, at about its
+  vector-fitting limit), −56 dB (0.25 mm discriminator) and −72 dB (ring), against −7, −32 and −40 dB before.
+- **Tests.** `tests/test_order_estimation.py` (4 tests); one passivity test updated to bounds at or above the
+  estimate. 174 pass.
+
 ## Noticed but not changed
 
 Resolved in §10: the conjugate-pair s starting poles, the ignored `alpha`, and the hard-coded convention in

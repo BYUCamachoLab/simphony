@@ -44,6 +44,7 @@ from simphony.time_domain.vector_fitting.passivity import (
     enforce_passivity_discrete,
     passivity_assessment_discrete,
 )
+from simphony.time_domain.vector_fitting.order_estimation import estimate_order_bounds
 from simphony.time_domain.vector_fitting.s_domain import vector_fitting_continuous
 from simphony.time_domain.vector_fitting.z_domain import (
     PHYSICIST,
@@ -60,8 +61,10 @@ from simphony.utils import dict_to_rect_matrix
 
 _default_vector_fitting_parameters = {
     "model_order": None,
-    "min_model_order": 2,
-    "max_model_order": 50,
+    "min_model_order": None,
+    "max_model_order": None,
+    "min_order_tolerance": 1e-3,
+    "max_order_tolerance": 1e-6,
     "num_frequency_samples": 1000,
     "center_wavelength": 1.55e-6,
     "spectral_range": (1.5e-6, 1.6e-6),
@@ -83,7 +86,14 @@ does not favour orders that fit well only until enforcement changes them. Opt-in
 elements it changed the selected order in only 2 of 10 cases (time_domain_paper/passivity_order).
 
 `passivity_options` is None or a dict of keyword options for `enforce_passivity_discrete` (for example
-`out_of_band_weight`, `margin`, `max_iterations`), used both by the order search and by the final enforcement."""
+`out_of_band_weight`, `margin`, `max_iterations`), used both by the order search and by the final enforcement.
+
+Model order: a fixed `model_order`, or a golden-section search between `min_model_order` and `max_model_order`. A
+bound left as None (the default) is estimated a priori from the data (`order_estimation.estimate_order_bounds`): the
+count of normalised Loewner singular values above `min_order_tolerance` (default 1e-3, about a -60 dB maximum fit
+error) for the minimum, and above `max_order_tolerance` (default 1e-6, about the data's accuracy floor) for the
+maximum. This puts the search past the error cliff of responses with many fringes or resonances, where the search is
+well conditioned. An explicit `min_model_order` below the estimate is used as given, with a warning."""
 
 S_PARAMETER_ELEMENT_SETTING_KEYS = {
     "sax_settings",
@@ -133,7 +143,9 @@ class SParameterElement(SParameterComponent, SampleModeComponent, BlockModeCompo
         Partial or complete vector-fitting parameters, merged over the
         defaults (`model_order`, `min_model_order`, `max_model_order`,
         `num_frequency_samples`, `center_wavelength`, `spectral_range`,
-        `fitter`, `passivity`, `passivity_aware_order`, `passivity_options`).
+        `fitter`, `passivity`, `passivity_aware_order`, `passivity_options`,
+        `min_order_tolerance`, `max_order_tolerance`). Unset order bounds are
+        estimated a priori from the data.
     delay_compensation:
         Sample mode only. Number of samples of artificial delay to remove from
         the fitted model. Ignored (with a warning) in block mode.
@@ -578,8 +590,8 @@ def merge_vector_fitting_parameters(group_label, members: dict) -> dict:
     `spectral_range` is the union (covering interval) of the members'
     ranges, and the model order is searched between the smallest minimum and
     largest maximum order (a fixed `model_order=n` counts as `n..n`).
-    `num_frequency_samples`, `center_wavelength`, `fitter`, `passivity`, `passivity_aware_order` and
-    `passivity_options` must be identical, as
+    `num_frequency_samples`, `center_wavelength`, `fitter`, `passivity`, `passivity_aware_order`,
+    `passivity_options`, `min_order_tolerance` and `max_order_tolerance` must be identical, as
     must `apply_phase_correction`.
     """
     parameters = [
@@ -587,7 +599,7 @@ def merge_vector_fitting_parameters(group_label, members: dict) -> dict:
         for name, element in members.items()
     ]
     for key in ("num_frequency_samples", "center_wavelength", "fitter", "passivity", "passivity_aware_order",
-                "passivity_options"):
+                "passivity_options", "min_order_tolerance", "max_order_tolerance"):
         values = {name: repr(p[key]) for name, p in parameters}
         if len(set(values.values())) > 1:
             raise ValueError(
@@ -610,8 +622,10 @@ def merge_vector_fitting_parameters(group_label, members: dict) -> dict:
         return p["min_model_order"], p["max_model_order"]
 
     bounds = [order_bounds(p) for _, p in parameters]
-    min_order = min(b[0] for b in bounds)
-    max_order = max(b[1] for b in bounds)
+    # a bound left as None (estimate a priori) by any member is estimated for the fused data
+    lows, highs = [b[0] for b in bounds], [b[1] for b in bounds]
+    min_order = None if None in lows else min(lows)
+    max_order = None if None in highs else max(highs)
     ranges = [p["spectral_range"] for _, p in parameters]
 
     merged = deepcopy(parameters[0][1])
@@ -619,7 +633,7 @@ def merge_vector_fitting_parameters(group_label, members: dict) -> dict:
         min(min(r) for r in ranges),
         max(max(r) for r in ranges),
     )
-    if min_order == max_order:
+    if min_order is not None and min_order == max_order:
         merged.update(model_order=min_order, min_model_order=None, max_model_order=None)
     else:
         merged.update(
@@ -828,6 +842,9 @@ def _calculate_state_space_coefficients_from_sax_model(
     elif fitter != "z":
         raise ValueError(f"unknown fitter {fitter!r}; use 'z' or 's_bilinear'")
     elif vector_fitting_parameters["model_order"] is None:
+        min_order, max_order = _order_bounds(
+            vector_fitting_parameters, s_params, frequency, f_center, sampling_frequency, input_ports, output_ports
+        )
         aware = (
             vector_fitting_parameters["passivity"] == "enforce"
             and vector_fitting_parameters["passivity_aware_order"]
@@ -838,8 +855,8 @@ def _calculate_state_space_coefficients_from_sax_model(
             feedthrough,
             mean_squared_error,
         ) = optimize_order_vector_fitting_discrete(
-            vector_fitting_parameters["min_model_order"],
-            vector_fitting_parameters["max_model_order"],
+            min_order,
+            max_order,
             s_params,
             frequency,
             f_center,
@@ -867,6 +884,34 @@ def _calculate_state_space_coefficients_from_sax_model(
     A, B, C, D = state_space_discrete(poles, residues, feedthrough)
 
     return (A, B, C, D), input_ports, output_ports
+
+
+def _order_bounds(vector_fitting_parameters, s_params, frequency, f_center, sampling_frequency, input_ports,
+                  output_ports):
+    """(min, max) model order for the search: explicit bounds as given, missing ones estimated a priori from the data
+    (Loewner singular values; see `order_estimation`). Warns when an explicit minimum is below the estimate."""
+    lo, hi = vector_fitting_parameters["min_model_order"], vector_fitting_parameters["max_model_order"]
+    estimate = estimate_order_bounds(
+        s_params,
+        frequency,
+        f_center,
+        sampling_frequency,
+        sign_convention=PHYSICIST,
+        min_tolerance=vector_fitting_parameters["min_order_tolerance"],
+        max_tolerance=vector_fitting_parameters["max_order_tolerance"],
+    )
+    if lo is not None and lo < estimate.min_order:
+        warnings.warn(
+            f"{len(output_ports)}x{len(input_ports)} model: min_model_order={lo} is below the a-priori estimate "
+            f"{estimate.min_order} (Loewner singular values above {vector_fitting_parameters['min_order_tolerance']:g}; "
+            f"{estimate.phase_cycles:.0f} phase cycles across the band). The order search can stop in a false valley "
+            "below the order the data needs; consider min_model_order=None to use the estimate."
+        )
+    lo = estimate.min_order if lo is None else lo
+    hi = max(estimate.max_order, lo + 2) if hi is None else hi
+    if hi < lo + 2:
+        raise ValueError(f"max_model_order ({hi}) must be at least min_model_order + 2 ({lo + 2})")
+    return int(lo), int(hi)
 
 
 def _apply_passivity(passivity, poles, residues, feedthrough, fit_omega, input_ports, output_ports, options=None):

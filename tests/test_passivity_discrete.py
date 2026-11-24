@@ -192,7 +192,8 @@ def test_element_passivity_options_and_aware_order():
     with warnings.catch_warnings():
         warnings.simplefilter("error", UserWarning)
         build(model_order=16, passivity="enforce", passivity_options={"margin": 1e-3})
-        build(min_model_order=4, max_model_order=12, passivity="enforce")                    # plain (default)
-        build(min_model_order=4, max_model_order=12, passivity="enforce", passivity_aware_order=True)
+        # bounds at or above the a-priori estimate (8 for this coupler), so no low-minimum warning
+        build(min_model_order=8, max_model_order=16, passivity="enforce")                    # plain (default)
+        build(min_model_order=8, max_model_order=16, passivity="enforce", passivity_aware_order=True)
     with pytest.raises(TypeError):
         build(model_order=16, passivity="enforce", passivity_options={"no_such_option": 1})

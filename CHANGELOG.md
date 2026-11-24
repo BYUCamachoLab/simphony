@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   error after enforcement (`optimize_order_vector_fitting_discrete(...,
   passivity_enforcement=...)`). `vector_fitting_parameters["passivity_options"]`
   passes options to `enforce_passivity_discrete`.
+- A-priori model-order bounds, `vector_fitting.order_estimation`:
+  `estimate_order_bounds` counts normalised Loewner singular values (of random
+  scalar projections, so the count is the number of distinct poles) above
+  `min_order_tolerance` (default 1e-3) and `max_order_tolerance` (default 1e-6).
+  `min_model_order` / `max_model_order` now default to `None` (estimated);
+  explicit bounds are used as given, with a warning when the minimum is below
+  the estimate. See `vector_fitting/FIXES.md` §12 follow-ups.
 - `vector_fitting_parameters["fitter"]` for `SParameterElement`: `"z"`
   (default, unchanged) or `"s_bilinear"`, a continuous s-domain fit at
   baseband mapped to each rate region's sample period with the bilinear
