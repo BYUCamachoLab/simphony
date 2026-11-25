@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+- **Breaking:** the vector fitters (`vector_fitting_discrete`, `vector_fitting_continuous`,
+  `optimize_order_vector_fitting_discrete`, `optimize_order_vector_fitting_continuous`) now return
+  `(poles, residues, feedthrough)`. The mean squared error is no longer returned by default.
+  - `return_info=True` returns `(poles, residues, feedthrough, info)`, where `info` is a dict with:
+    - the returned model's `"mean_squared_error"`, `"max_abs_error"` and `"mean_abs_error"`;
+    - `"iterations"` and `"converged"`;
+    - `"history"`: per-iteration errors, weight errors, poles, residues and feedthrough.
+  - The order searches add `"order_search"`: the bounds, the complexity penalty, every order evaluated with its
+    score, and the selected order. `optimize_order` takes the same flag.
+  - The fits themselves are unchanged.
+  - `CACHE_VERSION` is now `"v3"`, so cached 4-tuples are not reused.
+  - Updated callers: `SParameterElement`, the tests, and the example notebooks. **Migration:** replace
+    `p, r, d, mse = f(...)` with `p, r, d = f(...)`, or with `p, r, d, info = f(..., return_info=True)` and
+    `mse = info["mean_squared_error"]`.
 - Passivity for z-domain fits: `vector_fitting.passivity` with
   `passivity_assessment_discrete` (σ_max on the whole unit circle, densest at
   the pole angles) and `enforce_passivity_discrete` (residue perturbation by

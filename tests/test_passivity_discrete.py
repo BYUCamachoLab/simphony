@@ -121,7 +121,7 @@ def test_enforcement_on_a_real_fit():
     f = np.linspace(speed_of_light / 1.6e-6, speed_of_light / 1.5e-6, 1000)
     sdict = directional_coupler(wl=1e6 * speed_of_light / f)
     S = np.stack([np.stack([np.asarray(sdict[(o, i)]) for i in DC_PORTS], -1) for o in DC_PORTS], -2)
-    poles, residues, feedthrough, _ = vector_fitting_discrete(
+    poles, residues, feedthrough = vector_fitting_discrete(
         16, jnp.asarray(S), jnp.asarray(f), F0, FS, sign_convention=PHYSICIST
     )
     assert not passivity_assessment_discrete(poles, residues, feedthrough).is_passive

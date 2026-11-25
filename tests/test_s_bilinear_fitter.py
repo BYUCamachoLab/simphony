@@ -65,7 +65,7 @@ def test_bilinear_model_is_the_warped_continuous_fit():
     spectral_range = fit_settings("s_bilinear")["vector_fitting_parameters"]["spectral_range"]
     frequency = jnp.linspace(speed_of_light / max(spectral_range), speed_of_light / min(spectral_range), 400)
     data = jnp.asarray(delay_line(wl=1e6 * speed_of_light / frequency)[("o1", "o2")])[:, None, None]
-    p, r, d, _ = vector_fitting_continuous(6, data, frequency, F0, sign_convention=PHYSICIST, use_cache=False)
+    p, r, d = vector_fitting_continuous(6, data, frequency, F0, sign_convention=PHYSICIST, use_cache=False)
     warped = np.tan(np.pi * f * DT) / (np.pi * DT)
     continuous = np.asarray(
         pole_residue_response_continuous(jnp.asarray(F0 + warped), F0, p, r, d, sign_convention=PHYSICIST)

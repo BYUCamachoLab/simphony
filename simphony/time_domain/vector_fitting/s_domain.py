@@ -19,11 +19,14 @@ from simphony.conventions import ENGINEER, PHYSICIST
 from simphony.performance.performance import persistent_cache
 from simphony.time_domain.vector_fitting.common import (
     _clear_vector_fitting_memory,
+    _empty_history,
     _fit_to_poles,
     _hold_matrices,
     _lstsq_matrices,
     _relocate_poles,
     _state_space,
+    _record,
+    _vector_fit_info,
     _weight_error,
     optimize_order,
 )
@@ -124,6 +127,7 @@ def vector_fitting_continuous(
     max_iterations=10,
     alpha=0.01,
     weight_threshold=0.0,
+    return_info=False,
 ):
     """Fit a continuous-time pole-residue model to sampled transfer data.
 
@@ -153,15 +157,21 @@ def vector_fitting_continuous(
         `2 pi max|f - center_frequency|`.
     weight_threshold:
         Stop when the weight error is at or below this value.
+    return_info:
+        If True, also return a dict with the fit errors and the error, weight
+        error and model (in rad/s) after every iteration (default False).
 
     Returns
     -------
     tuple
-        `(poles, residues, feedthrough, mean_squared_error)` where `poles` has
-        shape `(model_order,)`, `residues` has shape `(model_order, q, m)`,
-        `feedthrough` has shape `(q, m)`, and `mean_squared_error` is the fit
-        error against `transfer_function`. Poles and residues are in rad/s,
-        relative to `center_frequency`.
+        `(poles, residues, feedthrough)` with shapes `(model_order,)`,
+        `(model_order, q, m)` and `(q, m)`. Poles and residues are in rad/s,
+        relative to `center_frequency`. With `return_info=True`,
+        `(poles, residues, feedthrough, info)`: `info` is a dict with the
+        returned model's `"mean_squared_error"`, `"max_abs_error"` and
+        `"mean_abs_error"` against `transfer_function`, `"iterations"`,
+        `"converged"`, and `"history"` (per-iteration errors, weight errors
+        and models; see `vector_fitting.common`).
     """
     baseband_frequency = frequency - center_frequency
     # Fit in normalized frequency (max |f| = 1): with f in Hz the basis columns 1/(s - p) are ~1e-14 next to the
@@ -194,9 +204,29 @@ def vector_fitting_continuous(
         model_order, normalized_frequency, alpha, sign_convention
     )
     initial_state = (initial_poles, jnp.inf, 0)
-    final_poles, *_ = jax.lax.while_loop(
-        poles_not_converged, relocate_poles, initial_state
-    )
+    if not return_info:
+        final_poles, *_ = jax.lax.while_loop(
+            poles_not_converged, relocate_poles, initial_state
+        )
+    else:
+        # the same relocation, also recording each iterate's model (rescaled to rad/s) and errors
+        def record(history, k, poles, weight_error):
+            phi0, _ = _phi_matrices(normalized_frequency, poles, sign_convention)
+            residues, feedthrough = _fit_to_poles(transfer_function, phi0)
+            poles, residues = poles * frequency_scale, residues * frequency_scale
+            fit = pole_residue_response_continuous(
+                frequency, center_frequency, poles, residues, feedthrough, sign_convention=sign_convention
+            )
+            return _record(history, k, poles, residues, feedthrough, transfer_function, fit, weight_error)
+
+        def relocate_and_record(state):
+            poles, weight_error, iteration = relocate_poles(state[:3])
+            return (poles, weight_error, iteration, record(state[3], iteration, poles, weight_error))
+
+        history = record(_empty_history(max_iterations, initial_poles, transfer_function), 0, initial_poles, jnp.nan)
+        final_poles, final_weight_error, iterations, history = jax.lax.while_loop(
+            lambda state: poles_not_converged(state[:3]), relocate_and_record, (*initial_state, history)
+        )
     phi0, _ = _phi_matrices(normalized_frequency, final_poles, sign_convention)
     residues, feedthrough = _fit_to_poles(transfer_function, phi0)
 
@@ -204,17 +234,11 @@ def vector_fitting_continuous(
     final_poles = final_poles * frequency_scale
     residues = residues * frequency_scale
 
-    error = _mean_squared_error(
-        transfer_function,
-        frequency,
-        center_frequency,
-        final_poles,
-        residues,
-        feedthrough,
-        sign_convention,
-    )
-
-    return final_poles, residues, feedthrough, error
+    if return_info:
+        return final_poles, residues, feedthrough, _vector_fit_info(
+            history, iterations, final_weight_error, max_iterations, weight_threshold
+        )
+    return final_poles, residues, feedthrough
 
 
 @persistent_cache
@@ -228,6 +252,7 @@ def optimize_order_vector_fitting_continuous(
     max_iterations=10,
     alpha=0.01,
     weight_threshold=0.0,
+    return_info=False,
 ):
     """Fit a continuous pole-residue model while selecting the model order.
 
@@ -254,15 +279,20 @@ def optimize_order_vector_fitting_continuous(
         Initial pole damping used by `vector_fitting_continuous`.
     weight_threshold:
         Pole-relocation convergence threshold.
+    return_info:
+        If True, also return the selected fit's info dict (as
+        `vector_fitting_*` returns it) with an `"order_search"` entry: the
+        bounds, the complexity penalty, every order evaluated with its score,
+        and the selected order (default False).
 
     Returns
     -------
     tuple
-        `(poles, residues, feedthrough, mean_squared_error)` for the selected
-        order.
+        `(poles, residues, feedthrough)` for the selected order, or
+        `(poles, residues, feedthrough, info)` with `return_info=True`.
     """
 
-    def fit_order(model_order):
+    def fit_order(model_order, return_info=False):
         return vector_fitting_continuous(
             model_order,
             transfer_function,
@@ -272,26 +302,38 @@ def optimize_order_vector_fitting_continuous(
             max_iterations=max_iterations,
             alpha=alpha,
             weight_threshold=weight_threshold,
+            return_info=return_info,
             use_cache=False,
         )
 
     def error_fn(model_order):
         poles = residues = feedthrough = mean_squared_error = None
         try:
-            poles, residues, feedthrough, mean_squared_error = fit_order(model_order)
+            poles, residues, feedthrough = fit_order(model_order)
+            mean_squared_error = _mean_squared_error(
+                transfer_function, frequency, center_frequency, poles, residues, feedthrough, sign_convention
+            )
             return float(jax.device_get(mean_squared_error))
         finally:
             del poles, residues, feedthrough, mean_squared_error
             _clear_vector_fitting_memory()
 
-    best_order = optimize_order(error_fn, min_order, max_order)
+    if not return_info:
+        best_order = optimize_order(error_fn, min_order, max_order)
+        try:
+            return fit_order(best_order)
+        except Exception:
+            _clear_vector_fitting_memory()
+            raise
+
+    best_order, search = optimize_order(error_fn, min_order, max_order, return_info=True)
     try:
-        poles, residues, feedthrough, mean_squared_error = fit_order(best_order)
+        poles, residues, feedthrough, info = fit_order(best_order, return_info=True)
     except Exception:
         _clear_vector_fitting_memory()
         raise
-
-    return poles, residues, feedthrough, mean_squared_error
+    info["order_search"] = dict(min_order=int(min_order), max_order=int(max_order), selected_order=best_order, **search)
+    return poles, residues, feedthrough, info
 
 
 def state_space_continuous(poles, residues, feedthrough):

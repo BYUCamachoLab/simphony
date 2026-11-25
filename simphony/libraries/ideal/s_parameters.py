@@ -834,7 +834,7 @@ def _calculate_state_space_coefficients_from_sax_model(
         if vector_fitting_parameters["model_order"] is None:
             raise ValueError("fitter 's_bilinear' needs an explicit model_order")
         # s = -j omega (physicist) maps by the bilinear transform onto z = e^{-j Omega}, the convention used below
-        s_poles, s_residues, s_feedthrough, _ = vector_fitting_continuous(
+        s_poles, s_residues, s_feedthrough = vector_fitting_continuous(
             vector_fitting_parameters["model_order"],
             s_params,
             frequency,
@@ -854,12 +854,7 @@ def _calculate_state_space_coefficients_from_sax_model(
             vector_fitting_parameters["passivity"] == "enforce"
             and vector_fitting_parameters["passivity_aware_order"]
         )
-        (
-            poles,
-            residues,
-            feedthrough,
-            mean_squared_error,
-        ) = optimize_order_vector_fitting_discrete(
+        poles, residues, feedthrough = optimize_order_vector_fitting_discrete(
             min_order,
             max_order,
             s_params,
@@ -870,7 +865,7 @@ def _calculate_state_space_coefficients_from_sax_model(
             passivity_enforcement=dict(vector_fitting_parameters["passivity_options"] or {}) if aware else None,
         )
     else:
-        poles, residues, feedthrough, mean_squared_error = vector_fitting_discrete(
+        poles, residues, feedthrough = vector_fitting_discrete(
             vector_fitting_parameters["model_order"],
             s_params,
             frequency,

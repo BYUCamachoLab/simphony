@@ -42,9 +42,10 @@ def test_recovers_an_exact_rectangular_model(sign_convention):
     poles, residues, feedthrough = exact_model(sign_convention)
     H = pole_residue_response_continuous(FREQUENCY, F0, poles, residues, feedthrough, sign_convention)
 
-    p, r, d, mse = vector_fitting_continuous(
-        ORDER, H, FREQUENCY, F0, sign_convention=sign_convention, max_iterations=20, use_cache=False
+    p, r, d, info = vector_fitting_continuous(
+        ORDER, H, FREQUENCY, F0, sign_convention=sign_convention, max_iterations=20, return_info=True, use_cache=False
     )
+    mse = info["mean_squared_error"]
 
     i, j = matched(poles, p)
     np.testing.assert_allclose(p[j], poles[i], rtol=1e-8)
@@ -59,12 +60,13 @@ def test_physicist_fit_is_the_conjugate_of_the_engineer_fit():
     H = pole_residue_response_continuous(FREQUENCY, F0, poles, residues, feedthrough, ENGINEER)
     H = H + 1e-3 * jnp.asarray(np.random.default_rng(1).normal(size=H.shape))  # noisy, so the fit is not exact
 
-    p_e, r_e, d_e, mse_e = vector_fitting_continuous(
-        ORDER, H, FREQUENCY, F0, sign_convention=ENGINEER, use_cache=False
+    p_e, r_e, d_e, info_e = vector_fitting_continuous(
+        ORDER, H, FREQUENCY, F0, sign_convention=ENGINEER, return_info=True, use_cache=False
     )
-    p_p, r_p, d_p, mse_p = vector_fitting_continuous(
-        ORDER, jnp.conj(H), FREQUENCY, F0, sign_convention=PHYSICIST, use_cache=False
+    p_p, r_p, d_p, info_p = vector_fitting_continuous(
+        ORDER, jnp.conj(H), FREQUENCY, F0, sign_convention=PHYSICIST, return_info=True, use_cache=False
     )
+    mse_e, mse_p = info_e["mean_squared_error"], info_p["mean_squared_error"]
 
     i, j = matched(jnp.conj(p_e), p_p)
     np.testing.assert_allclose(p_p[j], jnp.conj(p_e)[i], rtol=1e-8)
@@ -80,9 +82,11 @@ def test_center_frequency_shifts_the_poles(sign_convention):
     H = pole_residue_response_continuous(FREQUENCY, F0, poles, residues, feedthrough, sign_convention)
     shift = 30e9
 
-    p, _, _, mse = vector_fitting_continuous(
-        ORDER, H, FREQUENCY, F0 + shift, sign_convention=sign_convention, max_iterations=20, use_cache=False
+    p, _, _, info = vector_fitting_continuous(
+        ORDER, H, FREQUENCY, F0 + shift, sign_convention=sign_convention, max_iterations=20, return_info=True,
+        use_cache=False,
     )
+    mse = info["mean_squared_error"]
 
     expected = poles - sign_convention * 1j * 2 * np.pi * shift
     i, j = matched(expected, p)
@@ -107,7 +111,8 @@ def test_optimize_order_stays_within_bounds():
     poles, residues, feedthrough = exact_model(PHYSICIST)
     H = pole_residue_response_continuous(FREQUENCY, F0, poles, residues, feedthrough)
 
-    p, r, d, mse = optimize_order_vector_fitting_continuous(3, 12, H, FREQUENCY, F0, use_cache=False)
+    p, r, d, info = optimize_order_vector_fitting_continuous(3, 12, H, FREQUENCY, F0, return_info=True, use_cache=False)
+    mse = info["mean_squared_error"]
 
     assert 3 <= p.shape[0] <= 12
     assert r.shape == (p.shape[0], 2, 3) and d.shape == (2, 3)

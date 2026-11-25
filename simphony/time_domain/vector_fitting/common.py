@@ -9,6 +9,7 @@ import gc
 import math
 
 import jax
+import numpy as np
 
 jax.config.update("jax_enable_x64", True)
 
@@ -110,7 +111,69 @@ def _fit_to_poles(transfer_function, phi0):
     return residues, feedthrough
 
 
-def optimize_order(error_fn, min_order, max_order):
+# `return_info=True` on the fitters returns `(poles, residues, feedthrough, info)`, `info` a dict:
+#   "mean_squared_error", "max_abs_error", "mean_abs_error": of the returned model against the data (over every
+#       frequency and input/output pair);
+#   "iterations": pole relocations performed; "converged": True if `weight_threshold` stopped them early;
+#   "history": per-iteration arrays, entry k = the model after k relocations (entry 0 = starting poles, last = the
+#       returned model): "max_abs_error", "mean_abs_error", "mean_squared_error", "weight_error" (of the relocation
+#       that produced the entry; NaN at 0), "poles", "residues", "feedthrough" (s fits: rad/s, as returned);
+#   and, from the order searches, "order_search": {"min_order", "max_order", "complexity_penalty", "evaluated"
+#       ((order, score) pairs in evaluation order), "selected_order"}.
+
+
+def _empty_history(max_iterations, initial_poles, transfer_function):
+    """Per-iteration buffers for `return_info`, NaN until written (the relocation may stop early)."""
+    n = max_iterations + 1
+    r = initial_poles.shape[0]
+    q, m = transfer_function.shape[1], transfer_function.shape[2]
+    nan = jnp.nan
+    return {
+        "errors": jnp.full((n, 3), nan),
+        "weight_error": jnp.full((n,), nan),
+        "poles": jnp.full((n, r), nan + 0j),
+        "residues": jnp.full((n, r, q, m), nan + 0j),
+        "feedthrough": jnp.full((n, q, m), nan + 0j),
+    }
+
+
+def _record(history, k, poles, residues, feedthrough, transfer_function, fit, weight_error):
+    """Write iterate `k` (its model, its errors against the data, and the weight error that produced it)."""
+    e = jnp.abs(transfer_function - fit)
+    return {
+        "errors": history["errors"].at[k].set(jnp.stack([jnp.max(e), jnp.mean(e), jnp.mean(e**2)])),
+        "weight_error": history["weight_error"].at[k].set(weight_error),
+        "poles": history["poles"].at[k].set(poles),
+        "residues": history["residues"].at[k].set(residues),
+        "feedthrough": history["feedthrough"].at[k].set(feedthrough),
+    }
+
+
+def _vector_fit_info(history, iterations, weight_error, max_iterations, weight_threshold):
+    """The `info` dict (see above) from the per-iteration buffers, trimmed to the iterations performed."""
+    h = jax.device_get(history)
+    n = int(iterations)
+    keep = slice(0, n + 1)
+    errors = np.asarray(h["errors"][keep])
+    return {
+        "mean_squared_error": float(errors[-1, 2]),
+        "max_abs_error": float(errors[-1, 0]),
+        "mean_abs_error": float(errors[-1, 1]),
+        "iterations": n,
+        "converged": bool(n < max_iterations and float(weight_error) <= weight_threshold),
+        "history": {
+            "max_abs_error": errors[:, 0],
+            "mean_abs_error": errors[:, 1],
+            "mean_squared_error": errors[:, 2],
+            "weight_error": np.asarray(h["weight_error"][keep]),
+            "poles": np.asarray(h["poles"][keep]),
+            "residues": np.asarray(h["residues"][keep]),
+            "feedthrough": np.asarray(h["feedthrough"][keep]),
+        },
+    }
+
+
+def optimize_order(error_fn, min_order, max_order, return_info=False):
     """Choose a model order by balancing fit error and complexity.
 
     Golden-section search over the order minimising MSE(order) + lambda * order, with the complexity penalty lambda
@@ -133,18 +196,23 @@ def optimize_order(error_fn, min_order, max_order):
         Minimum model order to consider.
     max_order:
         Maximum model order to consider.
+    return_info:
+        If True, also return a dict with the `(order, error)` pairs in evaluation order (`"evaluated"`) and the
+        penalty lambda (`"complexity_penalty"`).
 
     Returns
     -------
-    int
-        The selected model order.
+    int, or (int, dict)
+        The selected model order (and the search record with `return_info=True`).
     """
     error_cache = {}
+    evaluated = []
 
     def cached_error(model_order):
         model_order = int(model_order)
         if model_order not in error_cache:
             error_cache[model_order] = error_fn(model_order)
+            evaluated.append((model_order, float(error_cache[model_order])))
         return error_cache[model_order]
 
     C_min = cached_error(min_order)
@@ -177,6 +245,8 @@ def optimize_order(error_fn, min_order, max_order):
 
     best_order = int(round((a + b) / 2))
 
+    if return_info:
+        return best_order, {"evaluated": tuple(evaluated), "complexity_penalty": float(complexity_penalty)}
     return best_order
 
 
