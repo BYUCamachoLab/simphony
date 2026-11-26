@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
+- `OpticalIsolator` (`simphony.libraries.ideal.sources`): an ideal isolator with ports `in` (input), `out`
+  (bidirectional) and `isolated` (output, the blocked backward wave, for diagnostics). Lossless, with infinite
+  isolation and no delay; sample and block mode.
 - **Breaking:** the vector fitters (`vector_fitting_discrete`, `vector_fitting_continuous`,
   `optimize_order_vector_fitting_discrete`, `optimize_order_vector_fitting_continuous`) now return
   `(poles, residues, feedthrough)`. The mean squared error is no longer returned by default.
@@ -125,6 +128,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `s_parameter_netlist_to_pcell`.
 
 ### Fixed
+- Sample mode no longer fails with a `KeyError` when a bidirectional port is connected to a one-way port (for
+  example a default, bidirectional S-parameter element feeding a photodiode). `_sample_mode_step` now feeds a zero
+  signal to every input or bidirectional port where no wave arrives, as `_block_mode_response` already did in block
+  mode (a matched termination). The wave travelling back into the one-way port is discarded; use
+  `OpticalIsolator` to make that explicit.
 - Partially specified `vector_fitting_parameters` are completed with defaults
   in every simulation mode (previously a `KeyError` in block mode).
 

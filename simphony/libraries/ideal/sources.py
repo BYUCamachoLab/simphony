@@ -649,6 +649,37 @@ class OpticalSource(SampleModeComponent, BlockModeComponent):
         return outputs, state + 1
 
 
+class OpticalIsolator(SampleModeComponent, BlockModeComponent):
+    """Ideal optical isolator.
+
+    Transmits `in` -> `out` unchanged and blocks everything travelling back
+    into `out`; the blocked wave is reported on `isolated` for diagnostics.
+    No loss, infinite isolation, no delay.
+
+    Without an isolator, a wave travelling back into a one-way port (a
+    laser's or amplifier's output) is discarded silently; the isolator makes
+    that choice explicit and observable.
+    """
+
+    ports = [
+        Port(name="in", type="optical", directionality="input"),
+        Port(name="out", type="optical", directionality="bidirectional"),
+        Port(name="isolated", type="optical", directionality="output"),
+    ]
+
+    def __init__(self, simulation_parameters):
+        pass
+
+    def block_mode_response(self, inputs: dict, simulation_parameters):
+        return {"out": inputs["in"], "isolated": inputs["out"]}
+
+    def sample_mode_initial_state(self, simulation_parameters):
+        return jnp.array(0, dtype=int)
+
+    def sample_mode_step(self, inputs, state, simulation_state, simulation_parameters):
+        return {"out": inputs["in"], "isolated": inputs["out"]}, state
+
+
 class VoltageSource(
     SteadyStateComponent,
     SampleModeComponent,

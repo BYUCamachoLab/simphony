@@ -333,6 +333,16 @@ class SampleModeComponent(Component):
         simulation_state,
         simulation_parameters: SampleModeSimulationParameters,
     ):
+        # A port where no wave arrives (e.g. a bidirectional port connected to
+        # a one-way port, whose backward wave is discarded) receives a zero
+        # signal, as in `_block_mode_response`: a matched termination.
+        inputs = dict(inputs)
+        for port_name, port in self._input_port_lookup_table.items():
+            if port_name not in inputs:
+                zero = self.sample_mode_output_template(port, simulation_parameters)
+                if zero is not None:  # rate changers inherit their template
+                    inputs[port_name] = zero
+
         time_step = state[0]
         internal_state = state[1]
 
